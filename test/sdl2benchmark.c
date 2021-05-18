@@ -15,7 +15,11 @@ TODO:
 
 */
 
+#ifdef __MORPHOS__
+#include "SDL.h"
+#else
 #include "SDL2/SDL.h"
+#endif
 
 #define BENCHMARK_VERSION "0.6"
 

@@ -86,6 +86,9 @@ SDL_NORETURN void SDL_ExitProcess(int exitcode)
     exit(exitcode);
 #elif defined(__HAIKU__)  /* Haiku has _Exit, but it's not marked noreturn. */
     _exit(exitcode);
+#elif defined(__MORPHOS__)
+    extern void (*morphos_exit)(int exitcode);
+    morphos_exit(exitcode);
 #elif defined(HAVE__EXIT) /* Upper case _Exit() */
     _Exit(exitcode);
 #else
@@ -552,6 +555,8 @@ SDL_GetPlatform()
     return "PlayStation Portable";
 #elif __AMIGAOS4__
     return "AmigaOS 4";
+#elif __MORPHOS__
+    return "MorphOS";
 #elif __VITA__
     return "PlayStation Vita";
 #else

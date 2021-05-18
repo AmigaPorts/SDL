@@ -1409,7 +1409,9 @@ typedef unsigned __int64 uint64_t;
 #include <inttypes.h>
 #endif
 #endif
+#ifndef __MORPHOS__
 typedef uint64_t GLuint64;
+#endif
 typedef int64_t GLint64;
 #define GL_CONTEXT_CORE_PROFILE_BIT       0x00000001
 #define GL_CONTEXT_COMPATIBILITY_PROFILE_BIT 0x00000002
@@ -2597,7 +2599,9 @@ GLAPI void APIENTRY glBindVertexBuffers (GLuint first, GLsizei count, const GLui
 
 #ifndef GL_ARB_bindless_texture
 #define GL_ARB_bindless_texture 1
+#ifndef __MORPHOS__
 typedef uint64_t GLuint64EXT;
+#endif
 #define GL_UNSIGNED_INT64_ARB             0x140F
 typedef GLuint64 (APIENTRYP PFNGLGETTEXTUREHANDLEARBPROC) (GLuint texture);
 typedef GLuint64 (APIENTRYP PFNGLGETTEXTURESAMPLERHANDLEARBPROC) (GLuint texture, GLuint sampler);

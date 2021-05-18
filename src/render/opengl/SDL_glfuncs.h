@@ -36,7 +36,7 @@ SDL_PROC_UNUSED(void, glBitmap,
                 (GLsizei, GLsizei, GLfloat, GLfloat, GLfloat, GLfloat,
                  const GLubyte *))
 SDL_PROC(void, glBlendEquation, (GLenum))
-#ifdef __AMIGAOS4__
+#if defined(__AMIGAOS4__) || defined(__MORPHOS__)
 SDL_PROC(void, glBlendFunc, (GLenum, GLenum))
 #else
 SDL_PROC_UNUSED(void, glBlendFunc, (GLenum, GLenum))

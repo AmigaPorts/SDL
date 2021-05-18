@@ -38,6 +38,8 @@
 #include "vita/SDL_systhread_c.h"
 #elif SDL_THREAD_STDCPP
 #include "stdcpp/SDL_systhread_c.h"
+#elif SDL_THREAD_MORPHOS
+#include "morphos/SDL_systhread_c.h"
 #elif SDL_THREAD_AMIGAOS4
 #include "amigaos4/SDL_systhread_c.h"
 #elif SDL_THREAD_OS2

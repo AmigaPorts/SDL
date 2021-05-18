@@ -1547,10 +1547,17 @@ SDL_Surface *SDLTest_ImageBlitBlendMod()
         SDLTest_imageBlitBlendMod.bytes_per_pixel * 8,
         SDLTest_imageBlitBlendMod.width * SDLTest_imageBlitBlendMod.bytes_per_pixel,
 #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
+#if defined(__MORPHOS__) || defined(__AMIGAOS4__)
+         0x00ff0000, /* Red bit mask. */
+         0x0000ff00, /* Green bit mask. */
+         0x000000ff, /* Blue bit mask. */
+         0x00000000  /* Alpha bit mask. Our surface is 24-bit, so don't define */
+#else
          0xff000000, /* Red bit mask. */
          0x00ff0000, /* Green bit mask. */
          0x0000ff00, /* Blue bit mask. */
          0x000000ff  /* Alpha bit mask. */
+#endif
 #else
          0x000000ff, /* Red bit mask. */
          0x0000ff00, /* Green bit mask. */
@@ -2360,10 +2367,17 @@ SDL_Surface *SDLTest_ImageBlitBlendNone()
         SDLTest_imageBlitBlendNone.bytes_per_pixel * 8,
         SDLTest_imageBlitBlendNone.width * SDLTest_imageBlitBlendNone.bytes_per_pixel,
 #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
+#if defined(__MORPHOS__) || defined(__AMIGAOS4__)
+         0x00ff0000, /* Red bit mask. */
+         0x0000ff00, /* Green bit mask. */
+         0x000000ff, /* Blue bit mask. */
+         0x00000000  /* Alpha bit mask. Our surface is 24-bit, so don't define */
+#else
          0xff000000, /* Red bit mask. */
          0x00ff0000, /* Green bit mask. */
          0x0000ff00, /* Blue bit mask. */
          0x000000ff  /* Alpha bit mask. */
+#endif
 #else
          0x000000ff, /* Red bit mask. */
          0x0000ff00, /* Green bit mask. */

@@ -23,6 +23,12 @@
 #if SDL_VIDEO_RENDER_OGL && !SDL_RENDER_DISABLED
 
 #include "SDL_hints.h"
+#include "SDL_assert.h"
+
+#ifdef __MORPHOS__
+#define _NO_PPCINLINE
+#endif
+
 #include "SDL_opengl.h"
 #include "../SDL_sysrender.h"
 #include "SDL_shaders_gl.h"
@@ -31,13 +37,16 @@
 #include <OpenGL/OpenGL.h>
 #endif
 
-/* To prevent unnecessary window recreation, 
- * these should match the defaults selected in SDL_GL_ResetAttributes 
+/* To prevent unnecessary window recreation,
+ * these should match the defaults selected in SDL_GL_ResetAttributes
  */
 
 #ifdef __AMIGAOS4__
 #define RENDERER_CONTEXT_MAJOR 1
 #define RENDERER_CONTEXT_MINOR 3
+#elif __MORPHOS__
+#define RENDERER_CONTEXT_MAJOR 1
+#define RENDERER_CONTEXT_MINOR 2
 #else
 #define RENDERER_CONTEXT_MAJOR 2
 #define RENDERER_CONTEXT_MINOR 1
@@ -240,7 +249,7 @@ GL_LoadFunctions(GL_RenderData * data)
 #define SDL_PROC(ret,func,params) data->func=func;
 #else
     int retval = 0;
-#ifdef __AMIGAOS4__
+#if defined(__AMIGAOS4__) //|| defined(__MORPHOS__)
 #define SDL_PROC(ret,func,params) \
     do { \
         data->func = SDL_GL_GetProcAddress(#func); \
@@ -1064,6 +1073,8 @@ GL_QueueCopyEx(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * te
     return 0;
 }
 
+#if defined(__AMIGAOS4__)  
+/* Hack: this is due to missing functionnality in MinGL / Warp3D / TinyGL */
 static void
 GlBlendModeHack(GL_RenderData * data, const SDL_BlendMode mode)
 {
@@ -1086,6 +1097,7 @@ GlBlendModeHack(GL_RenderData * data, const SDL_BlendMode mode)
             break;
     }
 }
+#endif
 
 static void
 SetDrawState(GL_RenderData *data, const SDL_RenderCommand *cmd, const GL_Shader shader)
@@ -1129,22 +1141,20 @@ SetDrawState(GL_RenderData *data, const SDL_RenderCommand *cmd, const GL_Shader 
     }
 
     if (blend != data->drawstate.blend) {
-
-        if (data->glBlendFuncSeparate && data->glBlendEquation) {
-            if (blend == SDL_BLENDMODE_NONE) {
-                data->glDisable(GL_BLEND);
-            } else {
-                data->glEnable(GL_BLEND);
-                data->glBlendFuncSeparate(GetBlendFunc(SDL_GetBlendModeSrcColorFactor(blend)),
-                                          GetBlendFunc(SDL_GetBlendModeDstColorFactor(blend)),
-                                          GetBlendFunc(SDL_GetBlendModeSrcAlphaFactor(blend)),
-                                          GetBlendFunc(SDL_GetBlendModeDstAlphaFactor(blend)));
-                data->glBlendEquation(GetBlendEquation(SDL_GetBlendModeColorOperation(blend)));
-            }
+#if defined(__AMIGAOS4__) //|| defined(__MORPHOS__) 
+        GlBlendModeHack(data, blend);
+#else
+        if (blend == SDL_BLENDMODE_NONE) {
+            data->glDisable(GL_BLEND);
         } else {
-            GlBlendModeHack(data, blend);
+            data->glEnable(GL_BLEND);
+            data->glBlendFuncSeparate(GetBlendFunc(SDL_GetBlendModeSrcColorFactor(blend)),
+                                      GetBlendFunc(SDL_GetBlendModeDstColorFactor(blend)),
+                                      GetBlendFunc(SDL_GetBlendModeSrcAlphaFactor(blend)),
+                                      GetBlendFunc(SDL_GetBlendModeDstAlphaFactor(blend)));
+            data->glBlendEquation(GetBlendEquation(SDL_GetBlendModeColorOperation(blend)));
         }
-
+#endif
         data->drawstate.blend = blend;
     }
 
@@ -1252,6 +1262,9 @@ GL_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand *cmd, void *vertic
     }
 
     data->drawstate.target = renderer->target;
+	#ifdef __MORPHOS__
+	data->glEnable(GL_TEXTURE_2D);
+	#endif
     if (!data->drawstate.target) {
         SDL_GL_GetDrawableSize(renderer->window, &data->drawstate.drawablew, &data->drawstate.drawableh);
     }

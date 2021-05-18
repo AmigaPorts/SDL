@@ -112,6 +112,9 @@ static VideoBootStrap *bootstrap[] = {
 #if SDL_VIDEO_DRIVER_AMIGAOS4
     &OS4_bootstrap,
 #endif
+#if SDL_VIDEO_DRIVER_AMIGA
+    &AMIGA_bootstrap,
+#endif
 #if SDL_VIDEO_DRIVER_QNX
     &QNX_bootstrap,
 #endif
@@ -154,7 +157,7 @@ static SDL_VideoDevice *_this = NULL;
         return retval; \
     }
 
-#ifdef __AMIGAOS4__
+#if defined(__AMIGAOS4__) || defined(__MORPHOS__)
 /* Let's have only one kind of full screen */
 #define FULLSCREEN_MASK (SDL_WINDOW_FULLSCREEN)
 #else
@@ -1162,7 +1165,7 @@ SDL_SetWindowDisplayMode(SDL_Window * window, const SDL_DisplayMode * mode)
         SDL_DisplayMode fullscreen_mode;
         if (SDL_GetWindowDisplayMode(window, &fullscreen_mode) == 0) {
             SDL_SetDisplayModeForDisplay(SDL_GetDisplayForWindow(window), &fullscreen_mode);
-#ifdef __AMIGAOS4__
+#if defined(__AMIGAOS4__) || defined(__MORPHOS__)
             // Force window on new screen
             _this->SetWindowFullscreen(_this, window, SDL_GetDisplayForWindow(window), SDL_TRUE);
 #endif
@@ -1399,7 +1402,7 @@ SDL_UpdateFullscreenMode(SDL_Window * window, SDL_bool fullscreen)
     return 0;
 }
 
-#ifdef __AMIGAOS4__
+#if defined(__AMIGAOS4__) || defined(__MORPHOS__)
     /* Without this hack, SDL would trigger us to open a window before screen which causes unnecessary
     work, because then we would have to close the window first and re-open it on the custom screen */
     #define CREATE_FLAGS \
@@ -2937,6 +2940,7 @@ SDL_OnWindowFocusLost(SDL_Window * window)
     if (ShouldMinimizeOnFocusLoss(window)) {
         SDL_MinimizeWindow(window);
     }
+
 }
 
 /* !!! FIXME: is this different than SDL_GetKeyboardFocus()?
@@ -3345,6 +3349,9 @@ SDL_GL_ResetAttributes()
 #ifdef __AMIGAOS4__
     _this->gl_config.major_version = 1; /* MiniGL */
     _this->gl_config.minor_version = 3;
+#elif __MORPHOS__
+    _this->gl_config.major_version = 1; /* TinyGL */
+    _this->gl_config.minor_version = 2;
 #else
     _this->gl_config.major_version = 2;
     _this->gl_config.minor_version = 1;
@@ -4104,6 +4111,9 @@ SDL_IsScreenKeyboardShown(SDL_Window *window)
 #if SDL_VIDEO_DRIVER_AMIGAOS4
 #include "amigaos4/SDL_os4messagebox.h"
 #endif
+#if SDL_VIDEO_DRIVER_AMIGA
+#include "amiga/SDL_amigamessagebox.h"
+#endif
 #if SDL_VIDEO_DRIVER_WAYLAND
 #include "wayland/SDL_waylandmessagebox.h"
 #endif
@@ -4117,7 +4127,7 @@ SDL_IsScreenKeyboardShown(SDL_Window *window)
 #include "vita/SDL_vitamessagebox.h"
 #endif
 
-#if SDL_VIDEO_DRIVER_WINDOWS || SDL_VIDEO_DRIVER_WINRT || SDL_VIDEO_DRIVER_COCOA || SDL_VIDEO_DRIVER_UIKIT || SDL_VIDEO_DRIVER_X11 || SDL_VIDEO_DRIVER_AMIGAOS4 || SDL_VIDEO_DRIVER_WAYLAND || SDL_VIDEO_DRIVER_HAIKU || SDL_VIDEO_DRIVER_OS2
+#if SDL_VIDEO_DRIVER_WINDOWS || SDL_VIDEO_DRIVER_WINRT || SDL_VIDEO_DRIVER_COCOA || SDL_VIDEO_DRIVER_UIKIT || SDL_VIDEO_DRIVER_X11 || SDL_VIDEO_DRIVER_AMIGAOS4 || SDL_VIDEO_DRIVER_AMIGA || SDL_VIDEO_DRIVER_HAIKU || SDL_VIDEO_DRIVER_OS2
 static SDL_bool SDL_MessageboxValidForDriver(const SDL_MessageBoxData *messageboxdata, SDL_SYSWM_TYPE drivertype)
 {
     SDL_SysWMinfo info;
@@ -4220,6 +4230,13 @@ SDL_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
     if (retval == -1 &&
         SDL_MessageboxValidForDriver(messageboxdata, SDL_SYSWM_OS4) &&
         OS4_ShowMessageBox(messageboxdata, buttonid) == 0) {
+        retval = 0;
+    }
+#endif
+#if SDL_VIDEO_DRIVER_AMIGA
+    if (retval == -1 &&
+        SDL_MessageboxValidForDriver(messageboxdata, SDL_SYSWM_AMIGA) &&
+        AMIGA_ShowMessageBox(messageboxdata, buttonid) == 0) {
         retval = 0;
     }
 #endif

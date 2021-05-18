@@ -22,6 +22,9 @@
 
 #ifdef HAVE_OPENGL
 
+#ifdef __MORPHOS__
+#define _NO_PPCINLINE
+#endif
 #include "SDL_opengl.h"
 
 typedef struct GL_Context
@@ -51,6 +54,11 @@ static int LoadContext(GL_Context * data)
 
 #if defined __SDL_NOGETPROCADDR__
 #define SDL_PROC(ret,func,params) data->func=func;
+#elif defined(__MORPHOS__)
+#define SDL_PROC(ret,func,params) \
+    do { \
+        data->func = SDL_GL_GetProcAddress(#func); \
+    } while ( 0 );
 #else
 #define SDL_PROC(ret,func,params) \
     do { \

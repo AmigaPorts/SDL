@@ -16,7 +16,7 @@
 
 #include "SDL_test_common.h"
 
-#if defined(__ANDROID__) && defined(__ARM_EABI__) && !defined(__ARM_ARCH_7A__)
+#if defined(__ANDROID__) && defined(__ARM_EABI__) && !defined(__ARM_ARCH_7A__) || defined(__MORPHOS__)
 
 int main(int argc, char *argv[])
 {

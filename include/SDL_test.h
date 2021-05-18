@@ -44,6 +44,14 @@
 #include "SDL_test_memory.h"
 #include "SDL_test_random.h"
 
+#if defined(__MORPHOS__)
+#ifndef LLONG_MIN
+#define LLONG_MIN  (-9223372036854775807LL - 1)
+#define LLONG_MAX  9223372036854775807LL
+#define ULLONG_MAX 18446744073709551615ULL
+#endif
+#endif
+
 #include "begin_code.h"
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus

@@ -88,7 +88,9 @@ main(int argc, char *argv[])
         return (1);
     }
 
+#ifndef __MORPHOS__
     signal(SIGSEGV, SIG_DFL);
+#endif
     for (i = 0; i < NUMTHREADS; i++) {
         char name[64];
         SDL_snprintf(name, sizeof (name), "Parent%d", i);

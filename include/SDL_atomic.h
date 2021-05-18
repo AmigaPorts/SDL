@@ -178,8 +178,13 @@ extern DECLSPEC void SDLCALL SDL_MemoryBarrierReleaseFunction(void);
 extern DECLSPEC void SDLCALL SDL_MemoryBarrierAcquireFunction(void);
 
 #if defined(__GNUC__) && (defined(__powerpc__) || defined(__ppc__))
+#if defined(__MORPHOS__)
+#define SDL_MemoryBarrierRelease()   __asm__ __volatile__ ("sync" : : : "memory")
+#define SDL_MemoryBarrierAcquire()   __asm__ __volatile__ ("sync" : : : "memory")
+#else
 #define SDL_MemoryBarrierRelease()   __asm__ __volatile__ ("lwsync" : : : "memory")
 #define SDL_MemoryBarrierAcquire()   __asm__ __volatile__ ("lwsync" : : : "memory")
+#endif
 #elif defined(__GNUC__) && defined(__aarch64__)
 #define SDL_MemoryBarrierRelease()   __asm__ __volatile__ ("dmb ish" : : : "memory")
 #define SDL_MemoryBarrierAcquire()   __asm__ __volatile__ ("dmb ish" : : : "memory")

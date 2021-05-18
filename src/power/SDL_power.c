@@ -77,7 +77,10 @@ static SDL_GetPowerInfo_Impl implementations[] = {
 #ifdef SDL_POWER_EMSCRIPTEN     /* handles Emscripten */
     SDL_GetPowerInfo_Emscripten,
 #endif
-
+#ifdef SDL_POWER_MORPHOS        /* handles MorphOS */
+    SDL_GetPowerInfo_MorphOS,
+#endif
+  
 #ifdef SDL_POWER_HARDWIRED
     SDL_GetPowerInfo_Hardwired,
 #endif

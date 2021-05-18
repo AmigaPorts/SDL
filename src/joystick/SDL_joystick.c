@@ -98,6 +98,12 @@ static SDL_JoystickDriver *SDL_joystick_drivers[] = {
 #if defined(SDL_JOYSTICK_AMIGAINPUT)
     &SDL_AMIGAINPUT_JoystickDriver,
 #endif
+#ifdef SDL_JOYSTICK_MORPHOS
+    &SDL_MORPHOS_JoystickDriver,
+#endif
+#ifdef SDL_JOYSTICK_AMIGA
+    &SDL_AMIGA_JoystickDriver,
+#endif
 #ifdef SDL_JOYSTICK_VITA
     &SDL_VITA_JoystickDriver
 #endif
@@ -882,7 +888,11 @@ SDL_JoystickRumble(SDL_Joystick *joystick, Uint16 low_frequency_rumble, Uint16 h
         /* Just update the expiration */
         result = 0;
     } else {
+#ifdef __MORPHOS__
+        result = joystick->driver->Rumble(joystick, low_frequency_rumble, high_frequency_rumble, duration_ms);
+#else
         result = joystick->driver->Rumble(joystick, low_frequency_rumble, high_frequency_rumble);
+#endif
     }
 
     /* Save the rumble value regardless of success, so we don't spam the driver */
@@ -1629,10 +1639,18 @@ void SDL_GetJoystickGUIDInfo(SDL_JoystickGUID guid, Uint16 *vendor, Uint16 *prod
         /* guid16[6] is product version */
    ) {
         if (vendor) {
+#ifdef __MORPHOS__
+            *vendor = SDL_SwapLE16(guid16[2]);
+#else
             *vendor = guid16[2];
+#endif
         }
         if (product) {
+#ifdef __MORPHOS__
+            *product = SDL_SwapLE16(guid16[4]);
+#else
             *product = guid16[4];
+#endif
         }
         if (version) {
             *version = guid16[6];

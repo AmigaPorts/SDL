@@ -23,6 +23,11 @@
 #if SDL_VIDEO_RENDER_OGL && !SDL_RENDER_DISABLED
 
 #include "SDL_stdinc.h"
+
+#ifdef __MORPHOS__
+#define _NO_PPCINLINE
+#endif
+
 #include "SDL_opengl.h"
 #include "SDL_video.h"
 #include "SDL_shaders_gl.h"

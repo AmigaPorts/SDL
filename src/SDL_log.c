@@ -37,6 +37,10 @@
 #include <android/log.h>
 #endif
 
+#if defined(__MORPHOS__)
+#include <proto/exec.h>
+#endif
+
 #define DEFAULT_PRIORITY                SDL_LOG_PRIORITY_CRITICAL
 #define DEFAULT_ASSERT_PRIORITY         SDL_LOG_PRIORITY_WARN
 #define DEFAULT_APPLICATION_PRIORITY    SDL_LOG_PRIORITY_INFO
@@ -429,6 +433,8 @@ SDL_LogOutput(void *userdata, int category, SDL_LogPriority priority,
         fprintf(pFile, "%s: %s\n", SDL_priority_prefixes[priority], message);
         fclose (pFile);
     }
+#elif defined(__MORPHOS__)
+	NewRawDoFmt("%s: %s\n", (APTR)1, NULL, SDL_priority_prefixes[priority], message);
 #endif
 #if HAVE_STDIO_H
     fprintf(stderr, "%s: %s\n", SDL_priority_prefixes[priority], message);
