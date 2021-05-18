@@ -1,7 +1,7 @@
 /**
  * Automated SDL subsystems management test.
  *
- * Written by J�rgen Tjern� "jorgenpt"
+ * Written by Jï¿½rgen Tjernï¿½ "jorgenpt"
  *
  * Released under Public Domain.
  */

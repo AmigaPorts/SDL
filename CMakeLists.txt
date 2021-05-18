@@ -131,6 +131,9 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "BeOS.*")
   message_error("BeOS support has been removed as of SDL 2.0.2.")
 elseif(CMAKE_SYSTEM_NAME MATCHES "Haiku.*")
   set(HAIKU TRUE)
+elseif(CMAKE_SYSTEM_NAME MATCHES "Amiga.*")
+  set(AMIGA TRUE)
+  message("*** AmigaOS 4 build ***")
 endif()
 
 # Don't mistake osx for unix
@@ -153,12 +156,15 @@ endif()
 #  for the time being. This default with change to ON once this becomes
 #  commonly supported in browsers or the Emscripten teams makes a single
 #  binary work everywhere.
-if (UNIX_OR_MAC_SYS AND NOT EMSCRIPTEN)
+if (AMIGA OR (UNIX_OR_MAC_SYS AND NOT EMSCRIPTEN))
   set(SDL_PTHREADS_ENABLED_BY_DEFAULT ON)
 else()
   set(SDL_PTHREADS_ENABLED_BY_DEFAULT OFF)
 endif()
 
+if(UNIX OR MINGW OR MSYS OR AMIGA)
+  set(OPT_DEF_LIBC ON)
+endif()
 # The hidraw support doesn't catch Xbox, PS4 and Nintendo controllers,
 #  so we'll just use libusb when it's available. libusb does not support iOS,
 #  so we default to yes on iOS.
@@ -297,6 +303,7 @@ if(EMSCRIPTEN)
   set(OPT_DEF_ASM FALSE)
   set(SDL_SHARED_ENABLED_BY_DEFAULT OFF)
   set(SDL_ATOMIC_ENABLED_BY_DEFAULT OFF)
+  set(SDL_THREADS_ENABLED_BY_DEFAULT OFF)
   set(SDL_LOADSO_ENABLED_BY_DEFAULT OFF)
   set(SDL_CPUINFO_ENABLED_BY_DEFAULT OFF)
   set(SDL_DLOPEN_ENABLED_BY_DEFAULT OFF)
@@ -550,6 +557,12 @@ if(USE_GCC OR USE_CLANG)
       list(APPEND EXTRA_LDFLAGS "-Wl,--no-undefined")
     endif()
   endif()
+endif()
+
+if(AMIGA)
+  # Disable Altivec for now. It gives problem for people without it.
+  message("Disabling Altivec...")
+  set(ALTIVEC FALSE)
 endif()
 
 if(ASSEMBLY)
@@ -864,13 +877,15 @@ if(LIBC)
       endif()
     endif()
 
-    check_library_exists(iconv iconv_open "" HAVE_LIBICONV)
-    check_library_exists(c iconv_open "" HAVE_BUILTIN_ICONV)
-    if(HAVE_BUILTIN_ICONV)
-      set(HAVE_ICONV 1)
-    elseif(HAVE_LIBICONV)
-      list(APPEND EXTRA_LIBS iconv)
-      set(HAVE_ICONV 1)
+    if(NOT AMIGA) # we don't have libiconv
+      check_library_exists(iconv iconv_open "" HAVE_LIBICONV)
+      check_library_exists(c iconv_open "" HAVE_BUILTIN_ICONV)
+      if(HAVE_BUILTIN_ICONV)
+        set(HAVE_ICONV 1)
+      elseif(HAVE_LIBICONV)
+        list(APPEND EXTRA_LIBS iconv)
+        set(HAVE_ICONV 1)
+      endif()
     endif()
 
     if(NOT APPLE)
@@ -2029,6 +2044,63 @@ elseif(HAIKU)
 
   CheckPTHREAD()
 
+elseif(AMIGA)
+  message("AmigaOS 4 specific stuff")
+
+  if(SDL_VIDEO)
+    set(SDL_VIDEO_DRIVER_AMIGAOS4 1)
+    file(GLOB AMIGAOS4VIDEO_SOURCES ${SDL2_SOURCE_DIR}/src/video/amigaos4/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${AMIGAOS4VIDEO_SOURCES})
+    set(HAVE_SDL_VIDEO TRUE)
+
+    set(SDL_VIDEO_RENDER_AMIGAOS4 1)
+
+    if(VIDEO_OPENGL)
+      set(SDL_VIDEO_RENDER_OGL 1) # MiniGL should be there
+      set(SDL_VIDEO_OPENGL 1)
+      set(HAVE_VIDEO_OPENGL TRUE)
+    endif()
+
+    CheckOpenGLES2()
+  endif()
+
+  if(SDL_AUDIO)
+    set(SDL_AUDIO_DRIVER_AMIGAOS4 1)
+    file(GLOB AUDIO_SOURCES ${SDL2_SOURCE_DIR}/src/audio/amigaos4/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${AUDIO_SOURCES})
+    set(HAVE_SDL_AUDIO TRUE)
+  endif()
+
+  if(SDL_TIMERS)
+    set(SDL_TIMER_UNIX 1)
+    file(GLOB TIMER_SOURCES ${SDL2_SOURCE_DIR}/src/timer/unix/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${TIMER_SOURCES})
+    set(HAVE_SDL_TIMERS TRUE)
+  endif(SDL_TIMERS)
+
+  if(SDL_LOADSO)
+    set(SDL_LOADSO_AMIGAOS4 1)
+    file(GLOB LOADSO_SOURCES ${SDL2_SOURCE_DIR}/src/loadso/amigaos4/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${LOADSO_SOURCES})
+    set(HAVE_SDL_LOADSO TRUE)
+  endif()
+
+  if(SDL_FILESYSTEM)
+    set(SDL_FILESYSTEM_AMIGAOS4 1)
+    file(GLOB FILESYSTEM_SOURCES ${SDL2_SOURCE_DIR}/src/filesystem/amigaos4/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${FILESYSTEM_SOURCES})
+    set(HAVE_SDL_FILESYSTEM TRUE)
+  endif()
+
+  if(SDL_JOYSTICK)
+    set(SDL_JOYSTICK_AMIGAINPUT 1) # TODO: rename?
+    file(GLOB JOYSTICK_SOURCES ${SDL2_SOURCE_DIR}/src/joystick/amigaos4/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${JOYSTICK_SOURCES})
+    set(HAVE_SDL_JOYSTICK TRUE)
+  endif()
+
+  CheckPTHREAD()
+
 elseif(RISCOS)
   file(GLOB MISC_SOURCES ${SDL2_SOURCE_DIR}/src/misc/riscos/*.c)
   set(SOURCE_FILES ${SOURCE_FILES} ${MISC_SOURCES})
@@ -2050,120 +2122,6 @@ elseif(RISCOS)
   if(SDL_AUDIO)
     CheckOSS()
   endif()
-elseif(VITA)
-  # SDL_spinlock.c Needs to be compiled in ARM mode.
-  check_c_compiler_flag(-marm HAVE_ARM_MODE)
-  if(HAVE_ARM_MODE)
-    set_source_files_properties(${SDL2_SOURCE_DIR}/src/atomic/SDL_spinlock.c PROPERTIES COMPILE_FLAGS -marm)
-  endif()
-
-  file(GLOB MISC_SOURCES ${SDL2_SOURCE_DIR}/src/misc/vita/*.c)
-  set(SOURCE_FILES ${SOURCE_FILES} ${MISC_SOURCES})
-  set(HAVE_SDL_MISC TRUE)
-
-  if(SDL_AUDIO)
-    set(SDL_AUDIO_DRIVER_VITA 1)
-    file(GLOB VITA_AUDIO_SOURCES ${SDL2_SOURCE_DIR}/src/audio/vita/*.c)
-    set(SOURCE_FILES ${SOURCE_FILES} ${VITA_AUDIO_SOURCES})
-    set(HAVE_SDL_AUDIO TRUE)
-  endif()
-  if(SDL_FILESYSTEM)
-    set(SDL_FILESYSTEM_VITA 1)
-    file(GLOB VITA_FILESYSTEM_SOURCES ${SDL2_SOURCE_DIR}/src/filesystem/vita/*.c)
-    set(SOURCE_FILES ${SOURCE_FILES} ${VITA_FILESYSTEM_SOURCES})
-    set(HAVE_SDL_FILESYSTEM TRUE)
-  endif()
-  if(SDL_JOYSTICK)
-    set(SDL_JOYSTICK_VITA 1)
-    file(GLOB VITA_JOYSTICK_SOURCES ${SDL2_SOURCE_DIR}/src/joystick/vita/*.c)
-    set(SOURCE_FILES ${SOURCE_FILES} ${VITA_JOYSTICK_SOURCES})
-    set(HAVE_SDL_JOYSTICK TRUE)
-  endif()
-  if(SDL_POWER)
-    set(SDL_POWER_VITA 1)
-    file(GLOB VITA_POWER_SOURCES ${SDL2_SOURCE_DIR}/src/power/vita/*.c)
-    set(SOURCE_FILES ${SOURCE_FILES} ${VITA_POWER_SOURCES})
-    set(HAVE_SDL_POWER TRUE)
-  endif()
-  if(SDL_THREADS)
-    set(SDL_THREAD_VITA 1)
-    set(SOURCE_FILES ${SOURCE_FILES}
-      ${SDL2_SOURCE_DIR}/src/thread/vita/SDL_sysmutex.c
-      ${SDL2_SOURCE_DIR}/src/thread/vita/SDL_syssem.c
-      ${SDL2_SOURCE_DIR}/src/thread/vita/SDL_systhread.c
-      ${SDL2_SOURCE_DIR}/src/thread/vita/SDL_syscond.c
-      ${SDL2_SOURCE_DIR}/src/thread/generic/SDL_systls.c)
-    set(HAVE_SDL_THREADS TRUE)
-  endif()
-  if(SDL_TIMERS)
-    set(SDL_TIMER_VITA 1)
-    file(GLOB TIMER_SOURCES ${SDL2_SOURCE_DIR}/src/timer/vita/*.c)
-    set(SOURCE_FILES ${SOURCE_FILES} ${TIMER_SOURCES})
-    set(HAVE_SDL_TIMERS TRUE)
-  endif()
-  if(SDL_SENSOR)
-    set(SDL_SENSOR_VITA 1)
-    set(HAVE_SDL_SENSORS TRUE)
-    file(GLOB VITA_SENSOR_SOURCES ${SDL2_SOURCE_DIR}/src/sensor/vita/*.c)
-    set(SOURCE_FILES ${SOURCE_FILES} ${VITA_SENSOR_SOURCES})
-  endif()
-  if(SDL_VIDEO)
-    set(SDL_VIDEO_DRIVER_VITA 1)
-    file(GLOB VITA_VIDEO_SOURCES ${SDL2_SOURCE_DIR}/src/video/vita/*.c)
-    set(SOURCE_FILES ${SOURCE_FILES} ${VITA_VIDEO_SOURCES})
-    set(HAVE_SDL_VIDEO TRUE)
-
-    check_include_file(pib.h HAVE_PIGS_IN_BLANKET_H)
-
-
-    if(HAVE_PIGS_IN_BLANKET_H)
-      set(SDL_VIDEO_OPENGL_ES2 1)
-      list(APPEND EXTRA_LIBS
-        pib
-      )
-
-    endif()
-    set(SDL_VIDEO_RENDER_VITA_GXM 1)
-
-    list(APPEND EXTRA_LIBS
-      SceGxm_stub
-      SceDisplay_stub
-      SceCtrl_stub
-      SceAppMgr_stub
-      SceAudio_stub
-      SceSysmodule_stub
-      SceDisplay_stub
-      SceCtrl_stub
-      SceIofilemgr_stub
-      SceCommonDialog_stub
-      SceTouch_stub
-      SceHid_stub
-      SceMotion_stub
-      m
-    )
-  endif()
-
-  set(HAVE_ARMSIMD TRUE)
-  set(SDL_ARM_SIMD_BLITTERS 1)
-  file(GLOB ARMSIMD_SOURCES ${SDL2_SOURCE_DIR}/src/video/arm/pixman-arm-simd*.S)
-  set(SOURCE_FILES ${SOURCE_FILES} ${ARMSIMD_SOURCES})
-
-  set(HAVE_ARMNEON TRUE)
-  set(SDL_ARM_NEON_BLITTERS 1)
-  file(GLOB ARMNEON_SOURCES ${SDL2_SOURCE_DIR}/src/video/arm/pixman-arm-neon*.S)
-  set(SOURCE_FILES ${SOURCE_FILES} ${ARMNEON_SOURCES})
-
-  set_property(SOURCE ${SDL2_SOURCE_DIR}/src/video/arm/pixman-arm-simd-asm.S PROPERTY LANGUAGE C)
-  set_property(SOURCE ${SDL2_SOURCE_DIR}/src/video/arm/pixman-arm-neon-asm.S PROPERTY LANGUAGE C)
-
-  add_definitions("-D__VITA__")
-  add_definitions("-Dmemcpy=sceClibMemcpy")
-  add_definitions("-Dmemset=sceClibMemset")
-  add_definitions("-Dmemmove=sceClibMemmove")
-  add_definitions("-Dmemcmp=sceClibMemcmp")
-
-#  CheckPTHREAD()
-
 endif()
 
 if(VIDEO_VULKAN)
@@ -2263,9 +2221,7 @@ if(NOT CMAKE_HOST_WIN32)
     WORKING_DIRECTORY ${SDL2_BINARY_DIR})
 endif()
 if(NOT WINDOWS OR CYGWIN)
-
   set(prefix ${CMAKE_INSTALL_PREFIX})
-
   set(exec_prefix "\${prefix}")
   set(libdir "\${exec_prefix}/lib${LIB_SUFFIX}")
   set(bindir "\${exec_prefix}/bin")
@@ -2278,12 +2234,12 @@ if(NOT WINDOWS OR CYGWIN)
     set(ENABLE_STATIC_FALSE "")
   endif()
   if(SDL_SHARED)
-    set(PKGCONFIG_LIBS_PRIV "
+    set(PKG_CONFIG_LIBS_PRIV "
 Libs.private:")
     set(ENABLE_SHARED_TRUE "")
     set(ENABLE_SHARED_FALSE "#")
   else()
-    set(PKGCONFIG_LIBS_PRIV "")
+    set(PKG_CONFIG_LIBS_PRIV "")
     set(ENABLE_SHARED_TRUE "#")
     set(ENABLE_SHARED_FALSE "")
   endif()

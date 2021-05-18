@@ -109,6 +109,9 @@ static VideoBootStrap *bootstrap[] = {
 #if SDL_VIDEO_DRIVER_EMSCRIPTEN
     &Emscripten_bootstrap,
 #endif
+#if SDL_VIDEO_DRIVER_AMIGAOS4
+    &OS4_bootstrap,
+#endif
 #if SDL_VIDEO_DRIVER_QNX
     &QNX_bootstrap,
 #endif
@@ -151,7 +154,12 @@ static SDL_VideoDevice *_this = NULL;
         return retval; \
     }
 
+#ifdef __AMIGAOS4__
+/* Let's have only one kind of full screen */
+#define FULLSCREEN_MASK (SDL_WINDOW_FULLSCREEN)
+#else
 #define FULLSCREEN_MASK (SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_FULLSCREEN)
+#endif
 
 #ifdef __MACOSX__
 /* Support for Mac OS X fullscreen spaces */
@@ -1154,6 +1162,10 @@ SDL_SetWindowDisplayMode(SDL_Window * window, const SDL_DisplayMode * mode)
         SDL_DisplayMode fullscreen_mode;
         if (SDL_GetWindowDisplayMode(window, &fullscreen_mode) == 0) {
             SDL_SetDisplayModeForDisplay(SDL_GetDisplayForWindow(window), &fullscreen_mode);
+#ifdef __AMIGAOS4__
+            // Force window on new screen
+            _this->SetWindowFullscreen(_this, window, SDL_GetDisplayForWindow(window), SDL_TRUE);
+#endif
         }
     }
     return 0;
@@ -1387,8 +1399,15 @@ SDL_UpdateFullscreenMode(SDL_Window * window, SDL_bool fullscreen)
     return 0;
 }
 
-#define CREATE_FLAGS \
-    (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_METAL)
+#ifdef __AMIGAOS4__
+    /* Without this hack, SDL would trigger us to open a window before screen which causes unnecessary
+    work, because then we would have to close the window first and re-open it on the custom screen */
+    #define CREATE_FLAGS \
+        (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_METAL | SDL_WINDOW_FULLSCREEN)
+#else
+    #define CREATE_FLAGS \
+        (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_METAL)
+#endif
 
 static SDL_INLINE SDL_bool
 IsAcceptingDragAndDrop(void)
@@ -1561,6 +1580,11 @@ SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint32 flags)
     window->y = y;
     window->w = w;
     window->h = h;
+
+#ifndef __AMIGAOS4__
+/* On AmigaOS4 we have to open the screen first, therefore this centering
+logic fails if screen is of different size. We center the window later
+on the backend side, after we know the screen size. */
     if (SDL_WINDOWPOS_ISUNDEFINED(x) || SDL_WINDOWPOS_ISUNDEFINED(y) ||
         SDL_WINDOWPOS_ISCENTERED(x) || SDL_WINDOWPOS_ISCENTERED(y)) {
         SDL_VideoDisplay *display = SDL_GetDisplayForWindow(window);
@@ -1576,6 +1600,8 @@ SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint32 flags)
             window->y = bounds.y + (bounds.h - h) / 2;
         }
     }
+#endif
+
     window->windowed.x = window->x;
     window->windowed.y = window->y;
     window->windowed.w = window->w;
@@ -1724,6 +1750,15 @@ SDL_RecreateWindow(SDL_Window * window, Uint32 flags)
     if (_this->DestroyWindow && !(flags & SDL_WINDOW_FOREIGN)) {
         _this->DestroyWindow(_this, window);
     }
+
+#ifdef __AMIGAOS4__
+    if (window->flags & SDL_WINDOW_OPENGL) {
+        /* We have to unload the old library in case we have to switch
+        between MiniGL and OGLES2. Otherwise function pointers will be messed up. */
+        SDL_GL_UnloadLibrary();
+        window->flags &= ~SDL_WINDOW_OPENGL;
+    }
+#endif
 
     if ((window->flags & SDL_WINDOW_OPENGL) != (flags & SDL_WINDOW_OPENGL)) {
         if (flags & SDL_WINDOW_OPENGL) {
@@ -3307,8 +3342,13 @@ SDL_GL_ResetAttributes()
     _this->gl_config.accelerated = -1;  /* accelerated or not, both are fine */
 
 #if SDL_VIDEO_OPENGL
+#ifdef __AMIGAOS4__
+    _this->gl_config.major_version = 1; /* MiniGL */
+    _this->gl_config.minor_version = 3;
+#else
     _this->gl_config.major_version = 2;
     _this->gl_config.minor_version = 1;
+#endif
     _this->gl_config.profile_mask = 0;
 #elif SDL_VIDEO_OPENGL_ES2
     _this->gl_config.major_version = 2;
@@ -4061,6 +4101,9 @@ SDL_IsScreenKeyboardShown(SDL_Window *window)
 #if SDL_VIDEO_DRIVER_X11
 #include "x11/SDL_x11messagebox.h"
 #endif
+#if SDL_VIDEO_DRIVER_AMIGAOS4
+#include "amigaos4/SDL_os4messagebox.h"
+#endif
 #if SDL_VIDEO_DRIVER_WAYLAND
 #include "wayland/SDL_waylandmessagebox.h"
 #endif
@@ -4074,7 +4117,7 @@ SDL_IsScreenKeyboardShown(SDL_Window *window)
 #include "vita/SDL_vitamessagebox.h"
 #endif
 
-#if SDL_VIDEO_DRIVER_WINDOWS || SDL_VIDEO_DRIVER_WINRT || SDL_VIDEO_DRIVER_COCOA || SDL_VIDEO_DRIVER_UIKIT || SDL_VIDEO_DRIVER_X11 || SDL_VIDEO_DRIVER_WAYLAND || SDL_VIDEO_DRIVER_HAIKU || SDL_VIDEO_DRIVER_OS2
+#if SDL_VIDEO_DRIVER_WINDOWS || SDL_VIDEO_DRIVER_WINRT || SDL_VIDEO_DRIVER_COCOA || SDL_VIDEO_DRIVER_UIKIT || SDL_VIDEO_DRIVER_X11 || SDL_VIDEO_DRIVER_AMIGAOS4 || SDL_VIDEO_DRIVER_WAYLAND || SDL_VIDEO_DRIVER_HAIKU || SDL_VIDEO_DRIVER_OS2
 static SDL_bool SDL_MessageboxValidForDriver(const SDL_MessageBoxData *messageboxdata, SDL_SYSWM_TYPE drivertype)
 {
     SDL_SysWMinfo info;
@@ -4170,6 +4213,13 @@ SDL_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
     if (retval == -1 &&
         SDL_MessageboxValidForDriver(messageboxdata, SDL_SYSWM_X11) &&
         X11_ShowMessageBox(messageboxdata, buttonid) == 0) {
+        retval = 0;
+    }
+#endif
+#if SDL_VIDEO_DRIVER_AMIGAOS4
+    if (retval == -1 &&
+        SDL_MessageboxValidForDriver(messageboxdata, SDL_SYSWM_OS4) &&
+        OS4_ShowMessageBox(messageboxdata, buttonid) == 0) {
         retval = 0;
     }
 #endif

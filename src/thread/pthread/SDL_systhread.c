@@ -48,6 +48,7 @@
 #endif
 #endif
 
+#include "SDL_platform.h"
 #include "SDL_thread.h"
 #include "../SDL_thread_c.h"
 #include "../SDL_systhread.h"
@@ -59,6 +60,9 @@
 #include <kernel/OS.h>
 #endif
 
+#ifdef __amigaos4__
+#include <proto/exec.h>
+#endif
 
 #ifndef __NACL__
 /* List of signals to mask in the subthreads */
@@ -125,7 +129,7 @@ SDL_SYS_CreateThread(SDL_Thread * thread)
 void
 SDL_SYS_SetupThread(const char *name)
 {
-#if !defined(__NACL__)
+#if !defined(__NACL__) && !defined(__AMIGAOS4__)
     int i;
     sigset_t mask;
 #endif /* !__NACL__ */
@@ -158,7 +162,7 @@ SDL_SYS_SetupThread(const char *name)
     }
 
    /* NativeClient does not yet support signals.*/
-#if !defined(__NACL__)
+#if !defined(__NACL__) && !defined(__AMIGAOS4__)
     /* Mask asynchronous signals for this thread */
     sigemptyset(&mask);
     for (i = 0; sig_list[i]; ++i) {

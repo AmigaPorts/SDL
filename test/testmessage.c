@@ -127,7 +127,7 @@ main(int argc, char *argv[])
     /* Google says this is Traditional Chinese for "beef with broccoli" */
     success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
                 "UTF-8 Simple MessageBox",
-                "Unicode text: '牛肉西蘭花' ...",
+                "Unicode text: 'çèè¥¿è­è±' ...",
                 NULL);
     if (success == -1) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s\n", SDL_GetError());
@@ -137,7 +137,7 @@ main(int argc, char *argv[])
     /* Google says this is Traditional Chinese for "beef with broccoli" */
     success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
                 "UTF-8 Simple MessageBox",
-                "Unicode text and newline:\r\n'牛肉西蘭花'\n'牛肉西蘭花'",
+                "Unicode text and newline:\r\n'çèè¥¿è­è±'\n'çèè¥¿è­è±'",
                 NULL);
     if (success == -1) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s\n", SDL_GetError());
@@ -146,7 +146,7 @@ main(int argc, char *argv[])
 
     /* Google says this is Traditional Chinese for "beef with broccoli" */
     success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
-                "牛肉西蘭花",
+                "çèè¥¿è­è±",
                 "Unicode text in the title.",
                 NULL);
     if (success == -1) {

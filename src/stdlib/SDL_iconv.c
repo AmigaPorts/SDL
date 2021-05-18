@@ -30,6 +30,12 @@
 #include "SDL_stdinc.h"
 #include "SDL_endian.h"
 
+#ifdef __AMIGAOS4__
+/* HACK: AmigaOS 4 iconv implementation doesn't support all conversions, making testiconv fail.
+As a workaround, fallback to custom implementation. */
+#undef HAVE_ICONV
+#endif
+
 #if defined(HAVE_ICONV) && defined(HAVE_ICONV_H)
 #ifdef __FreeBSD__
 /* Define LIBICONV_PLUG to use iconv from the base instead of ports and avoid linker errors. */

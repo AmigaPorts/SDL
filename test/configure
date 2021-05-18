@@ -603,6 +603,7 @@ PKG_CONFIG
 ISUNIX
 ISWINDOWS
 ISMACOSX
+ISAMIGAOS
 MATHLIB
 EXE
 OSMESA_CONFIG
@@ -2897,8 +2898,12 @@ fi
 ISUNIX="false"
 ISWINDOWS="false"
 ISMACOSX="false"
+ISAMIGAOS="false"
 
 case "$host" in
+    *-*-amigaos*)
+        ISAMIGAOS="true"
+        ;;
     *-*-cygwin* | *-*-mingw*)
         ISWINDOWS="true"
         EXE=".exe"
