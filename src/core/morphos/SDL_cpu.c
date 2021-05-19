@@ -140,7 +140,7 @@ asm(
  * Length is given in pixels (number of M68k UWORDs to swap)
  */
 
-void AMIGA_Swap16(APTR srcx, APTR destx, LONG units)
+void SDL_CopyAndSwap16(APTR srcx, APTR destx, LONG units)
 {
 	#if USE_ALTIVEC_BLITTERS
 	if (units >= 32 && HasAltiVec)
@@ -201,7 +201,7 @@ void AMIGA_Swap16(APTR srcx, APTR destx, LONG units)
 	}
 }
 
-void AMIGA_Swap32(APTR srcx, APTR destx, LONG units)
+void SDL_CopyAndSwap32(APTR srcx, APTR destx, LONG units)
 {
 	#if USE_ALTIVEC_BLITTERS
 	if (units >= 32 && HasAltiVec)

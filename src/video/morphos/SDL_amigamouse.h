@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,34 +18,31 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#include "../../SDL_internal.h"
 
-#include <stdarg.h>
+#ifndef _SDL_amigamouse_h
+#define _SDL_amigamouse_h
 
-#define GENERATE_STUBS
-#define SDL_CopyAndSwap16_REAL SDL_CopyAndSwap16
-#define SDL_CopyAndSwap32_REAL SDL_CopyAndSwap32
+#include "SDL_amigavideo.h"
+#include <proto/intuition.h>
 
-#include "SDL_stubs.h"
+#define IS_SYSTEM_CURSOR(cursor) (cursor == NULL || ((size_t)(cursor)->driverdata) < POINTERTYPE_NUMTYPES)
 
-/*********************************************************************/
-
-/* This function must preserve all registers except r13 */
-#if 1
-asm
-("\n"
-"	.section \".text\"\n"
-"	.align 2\n"
-"	.type __restore_r13, @function\n"
-"__restore_r13:\n"
-"	lwz 13, 36(12)\n"
-"	blr\n"
-"__end__restore_r13:\n"
-"	.size __restore_r13, __end__restore_r13 - __restore_r13\n"
-);
-#endif
-
-int __saveds LIB_SDL_VSetError(const char *fmt, va_list ap)
+struct SDL_AmigaPointerData
 {
-	extern int SDL_VSetError(const char *fmt, va_list ap);
-	return SDL_VSetError(fmt, ap);
-}
+	Object *mouseptr;
+	int offx, offy;
+};
+
+typedef struct
+{
+	struct SDL_Cursor Cursor;
+	struct SDL_AmigaPointerData Pointer;
+} SDL_AmigaCursor;
+
+extern void AMIGA_InitMouse(_THIS);
+extern void AMIGA_QuitMouse(_THIS);
+
+#endif /* _SDL_amigamouse_h */
+
+/* vi: set ts=4 sw=4 expandtab: */

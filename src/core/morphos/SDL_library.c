@@ -71,9 +71,16 @@ struct NewMenu SDL_NewMenu[] =
 	{ NM_TITLE, (char *)"Project", 0, 0, 0, (APTR)MID_PROJECT },
 	{ NM_ITEM , (char *)"About...", (const STRPTR)"A", 0, 0, (APTR)MID_ABOUT },
 	{ NM_ITEM, NM_BARLABEL, NULL, 0, 0, NULL },
-	{ NM_ITEM , (char *)"Hide", (const STRPTR)"H",, 0, 0, (APTR)MID_HIDE },
+	{ NM_ITEM , (char *)"Hide", (const STRPTR)"H", 0, 0, (APTR)MID_HIDE },
 	{ NM_ITEM, NM_BARLABEL, NULL, 0, 0, NULL },
-	{ NM_ITEM , (char *)"Quit", (const STRPTR)"Q", 0, 0, (APTR)MID_QUIT}
+	{ NM_ITEM , (char *)"Quit", (const STRPTR)"Q", 0, 0, (APTR)MID_QUIT},
+	{ NM_TITLE, (char *)"Misc", 0, 0, 0, (APTR)MID_MISC },
+	{ NM_ITEM , (char *)"Mute Sound", (const STRPTR)"M", (CHECKIT | MENUTOGGLE), 0, (APTR)MID_MUTE},
+	{ NM_ITEM , (char *)"Low CPU Priority", (const STRPTR)"P", (CHECKIT | MENUTOGGLE), 0, (APTR)MID_PRIORITY},
+	{ NM_ITEM, NM_BARLABEL, NULL, 0, 0, NULL },
+	{ NM_ITEM , (char *)"About Joystick", (const STRPTR)"J", 0, 0, (APTR)MID_JOYSTICK},
+	{ NM_ITEM , (char *)"About System", (const STRPTR)"S", 0, 0, (APTR)MID_ABOUTSYS},
+	{ NM_END , NULL, NULL, 0, 0, NULL }
 };
 
 struct timerequest   GlobalTimeReq;
@@ -135,22 +142,11 @@ STATIC void init_system(struct SDL_Library *LibBase, struct ExecBase *SysBase)
 
 	DataL1LineSize = value;
 
-	if (NewGetSystemAttrsA(&value, sizeof(value), SYSTEMINFOTYPE_PPC_ALTIVEC, NULL))
-	{
-		if (value)
+	ULONG Altivec = 0;
+	if (NewGetSystemAttrsA(&Altivec,sizeof(Altivec),SYSTEMINFOTYPE_PPC_ALTIVEC,NULL))
+    {
+		if (Altivec)
 		{
-#if 0
-			STATIC CONST IPTR tags[] = { SETFUNCTAG_TYPE, SETFUNCTYPE_SYSTEMV, TAG_DONE };
-			#define LVO_copy_and_swap16 -1168
-			#define LVO_copy_and_swap32 -1174
-
-			copy_and_swap16 = (APTR)&copy_and_swap16_altivec;
-			copy_and_swap32 = (APTR)&copy_and_swap32_altivec;
-
-			NewSetFunction((APTR)LibBase, (APTR)&copy_and_swap16_altivec, LVO_copy_and_swap16, (struct TagItem *)&tags);
-			NewSetFunction((APTR)LibBase, (APTR)&copy_and_swap32_altivec, LVO_copy_and_swap32, (struct TagItem *)&tags);
-#endif
-
 			HasAltiVec = 1;
 		}
 	}

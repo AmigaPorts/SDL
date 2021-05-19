@@ -49,50 +49,54 @@
 #define CLAMP(val) \
 			(((val) <= (DEADZONE_MAX) && (val) >= (DEADZONE_MIN)) ? (0) : \
 			((val) > (JOYSTICK_MAX)) ? (JOYSTICK_MAX) : (((val) < (JOYSTICK_MIN)) ? (JOYSTICK_MIN) : (val)))
-//#define HOT_PLUG
+
 #define MAX_JOYSTICKS 32
 
 APTR sensorlist;
 APTR JoySensor[MAX_JOYSTICKS];
 int joystick_count;
 
-static int SDL_SYS_JoystickGetCount(void)
+static int
+SDL_MORPHOS_JoystickGetCount(void)
 {
 	return joystick_count;
 }
 
-/* Function to scan the system for joysticks.
- * It should return 0, or -1 on an unrecoverable fatal error.
- */
 static int
-SDL_SYS_JoystickInit(void)
+SDL_MORPHOS_JoystickInit(void)
 {
-	int rc = -1;
+	int rc = 0;
 
 	APTR sensor = NULL;
-	ULONG count = 0;
+	ULONG device_index = 0;
 
 	D("[%s] Obtain sensor list...\n", __FUNCTION__);
-	sensorlist = ObtainSensorsListTags(SENSORS_Class, SensorClass_HID, /*SENSORS_Type, SensorType_HID_Gamepad,*/ TAG_DONE);
-	while ((sensor = NextSensor(sensor, sensorlist, NULL)) && count < MAX_JOYSTICKS)
+	sensorlist = ObtainSensorsListTags(SENSORS_Class, SensorClass_HID, TAG_DONE);
+	while ((sensor = NextSensor(sensor, sensorlist, NULL)) && device_index < MAX_JOYSTICKS)
 	{
-		JoySensor[count++] = sensor;
+		JoySensor[device_index++] = sensor;
 	}
 
-	D("[%s] Found %ld joysticks...\n", __FUNCTION__, count);
-	joystick_count = count;
-	rc = count;
+	D("[%s] Found %ld joysticks...\n", __FUNCTION__, device_index);
+	joystick_count = device_index;
+	
+	/* Add Joystick after Init (once) */
+	/*for (ULONG slot = 0; slot < joystick_count; slot++)
+		{
+			SDL_PrivateJoystickAdded(slot);
+		}
+	*/
 	return rc;
 }
 
 static void
-SDL_SYS_JoystickDetect(void)
+SDL_MORPHOS_JoystickDetect(void)
 {
+
 }
 
-/* Function to get the device-dependent name of a joystick */
 static const char *
-SDL_SYS_JoystickGetDeviceName(int device_index)
+SDL_MORPHOS_JoystickGetDeviceName(int device_index)
 {
 	APTR sensor = JoySensor[device_index];
 	const char *name = NULL;
@@ -100,35 +104,14 @@ SDL_SYS_JoystickGetDeviceName(int device_index)
 	return name;
 }
 
-/* Function to perform the mapping from device index to the instance id for this index */
-static
-SDL_JoystickID SDL_SYS_JoystickGetDeviceInstanceID(int device_index)
+static SDL_JoystickID 
+SDL_MORPHOS_JoystickGetDeviceInstanceID(int device_index)
 {
 	return device_index;
 }
 
-/* Function to sort Sensors */
-/*static int
-SortSensorFunc(const void *a, const void *b)
-{
-	LONG ida = 0;
-	LONG idb = 0;
-	GetSensorAttrTags((APTR)a, SENSORS_HIDInput_ID, (IPTR)&ida, TAG_DONE);
-	GetSensorAttrTags((APTR)b, SENSORS_HIDInput_ID, (IPTR)&idb, TAG_DONE);
-	if (ida < idb)
-		return -1;
-	if (ida > idb)
-		return 1;
-	return 0;
-}*/
-
-/* Function to open a joystick for use.
-   The joystick to open is specified by the index field of the joystick.
-   This should fill the nbuttons and naxes fields of the joystick structure.
-   It returns 0, or -1 if there is an error.
- */
 static int
-SDL_SYS_JoystickOpen(SDL_Joystick * joystick, int device_index)
+SDL_MORPHOS_JoystickOpen(SDL_Joystick * joystick, int device_index)
 {
 	D("[%s]\n", __FUNCTION__);
 	APTR sensor = JoySensor[device_index];
@@ -137,9 +120,7 @@ SDL_SYS_JoystickOpen(SDL_Joystick * joystick, int device_index)
 	if (sensor) {
 		size_t buttons = 0, naxes = 0, nhats = 0, nsticks = 0, nrumbles=0;
 		CONST_STRPTR name = "<unknown>";
-		//ULONG id;
-		struct joystick_hwdata *hwdata = SDL_calloc(1, sizeof(*hwdata));
-
+		struct joystick_hwdata *hwdata = SDL_calloc(device_index + 1, sizeof(*hwdata));
 		hwdata->main_sensor = sensor;
 
 		hwdata->child_sensors = ObtainSensorsListTags(
@@ -148,8 +129,9 @@ SDL_SYS_JoystickOpen(SDL_Joystick * joystick, int device_index)
 			TAG_DONE);
 
 		sensor = NULL;
-		while ((sensor = NextSensor(sensor, hwdata->child_sensors, NULL))) {
-			ULONG type = SensorType_HIDInput_Unknown, Limb, color;
+		while ((sensor = NextSensor(sensor, hwdata->child_sensors, NULL))) 
+		{
+			ULONG type = SensorType_HIDInput_Unknown/*, Limb, color, id*/;
 			/*GetSensorAttrTags(sensor, 
 								SENSORS_HIDInput_ID, (IPTR)&id, 
 								SENSORS_HIDInput_Name, (IPTR)&name, 
@@ -158,22 +140,27 @@ SDL_SYS_JoystickOpen(SDL_Joystick * joystick, int device_index)
 								TAG_DONE);
 			D("[%s] sensor id: %d name: %s Limb:%d LimbName:%s color:%d\n", __FUNCTION__, id, name, Limb, color);	*/
 			
-			if (GetSensorAttrTags(sensor, SENSORS_Type, (IPTR)&type, TAG_DONE)) {
-				switch (type) {
+			if (GetSensorAttrTags(sensor, SENSORS_Type, (IPTR)&type, TAG_DONE))
+			{
+				switch (type) 
+				{
 					case SensorType_HIDInput_Trigger:
-						if (buttons < MAX_BUTTONS) {
+						if (buttons < MAX_BUTTONS) 
+						{
 							hwdata->button[buttons++] = sensor;
 						}
 						break;
 					case SensorType_HIDInput_Stick:
-						if (nhats < MAX_HATS) {
+						if (nhats < MAX_HATS)
+						{
 							hwdata->hat[nhats++] = sensor;
 						}
 						break;
 					case SensorType_HIDInput_Analog:
 					case SensorType_HIDInput_AnalogStick:
 					case SensorType_HIDInput_3DStick:
-						if (nsticks < MAX_STICKS) {
+						if (nsticks < MAX_STICKS) 
+						{
 							hwdata->stick[nsticks] = sensor;
 							hwdata->stickType[nsticks] = type;
 							nsticks++;
@@ -186,18 +173,18 @@ SDL_SYS_JoystickOpen(SDL_Joystick * joystick, int device_index)
 						}
 						break;
 					case SensorType_HIDInput_Rumble:
-						if (nrumbles < MAX_RUMBLE) {
+						if (nrumbles < MAX_RUMBLE)
+						{
 							GetSensorAttrTags(sensor, SENSORS_HID_Name, (IPTR)&name, TAG_DONE);
-							D("[%s] Rumble SensorName: %s\n", __FUNCTION__, name);
 							hwdata->rumble[nrumbles] = sensor;
 							nrumbles++;
 						}
 						break;
 					case SensorType_HIDInput_Battery:
 						GetSensorAttrTags(sensor, SENSORS_HID_Name, (IPTR)&name, TAG_DONE);
-						D("[%s] Battery SensorName: %s\n", __FUNCTION__, name);
 					    // Force "Xbox360 Controller" (WIRED) to use SDL_JOYSTICK_POWER_WIRED
-						if (strcmp((const char *)SDL_SYS_JoystickGetDeviceName(device_index),(const char *)"Xbox360 Controller") == 0) {
+						if (strcmp((const char *)SDL_MORPHOS_JoystickGetDeviceName(device_index),(const char *)"Xbox360 Controller") == 0)
+						{
 							SDL_PrivateJoystickBatteryLevel(joystick, SDL_JOYSTICK_POWER_WIRED);  
 							hwdata->battery = NULL;
 						} else {							
@@ -206,58 +193,48 @@ SDL_SYS_JoystickOpen(SDL_Joystick * joystick, int device_index)
 						break;
 					case SensorType_HIDInput_Knob:
 						GetSensorAttrTags(sensor, SENSORS_HID_Name, (IPTR)&name, TAG_DONE);
-						D("[%s] Knob SensorType: %d\n", __FUNCTION__, name);
 						break;
 					case SensorType_HIDInput_Wheel:
 						GetSensorAttrTags(sensor, SENSORS_HID_Name, (IPTR)&name, TAG_DONE);
-						D("[%s] Wheel SensorType: %d\n", __FUNCTION__, name);
 						break;
 					default:
-						D("[%s] unknown SensorType: %d\n", __FUNCTION__, type);
+						//D("[%s] unknown SensorType: %d\n", __FUNCTION__, type);
 						continue;
 				}
 			}
 		}
 
-#ifdef HOT_PLUG
-		if ((hwdata->notifyPort = CreateMsgPort())) {
-			hwdata->sensorsNotify = StartSensorNotifyTags(sensor,
-				SENSORS_Notification_Destination, (IPTR)hwdata->notifyPort,
-				SENSORS_Notification_UserData, (IPTR)SDL_SYS_JoystickGetDeviceInstanceID(device_index),
-				SENSORS_Notification_Removed, TRUE,
-				TAG_DONE);
-		}
-#endif
-
 		joystick->naxes = naxes;
 		joystick->nhats = nhats;
 		joystick->nbuttons = buttons;
-		//SDL_qsort(hwdata->button, joystick->nbuttons, sizeof(APTR), SortSensorFunc);
 		hwdata->numSticks = nsticks;
 		hwdata->numRumbles = nrumbles;
 		joystick->hwdata = hwdata;
-		joystick->name = (char *)SDL_SYS_JoystickGetDeviceName(device_index);
+		joystick->name = (char *)SDL_MORPHOS_JoystickGetDeviceName(device_index);
 		rc = 0;
 	}
 	return rc;
 }
 
 static void
-SDL_SYS_JoystickUpdate(SDL_Joystick * joystick)
+SDL_MORPHOS_JoystickUpdate(SDL_Joystick * joystick)
 {
 	struct joystick_hwdata *hwdata = joystick->hwdata;
 	int i, j;
 	Sint16 sval;
 	double btn_value, bt_value, x_value, y_value, z_value, ns_value, ew_value, z_rotation;
 
-	for (i = 0; i < joystick->nbuttons; i++) {
+	for (i = 0; i < joystick->nbuttons; i++) 
+	{
 		GetSensorAttrTags(hwdata->button[i], SENSORS_HIDInput_Value, (IPTR)&btn_value, TAG_DONE);
-		if ((joystick->buttons[i] && btn_value == 0.0) || (joystick->buttons[i] == 0 && btn_value > 0.0)) {
+		if ((joystick->buttons[i] && btn_value == 0.0) || (joystick->buttons[i] == 0 && btn_value > 0.0)) 
+		{
 			SDL_PrivateJoystickButton(joystick, i, btn_value == 0.0 ? 0 : 1);
 		}
 	}
 
-	for (i = 0; i < joystick->nhats; i++) {
+	for (i = 0; i < joystick->nhats; i++) 
+	{
 		GetSensorAttrTags(hwdata->hat[i],
 			SENSORS_HIDInput_EW_Value, (IPTR)&ew_value,
 			SENSORS_HIDInput_NS_Value, (IPTR)&ns_value,
@@ -277,8 +254,10 @@ SDL_SYS_JoystickUpdate(SDL_Joystick * joystick)
 	}
 
 	j = 0;
-	for (i = 0; i < hwdata->numSticks; i++) {
-		switch (hwdata->stickType[i]) {
+	for (i = 0; i < hwdata->numSticks; i++) 
+	{
+		switch (hwdata->stickType[i]) 
+		{
 			case SensorType_HIDInput_3DStick:
 				GetSensorAttrTags(hwdata->stick[i],
 					SENSORS_HIDInput_X_Index, (IPTR)&x_value,
@@ -328,78 +307,54 @@ SDL_SYS_JoystickUpdate(SDL_Joystick * joystick)
 		}
 	}
 	
-	if (hwdata->battery) {
-	   SDL_JoystickPowerLevel ePowerLevel = SDL_JOYSTICK_POWER_UNKNOWN;
-	   GetSensorAttrTags(hwdata->battery,
+	if (hwdata->battery) 
+	{
+		SDL_JoystickPowerLevel ePowerLevel = SDL_JOYSTICK_POWER_UNKNOWN;
+		GetSensorAttrTags(hwdata->battery,
 					SENSORS_HIDInput_Value, (IPTR)&bt_value,
 					TAG_DONE);
-	   ULONG level = bt_value*100;
-	   switch (level)
-	   {
+		ULONG level = bt_value*100;
+		switch (level)
+		{
 		   case 0 ... 5:
-			    ePowerLevel = SDL_JOYSTICK_POWER_EMPTY;
-                break;
+				ePowerLevel = SDL_JOYSTICK_POWER_EMPTY;
+				break;
 		   case 6 ... 20:
 			   ePowerLevel = SDL_JOYSTICK_POWER_LOW;
-		    	break;
+				break;
 		   case 21 ... 70:
-			    ePowerLevel = SDL_JOYSTICK_POWER_MEDIUM;
-		        break;
+				ePowerLevel = SDL_JOYSTICK_POWER_MEDIUM;
+				break;
 		   case 71 ... 100:
-			    ePowerLevel = SDL_JOYSTICK_POWER_FULL;
-		   		break;
-	   }
-        SDL_PrivateJoystickBatteryLevel(joystick, ePowerLevel);  
-	}
-	
-#ifdef HOT_PLUG
-	if (hwdata->notifyPort) {
-		struct SensorsNotificationMessage *notifyMsg;
-		while ((notifyMsg = (struct SensorsNotificationMessage *)GetMsg(hwdata->notifyPort))) {
-			if (GetTagData(SENSORS_Notification_Removed, FALSE, notifyMsg->Notifications)) {
-				SDL_PrivateJoystickRemoved((SDL_JoystickID)notifyMsg->UserData);
-			}
-			ReplyMsg(notifyMsg);
+				ePowerLevel = SDL_JOYSTICK_POWER_FULL;
+				break;
 		}
+    	SDL_PrivateJoystickBatteryLevel(joystick, ePowerLevel);  
 	}
-#endif
 }
 
-/* Function to close a joystick after use */
 void
-SDL_SYS_JoystickClose(SDL_Joystick * joystick)
+SDL_MORPHOS_JoystickClose(SDL_Joystick * joystick)
 {
-	D("[%s]\n", __FUNCTION__);
+	//D("[%s]\n", __FUNCTION__);
 	struct joystick_hwdata *hwdata = joystick->hwdata;
-	if (hwdata) {
-#ifdef HOT_PLUG
-		if (hwdata->sensorsNotify) {
-			EndSensorNotify(hwdata->sensorsNotify, NULL);
-		}
-		if (hwdata->notifyPort) {
-			struct Message *notifyMsg;
-			while ((notifyMsg = GetMsg(hwdata->notifyPort)))
-				ReplyMsg(notifyMsg);
-			DeleteMsgPort(hwdata->notifyPort);
-		}
-#endif
+	if (hwdata) 
+	{
 		ReleaseSensorsList(hwdata->child_sensors, NULL);
 		SDL_free(hwdata);
 		joystick->hwdata = NULL;
 	}
 }
 
-/* Function to perform any system-specific joystick related cleanup */
 static void
-SDL_SYS_JoystickQuit(void)
+SDL_MORPHOS_JoystickQuit(void)
 {
-	D("[%s]\n", __FUNCTION__);
 	if (sensorlist)
 		ReleaseSensorsList(sensorlist, NULL);
 }
 
 static SDL_JoystickGUID
-SDL_SYS_JoystickGetDeviceGUID( int device_index )
+SDL_MORPHOS_JoystickGetDeviceGUID( int device_index )
 {
 	SDL_JoystickGUID guid;
 	APTR sensor = JoySensor[device_index];
@@ -420,33 +375,35 @@ SDL_SYS_JoystickGetDeviceGUID( int device_index )
 	*guid16++ = SDL_SwapLE16(SDL_HARDWARE_BUS_USB);
     *guid16++ = 0;
 
-    if (vendor && product) {
+    if (vendor && product)
+	{
         *guid16++ = SDL_SwapLE16(vendor);
         *guid16++ = 0;
         *guid16++ = SDL_SwapLE16(product);
         *guid16++ = 0;
         *guid16++ = 0;
         *guid16++ = 0;
-    } else {
+    } 
+	else
+	{
         SDL_strlcpy((char*)guid16, name, sizeof(guid.data) - 4);
     }
 	
 	return guid;
 }
 
-/*
- Rumble experimental
- Add duration in function, impossible to stop rumble in progress, so SDL2 can't stop it
-*/
 static int
-SDL_SYS_JoystickRumble(SDL_Joystick * joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble, Uint32 duration_ms)
+SDL_MORPHOS_JoystickRumble(SDL_Joystick * joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble, Uint32 duration_ms)
 {
 	struct joystick_hwdata *hwdata = joystick->hwdata;
-	if (hwdata) {
-		if (hwdata->numRumbles) {
+	if (hwdata) 
+	{
+		if (hwdata->numRumbles)
+		{
 			DOUBLE lpower=(DOUBLE)(low_frequency_rumble/65535), hpower=(DOUBLE)(high_frequency_rumble/65535);
 			ULONG duration = duration_ms;
-			if (duration != 0 && (lpower > 0.0 || hpower > 0.0)) { 
+			if (duration != 0 && (lpower > 0.0 || hpower > 0.0)) 
+			{ 
 				D("[%s] SetSensorAttrTags lpower=%f - hpower=%f - duration=%d\n", __FUNCTION__,lpower, hpower, duration);
 				SetSensorAttrTags(hwdata->rumble[0], 
 					SENSORS_HIDInput_Rumble_Power, (IPTR)&lpower, 
@@ -463,66 +420,66 @@ SDL_SYS_JoystickRumble(SDL_Joystick * joystick, Uint16 low_frequency_rumble, Uin
 }
 
 static int
-SDL_SYS_JoystickGetDevicePlayerIndex(int device_index)
+SDL_MORPHOS_JoystickGetDevicePlayerIndex(int device_index)
 {
     return device_index;
 }
 
 static void
-SDL_SYS_JoystickSetDevicePlayerIndex(int device_index, int player_index)
+SDL_MORPHOS_JoystickSetDevicePlayerIndex(int device_index, int player_index)
 {
 }
 
 static SDL_bool
-SDL_SYS_GetGamepadMapping(int device_index, SDL_GamepadMapping * out)
+SDL_MORPHOS_GetGamepadMapping(int device_index, SDL_GamepadMapping * out)
 {
     return SDL_FALSE;
 }
 
 static int
-SDL_SYS_JoystickRumbleTriggers(SDL_Joystick * joystick, Uint16 left_rumble, Uint16 right_rumble)
+SDL_MORPHOS_JoystickRumbleTriggers(SDL_Joystick * joystick, Uint16 left_rumble, Uint16 right_rumble)
 {
     return SDL_Unsupported();
 }
 
 static SDL_bool
-SDL_SYS_JoystickHasLED(SDL_Joystick * joystick)
+SDL_MORPHOS_JoystickHasLED(SDL_Joystick * joystick)
 {
     return SDL_FALSE;
 }
 
 static int
-SDL_SYS_JoystickSetLED(SDL_Joystick * joystick, Uint8 red, Uint8 green, Uint8 blue)
+SDL_MORPHOS_JoystickSetLED(SDL_Joystick * joystick, Uint8 red, Uint8 green, Uint8 blue)
 {
     return SDL_Unsupported();
 }
 
 static int
-SDL_SYS_JoystickSetSensorsEnabled(SDL_Joystick *joystick, SDL_bool enabled)
+SDL_MORPHOS_JoystickSetSensorsEnabled(SDL_Joystick *joystick, SDL_bool enabled)
 {
     return SDL_Unsupported();
 }
 
 SDL_JoystickDriver SDL_MORPHOS_JoystickDriver =
 {
-    SDL_SYS_JoystickInit,
-    SDL_SYS_JoystickGetCount,
-    SDL_SYS_JoystickDetect,
-    SDL_SYS_JoystickGetDeviceName,
-    SDL_SYS_JoystickGetDevicePlayerIndex,
-    SDL_SYS_JoystickSetDevicePlayerIndex,
-    SDL_SYS_JoystickGetDeviceGUID,
-    SDL_SYS_JoystickGetDeviceInstanceID,
-    SDL_SYS_JoystickOpen,
-    SDL_SYS_JoystickRumble,
-    SDL_SYS_JoystickRumbleTriggers,
-    SDL_SYS_JoystickHasLED,
-    SDL_SYS_JoystickSetLED,
-	SDL_SYS_JoystickSetSensorsEnabled,
-    SDL_SYS_JoystickUpdate,
-    SDL_SYS_JoystickClose,
-    SDL_SYS_JoystickQuit,
-	SDL_SYS_GetGamepadMapping
+    SDL_MORPHOS_JoystickInit,
+    SDL_MORPHOS_JoystickGetCount,
+    SDL_MORPHOS_JoystickDetect,
+    SDL_MORPHOS_JoystickGetDeviceName,
+    SDL_MORPHOS_JoystickGetDevicePlayerIndex,
+    SDL_MORPHOS_JoystickSetDevicePlayerIndex,
+    SDL_MORPHOS_JoystickGetDeviceGUID,
+    SDL_MORPHOS_JoystickGetDeviceInstanceID,
+    SDL_MORPHOS_JoystickOpen,
+    SDL_MORPHOS_JoystickRumble,
+    SDL_MORPHOS_JoystickRumbleTriggers,
+    SDL_MORPHOS_JoystickHasLED,
+    SDL_MORPHOS_JoystickSetLED,
+	SDL_MORPHOS_JoystickSetSensorsEnabled,
+    SDL_MORPHOS_JoystickUpdate,
+    SDL_MORPHOS_JoystickClose,
+    SDL_MORPHOS_JoystickQuit,
+	SDL_MORPHOS_GetGamepadMapping
 };
 
 #endif

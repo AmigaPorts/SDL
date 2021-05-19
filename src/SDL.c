@@ -558,7 +558,9 @@ SDL_GetPlatform()
 #elif __MORPHOS__
     return "MorphOS";
 #elif __VITA__
-    return "PlayStation Vita";
+        return "PlayStation Vita";
+#elif __MORPHOS__
+    return "MorphOS";
 #else
     return "Unknown (see SDL_platform.h)";
 #endif

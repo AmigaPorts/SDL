@@ -115,6 +115,9 @@ static VideoBootStrap *bootstrap[] = {
 #if SDL_VIDEO_DRIVER_AMIGA
     &AMIGA_bootstrap,
 #endif
+#if SDL_VIDEO_DRIVER_MORPHOS
+    &MORPHOS_bootstrap,
+#endif
 #if SDL_VIDEO_DRIVER_QNX
     &QNX_bootstrap,
 #endif
@@ -298,7 +301,7 @@ SDL_CreateWindowTexture(SDL_VideoDevice *unused, SDL_Window * window, Uint32 * f
                 }
             }
         }
-        
+
         if (!renderer) {
             for (i = 0; i < SDL_GetNumRenderDrivers(); ++i) {
                 SDL_RendererInfo info;
@@ -1257,7 +1260,7 @@ SDL_UpdateFullscreenMode(SDL_Window * window, SDL_bool fullscreen)
     if (SDL_strcmp(_this->name, "cocoa") == 0) {  /* don't do this for X11, etc */
         if (window->is_destroying && (window->last_fullscreen_flags & FULLSCREEN_MASK) == SDL_WINDOW_FULLSCREEN_DESKTOP)
             return 0;
-    
+
         /* If we're switching between a fullscreen Space and "normal" fullscreen, we need to get back to normal first. */
         if (fullscreen && ((window->last_fullscreen_flags & FULLSCREEN_MASK) == SDL_WINDOW_FULLSCREEN_DESKTOP) && ((window->flags & FULLSCREEN_MASK) == SDL_WINDOW_FULLSCREEN)) {
             if (!Cocoa_SetWindowFullscreenSpace(window, SDL_FALSE)) {
@@ -2077,7 +2080,7 @@ SDL_GetWindowPosition(SDL_Window * window, int *x, int *y)
     /* Fullscreen windows are always at their display's origin */
     if (window->flags & SDL_WINDOW_FULLSCREEN) {
         int displayIndex;
-        
+
         if (x) {
             *x = 0;
         }
@@ -2459,7 +2462,7 @@ SDL_SetWindowFullscreen(SDL_Window * window, Uint32 flags)
     if (SDL_UpdateFullscreenMode(window, FULLSCREEN_VISIBLE(window)) == 0) {
         return 0;
     }
-    
+
     window->flags &= ~FULLSCREEN_MASK;
     window->flags |= oldflags;
     return -1;
@@ -2609,11 +2612,11 @@ SDL_SetWindowModalFor(SDL_Window * modal_window, SDL_Window * parent_window)
     if (!_this->SetWindowModalFor) {
         return SDL_Unsupported();
     }
-    
+
     return _this->SetWindowModalFor(_this, modal_window, parent_window);
 }
 
-int 
+int
 SDL_SetWindowInputFocus(SDL_Window * window)
 {
     CHECK_WINDOW_MAGIC(window, -1);
@@ -2621,7 +2624,7 @@ SDL_SetWindowInputFocus(SDL_Window * window)
     if (!_this->SetWindowInputFocus) {
         return SDL_Unsupported();
     }
-    
+
     return _this->SetWindowInputFocus(_this, window);
 }
 
@@ -3291,7 +3294,7 @@ SDL_GL_ExtensionSupported(const char *extension)
 
 /* Deduce supported ES profile versions from the supported
    ARB_ES*_compatibility extensions. There is no direct query.
-   
+
    This is normally only called when the OpenGL driver supports
    {GLX,WGL}_EXT_create_context_es2_profile.
  */
@@ -4127,7 +4130,7 @@ SDL_IsScreenKeyboardShown(SDL_Window *window)
 #include "vita/SDL_vitamessagebox.h"
 #endif
 
-#if SDL_VIDEO_DRIVER_WINDOWS || SDL_VIDEO_DRIVER_WINRT || SDL_VIDEO_DRIVER_COCOA || SDL_VIDEO_DRIVER_UIKIT || SDL_VIDEO_DRIVER_X11 || SDL_VIDEO_DRIVER_AMIGAOS4 || SDL_VIDEO_DRIVER_AMIGA || SDL_VIDEO_DRIVER_HAIKU || SDL_VIDEO_DRIVER_OS2
+#if SDL_VIDEO_DRIVER_WINDOWS || SDL_VIDEO_DRIVER_WINRT || SDL_VIDEO_DRIVER_COCOA || SDL_VIDEO_DRIVER_UIKIT || SDL_VIDEO_DRIVER_X11 || SDL_VIDEO_DRIVER_AMIGAOS4 || SDL_VIDEO_DRIVER_AMIGA || SDL_VIDEO_DRIVER_HAIKU || SDL_VIDEO_DRIVER_OS2 || SDL_VIDEO_DRIVER_MORPHOS
 static SDL_bool SDL_MessageboxValidForDriver(const SDL_MessageBoxData *messageboxdata, SDL_SYSWM_TYPE drivertype)
 {
     SDL_SysWMinfo info;
@@ -4234,6 +4237,13 @@ SDL_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
     }
 #endif
 #if SDL_VIDEO_DRIVER_AMIGA
+    if (retval == -1 &&
+        SDL_MessageboxValidForDriver(messageboxdata, SDL_SYSWM_AMIGA) &&
+        AMIGA_ShowMessageBox(messageboxdata, buttonid) == 0) {
+        retval = 0;
+    }
+#endif
+#if SDL_VIDEO_DRIVER_MORPHOS
     if (retval == -1 &&
         SDL_MessageboxValidForDriver(messageboxdata, SDL_SYSWM_AMIGA) &&
         AMIGA_ShowMessageBox(messageboxdata, buttonid) == 0) {

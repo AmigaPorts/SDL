@@ -96,11 +96,11 @@ typedef struct SDL_RWops
     int (SDLCALL * close) (struct SDL_RWops * context);
 
     Uint32 type;
-	
+
     #if defined(__MORPHOS__)
     void *r13; /* must be at offset 24 and outside union (or change fileop routine accordingly) */
     #endif
-	
+
     union
     {
 #if defined(__ANDROID__)

@@ -2193,7 +2193,7 @@ typedef void (APIENTRYP PFNGLEGLIMAGETARGETRENDERBUFFERSTORAGEOESPROC) (GLenum t
 
 #endif /* !__IPHONEOS__ */
 
-#endif /* __AMIGAOS4__ */
+#endif /* __AMIGAOS4__ & __MORPHOS__ */
 
 #endif /* SDL_opengl_h_ */
 

@@ -32,6 +32,14 @@
 #include <exec/execbase.h>
 #include <proto/exec.h>
 
+static Fixed AHI_Volume = 0x10000;
+
+void 
+AHIAUD_Mute(ULONG mute)
+{
+	AHI_Volume = mute ? 0 : 0x10000;
+}
+
 static void
 AHIAUD_WaitDevice(_THIS)
 {
@@ -63,7 +71,7 @@ AHIAUD_PlayDevice(_THIS)
 	req->ahir_Std.io_Length  = this->spec.size;
 	req->ahir_Std.io_Offset  = 0;
 	req->ahir_Frequency      = this->spec.freq;
-	req->ahir_Volume         = 0x10000;
+	req->ahir_Volume         = AHI_Volume; // 0x10000;
 	req->ahir_Type           = hidden->sample_format;
 	req->ahir_Position       = 0x8000;
 	req->ahir_Link           = (hidden->playing ? &hidden->req[current2] : NULL);
@@ -74,8 +82,8 @@ AHIAUD_PlayDevice(_THIS)
 	switch (hidden->convert)
 	{
 		case AMIAUD_CONVERT_NONE  : break;
-		case AMIAUD_CONVERT_SWAP16: AMIGA_Swap16(hidden->buffers[current], hidden->buffers[current], this->spec.size / 2); break;
-		case AMIAUD_CONVERT_SWAP32: AMIGA_Swap32(hidden->buffers[current], hidden->buffers[current], this->spec.size / 2); break;
+		case AMIAUD_CONVERT_SWAP16: SDL_CopyAndSwap16(hidden->buffers[current], hidden->buffers[current], this->spec.size / 2); break;
+		case AMIAUD_CONVERT_SWAP32: SDL_CopyAndSwap32(hidden->buffers[current], hidden->buffers[current], this->spec.size / 2); break;
 	}
 
 	SendIO((struct IORequest *)req);
@@ -212,7 +220,7 @@ AHIAUD_OpenDevice(_THIS, void *handle, const char *devname, int iscapture)
 	if (OpenDevice(AHINAME, 0, (struct IORequest *)&hidden->req[0].ahir_Std, 0) != 0)
 	{
 		SDL_SetError("Unable to open ahi.device unit 0! Error code %d.\n", hidden->req[0].ahir_Std.io_Error);
-		SDL_free(hidden);
+		//SDL_free(hidden);
 		return -1;
 	}
 	return 0;

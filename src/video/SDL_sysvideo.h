@@ -444,6 +444,7 @@ extern VideoBootStrap OFFSCREEN_bootstrap;
 extern VideoBootStrap AMIGA_bootstrap;
 extern VideoBootStrap OS2DIVE_bootstrap;
 extern VideoBootStrap OS2VMAN_bootstrap;
+extern VideoBootStrap MORPHOS_bootstrap;
 
 extern SDL_VideoDevice *SDL_GetVideoDevice(void);
 extern int SDL_AddBasicVideoDisplay(const SDL_DisplayMode * desktop_mode);

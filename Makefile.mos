@@ -53,6 +53,7 @@ SOURCES = \
 	src/timer/amiga/*.c \
 	src/video/*.c \
 	src/video/amiga/*.c \
+	src/video/morphos/*.c \
 	src/video/yuv2rgb/*.c \
 	src/misc/*.c \
 	src/misc/morphos/*.c \

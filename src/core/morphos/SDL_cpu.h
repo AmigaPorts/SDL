@@ -28,7 +28,7 @@
 #include <exec/types.h>
 #endif
 
-extern void AMIGA_Swap16(APTR srcx, APTR destx, LONG units);
-extern void AMIGA_Swap32(APTR srcx, APTR destx, LONG units);
+extern void SDL_CopyAndSwap16(APTR srcx, APTR destx, LONG units);
+extern void SDL_CopyAndSwap32(APTR srcx, APTR destx, LONG units);
 
 #endif /* SDL_CORE_AMIGA_MISC_H */

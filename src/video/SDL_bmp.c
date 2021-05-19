@@ -37,6 +37,10 @@
 #include "SDL_endian.h"
 #include "SDL_pixels_c.h"
 
+#ifdef __MORPHOS__
+#include "../core/morphos/SDL_cpu.h"
+#endif
+
 #define SAVE_32BIT_BMP
 
 /* Compression encodings for BMP files */
@@ -516,15 +520,23 @@ SDL_LoadBMP_RW(SDL_RWops * src, int freesrc)
             case 15:
             case 16:{
                     Uint16 *pix = (Uint16 *) bits;
+#ifdef __MORPHOS__
+					SDL_CopyAndSwap16(pix, pix, surface->w);
+#else
                     for (i = 0; i < surface->w; i++)
                         pix[i] = SDL_Swap16(pix[i]);
+#endif
                     break;
                 }
 
             case 32:{
                     Uint32 *pix = (Uint32 *) bits;
+#ifdef __MORPHOS__
+					SDL_CopyAndSwap32(pix, pix, surface->w);
+#else
                     for (i = 0; i < surface->w; i++)
                         pix[i] = SDL_Swap32(pix[i]);
+#endif
                     break;
                 }
             }

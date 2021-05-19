@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,34 +18,28 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#include "../../SDL_internal.h"
 
-#include <stdarg.h>
+#ifndef _SDL_amigamodes_h
+#define _SDL_amigamodes_h
 
-#define GENERATE_STUBS
-#define SDL_CopyAndSwap16_REAL SDL_CopyAndSwap16
-#define SDL_CopyAndSwap32_REAL SDL_CopyAndSwap32
+#include "../SDL_sysvideo.h"
 
-#include "SDL_stubs.h"
-
-/*********************************************************************/
-
-/* This function must preserve all registers except r13 */
-#if 1
-asm
-("\n"
-"	.section \".text\"\n"
-"	.align 2\n"
-"	.type __restore_r13, @function\n"
-"__restore_r13:\n"
-"	lwz 13, 36(12)\n"
-"	blr\n"
-"__end__restore_r13:\n"
-"	.size __restore_r13, __end__restore_r13 - __restore_r13\n"
-);
+#ifndef EXEC_TYPES_H
+#include <exec/types.h>
 #endif
 
-int __saveds LIB_SDL_VSetError(const char *fmt, va_list ap)
+typedef struct
 {
-	extern int SDL_VSetError(const char *fmt, va_list ap);
-	return SDL_VSetError(fmt, ap);
-}
+	APTR monitor;
+} SDL_DisplayModeData;
+
+extern int AMIGA_InitModes(_THIS);
+extern void AMIGA_GetDisplayModes(_THIS, SDL_VideoDisplay * sdl_display);
+extern int AMIGA_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode);
+extern int AMIGA_GetScreen(_THIS, BYTE FullScreen, SDL_bool support3d);
+extern int AMIGA_GetDisplayBounds(_THIS, SDL_VideoDisplay * display, SDL_Rect * rect);
+
+#endif /* _SDL_amigamodes_h */
+
+/* vi: set ts=4 sw=4 expandtab: */

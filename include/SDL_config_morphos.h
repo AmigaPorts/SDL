@@ -160,7 +160,7 @@
 #define SDL_TIMERS_AMIGA 1
 
 /* Enable video driver */
-#define SDL_VIDEO_DRIVER_AMIGA  1
+#define SDL_VIDEO_DRIVER_MORPHOS 1
 
 /* Enable filesystem driver */
 #define SDL_FILESYSTEM_AMIGA  1
@@ -173,7 +173,7 @@
 
 /* Maybe later */
 #ifndef SDL_VIDEO_RENDER_OGL
-//#define SDL_VIDEO_RENDER_OGL    1
+#define SDL_VIDEO_RENDER_OGL    1
 #endif
 
 /* Enable OpenGL support */

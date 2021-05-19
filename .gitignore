@@ -4,7 +4,6 @@ config.cache
 config.log
 config.status
 libtool
-Makefile
 Makefile.rules
 sdl2-config
 sdl2-config.cmake

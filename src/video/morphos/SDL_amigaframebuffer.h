@@ -18,34 +18,11 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#include "../../SDL_internal.h"
 
-#include <stdarg.h>
 
-#define GENERATE_STUBS
-#define SDL_CopyAndSwap16_REAL SDL_CopyAndSwap16
-#define SDL_CopyAndSwap32_REAL SDL_CopyAndSwap32
+extern int AMIGA_CreateWindowFramebuffer(_THIS, SDL_Window * window, Uint32 * format, void ** pixels, int *pitch);
+extern int AMIGA_UpdateWindowFramebuffer(_THIS, SDL_Window * window, const SDL_Rect * rects, int numrects);
+extern void AMIGA_DestroyWindowFramebuffer(_THIS, SDL_Window * window);
 
-#include "SDL_stubs.h"
-
-/*********************************************************************/
-
-/* This function must preserve all registers except r13 */
-#if 1
-asm
-("\n"
-"	.section \".text\"\n"
-"	.align 2\n"
-"	.type __restore_r13, @function\n"
-"__restore_r13:\n"
-"	lwz 13, 36(12)\n"
-"	blr\n"
-"__end__restore_r13:\n"
-"	.size __restore_r13, __end__restore_r13 - __restore_r13\n"
-);
-#endif
-
-int __saveds LIB_SDL_VSetError(const char *fmt, va_list ap)
-{
-	extern int SDL_VSetError(const char *fmt, va_list ap);
-	return SDL_VSetError(fmt, ap);
-}
+/* vi: set ts=4 sw=4 expandtab: */
