@@ -139,7 +139,7 @@ typedef enum
     SDL_SYSWM_WAYLAND,
     SDL_SYSWM_MIR,  /* no longer available, left for API/ABI compatibility. Remove in 2.1! */
     SDL_SYSWM_WINRT,
-	SDL_SYSWM_OS4,
+    SDL_SYSWM_OS4,
     SDL_SYSWM_ANDROID,
     SDL_SYSWM_VIVANTE,
     SDL_SYSWM_OS2,

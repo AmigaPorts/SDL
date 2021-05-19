@@ -23,7 +23,7 @@
   The PulseAudio target for SDL 1.3 is based on the 1.3 arts target, with
    the appropriate parts replaced with the 1.2 PulseAudio target code. This
    was the cleanest way to move it to 1.3. The 1.2 target was written by
-   StÃ©phan Kochen: stephan .a.t. kochen.nl
+   Stéphan Kochen: stephan .a.t. kochen.nl
 */
 #include "../../SDL_internal.h"
 #include "SDL_hints.h"
