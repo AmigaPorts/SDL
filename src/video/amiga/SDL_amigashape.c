@@ -24,8 +24,9 @@
 
 #include "SDL_amigashape.h"
 #include "SDL_amigawindow.h"
-
+#ifdef MORPHOS
 #include <intuition/extensions.h>
+#endif
 #include <proto/graphics.h>
 #include <proto/intuition.h>
 

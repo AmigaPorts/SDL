@@ -561,7 +561,7 @@ windows_file_close(SDL_RWops * context)
 }
 #endif /* __WIN32__ */
 
-#if defined(AMIGA)
+#if defined(AMIGA) && !defined(__amigaos3__)
 static int
 amiga_file_open(SDL_RWops *context, const char *filename, const char *mode)
 {
@@ -1057,7 +1057,7 @@ SDL_RWFromFile(const char *file, const char *mode)
     rwops->write = windows_file_write;
     rwops->close = windows_file_close;
     rwops->type = SDL_RWOPS_WINFILE;
-  
+
 #elif defined(__MORPHOS__)
     rwops = SDL_AllocRW();
     if (!rwops)

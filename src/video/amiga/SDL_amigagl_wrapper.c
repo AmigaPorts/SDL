@@ -23,7 +23,7 @@
 
 /* wrapper functions for TinyGL (MorphOS) */
 
-#if SDL_VIDEO_DRIVER_AMIGA
+#if SDL_VIDEO_DRIVER_AMIGA && SDL_VIDEO_OPENGL
 
 #include <proto/tinygl.h>
 #include <tgl/gl.h>
@@ -84,8 +84,8 @@ static void AmiglAlphaFunc( GLenum func, GLclampf ref ) {
 static void AmiglBlendFunc( GLenum sfactor, GLenum dfactor ) {
     glBlendFunc(sfactor, dfactor);
  }
- 
-/* tinygl new functions */ 
+
+/* tinygl new functions */
 static void AmiglBlendColor( GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha ) {
     glBlendColor(red, green, blue, alpha);
 }
@@ -1638,7 +1638,7 @@ static void AmiglTexSubImage1D( GLenum target, GLint level,
 #ifndef __MORPHOS__
     glTexSubImage1D(target, level, xoffset, width, format, type, pixels);
 #else
-	glTexSubImage1D(target, level, xoffset, width, format, type, (GLvoid *)pixels);				 
+	glTexSubImage1D(target, level, xoffset, width, format, type, (GLvoid *)pixels);
 #endif
  }
 
@@ -1650,7 +1650,7 @@ static void AmiglTexSubImage2D( GLenum target, GLint level,
 #ifndef __MORPHOS__
     glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
 #else
-	glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, (GLvoid *)pixels);				 
+	glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, (GLvoid *)pixels);
 #endif
  }
 

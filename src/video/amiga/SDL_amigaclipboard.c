@@ -21,10 +21,12 @@
 #include "../../SDL_internal.h"
 
 #include "../SDL_sysvideo.h"
+#if defined(MORPHOS)
 #include "../../core/morphos/SDL_misc.h"
 
 #include <devices/clipboard.h>
 #include <libraries/charsets.h>
+
 #include <proto/exec.h>
 #include <proto/iffparse.h>
 
@@ -189,7 +191,7 @@ AMIGA_SetClipboardText(_THIS, const char *text)
 			SDL_free(stext);
 			clipboard_finalize(ctx);
 		}
-		
+
 		clipboard_close(ctx);
 	}
 
@@ -288,4 +290,5 @@ AMIGA_HasClipboardText(_THIS)
 	return result;
 }
 
+#endif
 /* vi: set ts=4 sw=4 expandtab: */

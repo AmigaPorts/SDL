@@ -23,8 +23,9 @@
 #include "SDL_messagebox.h"
 #include "../SDL_sysvideo.h"
 #include "../../core/morphos/SDL_misc.h"
-
+#ifdef MORPHOS
 #include <proto/charsets.h>
+#endif
 #include <proto/exec.h>
 #include <proto/muimaster.h>
 

@@ -133,7 +133,12 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Haiku.*")
   set(HAIKU TRUE)
 elseif(CMAKE_SYSTEM_NAME MATCHES "Amiga.*")
   set(AMIGA TRUE)
-  message("*** AmigaOS 4 build ***")
+  if (CMAKE_SYSTEM_PROCESSOR MATCHES "m68k")
+    set(CMAKE_SYSTEM_VERSION "3.x")
+  else()
+    set(CMAKE_SYSTEM_VERSION "4.x")
+  endif()
+  message("*** AmigaOS ${CMAKE_SYSTEM_VERSION} build ***")
 endif()
 
 # Don't mistake osx for unix
@@ -1538,7 +1543,7 @@ elseif(WINDOWS)
     if(WINDOWS_STORE)
       set(SDL_VIDEO_DRIVER_WINRT 1)
       file(GLOB WIN_VIDEO_SOURCES
-        ${SDL2_SOURCE_DIR}/src/video/winrt/*.c 
+        ${SDL2_SOURCE_DIR}/src/video/winrt/*.c
         ${SDL2_SOURCE_DIR}/src/video/winrt/*.cpp
         ${SDL2_SOURCE_DIR}/src/render/direct3d11/*.cpp
         )
@@ -2045,30 +2050,56 @@ elseif(HAIKU)
   CheckPTHREAD()
 
 elseif(AMIGA)
-  message("AmigaOS 4 specific stuff")
+  message("AmigaOS ${CMAKE_SYSTEM_VERSION} specific stuff")
 
   if(SDL_VIDEO)
-    set(SDL_VIDEO_DRIVER_AMIGAOS4 1)
-    file(GLOB AMIGAOS4VIDEO_SOURCES ${SDL2_SOURCE_DIR}/src/video/amigaos4/*.c)
-    set(SOURCE_FILES ${SOURCE_FILES} ${AMIGAOS4VIDEO_SOURCES})
+
+    if(MORPHOS)
+      file(GLOB MORPHOSVIDEO_SOURCES ${SDL2_SOURCE_DIR}/src/video/amiga/*.c ${SDL2_SOURCE_DIR}/src/video/amiga/*.h)
+      set(SOURCE_FILES ${SOURCE_FILES} ${MORPHOSVIDEO_SOURCES})
+
+      set(SDL_VIDEO_DRIVER_AMIGA 1)
+      set(SDL_VIDEO_RENDER_AMIGA 1)
+
+    elseif(AMIGAOS3)
+      file(GLOB AMIGAOS3VIDEO_SOURCES ${SDL2_SOURCE_DIR}/src/video/amiga/*.c ${SDL2_SOURCE_DIR}/src/video/amiga/*.h)
+      set(SOURCE_FILES ${SOURCE_FILES} ${AMIGAOS3VIDEO_SOURCES})
+
+      set(SDL_VIDEO_DRIVER_AMIGA 1)
+      set(SDL_VIDEO_RENDER_AMIGA 1)
+    elseif(AROS)
+    else()
+      file(GLOB AMIGAOS4VIDEO_SOURCES ${SDL2_SOURCE_DIR}/src/video/amigaos4/*.c)
+      set(SOURCE_FILES ${SOURCE_FILES} ${AMIGAOS4VIDEO_SOURCES})
+
+      set(SDL_VIDEO_DRIVER_AMIGAOS4 1)
+      set(SDL_VIDEO_RENDER_AMIGAOS4 1)
+
+
+      if(VIDEO_OPENGL)
+        set(SDL_VIDEO_RENDER_OGL 1) # MiniGL should be there
+        set(SDL_VIDEO_OPENGL 1)
+        set(HAVE_VIDEO_OPENGL TRUE)
+      endif()
+
+      CheckOpenGLES2()
+    endif()
     set(HAVE_SDL_VIDEO TRUE)
 
-    set(SDL_VIDEO_RENDER_AMIGAOS4 1)
-
-    if(VIDEO_OPENGL)
-      set(SDL_VIDEO_RENDER_OGL 1) # MiniGL should be there
-      set(SDL_VIDEO_OPENGL 1)
-      set(HAVE_VIDEO_OPENGL TRUE)
-    endif()
-
-    CheckOpenGLES2()
   endif()
 
   if(SDL_AUDIO)
-    set(SDL_AUDIO_DRIVER_AMIGAOS4 1)
-    file(GLOB AUDIO_SOURCES ${SDL2_SOURCE_DIR}/src/audio/amigaos4/*.c)
-    set(SOURCE_FILES ${SOURCE_FILES} ${AUDIO_SOURCES})
-    set(HAVE_SDL_AUDIO TRUE)
+    if(AMIGAOS3)
+      set(SDL_AUDIO_DRIVER_AHI 1)
+      file(GLOB AUDIO_SOURCES ${SDL2_SOURCE_DIR}/src/audio/ahi/*.c ${SDL2_SOURCE_DIR}/src/audio/ahi/*.h)
+      set(SOURCE_FILES ${SOURCE_FILES} ${AUDIO_SOURCES})
+      set(HAVE_SDL_AUDIO TRUE)
+    else()
+      set(SDL_AUDIO_DRIVER_AMIGAOS4 1)
+      file(GLOB AUDIO_SOURCES ${SDL2_SOURCE_DIR}/src/audio/amigaos4/*.c)
+      set(SOURCE_FILES ${SOURCE_FILES} ${AUDIO_SOURCES})
+      set(HAVE_SDL_AUDIO TRUE)
+    endif()
   endif()
 
   if(SDL_TIMERS)
@@ -2079,24 +2110,30 @@ elseif(AMIGA)
   endif(SDL_TIMERS)
 
   if(SDL_LOADSO)
-    set(SDL_LOADSO_AMIGAOS4 1)
-    file(GLOB LOADSO_SOURCES ${SDL2_SOURCE_DIR}/src/loadso/amigaos4/*.c)
-    set(SOURCE_FILES ${SOURCE_FILES} ${LOADSO_SOURCES})
-    set(HAVE_SDL_LOADSO TRUE)
+    if(AMIGAOS3)
+    else()
+      set(SDL_LOADSO_AMIGAOS4 1)
+      file(GLOB LOADSO_SOURCES ${SDL2_SOURCE_DIR}/src/loadso/amigaos4/*.c)
+      set(SOURCE_FILES ${SOURCE_FILES} ${LOADSO_SOURCES})
+      set(HAVE_SDL_LOADSO TRUE)
+    endif()
   endif()
 
   if(SDL_FILESYSTEM)
-    set(SDL_FILESYSTEM_AMIGAOS4 1)
+    set(SDL_FILESYSTEM_AMIGA 1)
     file(GLOB FILESYSTEM_SOURCES ${SDL2_SOURCE_DIR}/src/filesystem/amigaos4/*.c)
     set(SOURCE_FILES ${SOURCE_FILES} ${FILESYSTEM_SOURCES})
     set(HAVE_SDL_FILESYSTEM TRUE)
   endif()
 
   if(SDL_JOYSTICK)
-    set(SDL_JOYSTICK_AMIGAINPUT 1) # TODO: rename?
-    file(GLOB JOYSTICK_SOURCES ${SDL2_SOURCE_DIR}/src/joystick/amigaos4/*.c)
-    set(SOURCE_FILES ${SOURCE_FILES} ${JOYSTICK_SOURCES})
-    set(HAVE_SDL_JOYSTICK TRUE)
+    if(AMIGAOS3)
+    else()
+      set(SDL_JOYSTICK_AMIGAINPUT 1) # TODO: rename?
+      file(GLOB JOYSTICK_SOURCES ${SDL2_SOURCE_DIR}/src/joystick/amigaos4/*.c)
+      set(SOURCE_FILES ${SOURCE_FILES} ${JOYSTICK_SOURCES})
+      set(HAVE_SDL_JOYSTICK TRUE)
+    endif()
   endif()
 
   CheckPTHREAD()
