@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -417,6 +417,7 @@ OS4_SetFunctionPointers(SDL_VideoDevice * device)
 
     //device->SetWindowBordered = OS4_SetWindowBordered; // Not supported by SetWindowAttrs()?
     device->SetWindowResizable = OS4_SetWindowResizable;
+    device->SetWindowAlwaysOnTop = OS4_SetWindowAlwaysOnTop;
 
     device->SetWindowFullscreen = OS4_SetWindowFullscreen;
     //device->SetWindowGammaRamp = OS4_SetWindowGammaRamp;
@@ -432,6 +433,7 @@ OS4_SetFunctionPointers(SDL_VideoDevice * device)
     device->DestroyWindowFramebuffer = OS4_DestroyWindowFramebuffer;
 
     //device->OnWindowEnter = OS4_OnWindowEnter;
+    device->FlashWindow = OS4_FlashWindow;
 
     device->shape_driver.CreateShaper = OS4_CreateShaper;
     device->shape_driver.SetWindowShape = OS4_SetWindowShape;

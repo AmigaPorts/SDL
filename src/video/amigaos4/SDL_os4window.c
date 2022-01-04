@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -37,6 +37,8 @@
 #include "SDL_os4events.h"
 
 #include "SDL_syswm.h"
+#include "SDL_timer.h"
+
 #include "../../events/SDL_keyboard_c.h"
 #include "../../events/SDL_events_c.h"
 
@@ -1154,6 +1156,80 @@ OS4_SetWindowResizable (_THIS, SDL_Window * window, SDL_bool resizable)
     } else {
         dprintf("Failed to re-create window '%s'\n", window->title);
     }
+}
+
+void
+OS4_SetWindowAlwaysOnTop(_THIS, SDL_Window * window, SDL_bool on_top)
+{
+    SDL_WindowData *data = window->driverdata;
+
+    if (data->syswin && on_top) {
+        // It doesn't seem possible to set WA_StayTop after window creation
+        // but let's do what is possible.
+        IIntuition->WindowToFront(data->syswin);
+    }
+}
+
+static
+void OS4_FlashWindowPrivate(_THIS, struct Window * window)
+{
+    // There is no system support to handle flashing but let's improvise
+    // something using window opaqueness (requires compositing effects)
+    ULONG opacity = 255;
+
+    if (IIntuition->GetWindowAttr(window, WA_Opaqueness, &opacity, sizeof(opacity)) == 0) {
+        dprintf("Failed to query original window opacity\n");
+        return;
+    }
+
+    const Uint32 start = SDL_GetTicks();
+
+    while (TRUE) {
+        const Uint32 elapsed = SDL_GetTicks() - start;
+        if (elapsed > 200) {
+            break;
+        }
+
+        const ULONG value = 128 + 127 * sinf(elapsed * 3.14159f / 50.0f);
+        const LONG ret = IIntuition->SetWindowAttrs(
+            window,
+            WA_Opaqueness, value,
+            TAG_DONE);
+
+        if (ret) {
+            dprintf("Failed to set window opaqueness to %u\n", value);
+            break;
+        }
+
+        SDL_Delay(1);
+    }
+
+    const LONG ret = IIntuition->SetWindowAttrs(
+        window,
+        WA_Opaqueness, opacity,
+        TAG_DONE);
+
+    if (ret) {
+        dprintf("Failed to restore window opacity\n");
+    }
+}
+
+int
+OS4_FlashWindow(_THIS, SDL_Window * window, SDL_FlashOperation operation)
+{
+    SDL_WindowData *data = window->driverdata;
+
+    if (data->syswin) {
+        switch (operation) {
+            case SDL_FLASH_BRIEFLY:
+            case SDL_FLASH_UNTIL_FOCUSED:
+                OS4_FlashWindowPrivate(_this, data->syswin);
+                break;
+            case SDL_FLASH_CANCEL:
+                break;
+        }
+    }
+    return 0;
 }
 
 #endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */

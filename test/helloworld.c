@@ -81,6 +81,9 @@ static SDL_bool eventLoopInner(void)
                         static int c = 1;
                         SDL_ShowCursor(c);
                         c ^= 1;
+                    } else if (strcmp("l", te->text) == 0) {
+                        puts("Flash");
+                        SDL_FlashWindow(w, SDL_FLASH_BRIEFLY);
                     }
                 }
                 break;
@@ -145,6 +148,7 @@ static void testWindow()
     SDL_Window * w = SDL_CreateWindow("blah", 100, 100, 100, 100, SDL_WINDOW_RESIZABLE);
 
     if (w) {
+#if 0
         SDL_SetWindowMinimumSize(w, 50, 50);
         SDL_SetWindowMaximumSize(w, 200, 200);
 
@@ -158,6 +162,14 @@ static void testWindow()
         SDL_Delay(1000);
 
         SDL_MaximizeWindow(w);
+
+        SDL_SetWindowAlwaysOnTop(w, SDL_FALSE);
+
+        SDL_Delay(1000);
+
+        SDL_SetWindowAlwaysOnTop(w, SDL_TRUE);
+#endif
+        SDL_FlashWindow(w, SDL_FLASH_UNTIL_FOCUSED);
 
         eventLoop();
 
@@ -828,8 +840,8 @@ int main(void)
     if (0) testInitEverything();
 
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) == 0) {
-        if (1) testPath();
-        if (0) testWindow();
+        if (0) testPath();
+        if (1) testWindow();
         if (0) testManyWindows();
         if (0) testFullscreen();
         if (0) testFullscreenOpenGL();
