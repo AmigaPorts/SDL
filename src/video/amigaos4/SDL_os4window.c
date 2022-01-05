@@ -917,27 +917,32 @@ OS4_SetWindowHitTest(SDL_Window * window, SDL_bool enabled)
     return 0; // just succeed, the real work is done elsewhere
 }
 
-int
-OS4_SetWindowOpacity(_THIS, SDL_Window * window, float opacity)
+static SDL_bool
+OS4_SetWindowOpacityPrivate(_THIS, struct Window * window, const UBYTE value)
 {
-    struct Window *syswin = ((SDL_WindowData *) window->driverdata)->syswin;
-    LONG ret;
-
-    UBYTE value = opacity * 255;
-
-    dprintf("Setting window '%s' opaqueness to %d\n", window->title, value);
-
-    ret = IIntuition->SetWindowAttrs(
-        syswin,
+    const LONG ret = IIntuition->SetWindowAttrs(
+        window,
         WA_Opaqueness, value,
         TAG_DONE);
 
     if (ret) {
-        dprintf("Failed to set window opaqueness to %d\n", value);
-        return -1;
+        dprintf("Failed to set window opaqueness to %u\n", value);
+        return SDL_FALSE;
     }
 
-    return 0;
+    return SDL_TRUE;
+}
+
+int
+OS4_SetWindowOpacity(_THIS, SDL_Window * window, float opacity)
+{
+    struct Window *syswin = ((SDL_WindowData *) window->driverdata)->syswin;
+
+    const UBYTE value = opacity * 255;
+
+    dprintf("Setting window '%s' opaqueness to %u\n", window->title, opacity);
+
+    return OS4_SetWindowOpacityPrivate(_this, syswin, opacity) ? 0 : -1;
 }
 
 int
@@ -1165,7 +1170,7 @@ OS4_SetWindowAlwaysOnTop(_THIS, SDL_Window * window, SDL_bool on_top)
 
     if (data->syswin && on_top) {
         // It doesn't seem possible to set WA_StayTop after window creation
-        // but let's do what is possible.
+        // but let's do what we can.
         IIntuition->WindowToFront(data->syswin);
     }
 }
@@ -1190,28 +1195,14 @@ void OS4_FlashWindowPrivate(_THIS, struct Window * window)
             break;
         }
 
-        const ULONG value = 128 + 127 * sinf(elapsed * 3.14159f / 50.0f);
-        const LONG ret = IIntuition->SetWindowAttrs(
-            window,
-            WA_Opaqueness, value,
-            TAG_DONE);
+        const UBYTE value = 128 + 127 * sinf(elapsed * 3.14159f / 50.0f);
 
-        if (ret) {
-            dprintf("Failed to set window opaqueness to %u\n", value);
-            break;
-        }
+        OS4_SetWindowOpacityPrivate(_this, window, value);
 
         SDL_Delay(1);
     }
 
-    const LONG ret = IIntuition->SetWindowAttrs(
-        window,
-        WA_Opaqueness, opacity,
-        TAG_DONE);
-
-    if (ret) {
-        dprintf("Failed to restore window opacity\n");
-    }
+    OS4_SetWindowOpacityPrivate(_this, window, opacity);
 }
 
 int
