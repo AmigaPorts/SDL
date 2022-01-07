@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -436,7 +436,7 @@ OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_Rect * points, int count,
                 TAG_END);
 
             if (ret_code) {
-                static Uint32 counter;
+                static Uint32 counter = 0;
 
                 if ((counter++ % 100) == 0) {
                     dprintf("CompositeTags: %d (fails: %u)\n", ret_code, counter);
@@ -492,7 +492,7 @@ OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Ver
         TAG_END);
 
     if (ret_code) {
-        static Uint32 counter;
+        static Uint32 counter = 0;
 
         if ((counter++ % 100) == 0) {
             dprintf("CompositeTags: %d (fails: %u)\n", ret_code, counter);
@@ -500,6 +500,56 @@ OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Ver
 
         return SDL_SetError("CompositeTags failed");
     }
+
+    return 0;
+}
+
+static int
+OS4_RenderGeometry(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Vertex * vertices,
+    struct BitMap * dst)
+{
+    SDL_Texture * texture = cmd->data.draw.texture;
+    const SDL_BlendMode mode = cmd->data.draw.blend;
+
+    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
+    OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
+
+    OS4_CompositingParams params;
+    uint32 ret_code;
+
+    if (!dst) {
+        return -1;
+    }
+
+    OS4_SetupCompositing(renderer->target, &params, texture->scaleMode, mode, 255);
+
+    ret_code = data->iGraphics->CompositeTags(
+        OS4_ConvertBlendMode(mode),
+        texturedata->bitmap,
+        dst,
+        COMPTAG_SrcAlpha,   COMP_FLOAT_TO_FIX(params.srcAlpha),
+        COMPTAG_DestAlpha,  COMP_FLOAT_TO_FIX(params.destAlpha),
+        COMPTAG_DestX,      data->cliprect.x,
+        COMPTAG_DestY,      data->cliprect.y,
+        COMPTAG_DestWidth,  data->cliprect.w,
+        COMPTAG_DestHeight, data->cliprect.h,
+        COMPTAG_Flags,      params.flags,
+        COMPTAG_VertexArray, vertices,
+        COMPTAG_VertexFormat, COMPVF_STW0_Present,
+        COMPTAG_NumTriangles, cmd->data.draw.count / 3,
+        //COMPTAG_IndexArray, ,
+        TAG_END);
+
+    if (ret_code) {
+        static Uint32 counter = 0;
+
+        if ((counter++ % 100) == 0) {
+            dprintf("CompositeTags: %d (fails: %u)\n", ret_code, counter);
+        }
+
+        return SDL_SetError("CompositeTags failed");
+    }
+
 
     return 0;
 }
@@ -771,6 +821,69 @@ OS4_QueueCopy(SDL_Renderer * renderer, SDL_RenderCommand * cmd, SDL_Texture * te
     return OS4_QueueCopyEx(renderer, cmd, texture, srcrect, dstrect, 0.0, &center, SDL_FLIP_NONE);
 }
 
+static int OS4_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Texture *texture,
+    const float *xy, int xy_stride, const SDL_Color *color, int color_stride, const float *uv, int uv_stride,
+    int num_vertices, const void *indices, int num_indices, int size_indices,
+    float scale_x, float scale_y)
+{
+    int i;
+    int count = indices ? num_indices : num_vertices;
+    OS4_Vertex *verts;
+
+    /* CompositeTags vertex mode has various limitations */
+
+    if (!texture) {
+        static Uint32 counter = 0;
+        if (counter++ < 10) {
+            dprintf("Texture required for geometry\n");
+        }
+        return SDL_Unsupported();
+    }
+
+    if (color) {
+        static Uint32 counter = 0;
+        if (counter++ < 10) {
+            dprintf("Per-vertex color modulation not supported\n");
+        }
+        //return SDL_Unsupported();
+    }
+
+    verts = (OS4_Vertex *) SDL_AllocateRenderVertices(renderer, count * sizeof(OS4_Vertex), 0, &cmd->data.draw.first);
+    if (!verts) {
+        return -1;
+    }
+
+    cmd->data.draw.count = count;
+    size_indices = indices ? size_indices : 0;
+
+    for (i = 0; i < count; i++) {
+        int j;
+        float *xy_;
+        if (size_indices == 4) {
+            j = ((const Uint32 *)indices)[i];
+        } else if (size_indices == 2) {
+            j = ((const Uint16 *)indices)[i];
+        } else if (size_indices == 1) {
+            j = ((const Uint8 *)indices)[i];
+        } else {
+            j = i;
+        }
+
+        xy_ = (float *)((char*)xy + j * xy_stride);
+
+        verts->x = xy_[0] * scale_x;
+        verts->y = xy_[1] * scale_y;
+
+        float *uv_ = (float *)((char*)uv + j * uv_stride);
+        verts->s = uv_[0] * texture->w;
+        verts->t = uv_[1] * texture->h;
+        verts->w = 1.0f;
+        verts++;
+    }
+
+    return 0;
+}
+
 static int
 OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * vertices, size_t vertsize)
 {
@@ -882,12 +995,30 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
                 break;
             }
 
+            case SDL_RENDERCMD_GEOMETRY: {
+                const OS4_Vertex *verts = (OS4_Vertex *)(((Uint8 *) vertices) + cmd->data.draw.first);
+                OS4_RenderGeometry(renderer, cmd, verts, bitmap);
+                break;
+            }
+
             case SDL_RENDERCMD_NO_OP:
                 break;
         }
 
         cmd = cmd->next;
     }
+
+    return 0;
+}
+
+static int
+OS4_SetVSync(SDL_Renderer * renderer, int vsync)
+{
+    OS4_RenderData *data = renderer->driverdata;
+
+    dprintf("VSYNC %d\n", vsync);
+
+    data->vsyncEnabled = vsync;
 
     return 0;
 }
@@ -928,11 +1059,13 @@ OS4_CreateRenderer(SDL_Window * window, Uint32 flags)
     renderer->QueueFillRects = OS4_QueueFillRects;
     renderer->QueueCopy = OS4_QueueCopy;
     renderer->QueueCopyEx = OS4_QueueCopyEx;
+    renderer->QueueGeometry = OS4_QueueGeometry;
     renderer->RunCommandQueue = OS4_RunCommandQueue;
     renderer->RenderReadPixels = OS4_RenderReadPixels;
     renderer->RenderPresent = OS4_RenderPresent;
     renderer->DestroyTexture = OS4_DestroyTexture;
     renderer->DestroyRenderer = OS4_DestroyRenderer;
+    renderer->SetVSync = OS4_SetVSync;
     renderer->info = OS4_RenderDriver.info;
 
     renderer->driverdata = data;

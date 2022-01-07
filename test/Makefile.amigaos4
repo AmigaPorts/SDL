@@ -26,6 +26,7 @@ TARGETS = \
 	testfile \
 	testfilesystem \
 	testgamecontroller \
+	testgeometry \
 	testgesture \
 	testgl2 \
 	testgles \
@@ -152,6 +153,9 @@ testfile: testfile.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testgamecontroller: testgamecontroller.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testgeometry: testgeometry.o
 	$(CC) -o $@ $^ $(LIBS)
  
 testgesture: testgesture.o
