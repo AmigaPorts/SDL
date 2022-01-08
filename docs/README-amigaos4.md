@@ -75,6 +75,7 @@ Driver selection:
 setenv SDL_RENDER_DRIVER "software"
 setenv SDL_RENDER_DRIVER "compositing"
 setenv SDL_RENDER_DRIVER "opengl"
+setenv SDL_RENDER_DRIVER "opengles2"
 
 VSYNC:
 
@@ -167,8 +168,12 @@ AmigaOS either.
 OpenGL renderer doesn't support render targets and blend modes "ADD" or "MOD".
 This is due to missing features in MiniGL.
 
+Compositing renderer doesn't support color modulation for triangle geometry. Use
+"software" or "opengles2" driver if you need it.
+
 ================================================================================
 Project page and bug tracker
 ================================================================================
 
-https://github.com/AmigaPorts/SDL
+https://github.com/AmigaPorts/SDL-2.0
+
