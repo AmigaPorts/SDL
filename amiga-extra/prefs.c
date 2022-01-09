@@ -3,14 +3,16 @@
 
 #include <proto/dos.h>
 #include <proto/exec.h>
+#include <proto/icon.h>
 #include <proto/intuition.h>
 #include <proto/radiobutton.h>
 
 #include <intuition/classes.h>
+#include <intuition/menuclass.h>
 
+#include <classes/requester.h>
 #include <classes/window.h>
 
-//#include <gadgets/space.h>
 #include <gadgets/layout.h>
 #include <gadgets/button.h>
 #include <gadgets/radiobutton.h>
@@ -19,14 +21,12 @@
 
 /*
 TODO:
-- event handling
-- menu
-- iconification
 - load, save, reset variables
 */
 
 #define NAME "SDL2 Prefs"
 #define VERSION "1.0"
+#define MAX_PATH_LEN 1024
 
 static const char* const version = NAME;
 static const char* const fileVersion __attribute__((used)) = "$VER: " NAME " " VERSION " (" __AMIGADATE__ ")";
@@ -36,9 +36,6 @@ static struct ClassLibrary* WindowBase;
 static struct ClassLibrary* RequesterBase;
 static struct ClassLibrary* ButtonBase;
 static struct ClassLibrary* LayoutBase;
-//ClassLibrary* SpaceBase;
-//ClassLibrary* CheckBoxBase;
-//struct ClassLibrary* RadioButtonBase;
 
 struct RadioButtonIFace* IRadioButton; 
 
@@ -46,30 +43,37 @@ static Class* WindowClass;
 static Class* RequesterClass;
 static Class* ButtonClass;
 static Class* LayoutClass;
-//Class* SpaceClass;
-//Class* CheckBoxClass;
 Class* RadioButtonClass;
 
 enum EGadgetID
 {
-    GID_DriverList,
+    GID_DriverList = 1,
     GID_VsyncList,
     GID_BatchingList,
     GID_SaveButton,
     GID_UseButton,
     GID_ResetButton,
-    GID_LAST
+};
+
+enum EMenuID
+{
+    MID_Iconify = 1,
+    MID_About,
+    MID_Quit
 };
 
 static struct List* driverList;
 static struct List* vsyncList;
 static struct List* batchingList;
 
-static BOOL OpenClasses()
+static struct Window* window;
+
+static BOOL
+OpenClasses()
 {
     const int version = 53;
 
-    dprintf("%s\n", __func__);
+    dprintf("\n");
 
     WindowBase = IIntuition->OpenClass("window.class", version, &WindowClass);
     if (!WindowBase) dprintf("Failed to open window.class\n");
@@ -82,12 +86,6 @@ static BOOL OpenClasses()
 
     LayoutBase = IIntuition->OpenClass("gadgets/layout.gadget", version, &LayoutClass);
     if (!LayoutBase) dprintf("Failed to open layout.gadget\n");
-
-//    classes.SpaceBase = IIntuition->OpenClass("gadgets/space.gadget", version, &classes.SpaceClass);
-//    if (!classes.SpaceBase) throw std::runtime_error("Failed to open space.gadget");
-
-//    classes.CheckBoxBase = IIntuition->OpenClass("gadgets/checkbox.gadget", version, &classes.CheckBoxClass);
-//    if (!classes.CheckBoxBase) throw std::runtime_error("Failed to open checkbox.gadget");
 
     RadioButtonBase = (struct Library *)IIntuition->OpenClass("gadgets/radiobutton.gadget", version, &RadioButtonClass);
     if (!RadioButtonBase) dprintf("Failed to open radiobutton.gadget\n");
@@ -106,9 +104,10 @@ static BOOL OpenClasses()
            IRadioButton;
 }
 
-static void CloseClasses()
+static void
+CloseClasses()
 {
-    dprintf("%s\n", __func__);
+    dprintf("\n");
 
     if (IRadioButton) {
         IExec->DropInterface((struct Interface *)(IRadioButton));
@@ -118,14 +117,13 @@ static void CloseClasses()
     IIntuition->CloseClass(RequesterBase);
     IIntuition->CloseClass(ButtonBase);
     IIntuition->CloseClass(LayoutBase);
-    //IIntuition->CloseClass(classes.SpaceBase);
-    //IIntuition->CloseClass(classes.CheckBoxBase);
     IIntuition->CloseClass((struct ClassLibrary *)RadioButtonBase);
 }
 
-struct List* CreateList()
+static struct List*
+CreateList()
 {
-    dprintf("%s\n", __func__);
+    dprintf("\n");
 
     struct List* list = (struct List *)IExec->AllocSysObjectTags(ASOT_LIST, TAG_DONE);
 
@@ -136,9 +134,10 @@ struct List* CreateList()
     return list;
 }
 
-void AllocNode(struct List* list, const char* const name)
+static void
+AllocNode(struct List* list, const char* const name)
 {
-    dprintf("%s '%s'\n", __func__, name);
+    dprintf("%p '%s'\n", list, name);
 
     struct Node* node = IRadioButton->AllocRadioButtonNode(0, RBNA_Label, name, TAG_DONE);
 
@@ -150,9 +149,10 @@ void AllocNode(struct List* list, const char* const name)
     IExec->AddTail(list, node);
 }
 
-static void PurgeList(struct List* list)
+static void
+PurgeList(struct List* list)
 {
-    dprintf("%s\n", __func__);
+    dprintf("%p\n", list);
 
     if (list) {
         struct Node* node;
@@ -165,13 +165,15 @@ static void PurgeList(struct List* list)
     }
 }
 
-static Object* CreateRadioButtons(enum EGadgetID gid, struct List* list, const char* const name)
+static Object*
+CreateRadioButtons(enum EGadgetID gid, struct List* list, const char* const name, const char* const hint)
 {
-    dprintf("%s '%s'\n", __func__, name);
+    dprintf("gid %d, list %p, name '%s', hint '%s'\n", gid, list, name, hint);
 
     Object* rb = IIntuition->NewObject(RadioButtonClass, NULL,
         GA_ID, gid,
         GA_RelVerify, TRUE,
+        GA_HintInfo, hint,
         RADIOBUTTON_Labels, list,
         RADIOBUTTON_Spacing, 4,
         RADIOBUTTON_Selected, 0,
@@ -184,7 +186,8 @@ static Object* CreateRadioButtons(enum EGadgetID gid, struct List* list, const c
     return rb;
 }
 
-static Object* CreateDriverButtons()
+static Object*
+CreateDriverButtons()
 {
     driverList = CreateList();
 
@@ -193,15 +196,16 @@ static Object* CreateDriverButtons()
     }
 
     AllocNode(driverList, "default");
-    AllocNode(driverList, "compositing");
+    AllocNode(driverList, "compositing (default)");
     AllocNode(driverList, "opengl");
     AllocNode(driverList, "opengles2");
     AllocNode(driverList, "software");
 
-    return CreateRadioButtons(GID_DriverList, driverList, "driver");
+    return CreateRadioButtons(GID_DriverList, driverList, "driver", "Select driver implementation. Available features may vary");
 }
 
-static Object* CreateVsyncButtons()
+static Object*
+CreateVsyncButtons()
 {
     vsyncList = CreateList();
 
@@ -211,12 +215,13 @@ static Object* CreateVsyncButtons()
 
     AllocNode(vsyncList, "default");
     AllocNode(vsyncList, "enabled");
-    AllocNode(vsyncList, "disabled");
+    AllocNode(vsyncList, "disabled (default)");
 
-    return CreateRadioButtons(GID_VsyncList, vsyncList, "vsync");
+    return CreateRadioButtons(GID_VsyncList, vsyncList, "vsync", "Synchronize display update to monitor refresh rate");
 }
 
-static Object* CreateBatchingButtons()
+static Object*
+CreateBatchingButtons()
 {
     batchingList = CreateList();
 
@@ -228,15 +233,21 @@ static Object* CreateBatchingButtons()
     AllocNode(batchingList, "enabled");
     AllocNode(batchingList, "disabled");
 
-    return CreateRadioButtons(GID_BatchingList, batchingList, "batching");
+    return CreateRadioButtons(GID_BatchingList, batchingList, "batching",
+        "Batching may improve drawing speed if application does many operations per frame "
+        "and SDL2 is able to combine those");
 }
 
-static Object* CreateButton(enum EGadgetID gid, const char* const name)
+static Object*
+CreateButton(enum EGadgetID gid, const char* const name, const char* const hint)
 {
+    dprintf("gid %d, name '%s', hint '%s'\n", gid, name, hint);
+
     Object* b = IIntuition->NewObject(ButtonClass, NULL,
         GA_Text, name,
         GA_ID, gid,
         GA_RelVerify, TRUE,
+        GA_HintInfo, hint,
         TAG_DONE);
 
     if (!b) {
@@ -246,23 +257,29 @@ static Object* CreateButton(enum EGadgetID gid, const char* const name)
     return b;
 }
 
-static Object* CreateUseButton()
+static Object*
+CreateUseButton()
 {
-    return CreateButton(GID_UseButton, "Use");
+    return CreateButton(GID_UseButton, "_Use", "Store settings to ENV:");
 }
 
-static Object* CreateSaveButton()
+static Object*
+CreateSaveButton()
 {
-    return CreateButton(GID_SaveButton, "Save");
+    return CreateButton(GID_SaveButton, "_Save", "Store settings to ENVARC:");
 }
 
-static Object* CreateResetButton()
+static Object*
+CreateResetButton()
 {
-    return CreateButton(GID_ResetButton, "Reset");
+    return CreateButton(GID_ResetButton, "_Reset", "Reset GUI to defaults");
 }
 
-static Object* CreateLayout()
+static Object*
+CreateLayout()
 {
+    dprintf("\n");
+
     Object* layout = IIntuition->NewObject(LayoutClass, NULL,
         LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
         LAYOUT_AddChild, IIntuition->NewObject(LayoutClass, NULL,
@@ -305,54 +322,283 @@ static Object* CreateLayout()
     return layout;
 }
 
-static Object* CreateWindow()
+static Object*
+CreateMenu()
 {
-    Object* window = IIntuition->NewObject(WindowClass, NULL,
+    dprintf("\n");
+
+    Object* menuObject = IIntuition->NewObject(NULL, "menuclass",
+        MA_Type, T_ROOT,
+
+        // Main
+        MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
+            MA_Type, T_MENU,
+            MA_Label, "Main",
+            MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
+                MA_Type, T_ITEM,
+                MA_Label, "Iconify",
+                MA_ID, MID_Iconify,
+                TAG_DONE),
+            MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
+                MA_Type, T_ITEM,
+                MA_Label, "About",
+                MA_ID, MID_About,
+                TAG_DONE),
+            MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
+                MA_Type, T_ITEM,
+                MA_Label, "Quit",
+                MA_ID, MID_Quit,
+                TAG_DONE),
+            TAG_DONE),
+         TAG_DONE); // Main
+
+    if (!menuObject) {
+        dprintf("Failed to create menu object\n");
+    }
+
+    return menuObject;
+}
+
+static char*
+GetApplicationName()
+{
+    dprintf("\n");
+
+    static char pathBuffer[MAX_PATH_LEN];
+
+    if (!IDOS->GetCliProgramName(pathBuffer, sizeof(pathBuffer) - 1)) {
+        //dprintf("Failed to get CLI program name, checking task node");
+        snprintf(pathBuffer, sizeof(pathBuffer), "%s", ((struct Node *)IExec->FindTask(NULL))->ln_Name);
+    }
+
+    dprintf("Application name '%s'\n", pathBuffer);
+
+    return pathBuffer;
+}
+
+static struct DiskObject*
+MyGetDiskObject()
+{
+    dprintf("\n");
+
+    BPTR oldDir = IDOS->SetCurrentDir(IDOS->GetProgramDir());
+    struct DiskObject* diskObject = IIcon->GetDiskObject(GetApplicationName());
+
+    if (diskObject) {
+        diskObject->do_CurrentX = NO_ICON_POSITION;
+        diskObject->do_CurrentY = NO_ICON_POSITION;
+    }
+
+    IDOS->SetCurrentDir(oldDir);
+
+    return diskObject;
+}
+
+static Object*
+CreateWindow(Object* menuObject, struct MsgPort* appPort)
+{
+    dprintf("menu %p, appPort %p\n", menuObject, appPort);
+
+    Object* w = IIntuition->NewObject(WindowClass, NULL,
         WA_Activate, TRUE,
         WA_Title, version,
         WA_ScreenTitle, version,
-        //WA_PubScreen, screen,
-        //WA_BackFill, LAYERS_NOBACKFILL,
-        //WA_InnerWidth, 200,
-        //WA_InnerHeight, 200,
-        //WA_Flags, WFLG_REPORTMOUSE,
         WA_IDCMP, IDCMP_CLOSEWINDOW | IDCMP_RAWKEY | IDCMP_MENUPICK,
         WA_CloseGadget, TRUE,
         WA_DragBar, TRUE,
         WA_DepthGadget, TRUE,
         WA_SizeGadget, TRUE,
-        //WA_MenuStrip, menuObject,
+        WA_MenuStrip, menuObject,
         WINDOW_IconifyGadget, TRUE,
-        //WINDOW_Icon, MyGetDiskObject(),
+        WINDOW_Icon, MyGetDiskObject(),
         WINDOW_IconTitle, name,
-        //WINDOW_AppPort, appPort, // Iconification needs it
-        //WINDOW_IDCMPHook, &idcmpHook,
-        //WINDOW_IDCMPHookBits, IDCMP_MOUSEBUTTONS | IDCMP_MOUSEMOVE,
+        WINDOW_AppPort, appPort, // Iconification needs it
         WINDOW_Position, WPOS_CENTERSCREEN,
         WINDOW_Layout, CreateLayout(),
+        WINDOW_GadgetHelp, TRUE,
         TAG_DONE);
 
-    if (!window) {
+    if (!w) {
         dprintf("Failed to create window object\n");
     }
 
-    return window;
+    return w;
 }
 
-int main(int argc, char** argv)
+static void
+HandleIconify(Object* windowObject)
+{
+    dprintf("\n");
+    window = NULL;
+	IIntuition->IDoMethod(windowObject, WM_ICONIFY);
+}
+
+static void
+HandleUniconify(Object* windowObject)
+{
+    dprintf("\n");
+
+    window = (struct Window *)IIntuition->IDoMethod(windowObject, WM_OPEN);
+
+    if (!window) {
+        dprintf("Failed to reopen window\n");
+    }
+}
+
+static void
+ShowAboutWindow()
+{
+    dprintf("\n");
+
+    Object* object = IIntuition->NewObject(RequesterClass, NULL,
+        REQ_TitleText, "About " NAME,
+        REQ_BodyText, NAME " " VERSION " (" __AMIGADATE__ ")\nWritten by Juha Niemimaki",
+        REQ_GadgetText, "_Ok",
+        REQ_Image, REQIMAGE_INFO,
+        REQ_TimeOutSecs, 10,
+        TAG_DONE);
+
+    if (object) {
+        IIntuition->SetWindowPointer(window, WA_BusyPointer, TRUE, TAG_DONE);
+        IIntuition->IDoMethod(object, RM_OPENREQ, NULL, window, NULL);
+        IIntuition->SetWindowPointer(window, TAG_DONE);
+        IIntuition->DisposeObject(object);
+    } else {
+        dprintf("Failed to create requester object\n");
+    }
+}
+
+static BOOL
+HandleMenuPick(Object* windowObject)
+{
+    BOOL running = TRUE;
+
+    uint32 id = NO_MENU_ID;
+
+    while (window && (id = IIntuition->IDoMethod((Object *)window->MenuStrip, MM_NEXTSELECT, 0, id)) != NO_MENU_ID) {
+        dprintf("menu id %lu\n", id);
+        switch(id) {
+            case MID_About:
+                ShowAboutWindow();
+                break;
+            case MID_Quit:
+                running = FALSE;
+                break;
+            case MID_Iconify:
+                HandleIconify(windowObject);
+                break;
+            default:
+                dprintf("Unknown menu item %d\n", id);
+                break;
+         }
+    }
+
+    return running;
+}
+
+static void
+HandleGadgets(enum EGadgetID gid)
+{
+    dprintf("gid %d\n", gid);
+
+    switch (gid) {
+        case GID_DriverList:
+            break;
+        case GID_VsyncList:
+            break;
+        case GID_BatchingList:
+            break;
+        case GID_SaveButton:
+            break;
+        case GID_UseButton:
+            break;
+        case GID_ResetButton:
+            break;
+        default:
+            dprintf("Unhandled gadget %d\n", gid);
+            break;
+    }
+}
+
+static BOOL
+HandleEvents(Object* windowObject)
+{
+    BOOL running = TRUE;
+
+    uint32 winSig = 0;
+    if (!IIntuition->GetAttr(WINDOW_SigMask, windowObject, &winSig)) {
+        dprintf("GetAttr failed\n");
+    }
+
+    const ULONG signals = IExec->Wait(winSig | SIGBREAKF_CTRL_C);
+    //dprintf("signals %lu\n", signals);
+    if (signals & SIGBREAKF_CTRL_C) {
+        dprintf("Control-C\n");
+        running = FALSE;
+    }
+
+	uint32 result;
+	int16 code = 0;
+
+    while ((result = IIntuition->IDoMethod(windowObject, WM_HANDLEINPUT, &code)) != WMHI_LASTMSG) {
+        switch (result & WMHI_CLASSMASK) {
+            case WMHI_CLOSEWINDOW:
+                running = FALSE;
+            	break;
+            case WMHI_ICONIFY:
+            	HandleIconify(windowObject);
+            	break;
+            case WMHI_UNICONIFY:
+            	HandleUniconify(windowObject);
+            	break;
+            case WMHI_MENUPICK:
+            	if (!HandleMenuPick(windowObject)) {
+                    running = FALSE;
+                }
+            	break;
+            case WMHI_GADGETUP:
+                HandleGadgets(result & WMHI_GADGETMASK);
+                break;
+        	default:
+        		//dprintf("Unhandled event result %lx, code %x\n", result, code);
+        		break;
+        }
+    }
+
+    return running;
+}
+
+int
+main(int argc, char** argv)
 {
     if (OpenClasses()) {
-        Object* windowObject = CreateWindow();
+        struct MsgPort* appPort = IExec->AllocSysObjectTags(ASOT_PORT, TAG_DONE);
+
+        Object* menuObject = CreateMenu();
+        Object* windowObject = CreateWindow(menuObject, appPort);
+
         if (windowObject) {
-            struct Window* window = (struct Window *)IIntuition->IDoMethod(windowObject, WM_OPEN);
+            window = (struct Window *)IIntuition->IDoMethod(windowObject, WM_OPEN);
 
             if (window) {
-                IDOS->Delay(5 * 50);
+                do {
+                } while (HandleEvents(windowObject));
             } else {
                 dprintf("Failed to open window\n");
             }
 
             IIntuition->DisposeObject(windowObject);
+            windowObject = NULL;
+        }
+
+        if (menuObject) {
+            IIntuition->DisposeObject(menuObject);
+            menuObject = NULL;
+        }
+
+        if (appPort) {
+            IExec->FreeSysObject(ASOT_PORT, appPort);
+            appPort = NULL;
         }
 
         PurgeList(driverList);
