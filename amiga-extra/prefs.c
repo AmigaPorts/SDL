@@ -1,3 +1,6 @@
+#define DEBUG
+#include "../src/main/amigaos4/SDL_os4debug.h"
+
 #include <proto/dos.h>
 #include <proto/exec.h>
 #include <proto/intuition.h>
@@ -66,17 +69,19 @@ static BOOL OpenClasses()
 {
     const int version = 53;
 
+    dprintf("%s\n", __func__);
+
     WindowBase = IIntuition->OpenClass("window.class", version, &WindowClass);
-    if (!WindowBase) puts("Failed to open window.class");
+    if (!WindowBase) dprintf("Failed to open window.class\n");
 
     RequesterBase = IIntuition->OpenClass("requester.class", version, &RequesterClass);
-    if (!RequesterBase) puts("Failed to open requester.class");
+    if (!RequesterBase) dprintf("Failed to open requester.class\n");
 
     ButtonBase = IIntuition->OpenClass("gadgets/button.gadget", version, &ButtonClass);
-    if (!ButtonBase) puts("Failed to open button.gadget");
+    if (!ButtonBase) dprintf("Failed to open button.gadget\n");
 
     LayoutBase = IIntuition->OpenClass("gadgets/layout.gadget", version, &LayoutClass);
-    if (!LayoutBase) puts("Failed to open layout.gadget");
+    if (!LayoutBase) dprintf("Failed to open layout.gadget\n");
 
 //    classes.SpaceBase = IIntuition->OpenClass("gadgets/space.gadget", version, &classes.SpaceClass);
 //    if (!classes.SpaceBase) throw std::runtime_error("Failed to open space.gadget");
@@ -85,9 +90,13 @@ static BOOL OpenClasses()
 //    if (!classes.CheckBoxBase) throw std::runtime_error("Failed to open checkbox.gadget");
 
     RadioButtonBase = (struct Library *)IIntuition->OpenClass("gadgets/radiobutton.gadget", version, &RadioButtonClass);
-    if (!RadioButtonBase) puts("Failed to open radiobutton.gadget");
+    if (!RadioButtonBase) dprintf("Failed to open radiobutton.gadget\n");
 
     IRadioButton = (struct RadioButtonIFace *)IExec->GetInterface((struct Library *)RadioButtonBase, "main", 1, NULL);
+
+    if (!IRadioButton) {
+        dprintf("Failed to get RadioButtonIFace\n");
+    }
 
     return WindowBase &&
            RequesterBase &&
@@ -99,6 +108,8 @@ static BOOL OpenClasses()
 
 static void CloseClasses()
 {
+    dprintf("%s\n", __func__);
+
     if (IRadioButton) {
         IExec->DropInterface((struct Interface *)(IRadioButton));
     }
@@ -114,10 +125,12 @@ static void CloseClasses()
 
 struct List* CreateList()
 {
+    dprintf("%s\n", __func__);
+
     struct List* list = (struct List *)IExec->AllocSysObjectTags(ASOT_LIST, TAG_DONE);
 
     if (!list) {
-        puts("Failed to allocate list");
+        dprintf("Failed to allocate list\n");
     }
 
     return list;
@@ -125,10 +138,12 @@ struct List* CreateList()
 
 void AllocNode(struct List* list, const char* const name)
 {
+    dprintf("%s '%s'\n", __func__, name);
+
     struct Node* node = IRadioButton->AllocRadioButtonNode(0, RBNA_Label, name, TAG_DONE);
 
     if (!node) {
-        puts("Failed to allocate list node");
+        dprintf("Failed to allocate list node\n");
         return;
     }
 
@@ -137,6 +152,8 @@ void AllocNode(struct List* list, const char* const name)
 
 static void PurgeList(struct List* list)
 {
+    dprintf("%s\n", __func__);
+
     if (list) {
         struct Node* node;
 
@@ -150,6 +167,8 @@ static void PurgeList(struct List* list)
 
 static Object* CreateRadioButtons(enum EGadgetID gid, struct List* list, const char* const name)
 {
+    dprintf("%s '%s'\n", __func__, name);
+
     Object* rb = IIntuition->NewObject(RadioButtonClass, NULL,
         GA_ID, gid,
         GA_RelVerify, TRUE,
@@ -159,7 +178,7 @@ static Object* CreateRadioButtons(enum EGadgetID gid, struct List* list, const c
         TAG_DONE);
 
     if (!rb) {
-        printf("Failed to create %s buttons", name);
+        dprintf("Failed to create %s buttons\n", name);
     }
 
     return rb;
@@ -221,7 +240,7 @@ static Object* CreateButton(enum EGadgetID gid, const char* const name)
         TAG_DONE);
 
     if (!b) {
-        printf("Failed to create %s button", name);
+        dprintf("Failed to create '%s' button\n", name);
     }
 
     return b;
@@ -280,7 +299,7 @@ static Object* CreateLayout()
         TAG_DONE); // vertical main layout
 
     if (!layout) {
-        puts("Failed to create layout object");
+        dprintf("Failed to create layout object\n");
     }
 
     return layout;
@@ -314,7 +333,7 @@ static Object* CreateWindow()
         TAG_DONE);
 
     if (!window) {
-        puts("Failed to create window object");
+        dprintf("Failed to create window object\n");
     }
 
     return window;
@@ -322,8 +341,6 @@ static Object* CreateWindow()
 
 int main(int argc, char** argv)
 {
-    puts("main");
-
     if (OpenClasses()) {
         Object* windowObject = CreateWindow();
         if (windowObject) {
@@ -332,7 +349,7 @@ int main(int argc, char** argv)
             if (window) {
                 IDOS->Delay(5 * 50);
             } else {
-                puts("Failed to open window");
+                dprintf("Failed to open window\n");
             }
 
             IIntuition->DisposeObject(windowObject);
@@ -343,9 +360,8 @@ int main(int argc, char** argv)
         PurgeList(batchingList);
     }
 
-    puts("close");
-
     CloseClasses();
 
     return 0;
 }
+
