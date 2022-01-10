@@ -18,6 +18,7 @@
 #include <gadgets/radiobutton.h>
 
 #include <stdio.h>
+#include <string.h>
 
 /*
 TODO:
@@ -27,9 +28,9 @@ TODO:
 #define NAME "SDL2 Prefs"
 #define VERSION "1.0"
 #define MAX_PATH_LEN 1024
+#define MAX_VARIABLE_NAME_LEN 32
 
-static const char* const version = NAME;
-static const char* const fileVersion __attribute__((used)) = "$VER: " NAME " " VERSION " (" __AMIGADATE__ ")";
+static const char* const versingString __attribute__((used)) = "$VER: " NAME " " VERSION " (" __AMIGADATE__ ")";
 static const char* const name = NAME;
 
 static struct ClassLibrary* WindowBase;
@@ -67,6 +68,121 @@ static struct List* vsyncList;
 static struct List* batchingList;
 
 static struct Window* window;
+
+struct Variable
+{
+    int index;
+    const char* const name;
+    char value[MAX_VARIABLE_NAME_LEN];
+};
+
+static struct Variable driverVar = { 0, "SDL_RENDER_DRIVER", "" };
+static struct Variable vsyncVar = { 0, "SDL_RENDER_VSYNC", "" };
+static struct Variable batchingVar = { 0, "SDL_RENDER_BATCHING", "" };
+
+struct OptionName
+{
+    const char* const displayName;
+    const char* const envName;
+};
+
+static const struct OptionName driverNames[] =
+{
+    { "default", NULL },
+    { "compositing (default)", "compositing" },
+    { "opengl", "opengl" },
+    { "opengles2", "opengles2" },
+    { "software", "software" },
+    { NULL, NULL }
+};
+
+static const struct OptionName vsyncNames[] =
+{
+    { "default", NULL },
+    { "enabled", "1" },
+    { "disabled", "0" },
+    { NULL, NULL }
+};
+
+static const struct OptionName batchingNames[] =
+{
+    { "default", NULL },
+    { "enabled", "1" },
+    { "disabled", "0" },
+    { NULL, NULL }
+};
+
+static char*
+GetVariable(const char* const name)
+{
+    static char buffer[MAX_VARIABLE_NAME_LEN];
+    buffer[0] = '\0';
+
+    const int32 len = IDOS->GetVar(name, buffer, sizeof(buffer), GVF_GLOBAL_ONLY);
+
+    if (len > 0) {
+        dprintf("value '%s', len %ld\n", buffer, len);
+    } else {
+        dprintf("len %ld, IoErr %ld\n", len, IDOS->IoErr());
+    }
+
+    return buffer;
+}
+
+static void
+SetVariable(const char* const name, const char* const value)
+{
+    const int32 success = IDOS->SetVar(name, value, -1, LV_VAR | GVF_GLOBAL_ONLY);
+
+    dprintf("name '%s', value '%s', success %ld\n", name, value, success);
+}
+
+static void
+SaveVariable(const char* const name, const char* const value)
+{
+    const int32 success = IDOS->SetVar(name, value, -1, LV_VAR | GVF_GLOBAL_ONLY | GVF_SAVE_VAR);
+
+    dprintf("name '%s', value '%s', success %ld\n", name, value, success);
+}
+
+static void
+DeleteVariable(const char* const name)
+{
+    const int32 success = IDOS->DeleteVar(name, LV_VAR | GVF_GLOBAL_ONLY | GVF_SAVE_VAR);
+    const int32 success2 = 0;//IDOS->DeleteVar(name, LV_VAR | GVF_SAVE_VAR);
+
+    dprintf("name '%s', success %d, success2 %d\n", name, success, success2);
+}
+
+static void
+LoadVariable(struct Variable* var, const struct OptionName names[])
+{
+    const char* const value = GetVariable(var->name);
+
+    snprintf(var->value, sizeof(var->value), "%s", value);
+    var->index = 0;
+
+    if (strlen(var->value) > 0) {
+        const char* cmp;
+        int i = 1;
+        while ((cmp = names[i].envName)) {
+            if (strcmp(var->value, cmp) == 0) {
+                dprintf("Value match '%s', index %d\n", cmp, i);
+                var->index = i;
+                break;
+            }
+            i++;
+        }
+    }
+}
+
+static void
+LoadVariables()
+{
+    LoadVariable(&driverVar, driverNames);
+    LoadVariable(&vsyncVar, vsyncNames);
+    LoadVariable(&batchingVar, batchingNames);
+}
 
 static BOOL
 OpenClasses()
@@ -166,7 +282,7 @@ PurgeList(struct List* list)
 }
 
 static Object*
-CreateRadioButtons(enum EGadgetID gid, struct List* list, const char* const name, const char* const hint)
+CreateRadioButtons(enum EGadgetID gid, struct List* list, const char* const name, const char* const hint, int selected)
 {
     dprintf("gid %d, list %p, name '%s', hint '%s'\n", gid, list, name, hint);
 
@@ -176,7 +292,7 @@ CreateRadioButtons(enum EGadgetID gid, struct List* list, const char* const name
         GA_HintInfo, hint,
         RADIOBUTTON_Labels, list,
         RADIOBUTTON_Spacing, 4,
-        RADIOBUTTON_Selected, 0,
+        RADIOBUTTON_Selected, selected,
         TAG_DONE);
 
     if (!rb) {
@@ -184,6 +300,17 @@ CreateRadioButtons(enum EGadgetID gid, struct List* list, const char* const name
     }
 
     return rb;
+}
+
+static void
+PopulateList(struct List* list, const struct OptionName names[])
+{
+    const char* name;
+    int i = 0;
+
+    while ((name = names[i++].displayName)) {
+        AllocNode(list, name);
+    }
 }
 
 static Object*
@@ -195,13 +322,10 @@ CreateDriverButtons()
         return NULL;
     }
 
-    AllocNode(driverList, "default");
-    AllocNode(driverList, "compositing (default)");
-    AllocNode(driverList, "opengl");
-    AllocNode(driverList, "opengles2");
-    AllocNode(driverList, "software");
-
-    return CreateRadioButtons(GID_DriverList, driverList, "driver", "Select driver implementation. Available features may vary");
+    PopulateList(driverList, driverNames);
+    return CreateRadioButtons(GID_DriverList, driverList, "driver",
+        "Select driver implementation. Available features may vary",
+        driverVar.index);
 }
 
 static Object*
@@ -213,11 +337,9 @@ CreateVsyncButtons()
         return NULL;
     }
 
-    AllocNode(vsyncList, "default");
-    AllocNode(vsyncList, "enabled");
-    AllocNode(vsyncList, "disabled (default)");
-
-    return CreateRadioButtons(GID_VsyncList, vsyncList, "vsync", "Synchronize display update to monitor refresh rate");
+    PopulateList(vsyncList, vsyncNames);
+    return CreateRadioButtons(GID_VsyncList, vsyncList, "vsync",
+        "Synchronize display update to monitor refresh rate", vsyncVar.index);
 }
 
 static Object*
@@ -229,13 +351,10 @@ CreateBatchingButtons()
         return NULL;
     }
 
-    AllocNode(batchingList, "default");
-    AllocNode(batchingList, "enabled");
-    AllocNode(batchingList, "disabled");
-
+    PopulateList(batchingList, batchingNames);
     return CreateRadioButtons(GID_BatchingList, batchingList, "batching",
         "Batching may improve drawing speed if application does many operations per frame "
-        "and SDL2 is able to combine those");
+        "and SDL2 is able to combine those", batchingVar.index);
 }
 
 static Object*
@@ -401,8 +520,8 @@ CreateWindow(Object* menuObject, struct MsgPort* appPort)
 
     Object* w = IIntuition->NewObject(WindowClass, NULL,
         WA_Activate, TRUE,
-        WA_Title, version,
-        WA_ScreenTitle, version,
+        WA_Title, name,
+        WA_ScreenTitle, name,
         WA_IDCMP, IDCMP_CLOSEWINDOW | IDCMP_RAWKEY | IDCMP_MENUPICK,
         WA_CloseGadget, TRUE,
         WA_DragBar, TRUE,
@@ -571,6 +690,21 @@ HandleEvents(Object* windowObject)
 int
 main(int argc, char** argv)
 {
+    LoadVariables();
+
+    //SetVariable("SDL_RENDER_DRIVER", "abcdef");
+    //SaveVariable("SDL_RENDER_SAVE", "save");
+
+    //GetVariable("SDL_RENDER_DRIVER");
+    //GetVariable("SDL_RENDER_save");
+    //GetVariable("SDL_RENDER_VSYNC");
+    //GetVariable("SDL_RENDER_BATCHING");
+
+    //DeleteVariable("SDL_RENDER_DRIVER");
+    //DeleteVariable("SDL_RENDER_VSYNC");
+    //DeleteVariable("SDL_RENDER_BATCHING");
+    //DeleteVariable("SDL_RENDER_SAVE");
+
     if (OpenClasses()) {
         struct MsgPort* appPort = IExec->AllocSysObjectTags(ASOT_PORT, TAG_DONE);
 
