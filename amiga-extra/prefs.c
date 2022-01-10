@@ -20,11 +20,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/*
-TODO:
-- load, save, reset variables
-*/
-
 #define NAME "SDL2 Prefs"
 #define VERSION "1.0"
 #define MAX_PATH_LEN 1024
@@ -74,11 +69,12 @@ struct Variable
     int index;
     const char* const name;
     char value[MAX_VARIABLE_NAME_LEN];
+    Object* object;
 };
 
-static struct Variable driverVar = { 0, "SDL_RENDER_DRIVER", "" };
-static struct Variable vsyncVar = { 0, "SDL_RENDER_VSYNC", "" };
-static struct Variable batchingVar = { 0, "SDL_RENDER_BATCHING", "" };
+static struct Variable driverVar = { 0, "SDL_RENDER_DRIVER", "", NULL };
+static struct Variable vsyncVar = { 0, "SDL_RENDER_VSYNC", "", NULL };
+static struct Variable batchingVar = { 0, "SDL_RENDER_BATCHING", "", NULL };
 
 struct OptionName
 {
@@ -130,28 +126,19 @@ GetVariable(const char* const name)
 }
 
 static void
-SetVariable(const char* const name, const char* const value)
+SaveVariable(const char* const name, const char* const value, uint32 control)
 {
-    const int32 success = IDOS->SetVar(name, value, -1, LV_VAR | GVF_GLOBAL_ONLY);
+    const int32 success = IDOS->SetVar(name, value, -1, LV_VAR | GVF_GLOBAL_ONLY | control);
 
     dprintf("name '%s', value '%s', success %ld\n", name, value, success);
 }
 
 static void
-SaveVariable(const char* const name, const char* const value)
+DeleteVariable(const char* const name, uint32 control)
 {
-    const int32 success = IDOS->SetVar(name, value, -1, LV_VAR | GVF_GLOBAL_ONLY | GVF_SAVE_VAR);
+    const int32 success = IDOS->DeleteVar(name, LV_VAR | GVF_GLOBAL_ONLY | control);
 
-    dprintf("name '%s', value '%s', success %ld\n", name, value, success);
-}
-
-static void
-DeleteVariable(const char* const name)
-{
-    const int32 success = IDOS->DeleteVar(name, LV_VAR | GVF_GLOBAL_ONLY | GVF_SAVE_VAR);
-    const int32 success2 = 0;//IDOS->DeleteVar(name, LV_VAR | GVF_SAVE_VAR);
-
-    dprintf("name '%s', success %d, success2 %d\n", name, success, success2);
+    dprintf("name '%s', success %d\n", name, success);
 }
 
 static void
@@ -182,6 +169,42 @@ LoadVariables()
     LoadVariable(&driverVar, driverNames);
     LoadVariable(&vsyncVar, vsyncNames);
     LoadVariable(&batchingVar, batchingNames);
+}
+
+static void
+SetOrDeleteVariable(const struct Variable* const variable, const struct OptionName names[])
+{
+    if (variable->index > 0) {
+        SaveVariable(variable->name, names[variable->index].envName, 0);
+    } else {
+        DeleteVariable(variable->name, 0);
+    }
+}
+
+static void
+SaveOrDeleteVariable(const struct Variable* const variable, const struct OptionName names[])
+{
+    if (variable->index > 0) {
+        SaveVariable(variable->name, names[variable->index].envName, GVF_SAVE_VAR);
+    } else {
+        DeleteVariable(variable->name, GVF_SAVE_VAR);
+    }
+}
+
+static void
+SetVariables()
+{
+    SetOrDeleteVariable(&driverVar, driverNames);
+    SetOrDeleteVariable(&vsyncVar, vsyncNames);
+    SetOrDeleteVariable(&batchingVar, batchingNames);
+}
+
+static void
+SaveVariables()
+{
+    SaveOrDeleteVariable(&driverVar, driverNames);
+    SaveOrDeleteVariable(&vsyncVar, vsyncNames);
+    SaveOrDeleteVariable(&batchingVar, batchingNames);
 }
 
 static BOOL
@@ -323,9 +346,11 @@ CreateDriverButtons()
     }
 
     PopulateList(driverList, driverNames);
-    return CreateRadioButtons(GID_DriverList, driverList, "driver",
+    driverVar.object =  CreateRadioButtons(GID_DriverList, driverList, "driver",
         "Select driver implementation. Available features may vary",
         driverVar.index);
+
+    return driverVar.object;
 }
 
 static Object*
@@ -338,8 +363,10 @@ CreateVsyncButtons()
     }
 
     PopulateList(vsyncList, vsyncNames);
-    return CreateRadioButtons(GID_VsyncList, vsyncList, "vsync",
+    vsyncVar.object = CreateRadioButtons(GID_VsyncList, vsyncList, "vsync",
         "Synchronize display update to monitor refresh rate", vsyncVar.index);
+
+    return vsyncVar.object;
 }
 
 static Object*
@@ -352,9 +379,11 @@ CreateBatchingButtons()
     }
 
     PopulateList(batchingList, batchingNames);
-    return CreateRadioButtons(GID_BatchingList, batchingList, "batching",
+    batchingVar.object = CreateRadioButtons(GID_BatchingList, batchingList, "batching",
         "Batching may improve drawing speed if application does many operations per frame "
         "and SDL2 is able to combine those", batchingVar.index);
+
+    return batchingVar.object;
 }
 
 static Object*
@@ -615,6 +644,26 @@ HandleMenuPick(Object* windowObject)
     return running;
 }
 
+static uint32
+GetSelection(Object* object)
+{
+    uint32 selected = 0;
+
+    const ULONG result = IIntuition->GetAttrs(object, RADIOBUTTON_Selected, &selected, TAG_DONE);
+
+    if (!result) {
+        dprintf("Failed to get radiobutton selection\n");
+    }
+
+    return selected;
+}
+
+static void
+ResetSelection(Object* object)
+{
+    IIntuition->RefreshSetGadgetAttrs((struct Gadget *)object, window, NULL, RADIOBUTTON_Selected, 0, TAG_DONE);
+}
+
 static void
 HandleGadgets(enum EGadgetID gid)
 {
@@ -622,16 +671,25 @@ HandleGadgets(enum EGadgetID gid)
 
     switch (gid) {
         case GID_DriverList:
+            driverVar.index = GetSelection(driverVar.object);
             break;
         case GID_VsyncList:
+            vsyncVar.index = GetSelection(vsyncVar.object);
             break;
         case GID_BatchingList:
+            batchingVar.index = GetSelection(batchingVar.object);
             break;
         case GID_SaveButton:
+            SaveVariables();
             break;
         case GID_UseButton:
+            SetVariables();
             break;
         case GID_ResetButton:
+            driverVar.index = vsyncVar.index = batchingVar.index = 0;
+            ResetSelection(driverVar.object);
+            ResetSelection(vsyncVar.object);
+            ResetSelection(batchingVar.object);
             break;
         default:
             dprintf("Unhandled gadget %d\n", gid);
@@ -691,19 +749,6 @@ int
 main(int argc, char** argv)
 {
     LoadVariables();
-
-    //SetVariable("SDL_RENDER_DRIVER", "abcdef");
-    //SaveVariable("SDL_RENDER_SAVE", "save");
-
-    //GetVariable("SDL_RENDER_DRIVER");
-    //GetVariable("SDL_RENDER_save");
-    //GetVariable("SDL_RENDER_VSYNC");
-    //GetVariable("SDL_RENDER_BATCHING");
-
-    //DeleteVariable("SDL_RENDER_DRIVER");
-    //DeleteVariable("SDL_RENDER_VSYNC");
-    //DeleteVariable("SDL_RENDER_BATCHING");
-    //DeleteVariable("SDL_RENDER_SAVE");
 
     if (OpenClasses()) {
         struct MsgPort* appPort = IExec->AllocSysObjectTags(ASOT_PORT, TAG_DONE);
