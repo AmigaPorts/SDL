@@ -49,6 +49,7 @@ enum EGadgetID
     GID_SaveButton,
     GID_UseButton,
     GID_ResetButton,
+    GID_CancelButton
 };
 
 enum EMenuID
@@ -405,11 +406,16 @@ CreateButton(enum EGadgetID gid, const char* const name, const char* const hint)
     return b;
 }
 
+#if 0
+// When variable is stored in "default" (non-existing) state, it would be
+// deleted from ENV. But if it's still in ENVARC, it will be reload on GetVar()
+// so it would probably be just confusing?
 static Object*
 CreateUseButton()
 {
     return CreateButton(GID_UseButton, "_Use", "Store settings to ENV:");
 }
+#endif
 
 static Object*
 CreateSaveButton()
@@ -420,7 +426,13 @@ CreateSaveButton()
 static Object*
 CreateResetButton()
 {
-    return CreateButton(GID_ResetButton, "_Reset", "Reset GUI to defaults");
+    return CreateButton(GID_ResetButton, "_Reset", "Reset GUI to default values");
+}
+
+static Object*
+CreateCancelButton()
+{
+    return CreateButton(GID_CancelButton, "_Cancel", "Exit program");
 }
 
 static Object*
@@ -457,9 +469,10 @@ CreateLayout()
             LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
             LAYOUT_BevelStyle, BVS_GROUP,
             LAYOUT_Label, "Settings",
-            LAYOUT_AddChild, CreateUseButton(),
+            //LAYOUT_AddChild, CreateUseButton(),
             LAYOUT_AddChild, CreateSaveButton(),
             LAYOUT_AddChild, CreateResetButton(),
+            LAYOUT_AddChild, CreateCancelButton(),
             TAG_DONE), // horizontal layout
         TAG_DONE); // vertical main layout
 
@@ -664,9 +677,11 @@ ResetSelection(Object* object)
     IIntuition->RefreshSetGadgetAttrs((struct Gadget *)object, window, NULL, RADIOBUTTON_Selected, 0, TAG_DONE);
 }
 
-static void
+static BOOL
 HandleGadgets(enum EGadgetID gid)
 {
+    BOOL running = TRUE;
+
     dprintf("gid %d\n", gid);
 
     switch (gid) {
@@ -691,10 +706,15 @@ HandleGadgets(enum EGadgetID gid)
             ResetSelection(vsyncVar.object);
             ResetSelection(batchingVar.object);
             break;
+        case GID_CancelButton:
+            running = FALSE;
+            break;
         default:
             dprintf("Unhandled gadget %d\n", gid);
             break;
     }
+
+    return running;
 }
 
 static BOOL
@@ -734,7 +754,9 @@ HandleEvents(Object* windowObject)
                 }
             	break;
             case WMHI_GADGETUP:
-                HandleGadgets(result & WMHI_GADGETMASK);
+                if (!HandleGadgets(result & WMHI_GADGETMASK)) {
+                    running = FALSE;
+                }
                 break;
         	default:
         		//dprintf("Unhandled event result %lx, code %x\n", result, code);
