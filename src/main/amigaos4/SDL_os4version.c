@@ -20,6 +20,6 @@
 */
 
 #ifdef __AMIGADATE__
-static const char* const version __attribute__ ((used)) = "\0$VER: libSDL2.so 0.20 (" __AMIGADATE__ ")\0";
+static const char* const version __attribute__ ((used)) = "\0$VER: libSDL2.so 0.22 (" __AMIGADATE__ ")\0";
 #endif
 
