@@ -48,6 +48,7 @@
 #endif
 #endif
 
+#include "SDL_platform.h"
 #include "SDL_thread.h"
 #include "../SDL_thread_c.h"
 #include "../SDL_systhread.h"
@@ -58,7 +59,6 @@
 #ifdef __HAIKU__
 #include <kernel/OS.h>
 #endif
-
 
 #ifndef __NACL__
 /* List of signals to mask in the subthreads */

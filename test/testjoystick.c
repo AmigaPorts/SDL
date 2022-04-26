@@ -314,7 +314,7 @@ main(int argc, char *argv[])
     SDL_DestroyRenderer(screen);
     SDL_DestroyWindow(window);
 
-    SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK);
+    SDL_Quit();
 
     return 0;
 }
