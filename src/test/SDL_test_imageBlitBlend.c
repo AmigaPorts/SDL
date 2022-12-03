@@ -22,6 +22,8 @@
 
 #include "SDL_test.h"
 
+extern SDL_Surface* SDLTest_ConvertToRGBA(SDL_Surface * surface);
+
 /* GIMP RGB C-Source image dump (alpha.c) */
 
 static const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendAdd = {
@@ -587,10 +589,10 @@ SDL_Surface *SDLTest_ImageBlitBlendAdd()
         SDLTest_imageBlitBlendAdd.bytes_per_pixel * 8,
         SDLTest_imageBlitBlendAdd.width * SDLTest_imageBlitBlendAdd.bytes_per_pixel,
 #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
-         0xff000000, /* Red bit mask. */
-         0x00ff0000, /* Green bit mask. */
-         0x0000ff00, /* Blue bit mask. */
-         0x000000ff  /* Alpha bit mask. */
+         0x00ff0000, /* Red bit mask. */
+         0x0000ff00, /* Green bit mask. */
+         0x000000ff, /* Blue bit mask. */
+         0xff000000  /* Alpha bit mask. */
 #else
          0x000000ff, /* Red bit mask. */
          0x0000ff00, /* Green bit mask. */
@@ -598,7 +600,8 @@ SDL_Surface *SDLTest_ImageBlitBlendAdd()
          0xff000000  /* Alpha bit mask. */
 #endif
          );
-   return surface;
+
+   return SDLTest_ConvertToRGBA(surface);
 }
 
 static const SDLTest_SurfaceImage_t SDLTest_imageBlitBlend = {
@@ -1117,10 +1120,10 @@ SDL_Surface *SDLTest_ImageBlitBlend()
         SDLTest_imageBlitBlend.bytes_per_pixel * 8,
         SDLTest_imageBlitBlend.width * SDLTest_imageBlitBlend.bytes_per_pixel,
 #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
-         0xff000000, /* Red bit mask. */
-         0x00ff0000, /* Green bit mask. */
-         0x0000ff00, /* Blue bit mask. */
-         0x000000ff  /* Alpha bit mask. */
+         0x00ff0000, /* Red bit mask. */
+         0x0000ff00, /* Green bit mask. */
+         0x000000ff, /* Blue bit mask. */
+         0xff000000  /* Alpha bit mask. */
 #else
          0x000000ff, /* Red bit mask. */
          0x0000ff00, /* Green bit mask. */
@@ -1128,7 +1131,7 @@ SDL_Surface *SDLTest_ImageBlitBlend()
          0xff000000  /* Alpha bit mask. */
 #endif
          );
-   return surface;
+   return SDLTest_ConvertToRGBA(surface);
 }
 
 static const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendMod = {
@@ -1547,10 +1550,10 @@ SDL_Surface *SDLTest_ImageBlitBlendMod()
         SDLTest_imageBlitBlendMod.bytes_per_pixel * 8,
         SDLTest_imageBlitBlendMod.width * SDLTest_imageBlitBlendMod.bytes_per_pixel,
 #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
-         0xff000000, /* Red bit mask. */
-         0x00ff0000, /* Green bit mask. */
-         0x0000ff00, /* Blue bit mask. */
-         0x000000ff  /* Alpha bit mask. */
+         0x00ff0000, /* Red bit mask. */
+         0x0000ff00, /* Green bit mask. */
+         0x000000ff, /* Blue bit mask. */
+         0xff000000  /* Alpha bit mask. */
 #else
          0x000000ff, /* Red bit mask. */
          0x0000ff00, /* Green bit mask. */
@@ -1558,7 +1561,7 @@ SDL_Surface *SDLTest_ImageBlitBlendMod()
          0xff000000  /* Alpha bit mask. */
 #endif
          );
-   return surface;
+   return SDLTest_ConvertToRGBA(surface);
 }
 
 static const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendNone = {
@@ -2360,10 +2363,10 @@ SDL_Surface *SDLTest_ImageBlitBlendNone()
         SDLTest_imageBlitBlendNone.bytes_per_pixel * 8,
         SDLTest_imageBlitBlendNone.width * SDLTest_imageBlitBlendNone.bytes_per_pixel,
 #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
-         0xff000000, /* Red bit mask. */
-         0x00ff0000, /* Green bit mask. */
-         0x0000ff00, /* Blue bit mask. */
-         0x000000ff  /* Alpha bit mask. */
+         0x00ff0000, /* Red bit mask. */
+         0x0000ff00, /* Green bit mask. */
+         0x000000ff, /* Blue bit mask. */
+         0xff000000  /* Alpha bit mask. */
 #else
          0x000000ff, /* Red bit mask. */
          0x0000ff00, /* Green bit mask. */
@@ -2371,7 +2374,7 @@ SDL_Surface *SDLTest_ImageBlitBlendNone()
          0xff000000  /* Alpha bit mask. */
 #endif
          );
-   return surface;
+   return SDLTest_ConvertToRGBA(surface);
 }
 
 static const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendAll = {
@@ -2828,10 +2831,10 @@ SDL_Surface *SDLTest_ImageBlitBlendAll()
         SDLTest_imageBlitBlendAll.bytes_per_pixel * 8,
         SDLTest_imageBlitBlendAll.width * SDLTest_imageBlitBlendAll.bytes_per_pixel,
 #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
-         0xff000000, /* Red bit mask. */
-         0x00ff0000, /* Green bit mask. */
-         0x0000ff00, /* Blue bit mask. */
-         0x000000ff  /* Alpha bit mask. */
+         0x00ff0000, /* Red bit mask. */
+         0x0000ff00, /* Green bit mask. */
+         0x000000ff, /* Blue bit mask. */
+         0xff000000  /* Alpha bit mask. */
 #else
          0x000000ff, /* Red bit mask. */
          0x0000ff00, /* Green bit mask. */
@@ -2839,7 +2842,7 @@ SDL_Surface *SDLTest_ImageBlitBlendAll()
          0xff000000  /* Alpha bit mask. */
 #endif
          );
-   return surface;
+   return SDLTest_ConvertToRGBA(surface);
 }
 
 /* vi: set ts=4 sw=4 expandtab: */

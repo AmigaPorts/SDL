@@ -984,6 +984,25 @@ static const char *s_ControllerMappings [] =
 #if SDL_JOYSTICK_PSP
     "00000000505350206275696c74696e00,PSP builtin joypad,crc:bb86,a:b2,b:b1,back:b10,dpdown:b6,dpleft:b7,dpright:b9,dpup:b8,leftshoulder:b4,leftx:a0,lefty:a1,rightshoulder:b5,rightx:a2,righty:a3,start:b11,x:b3,y:b0,",
 #endif
+#if SDL_JOYSTICK_AMIGAOS4
+    "53504545442d4c494e4b20436f6d7065,SPEED-LINK Competition Pro,platform:AmigaOS 4,a:b0,b:b1,x:b3,y:b2,leftx:a0,lefty:a1,",
+    "47656e6572696320202055534220204a,Ewent Joypad EW3170,platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,start:b9,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,lefttrigger:b6,righttrigger:b7,",
+    "555342204a6f79737469636b20202020,PS2 Joystick (USB adaptor),platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,start:b9,leftshoulder:b6,rightshoulder:b7,leftx:a0,lefty:a1,lefttrigger:b4,righttrigger:b5,",
+    "555342204a6f79737469636b20202020,SHARK 91230 Joystick,platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,start:b9,leftshoulder:b6,rightshoulder:b7,leftx:a0,lefty:a1,lefttrigger:b4,righttrigger:b5,",
+    "4d414749432d4e530000000000000000,MAGIC-NS,platform:AmigaOS4,a:b2,b:b1,x:b3,y:b0,back:b8,guide:b12,start:b9,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpdwn:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:b6,righttrigger:b7,",
+    "576972656c65737320436f6e74726f6c,Wireless Controller,platform:AmigaOS 4,a:b1,b:b2,x:b0,y:b3,back:b8,guide:b12,start:b9,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:b6,righttrigger:b7,",
+    "38426974646f20534e33302050726f20,8Bitdo SN30 Pro,platform:AmigaOS 4,a:b1,b:b0,x:b4,y:b3,back:b10,start:b11,leftstick:b13,rightstick:b14,leftshoulder:b6,rightshoulder:b7,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:b8,righttrigger:b9,",
+    "5468727573746d617374657220647561,Thrustmaster dual analog 3.2,platform:AmigaOS 4,a:b0,b:b2,x:b1,y:b3,back:b8,start:b9,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b6,dpup:h0.9,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:b5,righttrigger:b7,",
+    "58454f582047616d6570616420534c2d,XEOX Gamepad SL-6556-BK,platform:AmigaOS 4,a:b0,b:b1,x:b2,y:b3,back:b8,start:b9,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:+a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:b6,righttrigger:b7,",
+    "202055534220204a6f79737469636b20,Strike2 Joystick,platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,start:b9,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:b6,righttrigger:b7,",
+    "7573622067616d657061642020202020,GeeekPi_A gamepad,platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,start:b9,leftshoulder:b4,rightshoulder:b5,leftx:a0,lefty:a1,",
+    "4c6f67697465636820436f72646c6573,Logitech Cordless RumblePad 2,platform:AmigaOS 4,a:b1,b:b2,x:b0,y:b3,back:b8,guide:b9,leftstick:b10,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,lefttrigger:b6,righttrigger:b7,",
+    "4c6f6769746563682052756d626c6550,Logitech RumblePad 2 USB,platform:AmigaOS 4,a:b1,b:b2,x:b0,y:b3,back:b8,start:b9,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:b6,righttrigger:b7,",
+    "4c6f6769746563682852292050726563,Logitech(R) Precision(TM) Gamepad,platform:AmigaOS 4,a:b1,b:b2,x:b0,y:b3,back:b8,start:b9,leftshoulder:b4,rightshoulder:b5,dpup:-a1,dpdown:+a1,dpleft:-a0,dpright:+a0,lefttrigger:b6,righttrigger:b7,",
+    "4c6f676974656368204475616c204163,Logitech Dual Action,platform:AmigaOS 4,a:b1,b:b2,x:b0,y:b3,back:b8,start:b9,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,-leftx:h0.8,+leftx:h0.2,-lefty:h0.1,+lefty:h0.4,lefttrigger:b6,righttrigger:b7,",
+    "4d4159464c4153482041726361646520,MAYFLASH Arcade Fightstick F300,platform:AmigaOS 4,a:b0,b:b1,x:b3,y:b4,back:b10,guide:b11,start:b12,leftshoulder:b6,rightshoulder:b7,dpup:-a1,dpdown:+a1,dpleft:-a0,dpright:+a0,lefttrigger:b8,righttrigger:b9,",
+    "47616d6520436f6e74726f6c6c657220,Game Controller for Android,platform:AmigaOS 4,a:b3,b:b0,x:b4,y:b1,dpup:-a1,dpdown:+a1,dpleft:-a0,dpright:+a0,",
+#endif
 #if SDL_JOYSTICK_VITA
     "0000000050535669746120436f6e7400,PSVita Controller,crc:d598,a:b2,b:b1,back:b10,dpdown:b6,dpleft:b7,dpright:b9,dpup:b8,leftshoulder:b4,leftstick:b14,lefttrigger:a4,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b15,righttrigger:a5,rightx:a2,righty:a3,start:b11,x:b3,y:b0,",
 #endif

@@ -201,6 +201,11 @@
 #define __PS2__ 1
 #endif
 
+#if defined(__amigaos4__)
+#undef __AMIGAOS4__
+#define __AMIGAOS4__ 1
+#endif
+
 /* The NACL compiler defines __native_client__ and __pnacl__
  * Ref: http://www.chromium.org/nativeclient/pnacl/stability-of-the-pnacl-bitcode-abi
  */

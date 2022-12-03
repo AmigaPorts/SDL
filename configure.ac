@@ -2252,6 +2252,18 @@ CheckHaikuVideo()
     fi
 }
 
+dnl Set up the AmigaOS video driver if enabled
+CheckAmigaOS4Video()
+{
+    if test x$enable_video = xyes; then
+        AC_DEFINE(SDL_VIDEO_DRIVER_AMIGAOS4, 1, [ ])
+        AC_DEFINE(SDL_VIDEO_RENDER_AMIGAOS4, 1, [ ])
+        SOURCES="$SOURCES $srcdir/src/video/amigaos4/*.c"
+        have_video=yes
+        SUMMARY_video="${SUMMARY_video} amigaos4"
+    fi
+}
+
 dnl Set up the Cocoa video driver for Mac OS X (but not Darwin)
 CheckCOCOA()
 {
@@ -2638,6 +2650,40 @@ CheckHaikuGL()
         AC_DEFINE(SDL_VIDEO_RENDER_OGL, 1, [ ])
         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lGL"
         SUMMARY_video="${SUMMARY_video} opengl"
+    fi
+}
+
+dnl Check for AmigaOS4 OpenGL
+CheckAmigaOS4GL()
+{
+    if test x$enable_video = xyes -a x$enable_video_opengl = xyes; then
+        AC_DEFINE(SDL_VIDEO_OPENGL, 1, [ ])
+        AC_DEFINE(SDL_VIDEO_OPENGL_AMIGAOS4, 1, [ ])
+        AC_DEFINE(SDL_VIDEO_RENDER_OGL, 1, [ ])
+        #EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lGL -lGLU"
+        SUMMARY_video="${SUMMARY_video} opengl"
+    fi
+}
+
+CheckAmigaOS4GLES()
+{
+    if test x$enable_video = xyes -a x$enable_video_opengles = xyes; then
+        AC_MSG_CHECKING(for OpenGL ES v2 headers)
+        video_opengles_v2=no
+        AC_TRY_COMPILE([
+         #include <GLES2/gl2.h>
+         #include <GLES2/gl2ext.h>
+         #include <ogles2/ogles2_defs.h>
+        ],[
+        ],[
+        video_opengles_v2=yes
+        ])
+        AC_MSG_RESULT($video_opengles_v2)
+        if test x$video_opengles_v2 = xyes; then
+            AC_DEFINE(SDL_VIDEO_OPENGL_ES2, 1, [ ])
+            AC_DEFINE(SDL_VIDEO_RENDER_OGL_ES2, 1, [ ])
+            SUMMARY_video="${SUMMARY_video} opengl_es2"
+        fi
     fi
 }
 
@@ -4242,6 +4288,66 @@ dnl BeOS support removed after SDL 2.0.1. Haiku still works.  --ryan.
         # The Haiku platform requires special setup.
         SOURCES="$srcdir/src/main/haiku/*.cc $SOURCES"
         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lroot -lbe -lmedia -lgame -ldevice -ltextencoding"
+        ;;
+    *-*-amigaos*)
+        ARCH=amigaos4
+        ac_default_prefix=/progdir
+        CheckDummyVideo
+        CheckDummyAudio
+        CheckAmigaOS4Video
+        CheckAmigaOS4GL
+        CheckAmigaOS4GLES
+        #CheckDLOPEN
+        CheckPTHREAD
+
+        # Set up files for the thread library
+#        if test x$enable_threads = xyes; then
+#            AC_DEFINE(SDL_THREAD_AMIGAOS4, 1, [ ])
+#            SOURCES="$SOURCES $srcdir/src/thread/amigaos4/*.c"
+#            have_threads=yes
+#        fi
+        # Set up files for the audio library
+        if test x$enable_audio = xyes; then
+            SUMMARY_audio="${SUMMARY_audio} amigaos4"
+            AC_DEFINE(SDL_AUDIO_DRIVER_AMIGAOS4, 1, [ ])
+            SOURCES="$SOURCES $srcdir/src/audio/amigaos4/*.c"
+            have_audio=yes
+        fi
+        # Set up files for the joystick library
+        if test x$enable_joystick = xyes; then
+            SUMMARY_input="${SUMMARY_input} amigainput"
+            AC_DEFINE(SDL_JOYSTICK_AMIGAINPUT, 1, [ ])
+            SOURCES="$SOURCES $srcdir/src/joystick/amigaos4/*.c"
+            have_joystick=yes
+        fi
+        # Set up files for the timer library
+#        if test x$enable_timers = xyes; then
+#            AC_DEFINE(SDL_TIMER_AMIGAOS4, 1, [ ])
+#            SOURCES="$SOURCES $srcdir/src/timer/amigaos4/*.c"
+#            have_timers=yes
+#        fi
+        if test x$enable_timers = xyes; then
+            AC_DEFINE(SDL_TIMER_UNIX, 1, [ ])
+            SOURCES="$SOURCES $srcdir/src/timer/unix/*.c"
+            have_timers=yes
+        fi
+        # Set up files for the system filesystem library
+        if test x$enable_filesystem = xyes; then
+            AC_DEFINE(SDL_FILESYSTEM_AMIGAOS4, 1, [ ])
+            SOURCES="$SOURCES $srcdir/src/filesystem/amigaos4/*.c"
+            have_filesystem=yes
+        fi
+        # Set up files for the shared object loading library
+        if test x$enable_loadso = xyes; then
+            AC_DEFINE(SDL_LOADSO_AMIGAOS4, 1, [ ])
+            SOURCES="$SOURCES $srcdir/src/loadso/amigaos4/*.c"
+            have_loadso=yes
+        fi
+        # The AmigaOS4 platform requires special setup.
+        SOURCES="$srcdir/src/main/amigaos4/*.c $SOURCES"
+        #EXTRA_LDFLAGS="-use-dynld -Wl,-export-dynamic -Wl,-no-undefined $EXTRA_LDFLAGS -ldl"
+        EXTRA_LDFLAGS=""
+        EXTRA_CFLAGS="$EXTRA_CFLAGS -mstrict-align"
         ;;
     *-ios-*)
         ARCH=ios
