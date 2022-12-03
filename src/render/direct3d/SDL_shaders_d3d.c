@@ -18,10 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
-
-#include "SDL_render.h"
-#include "SDL_system.h"
+#include "SDL_internal.h"
 
 #if SDL_VIDEO_RENDER_D3D && !SDL_RENDER_DISABLED
 
@@ -256,7 +253,6 @@ static const DWORD D3D9_PixelShader_YUV_BT709[] = {
     0x02000001, 0x80080001, 0xa0ff0000, 0x03000005, 0x800f0000, 0x80e40001,
     0x90e40000, 0x02000001, 0x800f0800, 0x80e40000, 0x0000ffff
 };
-
 
 static const DWORD *D3D9_shaders[] = {
     D3D9_PixelShader_YUV_JPEG,

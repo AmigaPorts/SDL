@@ -18,8 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #if SDL_VIDEO_DRIVER_OFFSCREEN
 
@@ -31,8 +30,7 @@
 #include "SDL_offscreenvideo.h"
 #include "SDL_offscreenevents_c.h"
 
-void
-OFFSCREEN_PumpEvents(_THIS)
+void OFFSCREEN_PumpEvents(_THIS)
 {
     /* do nothing. */
 }

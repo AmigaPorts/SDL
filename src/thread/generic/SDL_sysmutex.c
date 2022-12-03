@@ -18,13 +18,11 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 /* An implementation of mutexes using semaphores */
 
-#include "SDL_thread.h"
 #include "SDL_systhread_c.h"
-
 
 struct SDL_mutex
 {
@@ -40,7 +38,9 @@ SDL_CreateMutex(void)
     SDL_mutex *mutex;
 
     /* Allocate mutex memory */
-    mutex = (SDL_mutex *) SDL_malloc(sizeof(*mutex));
+    mutex = (SDL_mutex *)SDL_calloc(1, sizeof(*mutex));
+
+#if !SDL_THREADS_DISABLED
     if (mutex) {
         /* Create the mutex semaphore, with initial value 1 */
         mutex->sem = SDL_CreateSemaphore(1);
@@ -53,12 +53,13 @@ SDL_CreateMutex(void)
     } else {
         SDL_OutOfMemory();
     }
+#endif /* !SDL_THREADS_DISABLED */
+
     return mutex;
 }
 
 /* Free the mutex */
-void
-SDL_DestroyMutex(SDL_mutex * mutex)
+void SDL_DestroyMutex(SDL_mutex *mutex)
 {
     if (mutex) {
         if (mutex->sem) {
@@ -69,8 +70,7 @@ SDL_DestroyMutex(SDL_mutex * mutex)
 }
 
 /* Lock the mutex */
-int
-SDL_LockMutex(SDL_mutex * mutex)
+int SDL_LockMutex(SDL_mutex *mutex)
 {
 #if SDL_THREADS_DISABLED
     return 0;
@@ -99,8 +99,7 @@ SDL_LockMutex(SDL_mutex * mutex)
 }
 
 /* try Lock the mutex */
-int
-SDL_TryLockMutex(SDL_mutex * mutex)
+int SDL_TryLockMutex(SDL_mutex *mutex)
 {
 #if SDL_THREADS_DISABLED
     return 0;
@@ -132,8 +131,7 @@ SDL_TryLockMutex(SDL_mutex * mutex)
 }
 
 /* Unlock the mutex */
-int
-SDL_mutexV(SDL_mutex * mutex)
+int SDL_mutexV(SDL_mutex *mutex)
 {
 #if SDL_THREADS_DISABLED
     return 0;

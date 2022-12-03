@@ -622,7 +622,7 @@ static int min(int a, int b)
     return (a < b) ? a : b;
 }
 
-static void
+static int
 OS4_RenderPresent(SDL_Renderer * renderer)
 {
     SDL_Window *window = renderer->window;
@@ -641,7 +641,6 @@ OS4_RenderPresent(SDL_Renderer * renderer)
         struct Window *syswin = windowdata->syswin;
 
         if (syswin) {
-
             int32 ret;
             int width;
             int height;
@@ -671,10 +670,13 @@ OS4_RenderPresent(SDL_Renderer * renderer)
 
             if (ret != -1) {
                 dprintf("BltBitMapTags(): %d\n", ret);
+		return -1;
             }
         }
     }
     //dprintf("Took %d\n", SDL_GetTicks() - s);
+
+    return 0;
 }
 
 static void

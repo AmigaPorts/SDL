@@ -28,16 +28,15 @@ extern "C" {
 
 #include "../SDL_sysvideo.h"
 
-extern int32 HAIKU_ColorSpaceToBitsPerPixel(uint32 colorspace);
-extern int32 HAIKU_BPPToSDLPxFormat(int32 bpp);
+extern int32 HAIKU_ColorSpaceToSDLPxFormat(uint32 colorspace);
 
 extern int HAIKU_InitModes(_THIS);
 extern int HAIKU_QuitModes(_THIS);
 extern int HAIKU_GetDisplayBounds(_THIS, SDL_VideoDisplay *display,
-    SDL_Rect *rect);
+                                  SDL_Rect *rect);
 extern void HAIKU_GetDisplayModes(_THIS, SDL_VideoDisplay *display);
 extern int HAIKU_SetDisplayMode(_THIS, SDL_VideoDisplay *display,
-    SDL_DisplayMode *mode);
+                                SDL_DisplayMode *mode);
 
 #ifdef __cplusplus
 }

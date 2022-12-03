@@ -22,13 +22,12 @@
 #ifndef SDL_timer_c_h_
 #define SDL_timer_c_h_
 
-#include "../SDL_internal.h"
+#include "SDL_internal.h"
 
 /* Useful functions and variables from SDL_timer.c */
-#include "SDL_timer.h"
 
 #define ROUND_RESOLUTION(X) \
-    (((X+TIMER_RESOLUTION-1)/TIMER_RESOLUTION)*TIMER_RESOLUTION)
+    (((X + TIMER_RESOLUTION - 1) / TIMER_RESOLUTION) * TIMER_RESOLUTION)
 
 extern void SDL_TicksInit(void);
 extern void SDL_TicksQuit(void);

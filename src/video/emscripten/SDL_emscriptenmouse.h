@@ -19,11 +19,8 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-
 #ifndef SDL_emscriptenmouse_h_
 #define SDL_emscriptenmouse_h_
-
-#include "SDL_stdinc.h"
 
 typedef struct _Emscripten_CursorData
 {

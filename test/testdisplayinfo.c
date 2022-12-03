@@ -12,24 +12,23 @@
 
 /* Program to test querying of display info */
 
-#include "SDL.h"
-
-#include <stdio.h>
 #include <stdlib.h>
+
+#include <SDL3/SDL.h>
 
 static void
 print_mode(const char *prefix, const SDL_DisplayMode *mode)
 {
-    if (!mode)
+    if (mode == NULL) {
         return;
+    }
 
     SDL_Log("%s: fmt=%s w=%d h=%d refresh=%d\n",
             prefix, SDL_GetPixelFormatName(mode->format),
             mode->w, mode->h, mode->refresh_rate);
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     SDL_DisplayMode mode;
     int num_displays, dpy;
@@ -80,7 +79,7 @@ main(int argc, char *argv[])
                 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "    MODE %d: failed to query (%s)\n", m, SDL_GetError());
             } else {
                 char prefix[64];
-                SDL_snprintf(prefix, sizeof (prefix), "    MODE %d", m);
+                (void)SDL_snprintf(prefix, sizeof prefix, "    MODE %d", m);
                 print_mode(prefix, &mode);
             }
         }
@@ -93,4 +92,3 @@ main(int argc, char *argv[])
 }
 
 /* vi: set ts=4 sw=4 expandtab: */
-

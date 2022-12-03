@@ -201,8 +201,7 @@ OS4_CreateHiddenCursor()
     /* Create invisible 1*1 cursor because system version (POINTERTYPE_NONE) has a shadow */
 
     SDL_Cursor *cursor = NULL;
-    SDL_Surface *surface = SDL_CreateRGBSurface(0, 1, 1, 32,
-        0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
+    SDL_Surface *surface = SDL_CreateSurface(1, 1, SDL_PIXELFORMAT_ARGB8888);
 
     if (surface) {
         SDL_FillRect(surface, NULL, 0x0);
@@ -460,7 +459,7 @@ OS4_WarpMouse(SDL_Window * window, int x, int y)
 
     } else {
         /* Just warp SDL's notion of the pointer position */
-        SDL_SendMouseMotion(window, 0, SDL_GetRelativeMouseMode(), x, y);
+        SDL_SendMouseMotion(0, window, 0, SDL_GetRelativeMouseMode(), x, y);
     }
 }
 

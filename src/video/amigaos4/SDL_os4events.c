@@ -136,7 +136,7 @@ OS4_ResetNormalKeys(void)
             if (OS4_IsModifier(i)) {
                 dprintf("Ignore pressed modifier key %d\n", i);
             } else {
-                SDL_SendKeyboardKey(SDL_RELEASED, i);
+                SDL_SendKeyboardKey(0, SDL_RELEASED, i);
             }
         }
         i++;
@@ -228,7 +228,7 @@ OS4_DetectNumLock(const SDL_Scancode s)
     if (currentState != oldState) {
         oldState = currentState;
         dprintf("Toggling numlock state\n");
-        SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_NUMLOCKCLEAR);
+        SDL_SendKeyboardKey(0, SDL_PRESSED, SDL_SCANCODE_NUMLOCKCLEAR);
     }
 }
 
@@ -249,7 +249,7 @@ OS4_HandleKeyboard(_THIS, struct MyIntuiMessage * imsg)
 
             OS4_DetectNumLock(s);
 
-            SDL_SendKeyboardKey(SDL_PRESSED, s);
+            SDL_SendKeyboardKey(0, SDL_PRESSED, s);
 
             if (text[0] && text[0] < 0x80) {
                 /* SDL wants UTF-8 strings. Filter out codes above 7-bit to avoid
@@ -257,7 +257,7 @@ OS4_HandleKeyboard(_THIS, struct MyIntuiMessage * imsg)
                 SDL_SendKeyboardText(text);
             }
         } else {
-            SDL_SendKeyboardKey(SDL_RELEASED, s);
+            SDL_SendKeyboardKey(0, SDL_RELEASED, s);
         }
     }
 }
@@ -384,11 +384,11 @@ OS4_HandleMouseMotion(_THIS, struct MyIntuiMessage * imsg)
         globalMouseState.y = imsg->ScreenMouseY;
 
         if (SDL_GetRelativeMouseMode()) {
-            SDL_SendMouseMotion(sdlwin, 0 /*mouse->mouseID*/, 1,
+            SDL_SendMouseMotion(0, sdlwin, 0 /*mouse->mouseID*/, 1,
                 imsg->RelativeMouseX,
                 imsg->RelativeMouseY);
         } else {
-            SDL_SendMouseMotion(sdlwin, 0 /*mouse->mouseID*/, 0,
+            SDL_SendMouseMotion(0, sdlwin, 0 /*mouse->mouseID*/, 0,
                 imsg->WindowMouseX,
                 imsg->WindowMouseY);
         }
@@ -485,7 +485,7 @@ OS4_HandleMouseButtons(_THIS, struct MyIntuiMessage * imsg)
         }
 
         // TODO: can we support more buttons?
-        SDL_SendMouseButton(sdlwin, 0, state, button);
+        SDL_SendMouseButton(0, sdlwin, 0, state, button);
     }
 }
 
@@ -498,15 +498,15 @@ OS4_HandleMouseWheel(_THIS, struct MyIntuiMessage * imsg)
         struct IntuiWheelData *data = (struct IntuiWheelData *)imsg->Gadget;
 
         if (data->WheelY < 0) {
-            SDL_SendMouseWheel(sdlwin, 0, 0, 1, SDL_MOUSEWHEEL_NORMAL);
+            SDL_SendMouseWheel(0, sdlwin, 0, 0, 1, SDL_MOUSEWHEEL_NORMAL);
         } else if (data->WheelY > 0) {
-            SDL_SendMouseWheel(sdlwin, 0, 0, -1, SDL_MOUSEWHEEL_NORMAL);
+            SDL_SendMouseWheel(0, sdlwin, 0, 0, -1, SDL_MOUSEWHEEL_NORMAL);
         }
 
         if (data->WheelX < 0) {
-            SDL_SendMouseWheel(sdlwin, 0, 1, 0, SDL_MOUSEWHEEL_NORMAL);
+            SDL_SendMouseWheel(0, sdlwin, 0, 1, 0, SDL_MOUSEWHEEL_NORMAL);
         } else if (data->WheelX > 0) {
-            SDL_SendMouseWheel(sdlwin, 0, -1, 0, SDL_MOUSEWHEEL_NORMAL);
+            SDL_SendMouseWheel(0, sdlwin, 0, -1, 0, SDL_MOUSEWHEEL_NORMAL);
         }
     }
 }

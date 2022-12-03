@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_gesture_c_h_
 #define SDL_gesture_c_h_
@@ -26,7 +26,7 @@
 extern int SDL_GestureAddTouch(SDL_TouchID touchId);
 extern int SDL_GestureDelTouch(SDL_TouchID touchId);
 
-extern void SDL_GestureProcessEvent(SDL_Event* event);
+extern void SDL_GestureProcessEvent(SDL_Event *event);
 
 extern void SDL_GestureQuit(void);
 

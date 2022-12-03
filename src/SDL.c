@@ -18,20 +18,12 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "./SDL_internal.h"
+#include "SDL_internal.h"
 
 #if defined(__WIN32__) || defined(__GDK__)
 #include "core/windows/SDL_windows.h"
-#elif defined(__OS2__)
-#include <stdlib.h> /* _exit() */
 #elif !defined(__WINRT__)
 #include <unistd.h> /* _exit(), etc. */
-#endif
-#if defined(__OS2__)
-#include "core/os2/SDL_os2.h"
-#if SDL_THREAD_OS2
-#include "thread/os2/SDL_systls_c.h"
-#endif
 #endif
 
 /* this checks for HAVE_DBUS_DBUS_H internally. */
@@ -43,9 +35,6 @@
 
 /* Initialization code for SDL */
 
-#include "SDL.h"
-#include "SDL_bits.h"
-#include "SDL_revision.h"
 #include "SDL_assert_c.h"
 #include "SDL_log_c.h"
 #include "events/SDL_events_c.h"
@@ -59,7 +48,7 @@
 
 /* Initialization/Cleanup routines */
 #if !SDL_TIMERS_DISABLED
-# include "timer/SDL_timer_c.h"
+#include "timer/SDL_timer_c.h"
 #endif
 #if SDL_VIDEO_DRIVER_WINDOWS
 extern int SDL_HelperWindowCreate(void);
@@ -102,8 +91,8 @@ SDL_NORETURN void SDL_ExitProcess(int exitcode)
        ExitProcess here that will never be reached but make MingW happy. */
     ExitProcess(exitcode);
 #elif defined(__EMSCRIPTEN__)
-    emscripten_cancel_main_loop();  /* this should "kill" the app. */
-    emscripten_force_exit(exitcode);  /* this should "kill" the app. */
+    emscripten_cancel_main_loop();   /* this should "kill" the app. */
+    emscripten_force_exit(exitcode); /* this should "kill" the app. */
     exit(exitcode);
 #elif defined(__HAIKU__)  /* Haiku has _Exit, but it's not marked noreturn. */
     _exit(exitcode);
@@ -114,7 +103,6 @@ SDL_NORETURN void SDL_ExitProcess(int exitcode)
 #endif
 }
 
-
 /* The initialized subsystems */
 #ifdef SDL_MAIN_NEEDED
 static SDL_bool SDL_MainIsReady = SDL_FALSE;
@@ -122,58 +110,55 @@ static SDL_bool SDL_MainIsReady = SDL_FALSE;
 static SDL_bool SDL_MainIsReady = SDL_TRUE;
 #endif
 static SDL_bool SDL_bInMainQuit = SDL_FALSE;
-static Uint8 SDL_SubsystemRefCount[ 32 ];
+static Uint8 SDL_SubsystemRefCount[32];
 
 /* Private helper to increment a subsystem's ref counter. */
-static void
-SDL_PrivateSubsystemRefCountIncr(Uint32 subsystem)
+static void SDL_PrivateSubsystemRefCountIncr(Uint32 subsystem)
 {
-    int subsystem_index = SDL_MostSignificantBitIndex32(subsystem);
-    SDL_assert(SDL_SubsystemRefCount[subsystem_index] < 255);
-    ++SDL_SubsystemRefCount[subsystem_index];
+    const int subsystem_index = SDL_MostSignificantBitIndex32(subsystem);
+    SDL_assert((subsystem_index < 0) || (SDL_SubsystemRefCount[subsystem_index] < 255));
+    if (subsystem_index >= 0) {
+        ++SDL_SubsystemRefCount[subsystem_index];
+    }
 }
 
 /* Private helper to decrement a subsystem's ref counter. */
-static void
-SDL_PrivateSubsystemRefCountDecr(Uint32 subsystem)
+static void SDL_PrivateSubsystemRefCountDecr(Uint32 subsystem)
 {
-    int subsystem_index = SDL_MostSignificantBitIndex32(subsystem);
-    if (SDL_SubsystemRefCount[subsystem_index] > 0) {
+    const int subsystem_index = SDL_MostSignificantBitIndex32(subsystem);
+    if ((subsystem_index >= 0) && (SDL_SubsystemRefCount[subsystem_index] > 0)) {
         --SDL_SubsystemRefCount[subsystem_index];
     }
 }
 
 /* Private helper to check if a system needs init. */
-static SDL_bool
-SDL_PrivateShouldInitSubsystem(Uint32 subsystem)
+static SDL_bool SDL_PrivateShouldInitSubsystem(Uint32 subsystem)
 {
-    int subsystem_index = SDL_MostSignificantBitIndex32(subsystem);
-    SDL_assert(SDL_SubsystemRefCount[subsystem_index] < 255);
-    return (SDL_SubsystemRefCount[subsystem_index] == 0) ? SDL_TRUE : SDL_FALSE;
+    const int subsystem_index = SDL_MostSignificantBitIndex32(subsystem);
+    SDL_assert((subsystem_index < 0) || (SDL_SubsystemRefCount[subsystem_index] < 255));
+    return ((subsystem_index >= 0) && (SDL_SubsystemRefCount[subsystem_index] == 0)) ? SDL_TRUE : SDL_FALSE;
 }
 
 /* Private helper to check if a system needs to be quit. */
-static SDL_bool
-SDL_PrivateShouldQuitSubsystem(Uint32 subsystem) {
-    int subsystem_index = SDL_MostSignificantBitIndex32(subsystem);
-    if (SDL_SubsystemRefCount[subsystem_index] == 0) {
-      return SDL_FALSE;
+static SDL_bool SDL_PrivateShouldQuitSubsystem(Uint32 subsystem)
+{
+    const int subsystem_index = SDL_MostSignificantBitIndex32(subsystem);
+    if ((subsystem_index >= 0) && (SDL_SubsystemRefCount[subsystem_index] == 0)) {
+        return SDL_FALSE;
     }
 
     /* If we're in SDL_Quit, we shut down every subsystem, even if refcount
      * isn't zero.
      */
-    return (SDL_SubsystemRefCount[subsystem_index] == 1 || SDL_bInMainQuit) ? SDL_TRUE : SDL_FALSE;
+    return (((subsystem_index >= 0) && (SDL_SubsystemRefCount[subsystem_index] == 1)) || SDL_bInMainQuit) ? SDL_TRUE : SDL_FALSE;
 }
 
-void
-SDL_SetMainReady(void)
+void SDL_SetMainReady(void)
 {
     SDL_MainIsReady = SDL_TRUE;
 }
 
-int
-SDL_InitSubSystem(Uint32 flags)
+int SDL_InitSubSystem(Uint32 flags)
 {
     Uint32 flags_initialized = 0;
 
@@ -199,17 +184,13 @@ SDL_InitSubSystem(Uint32 flags)
         flags |= SDL_INIT_JOYSTICK;
     }
 
-    if ((flags & (SDL_INIT_VIDEO|SDL_INIT_JOYSTICK|SDL_INIT_AUDIO))) {
+    if ((flags & (SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_AUDIO))) {
         /* video or joystick or audio implies events */
         flags |= SDL_INIT_EVENTS;
     }
 
-#if SDL_THREAD_OS2
-    SDL_OS2TLSAlloc(); /* thread/os2/SDL_systls.c */
-#endif
-
 #if SDL_VIDEO_DRIVER_WINDOWS
-    if ((flags & (SDL_INIT_HAPTIC|SDL_INIT_JOYSTICK))) {
+    if ((flags & (SDL_INIT_HAPTIC | SDL_INIT_JOYSTICK))) {
         if (SDL_HelperWindowCreate() < 0) {
             goto quit_and_error;
         }
@@ -237,7 +218,7 @@ SDL_InitSubSystem(Uint32 flags)
     }
 
     /* Initialize the timer subsystem */
-    if ((flags & SDL_INIT_TIMER)){
+    if ((flags & SDL_INIT_TIMER)) {
 #if !SDL_TIMERS_DISABLED && !SDL_TIMER_DUMMY
         if (SDL_PrivateShouldInitSubsystem(SDL_INIT_TIMER)) {
             if (SDL_TimerInit() < 0) {
@@ -253,7 +234,7 @@ SDL_InitSubSystem(Uint32 flags)
     }
 
     /* Initialize the video subsystem */
-    if ((flags & SDL_INIT_VIDEO)){
+    if ((flags & SDL_INIT_VIDEO)) {
 #if !SDL_VIDEO_DISABLED
         if (SDL_PrivateShouldInitSubsystem(SDL_INIT_VIDEO)) {
             if (SDL_VideoInit(NULL) < 0) {
@@ -269,7 +250,7 @@ SDL_InitSubSystem(Uint32 flags)
     }
 
     /* Initialize the audio subsystem */
-    if ((flags & SDL_INIT_AUDIO)){
+    if ((flags & SDL_INIT_AUDIO)) {
 #if !SDL_AUDIO_DISABLED
         if (SDL_PrivateShouldInitSubsystem(SDL_INIT_AUDIO)) {
             if (SDL_AudioInit(NULL) < 0) {
@@ -285,12 +266,12 @@ SDL_InitSubSystem(Uint32 flags)
     }
 
     /* Initialize the joystick subsystem */
-    if ((flags & SDL_INIT_JOYSTICK)){
+    if ((flags & SDL_INIT_JOYSTICK)) {
 #if !SDL_JOYSTICK_DISABLED
         if (SDL_PrivateShouldInitSubsystem(SDL_INIT_JOYSTICK)) {
-           if (SDL_JoystickInit() < 0) {
-               goto quit_and_error;
-           }
+            if (SDL_JoystickInit() < 0) {
+                goto quit_and_error;
+            }
         }
         SDL_PrivateSubsystemRefCountIncr(SDL_INIT_JOYSTICK);
         flags_initialized |= SDL_INIT_JOYSTICK;
@@ -300,7 +281,7 @@ SDL_InitSubSystem(Uint32 flags)
 #endif
     }
 
-    if ((flags & SDL_INIT_GAMECONTROLLER)){
+    if ((flags & SDL_INIT_GAMECONTROLLER)) {
 #if !SDL_JOYSTICK_DISABLED
         if (SDL_PrivateShouldInitSubsystem(SDL_INIT_GAMECONTROLLER)) {
             if (SDL_GameControllerInit() < 0) {
@@ -316,7 +297,7 @@ SDL_InitSubSystem(Uint32 flags)
     }
 
     /* Initialize the haptic subsystem */
-    if ((flags & SDL_INIT_HAPTIC)){
+    if ((flags & SDL_INIT_HAPTIC)) {
 #if !SDL_HAPTIC_DISABLED
         if (SDL_PrivateShouldInitSubsystem(SDL_INIT_HAPTIC)) {
             if (SDL_HapticInit() < 0) {
@@ -332,7 +313,7 @@ SDL_InitSubSystem(Uint32 flags)
     }
 
     /* Initialize the sensor subsystem */
-    if ((flags & SDL_INIT_SENSOR)){
+    if ((flags & SDL_INIT_SENSOR)) {
 #if !SDL_SENSOR_DISABLED
         if (SDL_PrivateShouldInitSubsystem(SDL_INIT_SENSOR)) {
             if (SDL_SensorInit() < 0) {
@@ -347,31 +328,22 @@ SDL_InitSubSystem(Uint32 flags)
 #endif
     }
 
-    (void) flags_initialized;  /* make static analysis happy, since this only gets used in error cases. */
+    (void)flags_initialized; /* make static analysis happy, since this only gets used in error cases. */
 
-    return (0);
+    return 0;
 
 quit_and_error:
     SDL_QuitSubSystem(flags_initialized);
-    return (-1);
+    return -1;
 }
 
-int
-SDL_Init(Uint32 flags)
+int SDL_Init(Uint32 flags)
 {
     return SDL_InitSubSystem(flags);
 }
 
-void
-SDL_QuitSubSystem(Uint32 flags)
+void SDL_QuitSubSystem(Uint32 flags)
 {
-#if defined(__OS2__)
-#if SDL_THREAD_OS2
-    SDL_OS2TLSFree(); /* thread/os2/SDL_systls.c */
-#endif
-    SDL_OS2Quit();
-#endif
-
     /* Shut down requested initialized subsystems */
 #if !SDL_SENSOR_DISABLED
     if ((flags & SDL_INIT_SENSOR)) {
@@ -415,6 +387,9 @@ SDL_QuitSubSystem(Uint32 flags)
 
 #if !SDL_AUDIO_DISABLED
     if ((flags & SDL_INIT_AUDIO)) {
+        /* audio implies events */
+        flags |= SDL_INIT_EVENTS;
+
         if (SDL_PrivateShouldQuitSubsystem(SDL_INIT_AUDIO)) {
             SDL_AudioQuit();
         }
@@ -484,8 +459,7 @@ SDL_WasInit(Uint32 flags)
     return initialized;
 }
 
-void
-SDL_Quit(void)
+void SDL_Quit(void)
 {
     SDL_bInMainQuit = SDL_TRUE;
 
@@ -515,16 +489,35 @@ SDL_Quit(void)
     /* Now that every subsystem has been quit, we reset the subsystem refcount
      * and the list of initialized subsystems.
      */
-    SDL_memset( SDL_SubsystemRefCount, 0x0, sizeof(SDL_SubsystemRefCount) );
+    SDL_memset(SDL_SubsystemRefCount, 0x0, sizeof(SDL_SubsystemRefCount));
+
+    SDL_TLSCleanup();
 
     SDL_bInMainQuit = SDL_FALSE;
 }
 
 /* Get the library version number */
-void
-SDL_GetVersion(SDL_version * ver)
+void SDL_GetVersion(SDL_version *ver)
 {
+    static SDL_bool check_hint = SDL_TRUE;
+    static SDL_bool legacy_version = SDL_FALSE;
+
+    if (ver == NULL) {
+        return;
+    }
+
     SDL_VERSION(ver);
+
+    if (check_hint) {
+        check_hint = SDL_FALSE;
+        legacy_version = SDL_GetHintBoolean("SDL_LEGACY_VERSION", SDL_FALSE);
+    }
+
+    if (legacy_version) {
+        /* Prior to SDL 2.24.0, the patch version was incremented with every release */
+        ver->patch = ver->minor;
+        ver->minor = 0;
+    }
 }
 
 /* Get the library source revision */
@@ -534,83 +527,76 @@ SDL_GetRevision(void)
     return SDL_REVISION;
 }
 
-/* Get the library source revision number */
-int
-SDL_GetRevisionNumber(void)
-{
-    return 0;  /* doesn't make sense without Mercurial. */
-}
-
 /* Get the name of the platform */
 const char *
 SDL_GetPlatform(void)
 {
-#if __AIX__
+#if defined(__AIX__)
     return "AIX";
-#elif __ANDROID__
+#elif defined(__ANDROID__)
     return "Android";
-#elif __BSDI__
+#elif defined(__BSDI__)
     return "BSDI";
-#elif __DREAMCAST__
+#elif defined(__DREAMCAST__)
     return "Dreamcast";
-#elif __EMSCRIPTEN__
+#elif defined(__EMSCRIPTEN__)
     return "Emscripten";
-#elif __FREEBSD__
+#elif defined(__FREEBSD__)
     return "FreeBSD";
-#elif __HAIKU__
+#elif defined(__HAIKU__)
     return "Haiku";
-#elif __HPUX__
+#elif defined(__HPUX__)
     return "HP-UX";
-#elif __IRIX__
+#elif defined(__IRIX__)
     return "Irix";
-#elif __LINUX__
+#elif defined(__LINUX__)
     return "Linux";
-#elif __MINT__
+#elif defined(__MINT__)
     return "Atari MiNT";
-#elif __MACOS__
-    return "MacOS Classic";
-#elif __MACOSX__
-    return "Mac OS X";
-#elif __NACL__
+#elif defined(__MACOS__)
+    return "macOS";
+#elif defined(__NACL__)
     return "NaCl";
-#elif __NETBSD__
+#elif defined(__NETBSD__)
     return "NetBSD";
-#elif __OPENBSD__
+#elif defined(__OPENBSD__)
     return "OpenBSD";
-#elif __OS2__
+#elif defined(__OS2__)
     return "OS/2";
-#elif __OSF__
+#elif defined(__OSF__)
     return "OSF/1";
-#elif __QNXNTO__
+#elif defined(__QNXNTO__)
     return "QNX Neutrino";
-#elif __RISCOS__
+#elif defined(__RISCOS__)
     return "RISC OS";
-#elif __SOLARIS__
+#elif defined(__SOLARIS__)
     return "Solaris";
-#elif __WIN32__
+#elif defined(__WIN32__)
     return "Windows";
-#elif __WINRT__
+#elif defined(__WINRT__)
     return "WinRT";
-#elif __WINGDK__
+#elif defined(__WINGDK__)
     return "WinGDK";
-#elif __XBOXONE__
+#elif defined(__XBOXONE__)
     return "Xbox One";
-#elif __XBOXSERIES__
-    return "Xbox Series";
-#elif __TVOS__
-    return "tvOS";
-#elif __IPHONEOS__
+#elif defined(__XBOXSERIES__)
+    return "Xbox Series X|S";
+#elif defined(__IOS__)
     return "iOS";
-#elif __PS2__
+#elif defined(__TVOS__)
+    return "tvOS";
+#elif defined(__PS2__)
     return "PlayStation 2";
-#elif __PSP__
+#elif defined(__PSP__)
     return "PlayStation Portable";
-#elif __AMIGAOS4__
+#elif defined(__AMIGAOS4__)
     return "AmigaOS 4";
-#elif __VITA__
+#elif defined(__VITA__)
     return "PlayStation Vita";
-#elif __NGAGE__
+#elif defined(__NGAGE__)
     return "Nokia N-Gage";
+#elif defined(__3DS__)
+    return "Nintendo 3DS";
 #else
     return "Unknown (see SDL_platform.h)";
 #endif
@@ -622,7 +608,7 @@ SDL_IsTablet(void)
 #if __ANDROID__
     extern SDL_bool SDL_IsAndroidTablet(void);
     return SDL_IsAndroidTablet();
-#elif __IPHONEOS__
+#elif __IOS__
     extern SDL_bool SDL_IsIPad(void);
     return SDL_IsIPad();
 #else

@@ -84,14 +84,16 @@ stepParticles(double deltaTime)
         /* is the particle actually active, or is it marked for deletion? */
         if (curr->isActive) {
             /* is the particle off the screen? */
-            if (curr->y > screen_h)
+            if (curr->y > screen_h) {
                 curr->isActive = 0;
-            else if (curr->y < 0)
+            } else if (curr->y < 0) {
                 curr->isActive = 0;
-            if (curr->x > screen_w)
+            }
+            if (curr->x > screen_w) {
                 curr->isActive = 0;
-            else if (curr->x < 0)
+            } else if (curr->x < 0) {
                 curr->isActive = 0;
+            }
 
             /* step velocity, then step position */
             curr->yvel += ACCEL * deltaMilliseconds;
@@ -133,15 +135,17 @@ stepParticles(double deltaTime)
                 }
 
                 /* if we're a dust particle, shrink our size */
-                if (curr->type == dust)
+                if (curr->type == dust) {
                     curr->size -= deltaMilliseconds * 0.010f;
+                }
 
             }
 
             /* if we're still active, pack ourselves in the array next
                to the last active guy (pack the array tightly) */
-            if (curr->isActive)
+            if (curr->isActive) {
                 *(slot++) = *curr;
+            }
         }                       /* endif (curr->isActive) */
         curr++;
     }
@@ -188,8 +192,9 @@ explodeEmitter(struct particle *emitter)
     int i;
     for (i = 0; i < 200; i++) {
 
-        if (num_active_particles >= MAX_PARTICLES)
+        if (num_active_particles >= MAX_PARTICLES) {
             return;
+        }
 
         /* come up with a random angle and speed for new particle */
         float theta = randomFloat(0, 2.0f * 3.141592);
@@ -226,8 +231,9 @@ void
 spawnTrailFromEmitter(struct particle *emitter)
 {
 
-    if (num_active_particles >= MAX_PARTICLES)
+    if (num_active_particles >= MAX_PARTICLES) {
         return;
+    }
 
     /* select the particle at the slot at the end of our array */
     struct particle *p = &particles[num_active_particles];
@@ -262,8 +268,9 @@ void
 spawnEmitterParticle(GLfloat x, GLfloat y)
 {
 
-    if (num_active_particles >= MAX_PARTICLES)
+    if (num_active_particles >= MAX_PARTICLES) {
         return;
+    }
 
     /* find particle at endpoint of array */
     struct particle *p = &particles[num_active_particles];
@@ -320,8 +327,6 @@ void
 initializeTexture()
 {
 
-    int bpp;                    /* texture bits per pixel */
-    Uint32 Rmask, Gmask, Bmask, Amask;  /* masks for pixel format passed into OpenGL */
     SDL_Surface *bmp_surface;   /* the bmp is loaded here */
     SDL_Surface *bmp_surface_rgba8888;  /* this serves as a destination to convert the BMP
                                            to format passed into OpenGL */
@@ -331,13 +336,9 @@ initializeTexture()
         fatalError("could not load stroke.bmp");
     }
 
-    /* Grab info about format that will be passed into OpenGL */
-    SDL_PixelFormatEnumToMasks(SDL_PIXELFORMAT_ABGR8888, &bpp, &Rmask, &Gmask,
-                               &Bmask, &Amask);
     /* Create surface that will hold pixels passed into OpenGL */
-    bmp_surface_rgba8888 =
-        SDL_CreateRGBSurface(0, bmp_surface->w, bmp_surface->h, bpp, Rmask,
-                             Gmask, Bmask, Amask);
+    bmp_surface_rgba8888 = SDL_CreateSurface(bmp_surface->w, bmp_surface->h, SDL_PIXELFORMAT_ABGR8888);
+    
     /* Blit to this surface, effectively converting the format */
     SDL_BlitSurface(bmp_surface, NULL, bmp_surface_rgba8888, NULL);
 

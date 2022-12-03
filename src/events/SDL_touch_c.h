@@ -18,8 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../SDL_internal.h"
-#include "../../include/SDL_touch.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_touch_c_h_
 #define SDL_touch_c_h_
@@ -30,10 +29,9 @@ typedef struct SDL_Touch
     SDL_TouchDeviceType type;
     int num_fingers;
     int max_fingers;
-    SDL_Finger** fingers;
+    SDL_Finger **fingers;
     char *name;
 } SDL_Touch;
-
 
 /* Initialize the touch subsystem */
 extern int SDL_TouchInit(void);
@@ -45,12 +43,10 @@ extern int SDL_AddTouch(SDL_TouchID id, SDL_TouchDeviceType type, const char *na
 extern SDL_Touch *SDL_GetTouch(SDL_TouchID id);
 
 /* Send a touch down/up event for a touch */
-extern int SDL_SendTouch(SDL_TouchID id, SDL_FingerID fingerid, SDL_Window * window,
-                         SDL_bool down, float x, float y, float pressure);
+extern int SDL_SendTouch(Uint64 timestamp, SDL_TouchID id, SDL_FingerID fingerid, SDL_Window *window, SDL_bool down, float x, float y, float pressure);
 
 /* Send a touch motion event for a touch */
-extern int SDL_SendTouchMotion(SDL_TouchID id, SDL_FingerID fingerid, SDL_Window * window,
-                               float x, float y, float pressure);
+extern int SDL_SendTouchMotion(Uint64 timestamp, SDL_TouchID id, SDL_FingerID fingerid, SDL_Window *window, float x, float y, float pressure);
 
 /* Remove a touch */
 extern void SDL_DelTouch(SDL_TouchID id);

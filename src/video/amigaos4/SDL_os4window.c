@@ -858,26 +858,25 @@ OS4_DestroyWindow(_THIS, SDL_Window * window)
     window->driverdata = NULL;
 }
 
-SDL_bool
+int
 OS4_GetWindowWMInfo(_THIS, SDL_Window * window, struct SDL_SysWMinfo * info)
 {
-    if (info->version.major <= SDL_MAJOR_VERSION) {
+    if (info->version == SDL_SYSWM_CURRENT_VERSION) {
         struct Window *syswin = ((SDL_WindowData *) window->driverdata)->syswin;
 
-        info->subsystem = SDL_SYSWM_OS4;
+        info->subsystem = SDL_SYSWM_AMIGAOS4;
         info->info.os4.window = syswin;
 
         dprintf("Window pointer %p\n", syswin);
 
-        return SDL_TRUE;
+        return 0;
     } else {
-        dprintf("Application not compiled with SDL %d.%d\n",
-            SDL_MAJOR_VERSION, SDL_MINOR_VERSION);
+        dprintf("Version %d doesn't match with %d\n",
+            info->version, SDL_SYSWM_CURRENT_VERSION);
 
-        SDL_SetError("Application not compiled with SDL %d.%d",
-            SDL_MAJOR_VERSION, SDL_MINOR_VERSION);
+        SDL_SetError("Bad SYSWM version");
 
-        return SDL_FALSE;
+        return -1;
     }
 }
 

@@ -23,23 +23,23 @@
 #define _SDL_ngagewindow_h
 
 #include "../SDL_sysvideo.h"
-#include "SDL_syswm.h"
+
+#include <SDL3/SDL_syswm.h>
 
 #include "SDL_ngagevideo.h"
 
-typedef struct {
-    SDL_Window* sdl_window;
+typedef struct
+{
+    SDL_Window *sdl_window;
 
 } NGAGE_Window;
 
-
 extern int
-NGAGE_CreateWindow(_THIS, SDL_Window* window);
+NGAGE_CreateWindow(_THIS, SDL_Window *window);
 
 extern void
-NGAGE_DestroyWindow(_THIS, SDL_Window* window);
+NGAGE_DestroyWindow(_THIS, SDL_Window *window);
 
 #endif /* _SDL_ngagewindow */
 
 /* vi: set ts=4 sw=4 expandtab: */
-

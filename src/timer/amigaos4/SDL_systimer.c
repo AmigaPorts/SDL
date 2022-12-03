@@ -22,40 +22,7 @@
 
 #if defined(SDL_TIMER_AMIGAOS4) || defined(SDL_TIMERS_DISABLED)
 
-#include <devices/timer.h>
-
-#include "SDL_timer.h"
 #include "SDL_os4timer_c.h"
-
-static SDL_bool started = SDL_FALSE;
-
-void
-SDL_TicksInit(void)
-{
-    if (started) {
-        return;
-    }
-    started = SDL_TRUE;
-}
-
-void
-SDL_TicksQuit(void)
-{
-    started = SDL_FALSE;
-}
-
-Uint64
-SDL_GetTicks64(void)
-{
-    if (!started) {
-        SDL_TicksInit();
-    }
-
-    struct TimeVal cur;
-    OS4_TimerGetTime(&cur);
-
-    return cur.Seconds * 1000 + cur.Microseconds / 1000;
-}
 
 Uint64
 SDL_GetPerformanceCounter(void)
@@ -70,9 +37,9 @@ SDL_GetPerformanceFrequency(void)
 }
 
 void
-SDL_Delay(Uint32 ms)
+SDL_DelayNS(Uint64 ns)
 {
-    OS4_TimerDelay(ms);
+    OS4_TimerDelay(ns / 1000000 /* TODO */);
 }
 
 #endif /* SDL_TIMER_AMIGAOS4 || SDL_TIMERS_DISABLED */

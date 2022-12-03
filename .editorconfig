@@ -16,7 +16,7 @@ indent_style = space
 indent_size = 4
 indent_style = space
 
-[{CMakeLists.txt,sdl2-config*.cmake.in,cmake/*.cmake}]
+[{CMakeLists.txt,cmake/*.cmake}]
 indent_size = 2
 indent_style = space
 
@@ -63,7 +63,7 @@ indent_style = space
 [src/video/yuv2rgb/*.{c,h}]
 indent_style = tab
 
-[src/wayland-protocols/*.xml]
+[wayland-protocols/*.xml]
 indent_size = 2
 indent_style = space
 

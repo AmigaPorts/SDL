@@ -90,7 +90,7 @@ extern void OS4_SetWindowMouseGrab(_THIS, SDL_Window * window, SDL_bool grabbed)
 //extern void OS4_SetWindowKeyboardGrab(_THIS, SDL_Window * window, SDL_bool grabbed);
 
 extern void OS4_DestroyWindow(_THIS, SDL_Window * window);
-extern SDL_bool OS4_GetWindowWMInfo(_THIS, SDL_Window * window, struct SDL_SysWMinfo *info);
+extern int OS4_GetWindowWMInfo(_THIS, SDL_Window * window, struct SDL_SysWMinfo *info);
 
 //extern void OS4_OnWindowEnter(_THIS, SDL_Window * window);
 extern int OS4_FlashWindow(_THIS, SDL_Window * window, SDL_FlashOperation operation);
