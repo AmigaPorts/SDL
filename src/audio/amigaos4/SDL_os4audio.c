@@ -27,8 +27,6 @@
 // Which they should be, as far as I can tell.
 #define POSSIBLY_DANGEROUS_OPTIMISATION 1
 
-#include "SDL_audio.h"
-#include "SDL_timer.h"
 #include "../SDL_audio_c.h"
 #include "../SDL_sysaudio.h"
 #include "SDL_os4audio.h"
@@ -36,9 +34,6 @@
 #include <proto/exec.h>
 
 #include "../../main/amigaos4/SDL_os4debug.h"
-
-/* The tag name used by the AmigaOS4 audio driver */
-#define DRIVER_NAME         "amigaos4"
 
 static SDL_bool
 OS4_OpenAhiDevice(OS4AudioData * os4data)
@@ -468,6 +463,6 @@ OS4_Init(SDL_AudioDriverImpl * impl)
 }
 
 AudioBootStrap AMIGAOS4AUDIO_bootstrap = {
-   DRIVER_NAME, "AmigaOS4 AHI audio", OS4_Init, 0
+    "amigaos4", "AmigaOS4 AHI audio", OS4_Init, 0
 };
 #endif

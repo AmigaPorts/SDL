@@ -12,19 +12,18 @@
 /* Simple program:  Move N sprites around on the screen as fast as possible */
 
 #include <stdlib.h>
-#include <stdio.h>
-#include <time.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
 
-#include "SDL_test_common.h"
+#include <SDL3/SDL_test_common.h>
 #include "testutils.h"
 
 static SDLTest_CommonState *state;
 
-typedef struct {
+typedef struct
+{
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_Texture *background;
@@ -44,13 +43,12 @@ quit(int rc)
     exit(rc);
 }
 
-void
-Draw(DrawState *s)
+void Draw(DrawState *s)
 {
     SDL_Rect viewport;
     SDL_Texture *target;
-    SDL_Point *center=NULL;
-    SDL_Point origin = {0,0};
+    SDL_Point *center = NULL;
+    SDL_Point origin = { 0, 0 };
 
     SDL_RenderGetViewport(s->renderer, &viewport);
 
@@ -98,8 +96,9 @@ void loop()
         SDLTest_CommonEvent(state, &event, &done);
     }
     for (i = 0; i < state->num_windows; ++i) {
-        if (state->windows[i] == NULL)
+        if (state->windows[i] == NULL) {
             continue;
+        }
         Draw(&drawstates[i]);
     }
 #ifdef __EMSCRIPTEN__
@@ -109,19 +108,18 @@ void loop()
 #endif
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     int i;
     int frames;
-    Uint32 then, now;
+    Uint64 then, now;
 
     /* Enable standard application logging */
     SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
-    if (!state) {
+    if (state == NULL) {
         return 1;
     }
 
@@ -157,12 +155,12 @@ main(int argc, char *argv[])
     while (!done) {
         ++frames;
         loop();
-        }
+    }
 #endif
     /* Print out some timing information */
     now = SDL_GetTicks();
     if (now > then) {
-        double fps = ((double) frames * 1000) / (now - then);
+        double fps = ((double)frames * 1000) / (now - then);
         SDL_Log("%2.2f frames per second\n", fps);
     }
 

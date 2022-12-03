@@ -22,11 +22,9 @@
 #ifndef SDL_events_c_h_
 #define SDL_events_c_h_
 
-#include "../SDL_internal.h"
+#include "SDL_internal.h"
 
 /* Useful functions and variables from SDL_events.c */
-#include "SDL_events.h"
-#include "SDL_thread.h"
 #include "../video/SDL_sysvideo.h"
 
 #include "SDL_clipboardevents_c.h"
@@ -44,7 +42,7 @@ extern void SDL_StopEventLoop(void);
 extern void SDL_QuitInterrupt(void);
 
 extern int SDL_SendAppEvent(SDL_EventType eventType);
-extern int SDL_SendSysWMEvent(SDL_SysWMmsg * message);
+extern int SDL_SendSysWMEvent(SDL_SysWMmsg *message);
 extern int SDL_SendKeymapChangedEvent(void);
 extern int SDL_SendLocaleChangedEvent(void);
 

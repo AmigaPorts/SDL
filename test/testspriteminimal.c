@@ -12,20 +12,19 @@
 /* Simple program:  Move N sprites around on the screen as fast as possible */
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <time.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
 
-#include "SDL.h"
+#include <SDL3/SDL.h>
 #include "testutils.h"
 
-#define WINDOW_WIDTH    640
-#define WINDOW_HEIGHT   480
-#define NUM_SPRITES     100
-#define MAX_SPEED       1
+#define WINDOW_WIDTH  640
+#define WINDOW_HEIGHT 480
+#define NUM_SPRITES   100
+#define MAX_SPEED     1
 
 static SDL_Texture *sprite;
 static SDL_Rect positions[NUM_SPRITES];
@@ -43,8 +42,7 @@ quit(int rc)
     exit(rc);
 }
 
-void
-MoveSprites()
+void MoveSprites()
 {
     int i;
     int window_w = WINDOW_WIDTH;
@@ -96,12 +94,10 @@ void loop()
 #endif
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     SDL_Window *window;
     int i;
-
 
     /* Enable standard application logging */
     SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
@@ -117,7 +113,7 @@ main(int argc, char *argv[])
     }
 
     /* Initialize the sprite positions */
-    srand(time(NULL));
+    srand((unsigned int)time(NULL));
     for (i = 0; i < NUM_SPRITES; ++i) {
         positions[i].x = rand() % (WINDOW_WIDTH - sprite_w);
         positions[i].y = rand() % (WINDOW_HEIGHT - sprite_h);

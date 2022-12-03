@@ -1,8 +1,8 @@
 /*
     SDL_winrt_main_NonXAML.cpp, placed in the public domain by David Ludwig  3/13/14
 */
+#include <SDL3/SDL.h>
 
-#include "SDL_main.h"
 #include <wrl.h>
 
 /* At least one file in any SDL/WinRT app appears to require compilation
@@ -40,7 +40,7 @@
    is compiled with C++/CX enabled (via the /ZW compiler flag).
 */
 #ifdef _MSC_VER
-#pragma warning(disable:4447)
+#pragma warning(disable : 4447)
 #endif
 
 /* Make sure the function to initialize the Windows Runtime gets linked in. */

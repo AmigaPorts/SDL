@@ -20,7 +20,7 @@
 
 #include "../src/main/amigaos4/SDL_os4debug.h"
 
-#include "../include/SDL_hints.h"
+#include "SDL3/SDL_hints.h"
 
 #include <proto/dos.h>
 #include <proto/exec.h>
@@ -42,7 +42,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define NAME "SDL2 Prefs"
+#define NAME "SDL3 Prefs"
 #define VERSION "1.4"
 #define MAX_PATH_LEN 1024
 #define MAX_VARIABLE_NAME_LEN 32

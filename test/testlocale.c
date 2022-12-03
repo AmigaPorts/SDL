@@ -9,8 +9,7 @@
   including commercial applications, and to alter it and redistribute it
   freely.
 */
-#include <stdio.h>
-#include "SDL.h"
+#include <SDL3/SDL.h>
 
 /* !!! FIXME: move this to the test framework */
 
@@ -61,7 +60,7 @@ int main(int argc, char **argv)
         SDL_Quit();
     }
 
-   return 0;
+    return 0;
 }
 
 /* vi: set ts=4 sw=4 expandtab: */

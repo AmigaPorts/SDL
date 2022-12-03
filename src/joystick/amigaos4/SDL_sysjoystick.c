@@ -24,12 +24,9 @@
 
 #define OLDSDK 1
 
-#include "SDL_joystick.h"
 #include "../SDL_sysjoystick.h"
 #include "../SDL_joystick_c.h"
 #include "../../video/amigaos4/SDL_os4library.h"
-
-#include "SDL_events.h"
 
 #include <amigainput/amigainput.h>
 #include <proto/amigainput.h>

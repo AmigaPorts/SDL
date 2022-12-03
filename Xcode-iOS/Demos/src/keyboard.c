@@ -165,7 +165,7 @@ loadFont(void)
 {
     SDL_Surface *surface = SDL_LoadBMP("kromasky_16x16.bmp");
 
-    if (!surface) {
+    if (surface == NULL) {
         printf("Error loading bitmap: %s\n", SDL_GetError());
         return 0;
     } else {
@@ -173,17 +173,13 @@ loadFont(void)
         SDL_SetColorKey(surface, 1, SDL_MapRGB(surface->format, 238, 0, 252));
         /* now we convert the surface to our desired pixel format */
         int format = SDL_PIXELFORMAT_ABGR8888;  /* desired texture format */
-        Uint32 Rmask, Gmask, Bmask, Amask;      /* masks for desired format */
-        int bpp;                /* bits per pixel for desired format */
-        SDL_PixelFormatEnumToMasks(format, &bpp, &Rmask, &Gmask, &Bmask,
-                                   &Amask);
-        SDL_Surface *converted =
-            SDL_CreateRGBSurface(0, surface->w, surface->h, bpp, Rmask, Gmask,
-                                 Bmask, Amask);
+
+        SDL_Surface *converted = SDL_CreateSurface(surface->w, surface->h, format);
+
         SDL_BlitSurface(surface, NULL, converted, NULL);
         /* create our texture */
         texture = SDL_CreateTextureFromSurface(renderer, converted);
-        if (texture == 0) {
+        if (texture == NULL) {
             printf("texture creation failed: %s\n", SDL_GetError());
         } else {
             /* set blend mode for our texture */

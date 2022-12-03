@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #include <sys/stat.h>
 #include <unistd.h>
@@ -27,9 +27,6 @@
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /* System dependent filesystem routines                                */
-
-#include "SDL_error.h"
-#include "SDL_filesystem.h"
 
 char *
 SDL_GetBasePath(void)
@@ -40,7 +37,7 @@ SDL_GetBasePath(void)
 
     getcwd(cwd, sizeof(cwd));
     len = SDL_strlen(cwd) + 2;
-    retval = (char *) SDL_malloc(len);
+    retval = (char *)SDL_malloc(len);
     SDL_snprintf(retval, len, "%s/", cwd);
 
     return retval;
@@ -52,16 +49,16 @@ SDL_GetPrefPath(const char *org, const char *app)
     char *retval = NULL;
     size_t len;
     char *base = SDL_GetBasePath();
-    if (!app) {
+    if (app == NULL) {
         SDL_InvalidParamError("app");
         return NULL;
     }
-    if(!org) {
+    if (org == NULL) {
         org = "";
     }
 
     len = SDL_strlen(base) + SDL_strlen(org) + SDL_strlen(app) + 4;
-    retval = (char *) SDL_malloc(len);
+    retval = (char *)SDL_malloc(len);
 
     if (*org) {
         SDL_snprintf(retval, len, "%s%s/%s/", base, org, app);

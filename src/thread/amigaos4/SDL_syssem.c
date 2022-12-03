@@ -109,7 +109,7 @@ SDL_DestroySemaphore(SDL_sem * sem)
 }
 
 int
-SDL_SemWaitTimeout(SDL_sem * sem, Uint32 timeout)
+SDL_SemWaitTimeoutNS(SDL_sem * sem, Sint64 timeout)
 {
     if (!sem) {
         return SDL_SetError("Passed a NULL sem");
@@ -122,7 +122,7 @@ SDL_SemWaitTimeout(SDL_sem * sem, Uint32 timeout)
     ULONG alarmSignal = 0;
 
     if (timeout > 0) {
-        alarmSignal = OS4_TimerSetAlarm(OS4_ThreadGetTimer(), timeout);
+        alarmSignal = OS4_TimerSetAlarm(OS4_ThreadGetTimer(), timeout / 1000 /* TODO */);
     }
 
     while (wait) {
@@ -178,20 +178,6 @@ SDL_SemWaitTimeout(SDL_sem * sem, Uint32 timeout)
     //dprintf("Semaphore %p obtained\n", sem);
 
     return 0;
-}
-
-int
-SDL_SemTryWait(SDL_sem * sem)
-{
-    return SDL_SemWaitTimeout(sem, 0);
-}
-
-int
-SDL_SemWait(SDL_sem * sem)
-{
-    //dprintf("Called\n");
-
-    return SDL_SemWaitTimeout(sem, SDL_MUTEX_MAXWAIT);
 }
 
 /* Returns the current count of the semaphore */

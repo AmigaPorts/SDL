@@ -19,14 +19,12 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_evdev_h_
 #define SDL_evdev_h_
 
 #ifdef SDL_INPUT_LINUXEV
-
-#include "SDL_events.h"
 
 extern int SDL_EVDEV_Init(void);
 extern void SDL_EVDEV_Quit(void);

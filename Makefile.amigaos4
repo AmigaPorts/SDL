@@ -8,12 +8,12 @@ STRIP = ppc-amigaos-strip
 
 AMIGADATE = $(shell date +"%-d.%-m.%Y")
 
-CFLAGS  = -gstabs -O2 -Wall -fPIC -fcommon -I./include -D__AMIGADATE__=\"$(AMIGADATE)\"
+CFLAGS  = -gstabs -O2 -Wall -fPIC -fcommon -I./include -I./include/SDL3 -I./src -D__AMIGADATE__=\"$(AMIGADATE)\"
 
-TARGET_STATIC  = libSDL2.a
-TARGET_SHARED  = libSDL2-2.24.so
-TESTLIB_STATIC = libSDL2_test.a
-PREFS_PROGRAM = SDL2
+TARGET_STATIC  = libSDL3.a
+TARGET_SHARED  = libSDL3-3.0.so
+TESTLIB_STATIC = libSDL3_test.a
+PREFS_PROGRAM = SDL3
 
 SOURCES = \
 	./src/*.c \
@@ -62,7 +62,7 @@ VERSION_OBJECT = src/main/amigaos4/SDL_os4version.o
 PREFS_OBJECT = amiga-extra/prefs.o
 ALL_OBJECTS = $(OBJECTS) $(TESTLIB_OBJECTS) $(VERSION_OBJECT) $(PREFS_OBJECT)
 
-all: config_copy $(TARGET_STATIC) $(TARGET_SHARED) $(TESTLIB_STATIC) $(PREFS_PROGRAM)
+all: $(TARGET_STATIC) $(TARGET_SHARED) $(TESTLIB_STATIC) $(PREFS_PROGRAM)
 
 debug: CFLAGS += -DDEBUG
 
@@ -82,18 +82,15 @@ $(TARGET_SHARED): $(OBJECTS) $(VERSION_OBJECT)
 $(PREFS_PROGRAM): $(PREFS_OBJECT)
 	$(CC) -o $@ $^ -lauto
 
-config_copy:
-	cp include/SDL_config_amigaos4.h include/SDL_config.h
-
 clean:
 	rm -f $(TARGET_STATIC) $(TARGET_SHARED)* $(TESTLIB_STATIC) $(ALL_OBJECTS) $(PREFS_PROGRAM)
 
 install:
 	mkdir -p /SDK/local/newlib/lib
-	mkdir -p /SDK/local/newlib/include/SDL2
+	mkdir -p /SDK/local/newlib/include/SDL3
 	cp -f $(TARGET_STATIC) /SDK/local/newlib/lib
 	cp -f $(TARGET_SHARED) /SDK/local/newlib/lib
 	cp -f $(TESTLIB_STATIC) /SDK/local/newlib/lib
-	cp -f include/*.h /SDK/local/newlib/include/SDL2/
+	cp -f include/SDL3/*.h /SDK/local/newlib/include/SDL3/
 	cp -f $(PREFS_PROGRAM) /SYS/Prefs/
 

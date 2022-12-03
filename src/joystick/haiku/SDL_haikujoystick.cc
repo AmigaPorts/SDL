@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_JOYSTICK_HAIKU
 
@@ -30,7 +30,6 @@
 extern "C"
 {
 
-#include "SDL_joystick.h"
 #include "../SDL_sysjoystick.h"
 #include "../SDL_joystick_c.h"
 
@@ -68,8 +67,7 @@ extern "C"
         numjoysticks = 0;
         SDL_memset(SDL_joyport, 0, (sizeof SDL_joyport));
         SDL_memset(SDL_joyname, 0, (sizeof SDL_joyname));
-        for (i = 0; (numjoysticks < MAX_JOYSTICKS) && (i < nports); ++i)
-        {
+        for (i = 0; (numjoysticks < MAX_JOYSTICKS) && (i < nports); ++i) {
             if (joystick.GetDeviceName(i, name) == B_OK) {
                 if (joystick.Open(name) != B_ERROR) {
                       BString stick_name;
@@ -248,14 +246,11 @@ extern "C"
         SDL_joyname[0] = NULL;
     }
 
-    static SDL_JoystickGUID HAIKU_JoystickGetDeviceGUID( int device_index )
+    static SDL_JoystickGUID HAIKU_JoystickGetDeviceGUID(int device_index)
     {
-        SDL_JoystickGUID guid;
-        /* the GUID is just the first 16 chars of the name for now */
-        const char *name = HAIKU_JoystickGetDeviceName( device_index );
-        SDL_zero( guid );
-        SDL_memcpy( &guid, name, SDL_min( sizeof(guid), SDL_strlen( name ) ) );
-        return guid;
+        /* the GUID is just the name for now */
+        const char *name = HAIKU_JoystickGetDeviceName(device_index);
+        return SDL_CreateJoystickGUIDForName(name);
     }
 
     static int HAIKU_JoystickRumble(SDL_Joystick *joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble)

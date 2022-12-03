@@ -23,8 +23,6 @@
 
 #if defined(SDL_TIMER_AMIGAOS4) || defined(SDL_TIMERS_DISABLED)
 
-#include "SDL_types.h"
-
 #include <proto/exec.h>
 #include <proto/timer.h>
 #include <exec/execbase.h>

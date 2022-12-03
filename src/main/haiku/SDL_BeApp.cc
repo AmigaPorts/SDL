@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #if defined(__HAIKU__)
 
@@ -33,8 +33,6 @@
 
 #include "SDL_BApp.h"   /* SDL_BApp class definition */
 #include "SDL_BeApp.h"
-#include "SDL_timer.h"
-#include "SDL_error.h"
 
 #include "../../video/haiku/SDL_BWin.h"
 
@@ -51,8 +49,7 @@ static SDL_Thread *SDL_AppThread = NULL;
 /* Default application signature */
 const char *signature = "application/x-SDL-executable";
 
-static int
-StartBeApp(void *unused)
+static int StartBeApp(void *unused)
 {
     BApplication *App;
 
@@ -65,8 +62,9 @@ StartBeApp(void *unused)
             BAppFileInfo app_info(&f);
             if (app_info.InitCheck() == B_OK) {
                 char sig[B_MIME_TYPE_LENGTH];
-                if (app_info.GetSignature(sig) == B_OK)
+                if (app_info.GetSignature(sig) == B_OK) {
                     signature = strndup(sig, B_MIME_TYPE_LENGTH);
+                }
             }
         }
     }
@@ -75,7 +73,7 @@ StartBeApp(void *unused)
 
     App->Run();
     delete App;
-    return (0);
+    return 0;
 }
 
 /* Initialize the Be Application, if it's not already started */
@@ -116,7 +114,7 @@ SDL_InitBeApp(void)
     ++SDL_BeAppActive;
 
     /* The app is running, and we're ready to go */
-    return (0);
+    return 0;
 }
 
 /* Quit the Be Application, if there's nothing left to do */
@@ -147,7 +145,7 @@ SDL_QuitBeApp(void)
 void SDL_BApp::ClearID(SDL_BWin *bwin) {
     _SetSDLWindow(NULL, bwin->GetID());
     int32 i = _GetNumWindowSlots() - 1;
-    while(i >= 0 && GetSDLWindow(i) == NULL) {
+    while (i >= 0 && GetSDLWindow(i) == NULL) {
         _PopBackWindow();
         --i;
     }
