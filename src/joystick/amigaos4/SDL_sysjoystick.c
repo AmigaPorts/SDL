@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if defined(SDL_JOYSTICK_AMIGAINPUT) || defined(SDL_JOYSTICK_DISABLED)
+#if defined(SDL_JOYSTICK_AMIGAINPUT)
 
 #define OLDSDK 1
 
@@ -658,6 +658,6 @@ SDL_JoystickDriver SDL_AMIGAINPUT_JoystickDriver =
     AMIGAINPUT_GetGamepadMapping
 };
 
-#endif /* SDL_JOYSTICK_AMIGAINPUT || SDL_JOYSTICK_DISABLED */
+#endif /* SDL_JOYSTICK_AMIGAINPUT */
 
 /* vi: set ts=4 sw=4 expandtab: */
