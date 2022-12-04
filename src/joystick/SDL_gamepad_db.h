@@ -982,7 +982,13 @@ static const char *s_GamepadMappings[] = {
 #if SDL_JOYSTICK_EMSCRIPTEN
     "default,Standard Gamepad,a:b0,b:b1,back:b8,dpdown:b13,dpleft:b14,dpright:b15,dpup:b12,guide:b16,leftshoulder:b4,leftstick:b10,lefttrigger:b6,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b11,righttrigger:b7,rightx:a2,righty:a3,start:b9,x:b2,y:b3,",
 #endif
-#if SDL_JOYSTICK_AMIGAOS4
+#if SDL_JOYSTICK_PS2
+    "0000000050533220436f6e74726f6c00,PS2 Controller,crc:ed87,a:b14,b:b13,back:b0,dpdown:b6,dpleft:b7,dpright:b5,dpup:b4,leftshoulder:b10,leftstick:b1,lefttrigger:b8,leftx:a0,lefty:a1,rightshoulder:b11,rightstick:b2,righttrigger:b9,rightx:a2,righty:a3,start:b3,x:b15,y:b12,",
+#endif
+#if SDL_JOYSTICK_PSP
+    "00000000505350206275696c74696e00,PSP builtin joypad,crc:bb86,a:b2,b:b1,back:b10,dpdown:b6,dpleft:b7,dpright:b9,dpup:b8,leftshoulder:b4,leftx:a0,lefty:a1,rightshoulder:b5,rightx:a2,righty:a3,start:b11,x:b3,y:b0,",
+#endif
+#if SDL_JOYSTICK_AMIGAINPUT
     "53504545442d4c494e4b20436f6d7065,SPEED-LINK Competition Pro,platform:AmigaOS 4,a:b0,b:b1,x:b3,y:b2,leftx:a0,lefty:a1,",
     "47656e6572696320202055534220204a,Ewent Joypad EW3170,platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,start:b9,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,lefttrigger:b6,righttrigger:b7,",
     "555342204a6f79737469636b20202020,PS2 Joystick (USB adaptor),platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,start:b9,leftshoulder:b6,rightshoulder:b7,leftx:a0,lefty:a1,lefttrigger:b4,righttrigger:b5,",
