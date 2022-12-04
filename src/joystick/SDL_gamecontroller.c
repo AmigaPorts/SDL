@@ -731,8 +731,13 @@ static ControllerMapping_t *SDL_PrivateMatchControllerMappingForGUID(SDL_Joystic
         SDL_GetJoystickGUIDInfo(guid, NULL, NULL, NULL, &crc);
     }
 
+#if defined(__AMIGAOS4__)
+    /* HACK: AmigaOS 4 GUIDs are just name strings, so don't break them.
+       TODO: this requires more investigation, there may be more similar issues */
+#else
     /* Clear the CRC from the GUID for matching, the mappings never include it in the GUID */
     SDL_SetJoystickGUIDCRC(&guid, 0);
+#endif
 
     if (!match_version) {
         SDL_SetJoystickGUIDVersion(&guid, 0);
