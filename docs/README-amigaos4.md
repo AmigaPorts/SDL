@@ -15,6 +15,10 @@ There is an installer script that can be used to install shared objects, prefs
 program and the SDK. Many current SDL2 applications are linked statically but
 there are some apps like RebelSDL (Hollywood) that use SDL2 as a shared object.
 
+Installer script creates soft link from libSDL2.so to the latest libSDL2-2.x.so
+file. SDL2 version numbering changed after 2.0.22 release: next stable release
+had version 2.24.0.
+
 ================================================================================
 Building SDL 2 library
 ================================================================================
