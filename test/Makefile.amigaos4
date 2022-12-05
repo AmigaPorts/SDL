@@ -31,6 +31,7 @@ TARGETS = \
 	testgl2 \
 	testgles \
 	testgles2 \
+	testgles2_sdf \
 	testhaptic \
 	testhittesting \
 	testhotplug \
@@ -43,6 +44,7 @@ TARGETS = \
 	testlocale \
 	testlock \
 	testmessage \
+	testmouse \
 	testmultiaudio \
 	testnative \
 	testoffscreen \
@@ -63,6 +65,7 @@ TARGETS = \
 	testsprite2 \
 	testspriteminimal \
 	teststreaming \
+	testsurround \
 	testthread \
 	testtimer \
 	testurl \
@@ -174,6 +177,9 @@ testgles: testgles.o
 testgles2: testgles2.o
 	$(CC) -o $@ $^ $(LIBS)
 
+testgles2_sdf: testgles2_sdf.o testutils.o
+	$(CC) -o $@ $^ $(LIBS)
+
 testhaptic: testhaptic.o
 	$(CC) -o $@ $^ $(LIBS)
 
@@ -205,6 +211,9 @@ testlocale: testlocale.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testlock: testlock.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testmouse: testmouse.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testnative: testnative.o testnativeamigaos4.o testutils.o
@@ -250,6 +259,9 @@ testspriteminimal: testspriteminimal.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 teststreaming: teststreaming.o testutils.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testsurround: testsurround.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testtimer: testtimer.o
