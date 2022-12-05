@@ -366,7 +366,7 @@ void loop()
                     }
                     /* Change view port to the new window dimensions */
                     SDL_GL_GetDrawableSize(state->windows[i], &w, &h);
-                    ctx.glViewport(0, 0, w, h);
+                    ctx.myglViewport(0, 0, w, h);
                     state->window_w = event.window.data1;
                     state->window_h = event.window.data2;
                     /* Update window content */
