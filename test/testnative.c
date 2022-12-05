@@ -49,10 +49,13 @@ static SDL_Rect *positions, *velocities;
 static void
 quit(int rc)
 {
-    SDL_VideoQuit();
     if (native_window) {
         factory->DestroyNativeWindow(native_window);
     }
+
+    SDL_VideoQuit();
+    SDL_Quit();
+
     exit(rc);
 }
 
@@ -204,6 +207,8 @@ main(int argc, char *argv[])
         }
         MoveSprites(renderer, sprite);
     }
+
+    SDL_DestroyRenderer(renderer);
 
     quit(0);
 
