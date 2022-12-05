@@ -47,10 +47,13 @@ static SDL_FRect *positions, *velocities;
 static void
 quit(int rc)
 {
-    SDL_Quit();
     if (native_window != NULL && factory != NULL) {
         factory->DestroyNativeWindow(native_window);
     }
+
+    SDL_VideoQuit();
+    SDL_Quit();
+
     exit(rc);
 }
 
@@ -196,6 +199,8 @@ int main(int argc, char *argv[])
         }
         MoveSprites(renderer, sprite);
     }
+
+    SDL_DestroyRenderer(renderer);
 
     quit(0);
 

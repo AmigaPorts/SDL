@@ -106,6 +106,7 @@ int main(int argc, char *argv[])
     if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
         SDL_Log("Couldn't initialize the offscreen video driver: %s\n",
                 SDL_GetError());
+        SDL_Quit();
         return SDL_FALSE;
     }
 
