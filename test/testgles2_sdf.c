@@ -19,7 +19,7 @@
 #include <SDL3/SDL_main.h>
 #include "testutils.h"
 
-#if defined(__IOS__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__) || defined(__WINDOWS__) || defined(__LINUX__)
+#if defined(__IOS__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__) || defined(__WINDOWS__) || defined(__LINUX__) || defined(__AMIGAOS4__)
 #define HAVE_OPENGLES2
 #endif
 
@@ -29,7 +29,7 @@
 
 typedef struct GLES2_Context
 {
-#define SDL_PROC(ret, func, params) ret(APIENTRY *func) params;
+#define SDL_PROC(ret, func, params) ret (APIENTRY *my##func) params;
 #include "../src/render/opengles2/SDL_gles2funcs.h"
 #undef SDL_PROC
 } GLES2_Context;
@@ -69,12 +69,12 @@ static int LoadContext(GLES2_Context *data)
 #endif
 
 #if defined __SDL_NOGETPROCADDR__
-#define SDL_PROC(ret, func, params) data->func = func;
+#define SDL_PROC(ret, func, params) data->my##func = func;
 #else
 #define SDL_PROC(ret, func, params)                                                            \
     do {                                                                                       \
-        data->func = (ret (APIENTRY *) params)SDL_GL_GetProcAddress(#func);                    \
-        if (!data->func) {                                                                     \
+        data->my##func = (ret (APIENTRY *) params)SDL_GL_GetProcAddress(#func);                \
+        if (!data->my##func) {                                                                 \
             return SDL_SetError("Couldn't load GLES2 function %s: %s", #func, SDL_GetError()); \
         }                                                                                      \
     } while (0);
@@ -108,10 +108,10 @@ quit(int rc)
 #define GL_CHECK(x)                                                                         \
     x;                                                                                      \
     {                                                                                       \
-        GLenum glError = ctx.glGetError();                                                  \
+        GLenum glError = ctx.myglGetError();                                                \
         if (glError != GL_NO_ERROR) {                                                       \
             SDL_Log("glGetError() = %i (0x%.8x) at line %i\n", glError, glError, __LINE__); \
-            quit(1);                                                                        \
+            quit(-1);                                                                       \
         }                                                                                   \
     }
 
@@ -130,22 +130,22 @@ void process_shader(GLenum *shader, const char *source, GLenum shader_type)
     GLsizei length;
 
     /* Create shader and load into GL. */
-    *shader = GL_CHECK(ctx.glCreateShader(shader_type));
+    *shader = GL_CHECK(ctx.myglCreateShader(shader_type));
 
     shaders[0] = source;
 
-    GL_CHECK(ctx.glShaderSource(*shader, 1, shaders, NULL));
+    GL_CHECK(ctx.myglShaderSource(*shader, 1, shaders, NULL));
 
     /* Clean up shader source. */
     shaders[0] = NULL;
 
     /* Try compiling the shader. */
-    GL_CHECK(ctx.glCompileShader(*shader));
-    GL_CHECK(ctx.glGetShaderiv(*shader, GL_COMPILE_STATUS, &status));
+    GL_CHECK(ctx.myglCompileShader(*shader));
+    GL_CHECK(ctx.myglGetShaderiv(*shader, GL_COMPILE_STATUS, &status));
 
     /* Dump debug info (source and log) if compilation failed. */
     if (status != GL_TRUE) {
-        ctx.glGetProgramInfoLog(*shader, sizeof(buffer), &length, &buffer[0]);
+        ctx.myglGetShaderInfoLog(*shader, sizeof(buffer), &length, &buffer[0]);
         buffer[length] = '\0';
         SDL_Log("Shader compilation failed: %s", buffer);
         quit(-1);
@@ -252,18 +252,18 @@ static void
 Render(int width, int height, shader_data *data)
 {
     float *verts = g_verts;
-    ctx.glViewport(0, 0, 640, 480);
+    ctx.myglViewport(0, 0, 640, 480);
 
-    GL_CHECK(ctx.glClear(GL_COLOR_BUFFER_BIT));
+    GL_CHECK(ctx.myglClear(GL_COLOR_BUFFER_BIT));
 
-    GL_CHECK(ctx.glUniformMatrix4fv(g_uniform_locations[GLES2_UNIFORM_PROJECTION], 1, GL_FALSE, (const float *)matrix_mvp));
-    GL_CHECK(ctx.glUniform4f(g_uniform_locations[GLES2_UNIFORM_COLOR], 1.0f, 1.0f, 1.0f, 1.0f));
+    GL_CHECK(ctx.myglUniformMatrix4fv(g_uniform_locations[GLES2_UNIFORM_PROJECTION], 1, GL_FALSE, (const float *)matrix_mvp));
+    GL_CHECK(ctx.myglUniform4f(g_uniform_locations[GLES2_UNIFORM_COLOR], 1.0f, 1.0f, 1.0f, 1.0f));
 
-    GL_CHECK(ctx.glVertexAttribPointer(GLES2_ATTRIBUTE_ANGLE, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid *)(verts + 16)));
-    GL_CHECK(ctx.glVertexAttribPointer(GLES2_ATTRIBUTE_TEXCOORD, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid *)(verts + 8)));
-    GL_CHECK(ctx.glVertexAttribPointer(GLES2_ATTRIBUTE_POSITION, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid *)verts));
+    GL_CHECK(ctx.myglVertexAttribPointer(GLES2_ATTRIBUTE_ANGLE, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid *)(verts + 16)));
+    GL_CHECK(ctx.myglVertexAttribPointer(GLES2_ATTRIBUTE_TEXCOORD, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid *)(verts + 8)));
+    GL_CHECK(ctx.myglVertexAttribPointer(GLES2_ATTRIBUTE_POSITION, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid *)verts));
 
-    GL_CHECK(ctx.glDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
+    GL_CHECK(ctx.myglDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
 }
 
 void renderCopy_angle(float degree_angle)
@@ -605,10 +605,10 @@ int main(int argc, char *argv[])
     SDL_GetCurrentDisplayMode(0, &mode);
     SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode.format));
     SDL_Log("\n");
-    SDL_Log("Vendor     : %s\n", ctx.glGetString(GL_VENDOR));
-    SDL_Log("Renderer   : %s\n", ctx.glGetString(GL_RENDERER));
-    SDL_Log("Version    : %s\n", ctx.glGetString(GL_VERSION));
-    SDL_Log("Extensions : %s\n", ctx.glGetString(GL_EXTENSIONS));
+    SDL_Log("Vendor     : %s\n", ctx.myglGetString(GL_VENDOR));
+    SDL_Log("Renderer   : %s\n", ctx.myglGetString(GL_RENDERER));
+    SDL_Log("Version    : %s\n", ctx.myglGetString(GL_VERSION));
+    SDL_Log("Extensions : %s\n", ctx.myglGetString(GL_EXTENSIONS));
     SDL_Log("\n");
 
     status = SDL_GL_GetAttribute(SDL_GL_RED_SIZE, &value);
@@ -684,24 +684,24 @@ int main(int argc, char *argv[])
             int format = GL_RGBA;
             int type = GL_UNSIGNED_BYTE;
 
-            GL_CHECK(ctx.glGenTextures(1, &g_texture));
+            GL_CHECK(ctx.myglGenTextures(1, &g_texture));
 
-            ctx.glActiveTexture(GL_TEXTURE0);
-            ctx.glPixelStorei(GL_PACK_ALIGNMENT, 1);
-            ctx.glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+            ctx.myglActiveTexture(GL_TEXTURE0);
+            ctx.myglPixelStorei(GL_PACK_ALIGNMENT, 1);
+            ctx.myglPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-            ctx.glBindTexture(g_texture_type, g_texture);
+            ctx.myglBindTexture(g_texture_type, g_texture);
 
-            ctx.glTexParameteri(g_texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            ctx.glTexParameteri(g_texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            ctx.glTexParameteri(g_texture_type, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            ctx.glTexParameteri(g_texture_type, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            GL_CHECK(ctx.glTexImage2D(g_texture_type, 0, format, g_surf_sdf->w, g_surf_sdf->h, 0, format, type, NULL));
-            GL_CHECK(ctx.glTexSubImage2D(g_texture_type, 0, 0 /* xoffset */, 0 /* yoffset */, g_surf_sdf->w, g_surf_sdf->h, format, type, g_surf_sdf->pixels));
+            ctx.myglTexParameteri(g_texture_type, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            ctx.myglTexParameteri(g_texture_type, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            ctx.myglTexParameteri(g_texture_type, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            ctx.myglTexParameteri(g_texture_type, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            GL_CHECK(ctx.myglTexImage2D(g_texture_type, 0, format, g_surf_sdf->w, g_surf_sdf->h, 0, format, type, NULL));
+            GL_CHECK(ctx.myglTexSubImage2D(g_texture_type, 0, 0 /* xoffset */, 0 /* yoffset */, g_surf_sdf->w, g_surf_sdf->h, format, type, g_surf_sdf->pixels));
         }
 
         SDL_GL_GetDrawableSize(state->windows[i], &w, &h);
-        ctx.glViewport(0, 0, w, h);
+        ctx.myglViewport(0, 0, w, h);
 
         data = &datas[i];
 
@@ -719,39 +719,39 @@ int main(int argc, char *argv[])
         }
 
         /* Create shader_program (ready to attach shaders) */
-        data->shader_program = GL_CHECK(ctx.glCreateProgram());
+        data->shader_program = GL_CHECK(ctx.myglCreateProgram());
 
         /* Attach shaders and link shader_program */
-        GL_CHECK(ctx.glAttachShader(data->shader_program, data->shader_vert));
-        GL_CHECK(ctx.glAttachShader(data->shader_program, data->shader_frag));
-        GL_CHECK(ctx.glLinkProgram(data->shader_program));
+        GL_CHECK(ctx.myglAttachShader(data->shader_program, data->shader_vert));
+        GL_CHECK(ctx.myglAttachShader(data->shader_program, data->shader_frag));
+        GL_CHECK(ctx.myglLinkProgram(data->shader_program));
 
-        ctx.glBindAttribLocation(data->shader_program, GLES2_ATTRIBUTE_POSITION, "a_position");
-        ctx.glBindAttribLocation(data->shader_program, GLES2_ATTRIBUTE_TEXCOORD, "a_texCoord");
-        ctx.glBindAttribLocation(data->shader_program, GLES2_ATTRIBUTE_ANGLE, "a_angle");
-        ctx.glBindAttribLocation(data->shader_program, GLES2_ATTRIBUTE_CENTER, "a_center");
+        ctx.myglBindAttribLocation(data->shader_program, GLES2_ATTRIBUTE_POSITION, "a_position");
+        ctx.myglBindAttribLocation(data->shader_program, GLES2_ATTRIBUTE_TEXCOORD, "a_texCoord");
+        ctx.myglBindAttribLocation(data->shader_program, GLES2_ATTRIBUTE_ANGLE, "a_angle");
+        ctx.myglBindAttribLocation(data->shader_program, GLES2_ATTRIBUTE_CENTER, "a_center");
 
         /* Predetermine locations of uniform variables */
-        g_uniform_locations[GLES2_UNIFORM_PROJECTION] = ctx.glGetUniformLocation(data->shader_program, "u_projection");
-        g_uniform_locations[GLES2_UNIFORM_TEXTURE] = ctx.glGetUniformLocation(data->shader_program, "u_texture");
-        g_uniform_locations[GLES2_UNIFORM_COLOR] = ctx.glGetUniformLocation(data->shader_program, "u_color");
+        g_uniform_locations[GLES2_UNIFORM_PROJECTION] = ctx.myglGetUniformLocation(data->shader_program, "u_projection");
+        g_uniform_locations[GLES2_UNIFORM_TEXTURE] = ctx.myglGetUniformLocation(data->shader_program, "u_texture");
+        g_uniform_locations[GLES2_UNIFORM_COLOR] = ctx.myglGetUniformLocation(data->shader_program, "u_color");
 
-        GL_CHECK(ctx.glUseProgram(data->shader_program));
+        GL_CHECK(ctx.myglUseProgram(data->shader_program));
 
-        ctx.glEnableVertexAttribArray((GLenum)GLES2_ATTRIBUTE_ANGLE);
-        ctx.glDisableVertexAttribArray((GLenum)GLES2_ATTRIBUTE_CENTER);
-        ctx.glEnableVertexAttribArray(GLES2_ATTRIBUTE_POSITION);
-        ctx.glEnableVertexAttribArray((GLenum)GLES2_ATTRIBUTE_TEXCOORD);
+        ctx.myglEnableVertexAttribArray((GLenum)GLES2_ATTRIBUTE_ANGLE);
+        ctx.myglDisableVertexAttribArray((GLenum)GLES2_ATTRIBUTE_CENTER);
+        ctx.myglEnableVertexAttribArray(GLES2_ATTRIBUTE_POSITION);
+        ctx.myglEnableVertexAttribArray((GLenum)GLES2_ATTRIBUTE_TEXCOORD);
 
-        ctx.glUniform1i(g_uniform_locations[GLES2_UNIFORM_TEXTURE], 0); /* always texture unit 0. */
-        ctx.glActiveTexture(GL_TEXTURE0);
-        ctx.glBindTexture(g_texture_type, g_texture);
-        GL_CHECK(ctx.glClearColor(1, 1, 1, 1));
+        ctx.myglUniform1i(g_uniform_locations[GLES2_UNIFORM_TEXTURE], 0); /* always texture unit 0. */
+        ctx.myglActiveTexture(GL_TEXTURE0);
+        ctx.myglBindTexture(g_texture_type, g_texture);
+        GL_CHECK(ctx.myglClearColor(1, 1, 1, 1));
 
         // SDL_BLENDMODE_BLEND
-        GL_CHECK(ctx.glEnable(GL_BLEND));
-        ctx.glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-        ctx.glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+        GL_CHECK(ctx.myglEnable(GL_BLEND));
+        ctx.myglBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        ctx.myglBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
     }
 
     /* Main render loop */
