@@ -78,6 +78,13 @@ SDL_CalculateShapeBitmap(SDL_WindowShapeMode mode,SDL_Surface *shape,Uint8* bitm
     Uint8 *bitmap_scanline;
     SDL_Color key;
 
+#ifdef __AMIGAOS4__
+    /* 8-bit alpha value per pixel */
+    const int MASK_VALUE = 255;
+#else
+    const int MASK_VALUE = 1;
+#endif
+
     if(SDL_MUSTLOCK(shape))
         SDL_LockSurface(shape);
 
@@ -106,17 +113,17 @@ SDL_CalculateShapeBitmap(SDL_WindowShapeMode mode,SDL_Surface *shape,Uint8* bitm
             SDL_GetRGBA(pixel_value,shape->format,&r,&g,&b,&alpha);
             switch(mode.mode) {
                 case(ShapeModeDefault):
-                    mask_value = (alpha >= 1 ? 1 : 0);
+                    mask_value = (alpha >= 1 ? MASK_VALUE : 0);
                     break;
                 case(ShapeModeBinarizeAlpha):
-                    mask_value = (alpha >= mode.parameters.binarizationCutoff ? 1 : 0);
+                    mask_value = (alpha >= mode.parameters.binarizationCutoff ? MASK_VALUE : 0);
                     break;
                 case(ShapeModeReverseBinarizeAlpha):
-                    mask_value = (alpha <= mode.parameters.binarizationCutoff ? 1 : 0);
+                    mask_value = (alpha <= mode.parameters.binarizationCutoff ? MASK_VALUE : 0);
                     break;
                 case(ShapeModeColorKey):
                     key = mode.parameters.colorKey;
-                    mask_value = ((key.r != r || key.g != g || key.b != b) ? 1 : 0);
+                    mask_value = ((key.r != r || key.g != g || key.b != b) ? MASK_VALUE : 0);
                     break;
             }
             bitmap_scanline[x / ppb] |= mask_value << (x % ppb);
