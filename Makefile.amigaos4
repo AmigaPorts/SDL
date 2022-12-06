@@ -29,6 +29,7 @@ SOURCES = \
 	./src/haptic/dummy/*.c \
 	./src/joystick/*.c \
 	./src/joystick/amigaos4/*.c \
+	./src/joystick/virtual/*.c \
 	./src/loadso/amigaos4/*.c \
 	./src/locale/*.c \
 	./src/locale/amigaos4/*.c \
