@@ -45,12 +45,15 @@ OS4_CreateShaper(SDL_Window * window)
 
     dprintf("Called %p\n", window);
 
-    IIntuition->GetScreenAttrs(windowdata->syswin->WScreen,
+    LONG r = IIntuition->GetScreenAttrs(windowdata->syswin->WScreen,
         SA_Compositing, &compositing,
         TAG_DONE);
 
-    if (compositing) {
+    if (r != 0) {
+        dprintf("Failed to query compositing mode\n");
+    }
 
+    if (compositing) {
         result = SDL_malloc(sizeof(SDL_WindowShaper));
 
         if (result) {
@@ -77,19 +80,20 @@ OS4_CreateShaper(SDL_Window * window)
                 resized_properly = OS4_ResizeWindowShape(window);
 
                 SDL_assert(resized_properly == 0);
-
             } else {
                 dprintf("Failed to allocate driver data\n");
+                SDL_SetError("Failed to allocate driver data");
                 SDL_free(result);
                 result = NULL;
             }
-
         } else {
             //SDL_SetError("Failed to create shaper");
             dprintf("Failed to create shaper\n");
+            SDL_SetError("Failed to create shaper");
         }
     } else {
         dprintf("Compositing not enabled!\n");
+        SDL_SetError("Compositing not enabled");
     }
 
     return result;
@@ -120,15 +124,11 @@ OS4_MakeAlphaBitMap(void * source, int width, int height)
             TAG_DONE);
 
         if (lock) {
-
             int y;
-
             uint8 *src = source;
 
             for (y = 0; y < height; y++) {
-
                 int x;
-
                 uint8 *dst = (uint8 *)baseaddress + y * bytesperrow;
 
                 for (x = 0; x < width; x++) {
@@ -142,9 +142,8 @@ OS4_MakeAlphaBitMap(void * source, int width, int height)
             IGraphics->FreeBitMap(sysbm);
             sysbm = NULL;
         }
-
     } else {
-        dprintf("Couldn't allocate alpha bitmap\n");
+        dprintf("Failed to allocate alpha bitmap\n");
         return NULL;
     }
 
@@ -163,12 +162,13 @@ OS4_SetAlphaLayer(struct Window * window, SDL_ShapeData * data)
 
     if (data->cliprect) {
         dprintf("Freeing old clip rect\n");
+        // Also bitmap is freed by FreeClipRect
         ILayers->FreeClipRect(&window->WScreen->LayerInfo, data->cliprect);
     }
 
     cliprect = ILayers->AllocClipRect(&window->WScreen->LayerInfo);
 
-    if (cliprect) {
+    if (cliprect && data->sysbm) {
         cliprect->BitMap = data->sysbm;
 
         // TODO: anything else to be done?
@@ -189,7 +189,7 @@ OS4_SetAlphaLayer(struct Window * window, SDL_ShapeData * data)
         dprintf("Failed to install layer alpha\n");
     }
 
-    return cliprect; //TODO
+    return cliprect;
 }
 
 void
@@ -200,7 +200,6 @@ OS4_DestroyShape(_THIS, SDL_Window * window)
     dprintf("Called for '%s'\n", window->title);
 
     if (shaper && shaper->driverdata) {
-
         SDL_ShapeData *data = shaper->driverdata;
         SDL_WindowData *windowdata = window->driverdata;
         struct Window *syswin = windowdata->syswin;
@@ -208,20 +207,13 @@ OS4_DestroyShape(_THIS, SDL_Window * window)
         if (data->cliprect) {
             ILayers->LockLayerInfo(&syswin->WScreen->LayerInfo);
 
-            data->cliprect->BitMap = NULL; // TODO: is this valid approach??
-
             dprintf("Freeing cliprect %p\n", data->cliprect);
 
+            // Also bitmap is freed by FreeClipRect
             ILayers->FreeClipRect(&syswin->WScreen->LayerInfo, data->cliprect);
             data->cliprect = NULL;
 
             ILayers->UnlockLayerInfo(&syswin->WScreen->LayerInfo);
-        }
-
-        if (data->sysbm) {
-            dprintf("Freeing system bitmap %p\n", data->sysbm);
-            IGraphics->FreeBitMap(data->sysbm);
-            data->sysbm = NULL;
         }
 
         if (data->bitmap) {
@@ -238,57 +230,54 @@ OS4_DestroyShape(_THIS, SDL_Window * window)
         dprintf("No shaper or shape data\n");
         return;
     }
-
 }
 
 int
 OS4_SetWindowShape(SDL_WindowShaper * shaper, SDL_Surface * shape, SDL_WindowShapeMode * shape_mode)
 {
     if (shaper && shape && shape_mode && shaper->driverdata) {
-
         SDL_ShapeData *data = shaper->driverdata;
         SDL_WindowData *windowdata = shaper->window->driverdata;
 
         if (shape->format->Amask == 0 && SDL_SHAPEMODEALPHA(shape_mode->mode)) {
             dprintf("Shape doesn't have alpha channel\n");
+            SDL_SetError("Shape doesn't have alpha channel");
             return -2;
         }
 
         if (shape->w != shaper->window->w || shape->h != shaper->window->h) {
-
-            dprintf("Shape dimensions don't match window dimensions\n");
+            dprintf("Shape vs. window dimensions mismatch\n");
+            SDL_SetError("Shape vs. window dimensions mismatch");
             return -3;
         }
 
         if (data->bitmap) {
             SDL_CalculateShapeBitmap(shaper->mode, shape, data->bitmap, 1);
 
-            if (! (data->sysbm = OS4_MakeAlphaBitMap(data->bitmap, shape->w, shape->h))) {
-                dprintf("Couldn't allocate alpha bitmap\n");
+            data->sysbm = OS4_MakeAlphaBitMap(data->bitmap, shape->w, shape->h);
+            if (!data->sysbm) {
+                dprintf("Failed to allocate alpha bitmap\n");
+                SDL_SetError("Failed to allocate alpha bitmap");
                 return -4;
             }
 
-            dprintf("Freeing temporary SDL bitmap %p\n", data->bitmap);
-
-            SDL_free(data->bitmap);
-            data->bitmap = NULL;
-
-            if (! (data->cliprect = OS4_SetAlphaLayer(windowdata->syswin, data))) {
+            if (!(data->cliprect = OS4_SetAlphaLayer(windowdata->syswin, data))) {
                 dprintf("Failed to allocate clip rect\n");
+                SDL_SetError("Failed to allocate clip rect");
                 return -5;
             }
 
             dprintf("New alpha layer applied for window '%s'\n", shaper->window->title);
-
             return 0;
-
         } else {
-            dprintf("NULL source bitmap\n");
+            dprintf("Source bitmap nullptr\n");
+            SDL_SetError("Source bitmap nullptr");
             return -6;
         }
 
     } else {
         dprintf("No shaper, shape or shape_mode\n");
+        SDL_SetError("No shaper, shape or shape_mode");
         return -7;
     }
 }
@@ -300,7 +289,7 @@ OS4_ResizeWindowShape(SDL_Window * window)
         SDL_ShapeData *data = window->shaper->driverdata;
 
         if (data) {
-            dprintf("Called for '%s'\n", window->title);
+            dprintf("Called for '%s' %d * %d\n", window->title, window->w, window->h);
 
             if (data->width != window->w ||
                 data->height != window->h || data->bitmap == NULL) {
@@ -319,22 +308,25 @@ OS4_ResizeWindowShape(SDL_Window * window)
                 if (data->bitmap) {
                     SDL_memset(data->bitmap, 0, bitmapsize);
                 } else {
-                    dprintf("Failed to allocate SDL bitmap\n");
-                    return SDL_SetError("Could not allocate memory for shaped-window bitmap");
+                    dprintf("Failed to allocate memory for shaped-window bitmap\n");
+                    return SDL_SetError("Failed to allocate memory for shaped-window bitmap");
                 }
+            } else {
+                dprintf("Resize ignored\n");
             }
 
-            window->shaper->userx = window->x;
-            window->shaper->usery = window->y;
+            //window->shaper->userx = window->x;
+            //window->shaper->usery = window->y;
             //SDL_SetWindowPosition(window, -1000, -1000);//??
-
             return 0;
         } else {
             dprintf("No shape data\n");
+            SDL_SetError("No shape data");
             return -1;
         }
     } else {
-        dprintf("No shaper\n");
+        dprintf("Window has no shaper\n");
+        SDL_SetError("Window has no shaper");
         return -1;
     }
 }
