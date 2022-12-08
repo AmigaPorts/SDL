@@ -578,12 +578,19 @@ AMIGAINPUT_Quit(void)
 static SDL_JoystickGUID
 AMIGAINPUT_GetDeviceGUID(int device_index)
 {
-    SDL_JoystickGUID guid;
-    /* the GUID is just the first 16 chars of the name for now */
-    const char *name = AMIGAINPUT_GetDeviceName(device_index);
-    SDL_zero( guid );
-    SDL_memcpy( &guid, name, SDL_min( sizeof(guid), SDL_strlen( name ) ) );
-    return guid;
+    Uint16 vendor = 0;
+    Uint16 product = 0;
+    Uint16 version = 0;
+    Uint8 signature = 0;
+    Uint8 data = 0;
+
+    return SDL_CreateJoystickGUID(SDL_HARDWARE_BUS_USB,
+                                  vendor,
+                                  product,
+                                  version,
+                                  joystickList[device_index].name,
+                                  signature,
+                                  data);
 }
 
 static int
