@@ -64,16 +64,11 @@ typedef struct OS4_ThreadControl
 
 static OS4_ThreadControl control;
 
-static BOOL initialized = FALSE;
+static void OS4_InitThreadSubSystem(void) __attribute__((constructor(101)));
+static void OS4_QuitThreadSubSystem(void) __attribute__((destructor(101)));
 
-// NOTE: Init and Quit are called from SDL.c at the moment.
-void OS4_InitThreadSubSystem(void)
+static void OS4_InitThreadSubSystem(void)
 {
-    if (initialized) {
-        dprintf("Already initialized\n");
-        return;
-    }
-
     control.primary.task = IExec->FindTask(NULL);
 
     dprintf("Main task %p\n", control.primary.task);
@@ -95,18 +90,11 @@ void OS4_InitThreadSubSystem(void)
     OS4_TimerCreate(&control.primary.timer);
 
     control.primary.task->tc_UserData = &control.primary; // Timer lookup requires this
-
-    initialized = TRUE;
 }
 
-void OS4_QuitThreadSubSystem(void)
+static void OS4_QuitThreadSubSystem(void)
 {
     struct MinNode* iter;
-
-    if (!initialized) {
-        dprintf("Not initialized\n");
-        return;
-    }
 
     dprintf("Called from task %p\n", IExec->FindTask(NULL));
 
@@ -142,8 +130,6 @@ void OS4_QuitThreadSubSystem(void)
 
     OS4_DropInterface((struct Interface **)&iDOS);
     OS4_CloseLibrary((struct Library **)&dosBase);
-
-    initialized = FALSE;
 
     dprintf("All done\n");
 }
