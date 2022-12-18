@@ -38,9 +38,6 @@
 #define CHILD_SIGNAL SIGBREAKF_CTRL_D
 #define BREAK_SIGNAL SIGBREAKF_CTRL_C
 
-static struct DOSIFace* iDOS; // TODO: try to make centralized interface storage for SDL2 - now it's a mess with too many symbols all over the place
-static struct DOSBase* dosBase;
-
 typedef struct OS4_SafeList
 {
     APTR mutex;
@@ -64,10 +61,8 @@ typedef struct OS4_ThreadControl
 
 static OS4_ThreadControl control;
 
-static void OS4_InitThreadSubSystem(void) __attribute__((constructor(101)));
-static void OS4_QuitThreadSubSystem(void) __attribute__((destructor(101)));
-
-static void OS4_InitThreadSubSystem(void)
+// Called from OS4_INIT() constructor.
+void OS4_InitThreadSubSystem(void)
 {
     control.primary.task = IExec->FindTask(NULL);
 
@@ -81,18 +76,14 @@ static void OS4_InitThreadSubSystem(void)
     IExec->NewMinList((struct MinList *)&control.children.list);
     IExec->NewMinList((struct MinList *)&control.waiters.list);
 
-    dosBase = (struct DOSBase *)OS4_OpenLibrary(DOSNAME, 50);
-    iDOS = (struct DOSIFace *)OS4_GetInterface((struct Library *)dosBase);
-
-    dprintf("dosBase %p, iDos %p\n", dosBase, iDOS);
-
     OS4_InitTimerSubSystem();
     OS4_TimerCreate(&control.primary.timer);
 
     control.primary.task->tc_UserData = &control.primary; // Timer lookup requires this
 }
 
-static void OS4_QuitThreadSubSystem(void)
+// Called from OS4_QUIT() destructor function.
+void OS4_QuitThreadSubSystem(void)
 {
     struct MinNode* iter;
 
@@ -125,11 +116,6 @@ static void OS4_QuitThreadSubSystem(void)
 
     control.children.mutex = NULL;
     control.waiters.mutex = NULL;
-
-    dprintf("Dropping iDOS\n");
-
-    OS4_DropInterface((struct Interface **)&iDOS);
-    OS4_CloseLibrary((struct Library **)&dosBase);
 
     dprintf("All done\n");
 }
@@ -217,13 +203,13 @@ SDL_SYS_CreateThread(SDL_Thread * thread)
 
     node->thread = thread;
 
-    BPTR inputStream = iDOS->DupFileHandle(iDOS->Input());
-    BPTR outputStream = iDOS->DupFileHandle(iDOS->Output());
-    BPTR errorStream = iDOS->DupFileHandle(iDOS->ErrorOutput());
+    BPTR inputStream = IDOS->DupFileHandle(IDOS->Input());
+    BPTR outputStream = IDOS->DupFileHandle(IDOS->Output());
+    BPTR errorStream = IDOS->DupFileHandle(IDOS->ErrorOutput());
 
     snprintf(nameBuffer, sizeof(nameBuffer), "SDL thread %s (%p)", thread->name, thread);
 
-    struct Process* child = iDOS->CreateNewProcTags(
+    struct Process* child = IDOS->CreateNewProcTags(
         NP_Child,       TRUE,
         NP_Entry,       OS4_RunThread,
         NP_FinalCode,   OS4_ExitThread,

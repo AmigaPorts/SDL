@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -25,26 +25,49 @@
 #include "SDL_os4library.h"
 
 #include "../../main/amigaos4/SDL_os4debug.h"
+#include "../../thread/amigaos4/SDL_systhread_c.h"
 
 #include <proto/exec.h>
 
 // These symbols are required when libSDL2.so is loaded manually using elf.library (RebelSDL).
 struct ExecIFace* IExec;
 struct Interface* INewlib;
+struct DOSIFace* IDOS;
 
 static struct Library* NewlibBase = NULL;
+static struct Library* DOSBase = NULL;
 
 static BOOL newlibOpened = FALSE;
+static BOOL dosOpened = FALSE;
 
-void _OS4_INIT(void) __attribute__((constructor));
-void _OS4_EXIT(void) __attribute__((destructor));
+static int initCount = 0;
 
-void _OS4_INIT(void)
+// This is also called from SDL_InitSubSystem(), in case application is calling
+// SDL_Quit() and then reinitializing something (for example testautomation)
+void OS4_INIT(void)
 {
     if (IExec) {
         dprintf("IExec %p\n", IExec);
     } else {
         IExec = ((struct ExecIFace *)((*(struct ExecBase **)4)->MainInterface));
+        dprintf("IExec %p initialized\n", IExec);
+    }
+
+    if (initCount > 0) {
+        dprintf("initCount %d - skip re-initialization\n", initCount);
+        return;
+    }
+
+    if (IDOS) {
+        dprintf("IDOS %p\n", IDOS);
+    } else {
+        DOSBase = OS4_OpenLibrary("dos.library", 53);
+
+        if (DOSBase) {
+            IDOS = (struct DOSIFace*)OS4_GetInterface(DOSBase);
+            dprintf("IDOS %p initialized\n", IDOS);
+            dosOpened = IDOS != NULL;
+        }
     }
 
     if (INewlib) {
@@ -54,15 +77,37 @@ void _OS4_INIT(void)
 
         if (NewlibBase) {
             INewlib = OS4_GetInterface(NewlibBase);
+            dprintf("INewlib %p initialized\n", INewlib);
             newlibOpened = INewlib != NULL;
         }
     }
 
-    dprintf("IExec %p, INewlib %p\n", IExec, INewlib);
+    OS4_InitThreadSubSystem();
+
+    initCount++;
+
+    dprintf("initCount %d\n", initCount);
 }
 
-void _OS4_EXIT(void)
+// It seems that destructor is not called when RebelSDL application closes. This is also
+// called from SDL_Quit().
+void OS4_QUIT(void)
 {
+    if (initCount < 1) {
+        dprintf("initCount %d - skip quitting\n", initCount);
+        return;
+    }
+
+    OS4_QuitThreadSubSystem();
+
+    if (dosOpened && IDOS) {
+        OS4_DropInterface((struct Interface**)&IDOS);
+    }
+
+    if (DOSBase) {
+        OS4_CloseLibrary(&DOSBase);
+    }
+
     if (newlibOpened && INewlib) {
         OS4_DropInterface(&INewlib);
     }
@@ -70,6 +115,10 @@ void _OS4_EXIT(void)
     if (NewlibBase) {
         OS4_CloseLibrary(&NewlibBase);
     }
+
+    initCount--;
+
+    dprintf("initCount %d\n", initCount);
 }
 
 struct Library *

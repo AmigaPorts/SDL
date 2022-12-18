@@ -26,6 +26,9 @@
 
 typedef struct Task* SYS_ThreadHandle;
 
+void OS4_InitThreadSubSystem(void);
+void OS4_QuitThreadSubSystem(void);
+
 OS4_TimerInstance* OS4_ThreadGetTimer(void);
 
 #endif

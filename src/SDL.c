@@ -33,6 +33,9 @@
 #include "thread/os2/SDL_systls_c.h"
 #endif
 #endif
+#if defined(__AMIGAOS4__)
+#include "video/amigaos4/SDL_os4library.h"
+#endif
 
 /* this checks for HAVE_DBUS_DBUS_H internally. */
 #include "core/linux/SDL_dbus.h"
@@ -174,6 +177,10 @@ int
 SDL_InitSubSystem(Uint32 flags)
 {
     Uint32 flags_initialized = 0;
+
+#if defined(__AMIGAOS4__)
+    OS4_INIT();
+#endif
 
     if (!SDL_MainIsReady) {
         return SDL_SetError("Application didn't initialize properly, did you include SDL_main.h in the file containing your main() function?");
@@ -513,6 +520,12 @@ SDL_Quit(void)
     SDL_TLSCleanup();
 
     SDL_bInMainQuit = SDL_FALSE;
+
+#if defined(__AMIGAOS4__)
+    /* OS4_QUIT() destructor is not triggering when quitting RebelSDL applications.
+       Quit explicitly to avoid unfreed signals. */
+    OS4_QUIT();
+#endif
 }
 
 /* Get the library version number */
