@@ -100,7 +100,7 @@ OS4_WaitForResize(_THIS, SDL_Window * window, int * width, int * height)
 static SDL_bool
 OS4_IsFullscreen(SDL_Window * window)
 {
-    return (window->flags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP));
+    return window->flags & SDL_WINDOW_FULLSCREEN;
 }
 
 static void
@@ -242,7 +242,7 @@ OS4_GetScreenForWindow(_THIS, SDL_VideoDisplay * display)
     if (display) {
         SDL_DisplayData *displaydata = (SDL_DisplayData *) display->driverdata;
 
-        dprintf("Fullscreen\n");
+        dprintf("Fullscreen (displaydata %p, screen %p)\n", displaydata, displaydata->screen);
         return displaydata->screen;
     } else {
         SDL_VideoData *videodata = (SDL_VideoData *) _this->driverdata;
@@ -282,21 +282,21 @@ OS4_CenterWindow(struct Screen * screen, SDL_Window * window)
         SDL_WINDOWPOS_ISUNDEFINED(window->windowed.x)) {
 
         window->x = window->windowed.x = (screen->Width - window->windowed.w) / 2;
-        dprintf("X centered\n");
+        dprintf("X centered %d\n", window->x);
     }
 
     if (SDL_WINDOWPOS_ISCENTERED(window->windowed.y) ||
         SDL_WINDOWPOS_ISUNDEFINED(window->windowed.y)) {
 
         window->y = window->windowed.y = (screen->Height - window->windowed.h) / 2;
-        dprintf("Y centered\n");
+        dprintf("Y centered %d\n", window->y);
     }
 }
 
 static void
 OS4_DefineWindowBox(SDL_Window * window, struct Screen * screen, SDL_bool fullscreen, SDL_Rect * box)
 {
-    if (fullscreen && screen) {
+    if (fullscreen) {
         box->x = 0;
         box->y = 0;
         box->w = screen->Width;

@@ -171,12 +171,7 @@ static VideoBootStrap *bootstrap[] = {
         return retval; \
     }
 
-#ifdef __AMIGAOS4__
-/* Let's have only one kind of full screen */
-#define FULLSCREEN_MASK (SDL_WINDOW_FULLSCREEN)
-#else
 #define FULLSCREEN_MASK (SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_FULLSCREEN)
-#endif
 
 #if defined(__MACOSX__) && defined(SDL_VIDEO_DRIVER_COCOA)
 /* Support for Mac OS X fullscreen spaces */
@@ -1278,14 +1273,21 @@ SDL_SetWindowDisplayMode(SDL_Window * window, const SDL_DisplayMode * mode)
         SDL_zero(window->fullscreen_mode);
     }
 
+#ifdef __AMIGAOS4__
+    if (FULLSCREEN_VISIBLE(window)) {
+        SDL_DisplayMode fullscreen_mode;
+        if (SDL_GetWindowDisplayMode(window, &fullscreen_mode) == 0) {
+            if (SDL_SetDisplayModeForDisplay(SDL_GetDisplayForWindow(window), &fullscreen_mode) == 0) {
+                // Force window on new screen
+                _this->SetWindowFullscreen(_this, window, SDL_GetDisplayForWindow(window), SDL_TRUE);
+            }
+        }
+    }
+#else
     if (FULLSCREEN_VISIBLE(window) && (window->flags & SDL_WINDOW_FULLSCREEN_DESKTOP) != SDL_WINDOW_FULLSCREEN_DESKTOP) {
         SDL_DisplayMode fullscreen_mode;
         if (SDL_GetWindowDisplayMode(window, &fullscreen_mode) == 0) {
             if (SDL_SetDisplayModeForDisplay(SDL_GetDisplayForWindow(window), &fullscreen_mode) == 0) {
-#ifdef __AMIGAOS4__
-            // Force window on new screen
-            _this->SetWindowFullscreen(_this, window, SDL_GetDisplayForWindow(window), SDL_TRUE);
-#endif
 #ifndef __ANDROID__
                 /* Android may not resize the window to exactly what our fullscreen mode is, especially on
                  * windowed Android environments like the Chromebook or Samsung DeX.  Given this, we shouldn't
@@ -1297,6 +1299,7 @@ SDL_SetWindowDisplayMode(SDL_Window * window, const SDL_DisplayMode * mode)
             }
         }
     }
+#endif
     return 0;
 }
 
@@ -1481,6 +1484,11 @@ SDL_UpdateFullscreenMode(SDL_Window * window, SDL_bool fullscreen)
                     resized = SDL_FALSE;
                 }
 
+#if defined(__AMIGAOS4__)
+                if (SDL_SetDisplayModeForDisplay(display, &fullscreen_mode) < 0) {
+                    return -1;
+                }
+#else
                 /* only do the mode change if we want exclusive fullscreen */
                 if ((window->flags & SDL_WINDOW_FULLSCREEN_DESKTOP) != SDL_WINDOW_FULLSCREEN_DESKTOP) {
                     if (SDL_SetDisplayModeForDisplay(display, &fullscreen_mode) < 0) {
@@ -1491,6 +1499,7 @@ SDL_UpdateFullscreenMode(SDL_Window * window, SDL_bool fullscreen)
                         return -1;
                     }
                 }
+#endif
 
                 if (_this->SetWindowFullscreen) {
                     _this->SetWindowFullscreen(_this, other, display, SDL_TRUE);
@@ -1547,7 +1556,7 @@ SDL_UpdateFullscreenMode(SDL_Window * window, SDL_bool fullscreen)
     /* Without this hack, SDL would trigger us to open a window before screen which causes unnecessary
     work, because then we would have to close the window first and re-open it on the custom screen */
     #define CREATE_FLAGS \
-        (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_METAL | SDL_WINDOW_FULLSCREEN)
+        (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_METAL | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)
 #else
     #define CREATE_FLAGS \
         (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_SKIP_TASKBAR | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_METAL)
