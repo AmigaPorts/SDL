@@ -53,7 +53,7 @@ OS4_GLES_LoadLibrary(_THIS, const char * path)
     dprintf("Called %d\n", _this->gl_config.driver_loaded);
 
     if (!OGLES2base) {
-        OGLES2base = OS4_OpenLibrary("ogles2.library", 0);
+        OGLES2base = OS4_OpenLibrary("ogles2.library", 2);
 
         if (!OGLES2base) {
             dprintf("Failed to open ogles2.library\n");
