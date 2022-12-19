@@ -23,6 +23,7 @@
 #if SDL_VIDEO_DRIVER_AMIGAOS4
 
 #include "SDL_os4library.h"
+#include "SDL_version.h"
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 #include "../../thread/amigaos4/SDL_systhread_c.h"
@@ -44,6 +45,20 @@ static BOOL dosOpened = FALSE;
 static BOOL elfOpened = FALSE;
 
 static int initCount = 0;
+
+static void
+OS4_LogVersion(void)
+{
+    SDL_version version;
+
+    SDL_GetVersion(&version);
+
+    dprintf("*** SDL %d.%d.%d ***\n", version.major, version.minor, version.patch);
+
+#ifdef __AMIGADATE__
+    dprintf("Build date: " __AMIGADATE__ "\n");
+#endif
+}
 
 // This is also called from SDL_InitSubSystem(), in case application is calling
 // SDL_Quit() and then reinitializing something (for example testautomation)
@@ -97,6 +112,8 @@ void OS4_INIT(void)
             elfOpened = IElf != NULL;
         }
     }
+
+    OS4_LogVersion();
 
     OS4_InitThreadSubSystem();
 

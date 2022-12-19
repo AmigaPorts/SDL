@@ -27,7 +27,6 @@
 
 #include "SDL_video.h"
 #include "SDL_hints.h"
-#include "SDL_version.h"
 
 #include "../SDL_sysvideo.h"
 #include "../SDL_pixels_c.h"
@@ -536,16 +535,6 @@ OS4_CreateDevice(void)
 {
     SDL_VideoDevice *device;
     SDL_VideoData *data;
-    SDL_version version;
-
-    SDL_GetVersion(&version);
-
-    dprintf("*** SDL %d.%d.%d video initialization starts ***\n",
-        version.major, version.minor, version.patch);
-
-#ifdef __AMIGADATE__
-    dprintf("Build date: " __AMIGADATE__ "\n");
-#endif
 
     /* Initialize all variables that we clean on shutdown */
     device = (SDL_VideoDevice *) SDL_calloc(1, sizeof(SDL_VideoDevice));
