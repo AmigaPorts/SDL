@@ -33,24 +33,6 @@
 
 #include <proto/dos.h>
 
-static struct DOSIFace* iDos;
-static struct DOSBase* dosBase;
-
-static BOOL
-OS4_OpenDosLibrary()
-{
-    dosBase = (struct DOSBase *)OS4_OpenLibrary("dos.library", 50);
-    iDos = (struct DOSIFace *)OS4_GetInterface((struct Library *)dosBase);
-    return iDos != NULL;
-}
-
-static void
-OS4_CloseDosLibrary()
-{
-    OS4_DropInterface((struct Interface **)&iDos);
-    OS4_CloseLibrary((struct Library **)&dosBase);
-}
-
 char *
 SDL_GetBasePath(void)
 {
@@ -94,21 +76,17 @@ OS4_CreateDirTree(const char* path)
         temp[len - 1] = '\0';
     }
 
-    if (OS4_OpenDosLibrary()) {
-        BPTR lock = iDos->CreateDirTree(temp);
-        if (lock) {
+    BPTR lock = IDOS->CreateDirTree(temp);
+    if (lock) {
+        success = TRUE;
+        IDOS->UnLock(lock);
+    } else {
+        const int32 err = IDOS->IoErr();
+        dprintf("Failed to create dir tree '%s' (err %d)\n", temp, err);
+        if (err == ERROR_OBJECT_EXISTS) {
+            dprintf("Object already exists -> success\n");
             success = TRUE;
-            iDos->UnLock(lock);
-        } else {
-            const int32 err = iDos->IoErr();
-            dprintf("Failed to create dir tree '%s' (err %d)\n", temp, err);
-            if (err == ERROR_OBJECT_EXISTS) {
-                dprintf("Object already exists -> success\n");
-                success = TRUE;
-            }
         }
-
-        OS4_CloseDosLibrary();
     }
 
     SDL_free(temp);

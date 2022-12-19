@@ -33,12 +33,15 @@
 struct ExecIFace* IExec;
 struct Interface* INewlib;
 struct DOSIFace* IDOS;
+struct ElfIFace* IElf;
 
-static struct Library* NewlibBase = NULL;
-static struct Library* DOSBase = NULL;
+static struct Library* NewlibBase;
+static struct Library* DOSBase;
+static struct Library* ElfBase;
 
 static BOOL newlibOpened = FALSE;
 static BOOL dosOpened = FALSE;
+static BOOL elfOpened = FALSE;
 
 static int initCount = 0;
 
@@ -46,6 +49,7 @@ static int initCount = 0;
 // SDL_Quit() and then reinitializing something (for example testautomation)
 void OS4_INIT(void)
 {
+    // IExec is required for dprintf!
     if (IExec) {
         dprintf("IExec %p\n", IExec);
     } else {
@@ -64,7 +68,7 @@ void OS4_INIT(void)
         DOSBase = OS4_OpenLibrary("dos.library", 53);
 
         if (DOSBase) {
-            IDOS = (struct DOSIFace*)OS4_GetInterface(DOSBase);
+            IDOS = (struct DOSIFace *)OS4_GetInterface(DOSBase);
             dprintf("IDOS %p initialized\n", IDOS);
             dosOpened = IDOS != NULL;
         }
@@ -79,6 +83,18 @@ void OS4_INIT(void)
             INewlib = OS4_GetInterface(NewlibBase);
             dprintf("INewlib %p initialized\n", INewlib);
             newlibOpened = INewlib != NULL;
+        }
+    }
+
+    if (IElf) {
+        dprintf("IElf %p\n", IElf);
+    } else {
+        ElfBase = OS4_OpenLibrary("elf.library", 53);
+
+        if (ElfBase) {
+            IElf = (struct ElfIFace *)OS4_GetInterface(ElfBase);
+            dprintf("IElf %p initialized\n", IElf);
+            elfOpened = IElf != NULL;
         }
     }
 
@@ -100,21 +116,23 @@ void OS4_QUIT(void)
 
     OS4_QuitThreadSubSystem();
 
-    if (dosOpened && IDOS) {
-        OS4_DropInterface((struct Interface**)&IDOS);
+    if (elfOpened) {
+        OS4_DropInterface((struct Interface**)&IElf);
     }
 
-    if (DOSBase) {
-        OS4_CloseLibrary(&DOSBase);
-    }
+    OS4_CloseLibrary(&ElfBase);
 
-    if (newlibOpened && INewlib) {
+    if (newlibOpened) {
         OS4_DropInterface(&INewlib);
     }
 
-    if (NewlibBase) {
-        OS4_CloseLibrary(&NewlibBase);
+    OS4_CloseLibrary(&NewlibBase);
+
+    if (dosOpened) {
+        OS4_DropInterface((struct Interface**)&IDOS);
     }
+
+    OS4_CloseLibrary(&DOSBase);
 
     initCount--;
 
