@@ -32,29 +32,17 @@ SDL_SYS_OpenURL(const char *url)
 {
     int result = -1;
 
-    struct Library* dosBase = OS4_OpenLibrary(DOSNAME, 50);
+    char buffer[1024];
+    snprintf(buffer, sizeof(buffer), "URL:%s", url);
 
-    if (dosBase) {
-        struct DOSIFace* iDOS = (struct DOSIFace *)OS4_GetInterface(dosBase);
+    BPTR handle = IDOS->Open(buffer, MODE_OLDFILE);
 
-        if (iDOS) {
-            char buffer[1024];
-            snprintf(buffer, sizeof(buffer), "URL:%s", url);
-
-            BPTR handle = iDOS->Open(buffer, MODE_OLDFILE);
-
-            if (handle) {
-                iDOS->Close(handle);
-                dprintf("URL '%s' opened\n", url);
-                result = 0;
-            } else {
-                dprintf("Failed to open URL '%s'\n", url);
-            }
-
-            OS4_DropInterface((void *)&iDOS);
-        }
-
-        OS4_CloseLibrary(&dosBase);
+    if (handle) {
+        IDOS->Close(handle);
+        dprintf("URL '%s' opened\n", url);
+        result = 0;
+    } else {
+        dprintf("Failed to open URL '%s'\n", url);
     }
 
     return result;

@@ -28,12 +28,6 @@
 #include <proto/elf.h>
 #include <proto/dos.h>
 
-static struct Library *elfBase;
-static struct Library *dosBase;
-
-static struct ElfIFace *iElf;
-static struct DOSIFace *iDOS;
-
 #include "SDL_loadso.h"
 #include "../../video/amigaos4/SDL_os4library.h"
 
@@ -44,94 +38,45 @@ typedef struct {
     APTR shared_object;
 } OS4_ObjectHandle;
 
-static void
-OS4_CloseLibs()
-{
-    OS4_DropInterface((void *)&iElf);
-    OS4_DropInterface((void *)&iDOS);
-
-    iElf = NULL;
-    iDOS = NULL;
-
-    OS4_CloseLibrary(&elfBase);
-    OS4_CloseLibrary(&dosBase);
-
-    elfBase = NULL;
-    dosBase = NULL;
-}
-
-static BOOL
-OS4_OpenLibs()
-{
-    BOOL result = FALSE;
-
-    if (!elfBase) {
-        elfBase = OS4_OpenLibrary("elf.library", 52);
-
-        if (elfBase) {
-            iElf = (struct ElfIFace *) OS4_GetInterface(elfBase);
-        }
-    }
-
-    if (!dosBase) {
-        dosBase = OS4_OpenLibrary("dos.library", 51);
-
-        if (dosBase) {
-            iDOS = (struct DOSIFace *) OS4_GetInterface(dosBase);
-        }
-    }
-
-    if (iElf && iDOS)
-    {
-        result = TRUE;
-    } else {
-        OS4_CloseLibs();
-    }
-
-    return result;
-}
-
 void *
 SDL_LoadObject(const char *sofile)
 {        
-    if (OS4_OpenLibs()) {
-        OS4_ObjectHandle *handle = SDL_malloc(sizeof(OS4_ObjectHandle));
+    OS4_ObjectHandle *handle = SDL_malloc(sizeof(OS4_ObjectHandle));
 
-        if (handle) {
-            BPTR seglist = iDOS->GetProcSegList(NULL, GPSLF_RUN);
+    if (handle) {
+        BPTR seglist = IDOS->GetProcSegList(NULL, GPSLF_RUN);
 
-            if (seglist) {
-                Elf32_Handle eh = NULL;
+        if (seglist) {
+            Elf32_Handle eh = NULL;
 
-                iDOS->GetSegListInfoTags(seglist, GSLI_ElfHandle, &eh, TAG_DONE);
+            IDOS->GetSegListInfoTags(seglist, GSLI_ElfHandle, &eh, TAG_DONE);
 
-                dprintf("Elf handle %p\n", eh);
+            dprintf("Elf handle %p\n", eh);
 
-                if (eh) {
-                    APTR so = iElf->DLOpen(eh, sofile, 0);
+            if (eh) {
+                APTR so = IElf->DLOpen(eh, sofile, 0);
                         
-                    if (so) {
-                        dprintf("'%s' loaded\n", sofile);
+                if (so) {
+                    dprintf("'%s' loaded\n", sofile);
 
-                        handle->elf_handle = eh;
-                        handle->shared_object = so;
+                    handle->elf_handle = eh;
+                    handle->shared_object = so;
                             
-                        return handle;
-                    } else {
-                        dprintf("DLOpen failed for '%s'\n", sofile);
-                        SDL_SetError("DLOpen failed for '%s'", sofile);
-                    }
+                    return handle;
                 } else {
-                    dprintf("Failed to get elf handle of running task\n");
-                    SDL_SetError("Failed to get elf handle");
+                    dprintf("DLOpen failed for '%s'\n", sofile);
+                    SDL_SetError("DLOpen failed for '%s'", sofile);
                 }
             } else {
-                dprintf("Failed to get seglist\n");
-                SDL_SetError("Failed to get seglist");
+                dprintf("Failed to get elf handle of running task\n");
+                SDL_SetError("Failed to get elf handle");
             }
-                
-            SDL_free(handle);
+        } else {
+            dprintf("Failed to get seglist\n");
+            SDL_SetError("Failed to get seglist");
         }
+                
+        SDL_free(handle);
     }
 
     return NULL;
@@ -142,11 +87,11 @@ SDL_LoadFunction(void *handle, const char *name)
 {
     void *symbol = NULL;
 
-    if (OS4_OpenLibs() && handle) {
+    if (handle) {
         APTR address = NULL;
         OS4_ObjectHandle *oh = handle;
 
-        Elf32_Error result = iElf->DLSym(oh->elf_handle, oh->shared_object, name, &address);
+        Elf32_Error result = IElf->DLSym(oh->elf_handle, oh->shared_object, name, &address);
 
         if (result == ELF32_NO_ERROR) {
             symbol = address;
@@ -163,10 +108,10 @@ SDL_LoadFunction(void *handle, const char *name)
 void
 SDL_UnloadObject(void *handle)
 {
-    if (OS4_OpenLibs() && handle) {
+    if (handle) {
         OS4_ObjectHandle *oh = handle;
 
-        Elf32_Error result = iElf->DLClose(oh->elf_handle, oh->shared_object);
+        Elf32_Error result = IElf->DLClose(oh->elf_handle, oh->shared_object);
 
         dprintf("DLClose %s\n", (result == ELF32_NO_ERROR) ? "OK" : "failed" );
 
@@ -177,8 +122,6 @@ SDL_UnloadObject(void *handle)
 */
         SDL_free(handle);
     }
-
-    OS4_CloseLibs();
 }
 
 #endif /* SDL_LOADSO_AMIGAOS4 */
