@@ -82,10 +82,9 @@ OS4_IsColorModEnabled(SDL_Texture * texture)
 }
 
 struct BitMap *
-OS4_AllocBitMap(SDL_Renderer * renderer, int width, int height, int depth) {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
-
-    return data->iGraphics->AllocBitMapTags(
+OS4_AllocBitMap(SDL_Renderer * renderer, int width, int height, int depth)
+{
+    return IGraphics->AllocBitMapTags(
         width,
         height,
         depth,
@@ -150,7 +149,7 @@ OS4_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
 
             dprintf("Freeing renderer bitmap %p\n", data->bitmap);
 
-            data->iGraphics->FreeBitMap(data->bitmap);
+            IGraphics->FreeBitMap(data->bitmap);
             data->bitmap = NULL;
             data->target = NULL;
         }
@@ -160,15 +159,13 @@ OS4_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
 static int
 OS4_GetBitMapSize(SDL_Renderer * renderer, struct BitMap * bitmap, int * w, int * h)
 {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
-
     if (bitmap) {
         if (w) {
-            *w = data->iGraphics->GetBitMapAttr(bitmap, BMA_ACTUALWIDTH);
+            *w = IGraphics->GetBitMapAttr(bitmap, BMA_ACTUALWIDTH);
 	        //dprintf("w=%d\n", *w);
         }
         if (h) {
-            *h = data->iGraphics->GetBitMapAttr(bitmap, BMA_HEIGHT);
+            *h = IGraphics->GetBitMapAttr(bitmap, BMA_HEIGHT);
 			//dprintf("h=%d\n", *h);
         }
 
@@ -201,7 +198,7 @@ OS4_SetSolidColor(SDL_Renderer * renderer, Uint32 color)
     if (data->solidcolor) {
         APTR baseaddress;
 
-        APTR lock = data->iGraphics->LockBitMapTags(
+        APTR lock = IGraphics->LockBitMapTags(
             data->solidcolor,
             LBM_BaseAddress, &baseaddress,
             TAG_DONE);
@@ -209,7 +206,7 @@ OS4_SetSolidColor(SDL_Renderer * renderer, Uint32 color)
         if (lock) {
             *(Uint32 *)baseaddress = color;
 
-            data->iGraphics->UnlockBitMap(data->solidcolor);
+            IGraphics->UnlockBitMap(data->solidcolor);
 
             return SDL_TRUE;
         } else {
@@ -398,7 +395,7 @@ OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_Rect * points, int count,
                 continue;
             }
 
-            data->iGraphics->RectFillColor(
+            IGraphics->RectFillColor(
                 &data->rastport,
                 clipped.x,
                 clipped.y,
@@ -434,7 +431,7 @@ OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_Rect * points, int count,
 
             OS4_FillVertexData(vertices, &srcrect, &points[i], 0.0, NULL, SDL_FLIP_NONE, 1.0f, 1.0f);
 
-            ret_code = data->iGraphics->CompositeTags(
+            ret_code = IGraphics->CompositeTags(
                 OS4_ConvertBlendMode(mode),
                 data->solidcolor,
                 bitmap,
@@ -490,7 +487,7 @@ OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Ver
 
     //dprintf("clip %d, %d, %d, %d\n", data->cliprect.x, data->cliprect.y, data->cliprect.w, data->cliprect.h);
 
-    ret_code = data->iGraphics->CompositeTags(
+    ret_code = IGraphics->CompositeTags(
         OS4_ConvertBlendMode(mode),
         src,
         dst,
@@ -539,7 +536,7 @@ OS4_RenderGeometry(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_V
 
     OS4_SetupCompositing(renderer->target, &params, texture->scaleMode, mode, 255);
 
-    ret_code = data->iGraphics->CompositeTags(
+    ret_code = IGraphics->CompositeTags(
         OS4_ConvertBlendMode(mode),
         texturedata->bitmap,
         dst,
@@ -602,7 +599,7 @@ OS4_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
         return SDL_SetError("Unsupported pixel format");
     }
 
-    data->iGraphics->ReadPixelArray(
+    IGraphics->ReadPixelArray(
         &data->rastport,
         rect->x,
         rect->y,
@@ -649,15 +646,15 @@ OS4_RenderPresent(SDL_Renderer * renderer)
             //dprintf("target %p\n", data->target);
 
             if (data->vsyncEnabled) {
-                data->iGraphics->WaitTOF();
+                IGraphics->WaitTOF();
             }
 
-            data->iLayers->LockLayer(0, syswin->WLayer);
+            ILayers->LockLayer(0, syswin->WLayer);
 
             width = min(window->w, syswin->Width - (syswin->BorderLeft + syswin->BorderRight));
             height = min(window->h, syswin->Height - (syswin->BorderTop + syswin->BorderBottom));
 
-            ret = data->iGraphics->BltBitMapTags(
+            ret = IGraphics->BltBitMapTags(
                 BLITA_Source, source,
                 BLITA_DestType, BLITT_RASTPORT,
                 BLITA_Dest, syswin->RPort,
@@ -667,7 +664,7 @@ OS4_RenderPresent(SDL_Renderer * renderer)
                 BLITA_Height, height,
                 TAG_DONE);
 
-            data->iLayers->UnlockLayer(syswin->WLayer);
+            ILayers->UnlockLayer(syswin->WLayer);
 
             if (ret != -1) {
                 dprintf("BltBitMapTags(): %d\n", ret);
@@ -690,7 +687,7 @@ OS4_RenderClear(SDL_Renderer * renderer, Uint8 a, Uint8 r, Uint8 g, Uint8 b, str
 
     OS4_GetBitMapSize(renderer, bitmap, &width, &height);
 
-    data->iGraphics->RectFillColor(
+    IGraphics->RectFillColor(
         &data->rastport,
         0,
         0,
@@ -707,12 +704,12 @@ OS4_DestroyRenderer(SDL_Renderer * renderer)
     if (data->bitmap) {
         dprintf("Freeing renderer bitmap %p\n", data->bitmap);
 
-        data->iGraphics->FreeBitMap(data->bitmap);
+        IGraphics->FreeBitMap(data->bitmap);
         data->bitmap = NULL;
     }
 
     if (data->solidcolor) {
-        data->iGraphics->FreeBitMap(data->solidcolor);
+        IGraphics->FreeBitMap(data->solidcolor);
         data->solidcolor = NULL;
     }
 
@@ -1066,7 +1063,6 @@ OS4_SetVSync(SDL_Renderer * renderer, int vsync)
 SDL_Renderer *
 OS4_CreateRenderer(SDL_Window * window, Uint32 flags)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *)SDL_GetVideoDevice()->driverdata;
     SDL_Renderer *renderer;
     OS4_RenderData *data;
 
@@ -1110,10 +1106,7 @@ OS4_CreateRenderer(SDL_Window * window, Uint32 flags)
 
     renderer->driverdata = data;
 
-    data->iGraphics = videodata->iGraphics;
-    data->iLayers = videodata->iLayers;
-
-    data->iGraphics->InitRastPort(&data->rastport);
+    IGraphics->InitRastPort(&data->rastport);
 
     data->vsyncEnabled = flags & SDL_RENDERER_PRESENTVSYNC;
 

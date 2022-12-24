@@ -24,6 +24,7 @@
 
 #include <proto/exec.h>
 #include <proto/application.h>
+#include <proto/wb.h>
 
 #include "SDL_video.h"
 #include "SDL_hints.h"
@@ -54,78 +55,23 @@ static void OS4_VideoQuit(_THIS);
 SDL_bool (*OS4_ResizeGlContext)(_THIS, SDL_Window * window) = NULL;
 void (*OS4_UpdateGlWindowPointer)(_THIS, SDL_Window * window) = NULL;
 
-#define MIN_LIB_VERSION 51
-
 static SDL_bool
-OS4_OpenLibraries(_THIS)
+OS4_CheckInterfaces(_THIS)
 {
-    dprintf("Opening libraries\n");
+    dprintf("Checking interfaces\n");
 
-    GfxBase       = OS4_OpenLibrary("graphics.library", 54);
-    LayersBase    = OS4_OpenLibrary("layers.library", 53);
-    IntuitionBase = OS4_OpenLibrary("intuition.library", MIN_LIB_VERSION);
-    IconBase      = OS4_OpenLibrary("icon.library", MIN_LIB_VERSION);
-    WorkbenchBase = OS4_OpenLibrary("workbench.library", MIN_LIB_VERSION);
-    KeymapBase    = OS4_OpenLibrary("keymap.library", MIN_LIB_VERSION);
-    TextClipBase  = OS4_OpenLibrary("textclip.library", MIN_LIB_VERSION);
-    DOSBase       = OS4_OpenLibrary("dos.library", MIN_LIB_VERSION);
-    ApplicationBase = OS4_OpenLibrary("application.library", 53);
+    if (IGraphics && ILayers && IIntuition && IIcon &&
+        IWorkbench && IKeymap && ITextClip && IDOS && IApplication) {
 
-    if (GfxBase && LayersBase && IntuitionBase && IconBase &&
-        WorkbenchBase && KeymapBase && TextClipBase && DOSBase &&
-        ApplicationBase) {
+        dprintf("All library interfaces OK\n");
 
-        IGraphics  = (struct GraphicsIFace *)  OS4_GetInterface(GfxBase);
-        ILayers    = (struct LayersIFace *)    OS4_GetInterface(LayersBase);
-        IIntuition = (struct IntuitionIFace *) OS4_GetInterface(IntuitionBase);
-        IIcon      = (struct IconIFace *)      OS4_GetInterface(IconBase);
-        IWorkbench = (struct WorkbenchIFace *) OS4_GetInterface(WorkbenchBase);
-        IKeymap    = (struct KeymapIFace *)    OS4_GetInterface(KeymapBase);
-        ITextClip  = (struct TextClipIFace *)  OS4_GetInterface(TextClipBase);
-        IDOS       = (struct DOSIFace *)       OS4_GetInterface(DOSBase);
-        IApplication = (struct ApplicationIFace *) IExec->GetInterface(ApplicationBase, "application", 2, NULL);
+        return SDL_TRUE;
 
-        if (IGraphics && ILayers && IIntuition && IIcon &&
-            IWorkbench && IKeymap && ITextClip && IDOS && IApplication) {
-
-            dprintf("All library interfaces OK\n");
-
-            return SDL_TRUE;
-
-        } else {
-            dprintf("Failed to get library interfaces\n");
-        }
-    } else {
-        dprintf("Failed to open system libraries\n");
     }
 
+    dprintf("Library interface check failed\n");
+
     return SDL_FALSE;
-}
-
-static void
-OS4_CloseLibraries(_THIS)
-{
-    dprintf("Closing libraries\n");
-
-    OS4_DropInterface((void *)&IApplication);
-    OS4_DropInterface((void *)&IDOS);
-    OS4_DropInterface((void *)&ITextClip);
-    OS4_DropInterface((void *)&IKeymap);
-    OS4_DropInterface((void *)&IWorkbench);
-    OS4_DropInterface((void *)&IIcon);
-    OS4_DropInterface((void *)&IIntuition);
-    OS4_DropInterface((void *)&ILayers);
-    OS4_DropInterface((void *)&IGraphics);
-
-    OS4_CloseLibrary(&ApplicationBase);
-    OS4_CloseLibrary(&DOSBase);
-    OS4_CloseLibrary(&TextClipBase);
-    OS4_CloseLibrary(&KeymapBase);
-    OS4_CloseLibrary(&WorkbenchBase);
-    OS4_CloseLibrary(&IconBase);
-    OS4_CloseLibrary(&IntuitionBase);
-    OS4_CloseLibrary(&LayersBase);
-    OS4_CloseLibrary(&GfxBase);
 }
 
 static void
@@ -218,7 +164,7 @@ OS4_AllocSystemResources(_THIS)
 
     dprintf("Called\n");
 
-    if (!OS4_OpenLibraries(_this)) {
+    if (!OS4_CheckInterfaces(_this)) {
         return SDL_FALSE;
     }
 
@@ -334,8 +280,6 @@ OS4_FreeSystemResources(_THIS)
     if (data->appId) {
         OS4_UnregisterApplication(_this);
     }
-
-    OS4_CloseLibraries(_this);
 }
 
 static void

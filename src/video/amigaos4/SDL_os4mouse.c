@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2019 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -159,8 +159,6 @@ OS4_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
         } else if (surface->h > 64) {
             dprintf("Invalid height %d\n", surface->h);
         } else {
-            _THIS = SDL_GetVideoDevice();
-
             Uint32* buffer = OS4_CopyImageData(surface);
 
             /* We need to pass some compatibility parameters
@@ -258,12 +256,11 @@ OS4_CreateSystemCursor(SDL_SystemCursor id)
 static void
 OS4_SetPointerForEachWindow(ULONG type, Object * object)
 {
-    SDL_Window *sdlwin;
-
     _THIS = SDL_GetVideoDevice();
 
-    for (sdlwin = _this->windows; sdlwin; sdlwin = sdlwin->next) {
+    SDL_Window *sdlwin;
 
+    for (sdlwin = _this->windows; sdlwin; sdlwin = sdlwin->next) {
         SDL_WindowData *data = sdlwin->driverdata;
 
         if (data->syswin) {
@@ -333,7 +330,6 @@ OS4_FreeCursor(SDL_Cursor * cursor)
 
     if (data) {
         if (data->object) {
-            _THIS = SDL_GetVideoDevice();
             SDL_Mouse *mouse = SDL_GetMouse();
 
             if (mouse->cur_cursor == cursor) {
@@ -369,8 +365,8 @@ OS4_RefreshCursorState(void)
 static int
 OS4_WarpMouseInternal(struct Screen *screen, int x, int y)
 {
-    SDL_VideoDevice *device    = SDL_GetVideoDevice();
-    SDL_VideoData *videoData   = device->driverdata;
+    SDL_VideoDevice *device = SDL_GetVideoDevice();
+    SDL_VideoData *videoData = device->driverdata;
     int result = -1;
 
     if (videoData->inputReq != NULL) {

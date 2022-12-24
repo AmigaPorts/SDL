@@ -77,6 +77,7 @@ static void
 OS4_SyncKeyModifiers(_THIS)
 {
     int i;
+
     const UWORD qualifiers = IInput->PeekQualifier();
 
     const struct QualifierItem map[] = {
@@ -90,7 +91,7 @@ OS4_SyncKeyModifiers(_THIS)
         { IEQUALIFIER_RCOMMAND, KMOD_RGUI, "Right Amiga" }
     };
 
-    dprintf("Current qualifiers: %d\n", qualifiers);
+    dprintf("Current qualifiers: %u\n", qualifiers);
 
     for (i = 0; i < SDL_arraysize(map); i++) {
         dprintf("%s %s\n", map[i].name, (qualifiers & map[i].qualifier) ? "ON" : "off");

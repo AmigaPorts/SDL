@@ -25,7 +25,7 @@
 
 #include <exec/types.h>
 #include <intuition/intuition.h>
-#include <proto/intuition.h>
+#include <proto/intuition.h> // TODO: cleanup these
 #include <proto/graphics.h>
 #include <proto/keymap.h>
 #include <proto/layers.h>
@@ -53,50 +53,12 @@ typedef struct
 
     APTR                    pool;
 
-    struct Library          *gfxbase;
-    struct Library          *layersbase;
-    struct Library          *intuitionbase;
-    struct Library          *iconbase;
-    struct Library          *workbenchbase;
-    struct Library          *keymapbase;
-    struct Library          *textclipbase;
-    struct Library          *dosbase;
-    struct Library          *applicationbase;
-
-    struct GraphicsIFace    *iGraphics;
-    struct LayersIFace      *iLayers;
-    struct IntuitionIFace   *iIntuition;
-    struct IconIFace        *iIcon;
-    struct WorkbenchIFace   *iWorkbench;
-    struct KeymapIFace      *iKeymap;
-    struct TextClipIFace    *iTextClip;
     struct InputIFace       *iInput;
-    struct DOSIFace         *iDos;
-    struct ApplicationIFace *iApplication;
 
     BOOL                    vsyncEnabled;
 } SDL_VideoData;
 
-#define GfxBase ((SDL_VideoData *) _this->driverdata)->gfxbase
-#define LayersBase ((SDL_VideoData *) _this->driverdata)->layersbase
-#define IntuitionBase ((SDL_VideoData *) _this->driverdata)->intuitionbase
-#define IconBase ((SDL_VideoData *) _this->driverdata)->iconbase
-#define WorkbenchBase ((SDL_VideoData *) _this->driverdata)->workbenchbase
-#define KeymapBase ((SDL_VideoData *) _this->driverdata)->keymapbase
-#define TextClipBase ((SDL_VideoData *) _this->driverdata)->textclipbase
-#define DOSBase ((SDL_VideoData *) _this->driverdata)->dosbase
-#define ApplicationBase ((SDL_VideoData *) _this->driverdata)->applicationbase
-
-#define IGraphics ((SDL_VideoData *) _this->driverdata)->iGraphics
-#define ILayers ((SDL_VideoData *) _this->driverdata)->iLayers
-#define IIntuition ((SDL_VideoData *) _this->driverdata)->iIntuition
-#define IIcon ((SDL_VideoData *) _this->driverdata)->iIcon
-#define IWorkbench ((SDL_VideoData *) _this->driverdata)->iWorkbench
-#define IKeymap ((SDL_VideoData *) _this->driverdata)->iKeymap
-#define ITextClip ((SDL_VideoData *) _this->driverdata)->iTextClip
 #define IInput ((SDL_VideoData *) _this->driverdata)->iInput
-#define IDOS ((SDL_VideoData *) _this->driverdata)->iDos
-#define IApplication ((SDL_VideoData *) _this->driverdata)->iApplication
 
 extern void * OS4_SaveAllocPooled(_THIS, uint32 size);
 extern void * OS4_SaveAllocVecPooled(_THIS, uint32 size);

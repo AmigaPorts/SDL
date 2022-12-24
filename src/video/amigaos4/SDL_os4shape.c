@@ -37,8 +37,6 @@
 SDL_WindowShaper*
 OS4_CreateShaper(SDL_Window * window)
 {
-    _THIS = SDL_GetVideoDevice();
-
     SDL_WindowData *windowdata = window->driverdata;
     SDL_WindowShaper *result = NULL;
     LONG compositing = FALSE;
@@ -102,8 +100,6 @@ OS4_CreateShaper(SDL_Window * window)
 static struct BitMap *
 OS4_MakeAlphaBitMap(void * source, int width, int height)
 {
-    _THIS = SDL_GetVideoDevice();
-
     struct BitMap *sysbm = IGraphics->AllocBitMapTags(
         width,
         height,
@@ -153,8 +149,6 @@ OS4_MakeAlphaBitMap(void * source, int width, int height)
 static struct ClipRect*
 OS4_SetAlphaLayer(struct Window * window, SDL_ShapeData * data)
 {
-    _THIS = SDL_GetVideoDevice();
-
     struct ClipRect *cliprect;
     struct ClipRect *oldCliprect = NULL;
 

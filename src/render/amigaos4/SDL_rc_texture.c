@@ -91,14 +91,13 @@ OS4_ModulateRGB(SDL_Renderer * renderer, SDL_Texture * texture, Uint8 * src, int
 {
     SDL_bool result = SDL_FALSE;
 
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
     OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
 
     if (texturedata->finalbitmap) {
         APTR baseaddress;
         uint32 bytesperrow;
 
-        APTR lock = data->iGraphics->LockBitMapTags(
+        APTR lock = IGraphics->LockBitMapTags(
             texturedata->finalbitmap,
             LBM_BaseAddress, &baseaddress,
             LBM_BytesPerRow, &bytesperrow,
@@ -131,7 +130,7 @@ OS4_ModulateRGB(SDL_Renderer * renderer, SDL_Texture * texture, Uint8 * src, int
                 }
             }
 
-            data->iGraphics->UnlockBitMap(texturedata->finalbitmap);
+            IGraphics->UnlockBitMap(texturedata->finalbitmap);
 
             result = SDL_TRUE;
         } else {
@@ -181,7 +180,7 @@ OS4_SetTextureColorMod(SDL_Renderer * renderer, SDL_Texture * texture)
 
             data->rastport.BitMap = texturedata->bitmap;
 
-            data->iGraphics->ReadPixelArray(
+            IGraphics->ReadPixelArray(
                 &data->rastport,
                 0,
                 0,
@@ -220,10 +219,9 @@ int
 OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                  const SDL_Rect * rect, const void *pixels, int pitch)
 {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
     OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
 
-    int32 ret = data->iGraphics->BltBitMapTags(
+    int32 ret = IGraphics->BltBitMapTags(
         BLITA_Source, pixels,
         BLITA_SrcType, BLITT_ARGB32,
         BLITA_SrcBytesPerRow, pitch,
@@ -261,7 +259,6 @@ int
 OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                const SDL_Rect * rect, void **pixels, int *pitch)
 {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
     OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
 
     APTR baseaddress;
@@ -269,7 +266,7 @@ OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
 
     //dprintf("Called\n");
 
-    texturedata->lock = data->iGraphics->LockBitMapTags(
+    texturedata->lock = IGraphics->LockBitMapTags(
         texturedata->bitmap,
         LBM_BaseAddress, &baseaddress,
         LBM_BytesPerRow, &bytesperrow,
@@ -292,13 +289,12 @@ OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
 void
 OS4_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
     OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
 
     //dprintf("Called\n");
 
     if (texturedata->lock) {
-        data->iGraphics->UnlockBitMap(texturedata->lock);
+        IGraphics->UnlockBitMap(texturedata->lock);
         texturedata->lock = NULL;
     }
 }
@@ -323,19 +319,18 @@ OS4_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
 void
 OS4_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
     OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
 
     if (texturedata) {
         if (texturedata->bitmap) {
             //dprintf("Freeing texture bitmap %p\n", texturedata->bitmap);
 
-            data->iGraphics->FreeBitMap(texturedata->bitmap);
+            IGraphics->FreeBitMap(texturedata->bitmap);
             texturedata->bitmap = NULL;
         }
 
         if (texturedata->finalbitmap) {
-            data->iGraphics->FreeBitMap(texturedata->finalbitmap);
+            IGraphics->FreeBitMap(texturedata->finalbitmap);
             texturedata->finalbitmap = NULL;
         }
 
