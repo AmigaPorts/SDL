@@ -35,14 +35,38 @@ struct ExecIFace* IExec;
 struct Interface* INewlib;
 struct DOSIFace* IDOS;
 struct ElfIFace* IElf;
+struct ApplicationIFace* IApplication;
+struct TextClipIFace* ITextClip;
+struct GraphicsIFace* IGraphics;
+struct LayersIFace* ILayers;
+struct IntuitionIFace* IIntuition;
+struct IconIFace* IIcon;
+struct WorkbenchIFace* IWorkbench;
+struct KeymapIFace* IKeymap;
 
 static struct Library* NewlibBase;
 static struct Library* DOSBase;
 static struct Library* ElfBase;
+static struct Library* ApplicationBase;
+static struct Library* TextClipBase;
+static struct Library* GfxBase;
+static struct Library* LayersBase;
+static struct Library* IntuitionBase;
+static struct Library* IconBase;
+static struct Library* WorkbenchBase;
+static struct Library* KeymapBase;
 
 static BOOL newlibOpened = FALSE;
 static BOOL dosOpened = FALSE;
 static BOOL elfOpened = FALSE;
+static BOOL applicationOpened = FALSE;
+static BOOL textClipOpened = FALSE;
+static BOOL graphicsOpened = FALSE;
+static BOOL layersOpened = FALSE;
+static BOOL intuitionOpened = FALSE;
+static BOOL iconOpened = FALSE;
+static BOOL workbenchOpened = FALSE;
+static BOOL keymapOpened = FALSE;
 
 static int initCount = 0;
 
@@ -113,6 +137,104 @@ void OS4_INIT(void)
         }
     }
 
+    if (IApplication) {
+        dprintf("IApplication %p", IApplication);
+    } else {
+        ApplicationBase = OS4_OpenLibrary("application.library", 53);
+
+        if (ApplicationBase) {
+            // Needs special interface
+            IApplication = (struct ApplicationIFace *)IExec->GetInterface(ApplicationBase, "application", 2, NULL);
+
+            dprintf("IApplication %p initialized\n", IApplication);
+            applicationOpened = IApplication != NULL;
+        }
+    }
+
+    if (ITextClip) {
+        dprintf("ITextClip %p", ITextClip);
+    } else {
+        TextClipBase = OS4_OpenLibrary("textclip.library", 53);
+
+        if (TextClipBase) {
+            ITextClip = (struct TextClipIFace *)OS4_GetInterface(TextClipBase);
+            dprintf("ITextClip %p  initialized\n", ITextClip);
+            textClipOpened = ITextClip != NULL;
+        }
+    }
+
+    if (IGraphics) {
+        dprintf("IGraphics %p", IGraphics);
+    } else {
+        GfxBase = OS4_OpenLibrary("graphics.library", 54);
+
+        if (GfxBase) {
+            IGraphics = (struct GraphicsIFace *)OS4_GetInterface(GfxBase);
+            dprintf("IGraphics %p initialized\n", IGraphics);
+            graphicsOpened = IGraphics != NULL;
+        }
+    }
+
+    if (ILayers) {
+        dprintf("ILayers %p", ILayers);
+    } else {
+        LayersBase = OS4_OpenLibrary("layers.library", 53);
+
+        if (LayersBase) {
+            ILayers = (struct LayersIFace *)OS4_GetInterface(LayersBase);
+            dprintf("ILayers %p initialized\n", ILayers);
+            layersOpened = ILayers != NULL;
+        }
+    }
+
+    if (IIntuition) {
+        dprintf("IIntuition %p", IIntuition);
+    } else {
+        IntuitionBase = OS4_OpenLibrary("intuition.library", 53);
+
+        if (IntuitionBase) {
+            IIntuition = (struct IntuitionIFace *)OS4_GetInterface(IntuitionBase);
+            dprintf("IIntuition %p initialized\n", IIntuition);
+            intuitionOpened = IIntuition != NULL;
+        }
+    }
+
+    if (IIcon) {
+        dprintf("IIcon %p", IIcon);
+    } else {
+        IconBase = OS4_OpenLibrary("icon.library", 53);
+
+        if (IconBase) {
+            IIcon = (struct IconIFace *)OS4_GetInterface(IconBase);
+            dprintf("IIcon %p initialized\n", IIcon);
+            iconOpened = IIcon != NULL;
+        }
+    }
+
+    if (IWorkbench) {
+        dprintf("IWorkbench %p", IWorkbench);
+    } else {
+        WorkbenchBase = OS4_OpenLibrary("workbench.library", 53);
+
+        if (WorkbenchBase) {
+            IWorkbench = (struct WorkbenchIFace *)OS4_GetInterface(WorkbenchBase);
+            dprintf("IWorkbench %p initialized\n", IWorkbench);
+            workbenchOpened = IWorkbench != NULL;
+        }
+    }
+
+    if (IKeymap) {
+        dprintf("IKeymap %p", IKeymap);
+    } else {
+        KeymapBase = OS4_OpenLibrary("keymap.library", 53);
+
+        if (KeymapBase) {
+            IKeymap = (struct KeymapIFace *)OS4_GetInterface(KeymapBase);
+            dprintf("Ikeymap %p initialized\n", IKeymap);
+            keymapOpened = IKeymap != NULL;
+        }
+    }
+
     OS4_LogVersion();
 
     OS4_InitThreadSubSystem();
@@ -133,22 +255,60 @@ void OS4_QUIT(void)
 
     OS4_QuitThreadSubSystem();
 
+    if (keymapOpened) {
+        OS4_DropInterface((struct Interface**)&IKeymap);
+    }
+
+    if (workbenchOpened) {
+        OS4_DropInterface((struct Interface**)&IWorkbench);
+    }
+
+    if (iconOpened) {
+        OS4_DropInterface((struct Interface**)&IIcon);
+    }
+
+    if (intuitionOpened) {
+        OS4_DropInterface((struct Interface**)&IIntuition);
+    }
+
+    if (layersOpened) {
+        OS4_DropInterface((struct Interface**)&ILayers);
+    }
+
+    if (graphicsOpened) {
+        OS4_DropInterface((struct Interface**)&IGraphics);
+    }
+
+    if (textClipOpened) {
+        OS4_DropInterface((struct Interface**)&ITextClip);
+    }
+
+    if (applicationOpened) {
+        OS4_DropInterface((struct Interface**)&IApplication);
+    }
+
     if (elfOpened) {
         OS4_DropInterface((struct Interface**)&IElf);
     }
-
-    OS4_CloseLibrary(&ElfBase);
 
     if (newlibOpened) {
         OS4_DropInterface(&INewlib);
     }
 
-    OS4_CloseLibrary(&NewlibBase);
-
     if (dosOpened) {
         OS4_DropInterface((struct Interface**)&IDOS);
     }
 
+    OS4_CloseLibrary(&KeymapBase);
+    OS4_CloseLibrary(&WorkbenchBase);
+    OS4_CloseLibrary(&IconBase);
+    OS4_CloseLibrary(&IntuitionBase);
+    OS4_CloseLibrary(&LayersBase);
+    OS4_CloseLibrary(&GfxBase);
+    OS4_CloseLibrary(&TextClipBase);
+    OS4_CloseLibrary(&ApplicationBase);
+    OS4_CloseLibrary(&ElfBase);
+    OS4_CloseLibrary(&NewlibBase);
     OS4_CloseLibrary(&DOSBase);
 
     initCount--;

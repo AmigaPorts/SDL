@@ -187,7 +187,7 @@ OS4_RenderDrawPoints(SDL_Renderer * renderer, const SDL_Point * points,
                 continue;
             }
 
-            ret |= data->iGraphics->WritePixelColor(
+            ret |= IGraphics->WritePixelColor(
                 &data->rastport,
                 x,
                 y,
@@ -201,7 +201,7 @@ OS4_RenderDrawPoints(SDL_Renderer * renderer, const SDL_Point * points,
         APTR baseaddress;
         uint32 bytesperrow;
 
-        APTR lock = data->iGraphics->LockBitMapTags(
+        APTR lock = IGraphics->LockBitMapTags(
             bitmap,
             LBM_BaseAddress, &baseaddress,
             LBM_BytesPerRow, &bytesperrow,
@@ -265,7 +265,7 @@ OS4_RenderDrawPoints(SDL_Renderer * renderer, const SDL_Point * points,
                 OS4_SetPixel(baseaddress, width, x, y, newcolor);
             }
 
-            data->iGraphics->UnlockBitMap(lock);
+            IGraphics->UnlockBitMap(lock);
 
             status = 0;
         } else {
@@ -502,7 +502,7 @@ OS4_RenderDrawLines(SDL_Renderer * renderer, const SDL_Point * points,
 
         const Uint32 color = a << 24 | r << 16 | g << 8 | b;
 
-        data->iGraphics->SetRPAttrs(&data->rastport, RPTAG_APenColor, color, TAG_DONE);
+        IGraphics->SetRPAttrs(&data->rastport, RPTAG_APenColor, color, TAG_DONE);
 
         for (i = 0; i < count - 1; ++i) {
 
@@ -518,12 +518,12 @@ OS4_RenderDrawLines(SDL_Renderer * renderer, const SDL_Point * points,
                 continue;
             }
 
-            data->iGraphics->Move(
+            IGraphics->Move(
                 &data->rastport,
                 x1,
                 y1);
 
-            data->iGraphics->Draw(
+            IGraphics->Draw(
                 &data->rastport,
                 x2,
                 y2);
@@ -535,7 +535,7 @@ OS4_RenderDrawLines(SDL_Renderer * renderer, const SDL_Point * points,
         APTR baseaddress;
         uint32 bytesperrow;
 
-        APTR lock = data->iGraphics->LockBitMapTags(
+        APTR lock = IGraphics->LockBitMapTags(
             bitmap,
             LBM_BaseAddress, &baseaddress,
             LBM_BytesPerRow, &bytesperrow,
@@ -599,7 +599,7 @@ OS4_RenderDrawLines(SDL_Renderer * renderer, const SDL_Point * points,
                 OS4_BlendLine(&ld);
             }
 
-            data->iGraphics->UnlockBitMap(lock);
+            IGraphics->UnlockBitMap(lock);
 
             status = 0;
         } else {

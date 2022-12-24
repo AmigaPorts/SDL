@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2017 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -32,39 +32,6 @@
 #include "../../main/amigaos4/SDL_os4debug.h"
 
 #define BUTTON_BUF_SIZE 1024
-
-static struct Library *MB_IntuitionBase = NULL;
-static struct IntuitionIFace *MB_IIntuition = NULL;
-
-/* Message box can be popped up without video initialization,
-so let's fetch Intuition interface */
-
-static BOOL
-OS4_OpenIntuition()
-{
-    dprintf("Called\n");
-
-    MB_IntuitionBase = OS4_OpenLibrary("intuition.library", 51);
-
-    if (MB_IntuitionBase) {
-        MB_IIntuition = (struct IntuitionIFace *) OS4_GetInterface(MB_IntuitionBase);
-
-        if (MB_IIntuition) {
-            return TRUE;
-        }
-    }
-
-    return FALSE;
-}
-
-static void
-OS4_CloseIntuition()
-{
-    dprintf("Called\n");
-
-    OS4_DropInterface((void *) &MB_IIntuition);
-    OS4_CloseLibrary(&MB_IntuitionBase);
-}
 
 static char *
 OS4_MakeButtonString(const SDL_MessageBoxData * messageboxdata)
@@ -109,8 +76,7 @@ OS4_ShowMessageBox(const SDL_MessageBoxData * messageboxdata, int * buttonid)
 {
     int result = -1;
 
-    if (OS4_OpenIntuition()) {
-
+    if (IIntuition) {
         char *buttonString;
 
         if ((buttonString = OS4_MakeButtonString(messageboxdata))) {
@@ -128,7 +94,7 @@ OS4_ShowMessageBox(const SDL_MessageBoxData * messageboxdata, int * buttonid)
             const int LAST_BUTTON = messageboxdata->numbuttons;
 
             /* Amiga button order is 1, 2, ..., N, 0! */
-            int amigaButton = MB_IIntuition->EasyRequest(OS4_GetWindow(messageboxdata), &es, 0, NULL);
+            int amigaButton = IIntuition->EasyRequest(OS4_GetWindow(messageboxdata), &es, 0, NULL);
 
             dprintf("Button %d chosen\n", amigaButton);
 
@@ -149,8 +115,6 @@ OS4_ShowMessageBox(const SDL_MessageBoxData * messageboxdata, int * buttonid)
     } else {
         dprintf("Failed to open IIntuition\n");
     }
-
-    OS4_CloseIntuition();
 
     return result;
 }
