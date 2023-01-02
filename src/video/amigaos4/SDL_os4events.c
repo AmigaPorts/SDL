@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,6 +23,10 @@
 #if SDL_VIDEO_DRIVER_AMIGAOS4
 
 #include <proto/exec.h>
+#include <proto/dos.h>
+#include <proto/keymap.h>
+#include <proto/wb.h>
+
 #include <workbench/startup.h>
 
 #include "SDL_os4video.h"
