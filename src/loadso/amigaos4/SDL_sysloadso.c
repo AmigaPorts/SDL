@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -41,6 +41,11 @@ typedef struct {
 void *
 SDL_LoadObject(const char *sofile)
 {        
+    if (!IElf) {
+        dprintf("IElf nullptr\n");
+        return NULL;
+    }
+
     OS4_ObjectHandle *handle = SDL_malloc(sizeof(OS4_ObjectHandle));
 
     if (handle) {
@@ -87,6 +92,11 @@ SDL_LoadFunction(void *handle, const char *name)
 {
     void *symbol = NULL;
 
+    if (!IElf) {
+        dprintf("IElf nullptr\n");
+        return NULL;
+    }
+
     if (handle) {
         APTR address = NULL;
         OS4_ObjectHandle *oh = handle;
@@ -108,6 +118,11 @@ SDL_LoadFunction(void *handle, const char *name)
 void
 SDL_UnloadObject(void *handle)
 {
+    if (!IElf) {
+        dprintf("IElf nullptr\n");
+        return;
+    }
+
     if (handle) {
         OS4_ObjectHandle *oh = handle;
 
