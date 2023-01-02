@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,14 +24,15 @@
 
 #if SDL_VIDEO_OPENGL_ES2
 
+#include <proto/graphics.h>
+#include <proto/ogles2.h>
+#include <GLES2/gl2.h>
+
 #include "SDL_os4video.h"
 #include "SDL_os4window.h"
 #include "SDL_os4opengl.h"
 #include "SDL_os4opengles.h"
 #include "SDL_os4library.h"
-
-#include <proto/ogles2.h>
-#include <GLES2/gl2.h>
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
