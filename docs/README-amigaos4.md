@@ -151,6 +151,10 @@ game controller database contains the following entries:
 - Logitech Cordless RumblePad 2
 - Logitech RumblePad 2 USB
 - Logitech(R) Precision(TM) Gamepad
+- Logitech Dual Action
+- MAYFLASH Arcade Fightstick F300
+- Game Controller for Android
+- 2In1 USB Joystick
 
 Joysticks can be tested using testjoystick tool. New game controller mappings
 can be generated using controllermap tool. New mappings can be then added to
