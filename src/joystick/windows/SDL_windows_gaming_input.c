@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -316,7 +316,7 @@ static HRESULT STDMETHODCALLTYPE IEventHandler_CRawGameControllerVtbl_InvokeAdde
             boolean wireless;
 
             if (wgi.gamepad_statics2 && SUCCEEDED(__x_ABI_CWindows_CGaming_CInput_CIGamepadStatics2_FromGameController(wgi.gamepad_statics2, gamecontroller, &gamepad)) && gamepad) {
-                type = SDL_JOYSTICK_TYPE_GAMECONTROLLER;
+                type = SDL_JOYSTICK_TYPE_GAMEPAD;
                 __x_ABI_CWindows_CGaming_CInput_CIGamepad_Release(gamepad);
             } else if (wgi.arcade_stick_statics2 && SUCCEEDED(__x_ABI_CWindows_CGaming_CInput_CIArcadeStickStatics2_FromGameController(wgi.arcade_stick_statics2, gamecontroller, &arcade_stick)) && arcade_stick) {
                 type = SDL_JOYSTICK_TYPE_ARCADE_STICK;
@@ -410,7 +410,7 @@ static HRESULT STDMETHODCALLTYPE IEventHandler_CRawGameControllerVtbl_InvokeRemo
     SDL_LockJoysticks();
 
     /* Can we get delayed calls to InvokeRemoved() after WGI_JoystickQuit()? */
-    if (SDL_JoysticksQuitting() || !SDL_JoysticksInitialized()) {
+    if (!SDL_JoysticksInitialized()) {
         SDL_UnlockJoysticks();
         return S_OK;
     }
@@ -835,6 +835,8 @@ static void WGI_JoystickUpdate(SDL_Joystick *joystick)
         UINT32 i;
         SDL_bool all_zero = SDL_TRUE;
 
+        hwdata->timestamp = timestamp;
+
         /* The axes are all zero when the application loses focus */
         for (i = 0; i < naxes; ++i) {
             if (axes[i] != 0.0f) {
@@ -845,17 +847,18 @@ static void WGI_JoystickUpdate(SDL_Joystick *joystick)
         if (all_zero) {
             SDL_PrivateJoystickForceRecentering(joystick);
         } else {
+            /* FIXME: What units are the timestamp we get from GetCurrentReading()? */
+            timestamp = SDL_GetTicksNS();
             for (i = 0; i < nbuttons; ++i) {
-                SDL_PrivateJoystickButton(joystick, (Uint8)i, buttons[i]);
+                SDL_SendJoystickButton(timestamp, joystick, (Uint8)i, buttons[i]);
             }
             for (i = 0; i < nhats; ++i) {
-                SDL_PrivateJoystickHat(joystick, (Uint8)i, ConvertHatValue(hats[i]));
+                SDL_SendJoystickHat(timestamp, joystick, (Uint8)i, ConvertHatValue(hats[i]));
             }
             for (i = 0; i < naxes; ++i) {
-                SDL_PrivateJoystickAxis(joystick, (Uint8)i, (Sint16)((int)(axes[i] * 65535) - 32768));
+                SDL_SendJoystickAxis(timestamp, joystick, (Uint8)i, (Sint16)((int)(axes[i] * 65535) - 32768));
             }
         }
-        hwdata->timestamp = timestamp;
     }
 
     SDL_stack_free(buttons);
@@ -958,5 +961,3 @@ SDL_JoystickDriver SDL_WGI_JoystickDriver = {
 };
 
 #endif /* SDL_JOYSTICK_WGI */
-
-/* vi: set ts=4 sw=4 expandtab: */

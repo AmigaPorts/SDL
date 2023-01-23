@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -30,8 +30,14 @@
 
 /* Global keyboard information */
 
-#define KEYBOARD_HARDWARE    0x01
-#define KEYBOARD_AUTORELEASE 0x02
+typedef enum
+{
+    KEYBOARD_HARDWARE = 0x01,
+    KEYBOARD_AUTORELEASE = 0x02,
+    KEYBOARD_IGNOREMODIFIERS = 0x04
+} SDL_KeyboardFlags;
+
+#define KEYBOARD_SOURCE_MASK (KEYBOARD_HARDWARE | KEYBOARD_AUTORELEASE)
 
 typedef struct SDL_Keyboard SDL_Keyboard;
 
@@ -664,7 +670,7 @@ SDL_UCS4ToUTF8(Uint32 ch, char *dst)
 }
 
 /* Public functions */
-int SDL_KeyboardInit(void)
+int SDL_InitKeyboard(void)
 {
     /* Set the default keymap */
     SDL_SetKeymap(0, SDL_default_keymap, SDL_NUM_SCANCODES, SDL_FALSE);
@@ -766,7 +772,7 @@ void SDL_SetKeyboardFocus(SDL_Window *window)
                             0, 0);
 
         /* Ensures IME compositions are committed */
-        if (SDL_EventState(SDL_TEXTINPUT, SDL_QUERY)) {
+        if (SDL_EventEnabled(SDL_TEXTINPUT)) {
             SDL_VideoDevice *video = SDL_GetVideoDevice();
             if (video && video->StopTextInput) {
                 video->StopTextInput(video);
@@ -780,7 +786,7 @@ void SDL_SetKeyboardFocus(SDL_Window *window)
         SDL_SendWindowEvent(keyboard->focus, SDL_WINDOWEVENT_FOCUS_GAINED,
                             0, 0);
 
-        if (SDL_EventState(SDL_TEXTINPUT, SDL_QUERY)) {
+        if (SDL_EventEnabled(SDL_TEXTINPUT)) {
             SDL_VideoDevice *video = SDL_GetVideoDevice();
             if (video && video->StartTextInput) {
                 video->StartTextInput(video);
@@ -789,13 +795,14 @@ void SDL_SetKeyboardFocus(SDL_Window *window)
     }
 }
 
-static int SDL_SendKeyboardKeyInternal(Uint64 timestamp, Uint8 source, Uint8 state, SDL_Scancode scancode, SDL_Keycode keycode)
+static int SDL_SendKeyboardKeyInternal(Uint64 timestamp, SDL_KeyboardFlags flags, Uint8 state, SDL_Scancode scancode, SDL_Keycode keycode)
 {
     SDL_Keyboard *keyboard = &SDL_keyboard;
     int posted;
     SDL_Keymod modifier;
     Uint32 type;
     Uint8 repeat = SDL_FALSE;
+    const Uint8 source = flags & KEYBOARD_SOURCE_MASK;
 
     if (scancode == SDL_SCANCODE_UNKNOWN || scancode >= SDL_NUM_SCANCODES) {
         return 0;
@@ -848,60 +855,62 @@ static int SDL_SendKeyboardKeyInternal(Uint64 timestamp, Uint8 source, Uint8 sta
     }
 
     /* Update modifiers state if applicable */
-    switch (keycode) {
-    case SDLK_LCTRL:
-        modifier = KMOD_LCTRL;
-        break;
-    case SDLK_RCTRL:
-        modifier = KMOD_RCTRL;
-        break;
-    case SDLK_LSHIFT:
-        modifier = KMOD_LSHIFT;
-        break;
-    case SDLK_RSHIFT:
-        modifier = KMOD_RSHIFT;
-        break;
-    case SDLK_LALT:
-        modifier = KMOD_LALT;
-        break;
-    case SDLK_RALT:
-        modifier = KMOD_RALT;
-        break;
-    case SDLK_LGUI:
-        modifier = KMOD_LGUI;
-        break;
-    case SDLK_RGUI:
-        modifier = KMOD_RGUI;
-        break;
-    case SDLK_MODE:
-        modifier = KMOD_MODE;
-        break;
-    default:
-        modifier = KMOD_NONE;
-        break;
-    }
-    if (SDL_KEYDOWN == type) {
+    if (!(flags & KEYBOARD_IGNOREMODIFIERS)) {
         switch (keycode) {
-        case SDLK_NUMLOCKCLEAR:
-            keyboard->modstate ^= KMOD_NUM;
+        case SDLK_LCTRL:
+            modifier = SDL_KMOD_LCTRL;
             break;
-        case SDLK_CAPSLOCK:
-            keyboard->modstate ^= KMOD_CAPS;
+        case SDLK_RCTRL:
+            modifier = SDL_KMOD_RCTRL;
             break;
-        case SDLK_SCROLLLOCK:
-            keyboard->modstate ^= KMOD_SCROLL;
+        case SDLK_LSHIFT:
+            modifier = SDL_KMOD_LSHIFT;
+            break;
+        case SDLK_RSHIFT:
+            modifier = SDL_KMOD_RSHIFT;
+            break;
+        case SDLK_LALT:
+            modifier = SDL_KMOD_LALT;
+            break;
+        case SDLK_RALT:
+            modifier = SDL_KMOD_RALT;
+            break;
+        case SDLK_LGUI:
+            modifier = SDL_KMOD_LGUI;
+            break;
+        case SDLK_RGUI:
+            modifier = SDL_KMOD_RGUI;
+            break;
+        case SDLK_MODE:
+            modifier = SDL_KMOD_MODE;
             break;
         default:
-            keyboard->modstate |= modifier;
+            modifier = SDL_KMOD_NONE;
             break;
         }
-    } else {
-        keyboard->modstate &= ~modifier;
+        if (SDL_KEYDOWN == type) {
+            switch (keycode) {
+            case SDLK_NUMLOCKCLEAR:
+                keyboard->modstate ^= SDL_KMOD_NUM;
+                break;
+            case SDLK_CAPSLOCK:
+                keyboard->modstate ^= SDL_KMOD_CAPS;
+                break;
+            case SDLK_SCROLLLOCK:
+                keyboard->modstate ^= SDL_KMOD_SCROLL;
+                break;
+            default:
+                keyboard->modstate |= modifier;
+                break;
+            }
+        } else {
+            keyboard->modstate &= ~modifier;
+        }
     }
 
     /* Post the event, if desired */
     posted = 0;
-    if (SDL_GetEventState(type) == SDL_ENABLE) {
+    if (SDL_EventEnabled(type)) {
         SDL_Event event;
         event.type = type;
         event.common.timestamp = timestamp;
@@ -919,7 +928,7 @@ static int SDL_SendKeyboardKeyInternal(Uint64 timestamp, Uint8 source, Uint8 sta
        has explicitly opted out of this behavior. */
     if (keycode == SDLK_TAB &&
         state == SDL_PRESSED &&
-        (keyboard->modstate & KMOD_ALT) &&
+        (keyboard->modstate & SDL_KMOD_ALT) &&
         keyboard->focus &&
         (keyboard->focus->flags & SDL_WINDOW_KEYBOARD_GRABBED) &&
         (keyboard->focus->flags & SDL_WINDOW_FULLSCREEN) &&
@@ -942,7 +951,7 @@ int SDL_SendKeyboardUnicodeKey(Uint64 timestamp, Uint32 ch)
         mod = SDL_ASCIIKeyInfoTable[ch].mod;
     }
 
-    if (mod & KMOD_SHIFT) {
+    if (mod & SDL_KMOD_SHIFT) {
         /* If the character uses shift, press shift down */
         SDL_SendKeyboardKey(timestamp, SDL_PRESSED, SDL_SCANCODE_LSHIFT);
     }
@@ -951,7 +960,7 @@ int SDL_SendKeyboardUnicodeKey(Uint64 timestamp, Uint32 ch)
     SDL_SendKeyboardKey(timestamp, SDL_PRESSED, code);
     SDL_SendKeyboardKey(timestamp, SDL_RELEASED, code);
 
-    if (mod & KMOD_SHIFT) {
+    if (mod & SDL_KMOD_SHIFT) {
         /* If the character uses shift, release shift */
         SDL_SendKeyboardKey(timestamp, SDL_RELEASED, SDL_SCANCODE_LSHIFT);
     }
@@ -971,6 +980,11 @@ int SDL_SendKeyboardKeyAndKeycode(Uint64 timestamp, Uint8 state, SDL_Scancode sc
 int SDL_SendKeyboardKeyAutoRelease(Uint64 timestamp, SDL_Scancode scancode)
 {
     return SDL_SendKeyboardKeyInternal(timestamp, KEYBOARD_AUTORELEASE, SDL_PRESSED, scancode, SDLK_UNKNOWN);
+}
+
+int SDL_SendKeyboardKeyIgnoreModifiers(Uint64 timestamp, Uint8 state, SDL_Scancode scancode)
+{
+    return SDL_SendKeyboardKeyInternal(timestamp, KEYBOARD_HARDWARE | KEYBOARD_IGNOREMODIFIERS, state, scancode, SDLK_UNKNOWN);
 }
 
 void SDL_ReleaseAutoReleaseKeys(void)
@@ -1014,7 +1028,7 @@ int SDL_SendKeyboardText(const char *text)
 
     /* Post the event, if desired */
     posted = 0;
-    if (SDL_GetEventState(SDL_TEXTINPUT) == SDL_ENABLE) {
+    if (SDL_EventEnabled(SDL_TEXTINPUT)) {
         SDL_Event event;
         size_t pos = 0, advance, length = SDL_strlen(text);
 
@@ -1040,7 +1054,7 @@ int SDL_SendEditingText(const char *text, int start, int length)
 
     /* Post the event, if desired */
     posted = 0;
-    if (SDL_GetEventState(SDL_TEXTEDITING) == SDL_ENABLE) {
+    if (SDL_EventEnabled(SDL_TEXTEDITING)) {
         SDL_Event event;
 
         if (SDL_GetHintBoolean(SDL_HINT_IME_SUPPORT_EXTENDED_TEXT, SDL_FALSE) &&
@@ -1065,7 +1079,7 @@ int SDL_SendEditingText(const char *text, int start, int length)
     return posted;
 }
 
-void SDL_KeyboardQuit(void)
+void SDL_QuitKeyboard(void)
 {
 }
 
@@ -1273,5 +1287,3 @@ SDL_GetKeyFromName(const char *name)
         return SDL_default_keymap[SDL_GetScancodeFromName(name)];
     }
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

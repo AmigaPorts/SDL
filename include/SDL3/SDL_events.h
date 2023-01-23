@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -28,18 +28,18 @@
 #ifndef SDL_events_h_
 #define SDL_events_h_
 
-#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_audio.h>
 #include <SDL3/SDL_error.h>
-#include <SDL3/SDL_video.h>
+#include <SDL3/SDL_gamepad.h>
+#include <SDL3/SDL_joystick.h>
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_mouse.h>
-#include <SDL3/SDL_joystick.h>
-#include <SDL3/SDL_gamecontroller.h>
 #include <SDL3/SDL_quit.h>
-#include <SDL3/SDL_gesture.h>
+#include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_touch.h>
+#include <SDL3/SDL_video.h>
 
-#include <SDL3/begin_code.h>
+#include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
 extern "C" {
@@ -88,11 +88,42 @@ typedef enum
     SDL_LOCALECHANGED,  /**< The user's locale preferences have changed. */
 
     /* Display events */
-    SDL_DISPLAYEVENT   = 0x150,  /**< Display state change */
+    /* 0x150 was SDL_DISPLAYEVENT, reserve the number for sdl2-compat */
+    SDL_DISPLAYEVENT_ORIENTATION = 0x151, /**< Display orientation has changed to data1 */
+    SDL_DISPLAYEVENT_CONNECTED,           /**< Display has been added to the system */
+    SDL_DISPLAYEVENT_DISCONNECTED,        /**< Display has been removed from the system */
+    SDL_DISPLAYEVENT_MOVED,               /**< Display has changed position */
+    SDL_DISPLAYEVENT_FIRST = SDL_DISPLAYEVENT_ORIENTATION,
+    SDL_DISPLAYEVENT_LAST = SDL_DISPLAYEVENT_DISCONNECTED,
 
     /* Window events */
-    SDL_WINDOWEVENT    = 0x200, /**< Window state change */
-    SDL_SYSWMEVENT,             /**< System specific event */
+    /* 0x200 was SDL_WINDOWEVENT, reserve the number for sdl2-compat */
+    SDL_SYSWMEVENT     = 0x201,     /**< System specific event */
+    SDL_WINDOWEVENT_SHOWN,          /**< Window has been shown */
+    SDL_WINDOWEVENT_HIDDEN,         /**< Window has been hidden */
+    SDL_WINDOWEVENT_EXPOSED,        /**< Window has been exposed and should be
+                                         redrawn */
+    SDL_WINDOWEVENT_MOVED,          /**< Window has been moved to data1, data2
+                                     */
+    SDL_WINDOWEVENT_RESIZED,        /**< Window has been resized to data1xdata2 */
+    SDL_WINDOWEVENT_SIZE_CHANGED,   /**< The window size has changed, either as
+                                         a result of an API call or through the
+                                         system or user changing the window size. */
+    SDL_WINDOWEVENT_MINIMIZED,      /**< Window has been minimized */
+    SDL_WINDOWEVENT_MAXIMIZED,      /**< Window has been maximized */
+    SDL_WINDOWEVENT_RESTORED,       /**< Window has been restored to normal size
+                                         and position */
+    SDL_WINDOWEVENT_ENTER,          /**< Window has gained mouse focus */
+    SDL_WINDOWEVENT_LEAVE,          /**< Window has lost mouse focus */
+    SDL_WINDOWEVENT_FOCUS_GAINED,   /**< Window has gained keyboard focus */
+    SDL_WINDOWEVENT_FOCUS_LOST,     /**< Window has lost keyboard focus */
+    SDL_WINDOWEVENT_CLOSE,          /**< The window manager requests that the window be closed */
+    SDL_WINDOWEVENT_TAKE_FOCUS,     /**< Window is being offered a focus (should SetWindowInputFocus() on itself or a subwindow, or ignore) */
+    SDL_WINDOWEVENT_HIT_TEST,       /**< Window had a hit test that wasn't SDL_HITTEST_NORMAL. */
+    SDL_WINDOWEVENT_ICCPROF_CHANGED,/**< The ICC profile of the window's display has changed. */
+    SDL_WINDOWEVENT_DISPLAY_CHANGED,/**< Window has been moved to display data1. */
+    SDL_WINDOWEVENT_FIRST = SDL_WINDOWEVENT_SHOWN,
+    SDL_WINDOWEVENT_LAST = SDL_WINDOWEVENT_DISPLAY_CHANGED,
 
     /* Keyboard events */
     SDL_KEYDOWN        = 0x300, /**< Key pressed */
@@ -112,35 +143,31 @@ typedef enum
 
     /* Joystick events */
     SDL_JOYAXISMOTION  = 0x600, /**< Joystick axis motion */
-    SDL_JOYBALLMOTION,          /**< Joystick trackball motion */
-    SDL_JOYHATMOTION,           /**< Joystick hat position change */
+    SDL_JOYHATMOTION   = 0x602, /**< Joystick hat position change */
     SDL_JOYBUTTONDOWN,          /**< Joystick button pressed */
     SDL_JOYBUTTONUP,            /**< Joystick button released */
     SDL_JOYDEVICEADDED,         /**< A new joystick has been inserted into the system */
     SDL_JOYDEVICEREMOVED,       /**< An opened joystick has been removed */
     SDL_JOYBATTERYUPDATED,      /**< Joystick battery level change */
 
-    /* Game controller events */
-    SDL_CONTROLLERAXISMOTION  = 0x650, /**< Game controller axis motion */
-    SDL_CONTROLLERBUTTONDOWN,          /**< Game controller button pressed */
-    SDL_CONTROLLERBUTTONUP,            /**< Game controller button released */
-    SDL_CONTROLLERDEVICEADDED,         /**< A new Game controller has been inserted into the system */
-    SDL_CONTROLLERDEVICEREMOVED,       /**< An opened Game controller has been removed */
-    SDL_CONTROLLERDEVICEREMAPPED,      /**< The controller mapping was updated */
-    SDL_CONTROLLERTOUCHPADDOWN,        /**< Game controller touchpad was touched */
-    SDL_CONTROLLERTOUCHPADMOTION,      /**< Game controller touchpad finger was moved */
-    SDL_CONTROLLERTOUCHPADUP,          /**< Game controller touchpad finger was lifted */
-    SDL_CONTROLLERSENSORUPDATE,        /**< Game controller sensor was updated */
+    /* Gamepad events */
+    SDL_GAMEPADAXISMOTION  = 0x650, /**< Gamepad axis motion */
+    SDL_GAMEPADBUTTONDOWN,          /**< Gamepad button pressed */
+    SDL_GAMEPADBUTTONUP,            /**< Gamepad button released */
+    SDL_GAMEPADADDED,               /**< A new gamepad has been inserted into the system */
+    SDL_GAMEPADREMOVED,             /**< An opened gamepad has been removed */
+    SDL_GAMEPADREMAPPED,            /**< The gamepad mapping was updated */
+    SDL_GAMEPADTOUCHPADDOWN,        /**< Gamepad touchpad was touched */
+    SDL_GAMEPADTOUCHPADMOTION,      /**< Gamepad touchpad finger was moved */
+    SDL_GAMEPADTOUCHPADUP,          /**< Gamepad touchpad finger was lifted */
+    SDL_GAMEPADSENSORUPDATE,        /**< Gamepad sensor was updated */
 
     /* Touch events */
     SDL_FINGERDOWN      = 0x700,
     SDL_FINGERUP,
     SDL_FINGERMOTION,
 
-    /* Gesture events */
-    SDL_DOLLARGESTURE   = 0x800,
-    SDL_DOLLARRECORD,
-    SDL_MULTIGESTURE,
+    /* 0x800, 0x801, and 0x802 were the Gesture events from SDL2. Do not reuse these values! sdl2-compat needs them! */
 
     /* Clipboard events */
     SDL_CLIPBOARDUPDATE = 0x900, /**< The clipboard or primary selection changed */
@@ -190,13 +217,9 @@ typedef struct SDL_CommonEvent
  */
 typedef struct SDL_DisplayEvent
 {
-    Uint32 type;        /**< ::SDL_DISPLAYEVENT */
+    Uint32 type;        /**< ::SDL_DISPLAYEVENT_* */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     Uint32 display;     /**< The associated display index */
-    Uint8 event;        /**< ::SDL_DisplayEventID */
-    Uint8 padding1;
-    Uint8 padding2;
-    Uint8 padding3;
     Sint32 data1;       /**< event dependent data */
 } SDL_DisplayEvent;
 
@@ -205,13 +228,9 @@ typedef struct SDL_DisplayEvent
  */
 typedef struct SDL_WindowEvent
 {
-    Uint32 type;        /**< ::SDL_WINDOWEVENT */
+    Uint32 type;        /**< ::SDL_WINDOWEVENT_* */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    Uint32 windowID;    /**< The associated window */
-    Uint8 event;        /**< ::SDL_WindowEventID */
-    Uint8 padding1;
-    Uint8 padding2;
-    Uint8 padding3;
+    SDL_WindowID windowID;/**< The associated window */
     Sint32 data1;       /**< event dependent data */
     Sint32 data2;       /**< event dependent data */
 } SDL_WindowEvent;
@@ -223,7 +242,7 @@ typedef struct SDL_KeyboardEvent
 {
     Uint32 type;        /**< ::SDL_KEYDOWN or ::SDL_KEYUP */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    Uint32 windowID;    /**< The window with keyboard focus, if any */
+    SDL_WindowID windowID;/**< The window with keyboard focus, if any */
     Uint8 state;        /**< ::SDL_PRESSED or ::SDL_RELEASED */
     Uint8 repeat;       /**< Non-zero if this is a key repeat */
     Uint8 padding2;
@@ -239,7 +258,7 @@ typedef struct SDL_TextEditingEvent
 {
     Uint32 type;                                /**< ::SDL_TEXTEDITING */
     Uint64 timestamp;                           /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    Uint32 windowID;                            /**< The window with keyboard focus, if any */
+    SDL_WindowID windowID;                        /**< The window with keyboard focus, if any */
     char text[SDL_TEXTEDITINGEVENT_TEXT_SIZE];  /**< The editing text */
     Sint32 start;                               /**< The start cursor of selected editing text */
     Sint32 length;                              /**< The length of selected editing text */
@@ -253,7 +272,7 @@ typedef struct SDL_TextEditingExtEvent
 {
     Uint32 type;                                /**< ::SDL_TEXTEDITING_EXT */
     Uint64 timestamp;                           /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    Uint32 windowID;                            /**< The window with keyboard focus, if any */
+    SDL_WindowID windowID;                        /**< The window with keyboard focus, if any */
     char* text;                                 /**< The editing text, which should be freed with SDL_free(), and will not be NULL */
     Sint32 start;                               /**< The start cursor of selected editing text */
     Sint32 length;                              /**< The length of selected editing text */
@@ -267,7 +286,7 @@ typedef struct SDL_TextInputEvent
 {
     Uint32 type;                              /**< ::SDL_TEXTINPUT */
     Uint64 timestamp;                         /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    Uint32 windowID;                          /**< The window with keyboard focus, if any */
+    SDL_WindowID windowID;                      /**< The window with keyboard focus, if any */
     char text[SDL_TEXTINPUTEVENT_TEXT_SIZE];  /**< The input text */
 } SDL_TextInputEvent;
 
@@ -278,13 +297,13 @@ typedef struct SDL_MouseMotionEvent
 {
     Uint32 type;        /**< ::SDL_MOUSEMOTION */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    Uint32 windowID;    /**< The window with mouse focus, if any */
-    Uint32 which;       /**< The mouse instance id, or SDL_TOUCH_MOUSEID */
+    SDL_WindowID windowID;/**< The window with mouse focus, if any */
+    SDL_MouseID which;  /**< The mouse instance id, or SDL_TOUCH_MOUSEID */
     Uint32 state;       /**< The current button state */
-    Sint32 x;           /**< X coordinate, relative to window */
-    Sint32 y;           /**< Y coordinate, relative to window */
-    Sint32 xrel;        /**< The relative motion in the X direction */
-    Sint32 yrel;        /**< The relative motion in the Y direction */
+    float x;            /**< X coordinate, relative to window */
+    float y;            /**< Y coordinate, relative to window */
+    float xrel;         /**< The relative motion in the X direction */
+    float yrel;         /**< The relative motion in the Y direction */
 } SDL_MouseMotionEvent;
 
 /**
@@ -294,14 +313,14 @@ typedef struct SDL_MouseButtonEvent
 {
     Uint32 type;        /**< ::SDL_MOUSEBUTTONDOWN or ::SDL_MOUSEBUTTONUP */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    Uint32 windowID;    /**< The window with mouse focus, if any */
-    SDL_MouseID which;       /**< The mouse instance id, or SDL_TOUCH_MOUSEID */
+    SDL_WindowID windowID;/**< The window with mouse focus, if any */
+    SDL_MouseID which;  /**< The mouse instance id, or SDL_TOUCH_MOUSEID */
     Uint8 button;       /**< The mouse button index */
     Uint8 state;        /**< ::SDL_PRESSED or ::SDL_RELEASED */
     Uint8 clicks;       /**< 1 for single-click, 2 for double-click, etc. */
-    Uint8 padding1;
-    Sint32 x;           /**< X coordinate, relative to window */
-    Sint32 y;           /**< Y coordinate, relative to window */
+    Uint8 padding;
+    float x;            /**< X coordinate, relative to window */
+    float y;            /**< Y coordinate, relative to window */
 } SDL_MouseButtonEvent;
 
 /**
@@ -311,15 +330,13 @@ typedef struct SDL_MouseWheelEvent
 {
     Uint32 type;        /**< ::SDL_MOUSEWHEEL */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    Uint32 windowID;    /**< The window with mouse focus, if any */
-    SDL_MouseID which;       /**< The mouse instance id, or SDL_TOUCH_MOUSEID */
-    Sint32 x;           /**< The amount scrolled horizontally, positive to the right and negative to the left */
-    Sint32 y;           /**< The amount scrolled vertically, positive away from the user and negative toward the user */
+    SDL_WindowID windowID;/**< The window with mouse focus, if any */
+    SDL_MouseID which;  /**< The mouse instance id, or SDL_TOUCH_MOUSEID */
+    float x;            /**< The amount scrolled horizontally, positive to the right and negative to the left */
+    float y;            /**< The amount scrolled vertically, positive away from the user and negative toward the user */
     Uint32 direction;   /**< Set to one of the SDL_MOUSEWHEEL_* defines. When FLIPPED the values in X and Y will be opposite. Multiply by -1 to change them back */
-    float preciseX;     /**< The amount scrolled horizontally, positive to the right and negative to the left, with float precision (added in 2.0.18) */
-    float preciseY;     /**< The amount scrolled vertically, positive away from the user and negative toward the user, with float precision (added in 2.0.18) */
-    Sint32 mouseX;      /**< X coordinate, relative to window (added in 2.26.0) */
-    Sint32 mouseY;      /**< Y coordinate, relative to window (added in 2.26.0) */
+    float mouseX;       /**< X coordinate, relative to window */
+    float mouseY;       /**< Y coordinate, relative to window */
 } SDL_MouseWheelEvent;
 
 /**
@@ -337,22 +354,6 @@ typedef struct SDL_JoyAxisEvent
     Sint16 value;       /**< The axis value (range: -32768 to 32767) */
     Uint16 padding4;
 } SDL_JoyAxisEvent;
-
-/**
- *  \brief Joystick trackball motion event structure (event.jball.*)
- */
-typedef struct SDL_JoyBallEvent
-{
-    Uint32 type;        /**< ::SDL_JOYBALLMOTION */
-    Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_JoystickID which; /**< The joystick instance id */
-    Uint8 ball;         /**< The joystick trackball index */
-    Uint8 padding1;
-    Uint8 padding2;
-    Uint8 padding3;
-    Sint16 xrel;        /**< The relative motion in the X direction */
-    Sint16 yrel;        /**< The relative motion in the Y direction */
-} SDL_JoyBallEvent;
 
 /**
  *  \brief Joystick hat position change event structure (event.jhat.*)
@@ -395,7 +396,7 @@ typedef struct SDL_JoyDeviceEvent
 {
     Uint32 type;        /**< ::SDL_JOYDEVICEADDED or ::SDL_JOYDEVICEREMOVED */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_JoystickID which;       /**< The joystick device index for the ADDED event, instance id for the REMOVED event */
+    SDL_JoystickID which;       /**< The joystick instance id */
 } SDL_JoyDeviceEvent;
 
 /**
@@ -410,53 +411,53 @@ typedef struct SDL_JoyBatteryEvent
 } SDL_JoyBatteryEvent;
 
 /**
- *  \brief Game controller axis motion event structure (event.caxis.*)
+ *  \brief Gamepad axis motion event structure (event.caxis.*)
  */
-typedef struct SDL_ControllerAxisEvent
+typedef struct SDL_GamepadAxisEvent
 {
-    Uint32 type;        /**< ::SDL_CONTROLLERAXISMOTION */
+    Uint32 type;        /**< ::SDL_GAMEPADAXISMOTION */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     SDL_JoystickID which; /**< The joystick instance id */
-    Uint8 axis;         /**< The controller axis (SDL_GameControllerAxis) */
+    Uint8 axis;         /**< The gamepad axis (SDL_GamepadAxis) */
     Uint8 padding1;
     Uint8 padding2;
     Uint8 padding3;
     Sint16 value;       /**< The axis value (range: -32768 to 32767) */
     Uint16 padding4;
-} SDL_ControllerAxisEvent;
+} SDL_GamepadAxisEvent;
 
 
 /**
- *  \brief Game controller button event structure (event.cbutton.*)
+ *  \brief Gamepad button event structure (event.cbutton.*)
  */
-typedef struct SDL_ControllerButtonEvent
+typedef struct SDL_GamepadButtonEvent
 {
-    Uint32 type;        /**< ::SDL_CONTROLLERBUTTONDOWN or ::SDL_CONTROLLERBUTTONUP */
+    Uint32 type;        /**< ::SDL_GAMEPADBUTTONDOWN or ::SDL_GAMEPADBUTTONUP */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     SDL_JoystickID which; /**< The joystick instance id */
-    Uint8 button;       /**< The controller button (SDL_GameControllerButton) */
+    Uint8 button;       /**< The gamepad button (SDL_GamepadButton) */
     Uint8 state;        /**< ::SDL_PRESSED or ::SDL_RELEASED */
     Uint8 padding1;
     Uint8 padding2;
-} SDL_ControllerButtonEvent;
+} SDL_GamepadButtonEvent;
 
 
 /**
- *  \brief Controller device event structure (event.cdevice.*)
+ *  \brief Gamepad device event structure (event.cdevice.*)
  */
-typedef struct SDL_ControllerDeviceEvent
+typedef struct SDL_GamepadDeviceEvent
 {
-    Uint32 type;        /**< ::SDL_CONTROLLERDEVICEADDED, ::SDL_CONTROLLERDEVICEREMOVED, or ::SDL_CONTROLLERDEVICEREMAPPED */
+    Uint32 type;        /**< ::SDL_GAMEPADADDED, ::SDL_GAMEPADREMOVED, or ::SDL_GAMEPADREMAPPED */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_JoystickID which;       /**< The joystick device index for the ADDED event, instance id for the REMOVED or REMAPPED event */
-} SDL_ControllerDeviceEvent;
+    SDL_JoystickID which;       /**< The joystick instance id */
+} SDL_GamepadDeviceEvent;
 
 /**
- *  \brief Game controller touchpad event structure (event.ctouchpad.*)
+ *  \brief Gamepad touchpad event structure (event.ctouchpad.*)
  */
-typedef struct SDL_ControllerTouchpadEvent
+typedef struct SDL_GamepadTouchpadEvent
 {
-    Uint32 type;        /**< ::SDL_CONTROLLERTOUCHPADDOWN or ::SDL_CONTROLLERTOUCHPADMOTION or ::SDL_CONTROLLERTOUCHPADUP */
+    Uint32 type;        /**< ::SDL_GAMEPADTOUCHPADDOWN or ::SDL_GAMEPADTOUCHPADMOTION or ::SDL_GAMEPADTOUCHPADUP */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     SDL_JoystickID which; /**< The joystick instance id */
     Sint32 touchpad;    /**< The index of the touchpad */
@@ -464,20 +465,20 @@ typedef struct SDL_ControllerTouchpadEvent
     float x;            /**< Normalized in the range 0...1 with 0 being on the left */
     float y;            /**< Normalized in the range 0...1 with 0 being at the top */
     float pressure;     /**< Normalized in the range 0...1 */
-} SDL_ControllerTouchpadEvent;
+} SDL_GamepadTouchpadEvent;
 
 /**
- *  \brief Game controller sensor event structure (event.csensor.*)
+ *  \brief Gamepad sensor event structure (event.csensor.*)
  */
-typedef struct SDL_ControllerSensorEvent
+typedef struct SDL_GamepadSensorEvent
 {
-    Uint32 type;        /**< ::SDL_CONTROLLERSENSORUPDATE */
+    Uint32 type;        /**< ::SDL_GAMEPADSENSORUPDATE */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     SDL_JoystickID which; /**< The joystick instance id */
     Sint32 sensor;      /**< The type of the sensor, one of the values of ::SDL_SensorType */
     float data[3];      /**< Up to 3 values from the sensor, as defined in SDL_sensor.h */
-    Uint64 timestamp_us; /**< The timestamp of the sensor reading in microseconds, if the hardware provides this information. */
-} SDL_ControllerSensorEvent;
+    Uint64 sensor_timestamp; /**< The timestamp of the sensor reading in nanoseconds, not necessarily synchronized with the system clock */
+} SDL_GamepadSensorEvent;
 
 /**
  *  \brief Audio device event structure (event.adevice.*)
@@ -486,7 +487,7 @@ typedef struct SDL_AudioDeviceEvent
 {
     Uint32 type;        /**< ::SDL_AUDIODEVICEADDED, or ::SDL_AUDIODEVICEREMOVED */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    Uint32 which;       /**< The audio device index for the ADDED event (valid until next SDL_GetNumAudioDevices() call), SDL_AudioDeviceID for the REMOVED event */
+    SDL_AudioDeviceID which;       /**< The audio device index for the ADDED event (valid until next SDL_GetNumAudioDevices() call), SDL_AudioDeviceID for the REMOVED event */
     Uint8 iscapture;    /**< zero if an output device, non-zero if a capture device. */
     Uint8 padding1;
     Uint8 padding2;
@@ -508,46 +509,13 @@ typedef struct SDL_TouchFingerEvent
     float dx;           /**< Normalized in the range -1...1 */
     float dy;           /**< Normalized in the range -1...1 */
     float pressure;     /**< Normalized in the range 0...1 */
-    Uint32 windowID;    /**< The window underneath the finger, if any */
+    SDL_WindowID windowID;/**< The window underneath the finger, if any */
 } SDL_TouchFingerEvent;
 
 
 /**
- *  \brief Multiple Finger Gesture Event (event.mgesture.*)
- */
-typedef struct SDL_MultiGestureEvent
-{
-    Uint32 type;        /**< ::SDL_MULTIGESTURE */
-    Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_TouchID touchId; /**< The touch device id */
-    float dTheta;
-    float dDist;
-    float x;
-    float y;
-    Uint16 numFingers;
-    Uint16 padding;
-} SDL_MultiGestureEvent;
-
-
-/**
- * \brief Dollar Gesture Event (event.dgesture.*)
- */
-typedef struct SDL_DollarGestureEvent
-{
-    Uint32 type;        /**< ::SDL_DOLLARGESTURE or ::SDL_DOLLARRECORD */
-    Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_TouchID touchId; /**< The touch device id */
-    SDL_GestureID gestureId;
-    Uint32 numFingers;
-    float error;
-    float x;            /**< Normalized center of gesture */
-    float y;            /**< Normalized center of gesture */
-} SDL_DollarGestureEvent;
-
-
-/**
  *  \brief An event used to request a file open by the system (event.drop.*)
- *         This event is enabled by default, you can disable it with SDL_EventState().
+ *         This event is enabled by default, you can disable it with SDL_SetEventEnabled().
  *  \note If this event is enabled, you must free the filename in the event.
  */
 typedef struct SDL_DropEvent
@@ -555,7 +523,7 @@ typedef struct SDL_DropEvent
     Uint32 type;        /**< ::SDL_DROPBEGIN or ::SDL_DROPFILE or ::SDL_DROPTEXT or ::SDL_DROPCOMPLETE */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     char *file;         /**< The file name, which should be freed with SDL_free(), is NULL on begin/complete */
-    Uint32 windowID;    /**< The window that was dropped on, if any */
+    SDL_WindowID windowID;/**< The window that was dropped on, if any */
 } SDL_DropEvent;
 
 
@@ -567,8 +535,8 @@ typedef struct SDL_SensorEvent
     Uint32 type;        /**< ::SDL_SENSORUPDATE */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     SDL_SensorID which;       /**< The instance ID of the sensor */
-    float data[6];      /**< Up to 6 values from the sensor - additional values can be queried using SDL_SensorGetData() */
-    Uint64 timestamp_us; /**< The timestamp of the sensor reading in microseconds, if the hardware provides this information. */
+    float data[6];      /**< Up to 6 values from the sensor - additional values can be queried using SDL_GetSensorData() */
+    Uint64 sensor_timestamp; /**< The timestamp of the sensor reading in nanoseconds, not necessarily synchronized with the system clock */
 } SDL_SensorEvent;
 
 /**
@@ -596,7 +564,7 @@ typedef struct SDL_UserEvent
 {
     Uint32 type;        /**< ::SDL_USEREVENT through ::SDL_LASTEVENT-1 */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    Uint32 windowID;    /**< The associated window if any */
+    SDL_WindowID windowID;/**< The associated window if any */
     Sint32 code;        /**< User defined event code */
     void *data1;        /**< User defined data pointer */
     void *data2;        /**< User defined data pointer */
@@ -608,7 +576,7 @@ typedef struct SDL_SysWMmsg SDL_SysWMmsg;
 
 /**
  *  \brief A video driver dependent system event (event.syswm.*)
- *         This event is disabled by default, you can enable it with SDL_EventState()
+ *         This event is disabled by default, you can enable it with SDL_SetEventEnabled()
  *
  *  \note If you want to use this event, you should include SDL_syswm.h.
  */
@@ -636,24 +604,21 @@ typedef union SDL_Event
     SDL_MouseButtonEvent button;            /**< Mouse button event data */
     SDL_MouseWheelEvent wheel;              /**< Mouse wheel event data */
     SDL_JoyAxisEvent jaxis;                 /**< Joystick axis event data */
-    SDL_JoyBallEvent jball;                 /**< Joystick ball event data */
     SDL_JoyHatEvent jhat;                   /**< Joystick hat event data */
     SDL_JoyButtonEvent jbutton;             /**< Joystick button event data */
     SDL_JoyDeviceEvent jdevice;             /**< Joystick device change event data */
     SDL_JoyBatteryEvent jbattery;           /**< Joystick battery event data */
-    SDL_ControllerAxisEvent caxis;          /**< Game Controller axis event data */
-    SDL_ControllerButtonEvent cbutton;      /**< Game Controller button event data */
-    SDL_ControllerDeviceEvent cdevice;      /**< Game Controller device event data */
-    SDL_ControllerTouchpadEvent ctouchpad;  /**< Game Controller touchpad event data */
-    SDL_ControllerSensorEvent csensor;      /**< Game Controller sensor event data */
+    SDL_GamepadAxisEvent caxis;             /**< Gamepad axis event data */
+    SDL_GamepadButtonEvent cbutton;         /**< Gamepad button event data */
+    SDL_GamepadDeviceEvent cdevice;         /**< Gamepad device event data */
+    SDL_GamepadTouchpadEvent ctouchpad;     /**< Gamepad touchpad event data */
+    SDL_GamepadSensorEvent csensor;         /**< Gamepad sensor event data */
     SDL_AudioDeviceEvent adevice;           /**< Audio device event data */
     SDL_SensorEvent sensor;                 /**< Sensor event data */
     SDL_QuitEvent quit;                     /**< Quit request event data */
     SDL_UserEvent user;                     /**< Custom event data */
     SDL_SysWMEvent syswm;                   /**< System dependent window event data */
     SDL_TouchFingerEvent tfinger;           /**< Touch finger event data */
-    SDL_MultiGestureEvent mgesture;         /**< Gesture event data */
-    SDL_DollarGestureEvent dgesture;        /**< Gesture event data */
     SDL_DropEvent drop;                     /**< Drag and drop event data */
 
     /* This is necessary for ABI compatibility between Visual C++ and GCC.
@@ -1003,7 +968,7 @@ typedef int (SDLCALL * SDL_EventFilter) (void *userdata, SDL_Event * event);
  * closed, otherwise the window will remain open if possible.
  *
  * Note: Disabled events never make it to the event filter function; see
- * SDL_EventState().
+ * SDL_SetEventEnabled().
  *
  * Note: If you just want to inspect events without filtering, you should use
  * SDL_AddEventWatch() instead.
@@ -1018,7 +983,7 @@ typedef int (SDLCALL * SDL_EventFilter) (void *userdata, SDL_Event * event);
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_AddEventWatch
- * \sa SDL_EventState
+ * \sa SDL_SetEventEnabled
  * \sa SDL_GetEventFilter
  * \sa SDL_PeepEvents
  * \sa SDL_PushEvent
@@ -1108,34 +1073,29 @@ extern DECLSPEC void SDLCALL SDL_DelEventWatch(SDL_EventFilter filter,
 extern DECLSPEC void SDLCALL SDL_FilterEvents(SDL_EventFilter filter,
                                               void *userdata);
 
-/* @{ */
-#define SDL_QUERY   -1
-#define SDL_IGNORE   0
-#define SDL_DISABLE  0
-#define SDL_ENABLE   1
-
 /**
  * Set the state of processing events by type.
  *
- * `state` may be any of the following:
- *
- * - `SDL_QUERY`: returns the current processing state of the specified event
- * - `SDL_IGNORE` (aka `SDL_DISABLE`): the event will automatically be dropped
- *   from the event queue and will not be filtered
- * - `SDL_ENABLE`: the event will be processed normally
- *
  * \param type the type of event; see SDL_EventType for details
- * \param state how to process the event
- * \returns `SDL_DISABLE` or `SDL_ENABLE`, representing the processing state
- *          of the event before this function makes any changes to it.
+ * \param enabled whether to process the event or not
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_GetEventState
+ * \sa SDL_IsEventEnabled
  */
-extern DECLSPEC Uint8 SDLCALL SDL_EventState(Uint32 type, int state);
-/* @} */
-#define SDL_GetEventState(type) SDL_EventState(type, SDL_QUERY)
+extern DECLSPEC void SDLCALL SDL_SetEventEnabled(Uint32 type, SDL_bool enabled);
+
+/**
+ * Query the state of processing events by type.
+ *
+ * \param type the type of event; see SDL_EventType for details
+ * \returns SDL_TRUE if the event is being processed, SDL_FALSE otherwise.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_SetEventEnabled
+ */
+extern DECLSPEC SDL_bool SDLCALL SDL_EventEnabled(Uint32 type);
 
 /**
  * Allocate a set of user-defined events, and return the beginning event
@@ -1161,8 +1121,6 @@ extern DECLSPEC Uint32 SDLCALL SDL_RegisterEvents(int numevents);
 #ifdef __cplusplus
 }
 #endif
-#include <SDL3/close_code.h>
+#include <SDL3/SDL_close_code.h>
 
 #endif /* SDL_events_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

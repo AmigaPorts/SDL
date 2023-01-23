@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -13,6 +13,7 @@
 #include <stdlib.h>
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -39,13 +40,13 @@ loop()
             }
         } else if (e.type == SDL_MOUSEBUTTONDOWN) {
             if (e.button.button == 1) {
-                SDL_PauseAudioDevice(devid_out, SDL_TRUE);
-                SDL_PauseAudioDevice(devid_in, SDL_FALSE);
+                SDL_PauseAudioDevice(devid_out);
+                SDL_PlayAudioDevice(devid_in);
             }
         } else if (e.type == SDL_MOUSEBUTTONUP) {
             if (e.button.button == 1) {
-                SDL_PauseAudioDevice(devid_in, SDL_TRUE);
-                SDL_PauseAudioDevice(devid_out, SDL_FALSE);
+                SDL_PauseAudioDevice(devid_in);
+                SDL_PlayAudioDevice(devid_out);
             }
         }
     }
@@ -61,9 +62,9 @@ loop()
     if (please_quit) {
         /* stop playing back, quit. */
         SDL_Log("Shutting down.\n");
-        SDL_PauseAudioDevice(devid_in, 1);
+        SDL_PauseAudioDevice(devid_in);
         SDL_CloseAudioDevice(devid_in);
-        SDL_PauseAudioDevice(devid_out, 1);
+        SDL_PauseAudioDevice(devid_out);
         SDL_CloseAudioDevice(devid_out);
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
@@ -105,7 +106,7 @@ int main(int argc, char **argv)
     }
 
     window = SDL_CreateWindow("testaudiocapture", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 320, 240, 0);
-    renderer = SDL_CreateRenderer(window, -1, 0);
+    renderer = SDL_CreateRenderer(window, NULL, 0);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
@@ -165,5 +166,3 @@ int main(int argc, char **argv)
 
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

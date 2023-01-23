@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -36,7 +36,7 @@
 #ifndef SDL_test_fuzzer_h_
 #define SDL_test_fuzzer_h_
 
-#include <SDL3/begin_code.h>
+#include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
 extern "C" {
@@ -338,7 +338,7 @@ Sint32 SDLTest_RandomIntegerInRange(Sint32 min, Sint32 max);
  *
  * \returns a newly allocated random string; or NULL if length was invalid or string could not be allocated.
  */
-char * SDLTest_RandomAsciiString(void);
+char *SDLTest_RandomAsciiString(void);
 
 
 /**
@@ -352,7 +352,7 @@ char * SDLTest_RandomAsciiString(void);
  *
  * \returns a newly allocated random string; or NULL if maxLength was invalid or string could not be allocated.
  */
-char * SDLTest_RandomAsciiStringWithMaximumLength(int maxLength);
+char *SDLTest_RandomAsciiStringWithMaximumLength(int maxLength);
 
 
 /**
@@ -366,7 +366,7 @@ char * SDLTest_RandomAsciiStringWithMaximumLength(int maxLength);
  *
  * \returns a newly allocated random string; or NULL if size was invalid or string could not be allocated.
  */
-char * SDLTest_RandomAsciiStringOfSize(int size);
+char *SDLTest_RandomAsciiStringOfSize(int size);
 
 /**
  * Get the invocation count for the fuzzer since last ...FuzzerInit.
@@ -379,8 +379,6 @@ int SDLTest_GetFuzzerInvocationCount(void);
 #ifdef __cplusplus
 }
 #endif
-#include <SDL3/close_code.h>
+#include <SDL3/SDL_close_code.h>
 
 #endif /* SDL_test_fuzzer_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

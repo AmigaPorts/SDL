@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -37,7 +37,6 @@
 #include "../../events/SDL_mouse_c.h"
 #include "../../events/SDL_touch_c.h"
 
-#define SDL_ENABLE_SYSWM_X11
 #include <SDL3/SDL_syswm.h>
 
 #include <stdio.h>
@@ -334,7 +333,7 @@ static void X11_HandleGenericEvent(SDL_VideoData *videodata, XEvent *xev)
          * Since event data is only available until XFreeEventData is called,
          * the *only* way for an application to access it is to register an event filter/watcher
          * and do all the processing on the SDL_SYSWMEVENT inside the callback. */
-        if (SDL_GetEventState(SDL_SYSWMEVENT) == SDL_ENABLE) {
+        if (SDL_EventEnabled(SDL_SYSWMEVENT)) {
             SDL_SysWMmsg wmmsg;
 
             wmmsg.version = SDL_SYSWM_CURRENT_VERSION;
@@ -413,9 +412,9 @@ void X11_ReconcileKeyboardState(_THIS)
 
     /* Sync up the keyboard modifier state */
     if (X11_XQueryPointer(display, DefaultRootWindow(display), &junk_window, &junk_window, &x, &y, &x, &y, &mask)) {
-        SDL_ToggleModState(KMOD_CAPS, (mask & LockMask) != 0);
-        SDL_ToggleModState(KMOD_NUM, (mask & X11_GetNumLockModifierMask(_this)) != 0);
-        SDL_ToggleModState(KMOD_SCROLL, (mask & X11_GetScrollLockModifierMask(_this)) != 0);
+        SDL_ToggleModState(SDL_KMOD_CAPS, (mask & LockMask) != 0);
+        SDL_ToggleModState(SDL_KMOD_NUM, (mask & X11_GetNumLockModifierMask(_this)) != 0);
+        SDL_ToggleModState(SDL_KMOD_SCROLL, (mask & X11_GetScrollLockModifierMask(_this)) != 0);
     }
 
     keyboardState = SDL_GetKeyboardState(0);
@@ -816,7 +815,7 @@ static void X11_DispatchEvent(_THIS, XEvent *xevent)
 #endif
 
     /* Send a SDL_SYSWMEVENT if the application wants them */
-    if (SDL_GetEventState(SDL_SYSWMEVENT) == SDL_ENABLE) {
+    if (SDL_EventEnabled(SDL_SYSWMEVENT)) {
         SDL_SysWMmsg wmmsg;
 
         wmmsg.version = SDL_SYSWM_CURRENT_VERSION;
@@ -932,7 +931,7 @@ static void X11_DispatchEvent(_THIS, XEvent *xevent)
 #endif
 
         if (!mouse->relative_mode) {
-            SDL_SendMouseMotion(0, data->window, 0, 0, xevent->xcrossing.x, xevent->xcrossing.y);
+            SDL_SendMouseMotion(0, data->window, 0, 0, (float)xevent->xcrossing.x, (float)xevent->xcrossing.y);
         }
 
         /* We ungrab in LeaveNotify, so we may need to grab again here */
@@ -954,7 +953,7 @@ static void X11_DispatchEvent(_THIS, XEvent *xevent)
         }
 #endif
         if (!SDL_GetMouse()->relative_mode) {
-            SDL_SendMouseMotion(0, data->window, 0, 0, xevent->xcrossing.x, xevent->xcrossing.y);
+            SDL_SendMouseMotion(0, data->window, 0, 0, (float)xevent->xcrossing.x, (float)xevent->xcrossing.y);
         }
 
         if (xevent->xcrossing.mode != NotifyGrab &&
@@ -1078,7 +1077,7 @@ static void X11_DispatchEvent(_THIS, XEvent *xevent)
 #endif
 
 #ifdef SDL_USE_IME
-        if (SDL_GetEventState(SDL_TEXTINPUT) == SDL_ENABLE) {
+        if (SDL_EventEnabled(SDL_TEXTINPUT)) {
             handled_by_ime = SDL_IME_ProcessKeyEvent(keysym, keycode, (xevent->type == KeyPress ? SDL_PRESSED : SDL_RELEASED));
         }
 #endif
@@ -1171,7 +1170,7 @@ static void X11_DispatchEvent(_THIS, XEvent *xevent)
             SDL_SendWindowEvent(data->window, SDL_WINDOWEVENT_MOVED,
                                 xevent->xconfigure.x, xevent->xconfigure.y);
 #ifdef SDL_USE_IME
-            if (SDL_GetEventState(SDL_TEXTINPUT) == SDL_ENABLE) {
+            if (SDL_EventEnabled(SDL_TEXTINPUT)) {
                 /* Update IME candidate list position */
                 SDL_IME_UpdateTextRect(NULL);
             }
@@ -1311,7 +1310,7 @@ static void X11_DispatchEvent(_THIS, XEvent *xevent)
             printf("window %p: X11 motion: %d,%d\n", data, xevent->xmotion.x, xevent->xmotion.y);
 #endif
 
-            SDL_SendMouseMotion(0, data->window, 0, 0, xevent->xmotion.x, xevent->xmotion.y);
+            SDL_SendMouseMotion(0, data->window, 0, 0, (float)xevent->xmotion.x, (float)xevent->xmotion.y);
         }
     } break;
 
@@ -1668,7 +1667,7 @@ int X11_WaitEventTimeout(_THIS, Sint64 timeoutNS)
     X11_DispatchEvent(_this, &xevent);
 
 #ifdef SDL_USE_IME
-    if (SDL_GetEventState(SDL_TEXTINPUT) == SDL_ENABLE) {
+    if (SDL_EventEnabled(SDL_TEXTINPUT)) {
         SDL_IME_PumpEvents();
     }
 #endif
@@ -1709,7 +1708,7 @@ void X11_PumpEvents(_THIS)
     }
 
 #ifdef SDL_USE_IME
-    if (SDL_GetEventState(SDL_TEXTINPUT) == SDL_ENABLE) {
+    if (SDL_EventEnabled(SDL_TEXTINPUT)) {
         SDL_IME_PumpEvents();
     }
 #endif
@@ -1762,5 +1761,3 @@ void X11_SuspendScreenSaver(_THIS)
 }
 
 #endif /* SDL_VIDEO_DRIVER_X11 */
-
-/* vi: set ts=4 sw=4 expandtab: */

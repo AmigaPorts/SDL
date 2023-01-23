@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -53,7 +53,7 @@ typedef enum
     PendingWindowOperation pendingWindowOperation;
     BOOL isMoving;
     NSInteger focusClickPending;
-    int pendingWindowWarpX, pendingWindowWarpY;
+    float pendingWindowWarpX, pendingWindowWarpY;
     BOOL isDragAreaRunning;
 }
 
@@ -71,7 +71,7 @@ typedef enum
 - (BOOL)isMovingOrFocusClickPending;
 - (void)setFocusClickPending:(NSInteger)button;
 - (void)clearFocusClickPending:(NSInteger)button;
-- (void)setPendingMoveX:(int)x Y:(int)y;
+- (void)setPendingMoveX:(float)x Y:(float)y;
 - (void)windowDidFinishMoving;
 - (void)onMovingOrFocusClickPendingStateCleared;
 
@@ -170,5 +170,3 @@ extern void Cocoa_AcceptDragAndDrop(SDL_Window *window, SDL_bool accept);
 extern int Cocoa_FlashWindow(_THIS, SDL_Window *window, SDL_FlashOperation operation);
 
 #endif /* SDL_cocoawindow_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

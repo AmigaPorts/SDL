@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -309,7 +309,6 @@ static int EMSCRIPTEN_JoystickOpen(SDL_Joystick *joystick, int device_index)
 
     /* HTML5 Gamepad API doesn't say anything about these */
     joystick->nhats = 0;
-    joystick->nballs = 0;
 
     joystick->nbuttons = item->nbuttons;
     joystick->naxes = item->naxes;
@@ -327,6 +326,7 @@ static void EMSCRIPTEN_JoystickUpdate(SDL_Joystick *joystick)
     EmscriptenGamepadEvent gamepadState;
     SDL_joylist_item *item = (SDL_joylist_item *)joystick->hwdata;
     int i, result, buttonState;
+    Uint64 timestamp = SDL_GetTicksNS();
 
     emscripten_sample_gamepad_data();
 
@@ -337,7 +337,7 @@ static void EMSCRIPTEN_JoystickUpdate(SDL_Joystick *joystick)
                 for (i = 0; i < item->nbuttons; i++) {
                     if (item->digitalButton[i] != gamepadState.digitalButton[i]) {
                         buttonState = gamepadState.digitalButton[i] ? SDL_PRESSED : SDL_RELEASED;
-                        SDL_PrivateJoystickButton(item->joystick, i, buttonState);
+                        SDL_SendJoystickButton(timestamp, item->joystick, i, buttonState);
                     }
 
                     /* store values to compare them in the next update */
@@ -348,7 +348,7 @@ static void EMSCRIPTEN_JoystickUpdate(SDL_Joystick *joystick)
                 for (i = 0; i < item->naxes; i++) {
                     if (item->axis[i] != gamepadState.axis[i]) {
                         /* do we need to do conversion? */
-                        SDL_PrivateJoystickAxis(item->joystick, i,
+                        SDL_SendJoystickAxis(timestamp, item->joystick, i,
                                                 (Sint16)(32767. * gamepadState.axis[i]));
                     }
 
@@ -437,5 +437,3 @@ SDL_JoystickDriver SDL_EMSCRIPTEN_JoystickDriver = {
 };
 
 #endif /* SDL_JOYSTICK_EMSCRIPTEN */
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -189,6 +189,7 @@ extern "C"
         int16 *axes;
         uint8 *hats;
         uint32 buttons;
+        Uint64 timestamp = SDL_GetTicksNS();
 
         /* Set up data pointers */
         stick = joystick->hwdata->stick;
@@ -203,17 +204,17 @@ extern "C"
 
         /* Generate axis motion events */
         for (i = 0; i < joystick->naxes; ++i) {
-            SDL_PrivateJoystickAxis(joystick, i, axes[i]);
+            SDL_SendJoystickAxis(timestamp, joystick, i, axes[i]);
         }
 
         /* Generate hat change events */
         for (i = 0; i < joystick->nhats; ++i) {
-            SDL_PrivateJoystickHat(joystick, i, hat_map[hats[i]]);
+            SDL_SendJoystickHat(timestamp, joystick, i, hat_map[hats[i]]);
         }
 
         /* Generate button events */
         for (i = 0; i < joystick->nbuttons; ++i) {
-            SDL_PrivateJoystickButton(joystick, i, (buttons & 0x01));
+            SDL_SendJoystickButton(timestamp, joystick, i, (buttons & 0x01));
             buttons >>= 1;
         }
     }
@@ -318,5 +319,3 @@ extern "C"
 }                              // extern "C"
 
 #endif /* SDL_JOYSTICK_HAIKU */
-
-/* vi: set ts=4 sw=4 expandtab: */

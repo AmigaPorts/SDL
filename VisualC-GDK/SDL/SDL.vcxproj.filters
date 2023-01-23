@@ -174,10 +174,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\include\SDL3\begin_code.h">
+    <ClInclude Include="..\..\include\SDL3\SDL_begin_code.h">
       <Filter>API Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\SDL3\close_code.h">
+    <ClInclude Include="..\..\include\SDL3\SDL_close_code.h">
       <Filter>API Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\SDL3\SDL.h">
@@ -222,10 +222,7 @@
     <ClInclude Include="..\..\include\SDL3\SDL_filesystem.h">
       <Filter>API Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\SDL3\SDL_gamecontroller.h">
-      <Filter>API Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\SDL3\SDL_gesture.h">
+    <ClInclude Include="..\..\include\SDL3\SDL_gamepad.h">
       <Filter>API Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\SDL3\SDL_guid.h">
@@ -301,6 +298,9 @@
       <Filter>API Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\SDL3\SDL_platform.h">
+      <Filter>API Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\SDL3\SDL_platform_defines.h">
       <Filter>API Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\SDL3\SDL_power.h">
@@ -459,9 +459,6 @@
     <ClInclude Include="..\..\src\events\SDL_events_c.h">
       <Filter>events</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\events\SDL_gesture_c.h">
-      <Filter>events</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\events\SDL_keyboard_c.h">
       <Filter>events</Filter>
     </ClInclude>
@@ -489,7 +486,10 @@
     <ClInclude Include="..\..\src\haptic\SDL_haptic_c.h">
       <Filter>haptic</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\joystick\SDL_gamecontrollerdb.h">
+    <ClInclude Include="..\..\src\joystick\SDL_gamepad_c.h">
+      <Filter>joystick</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\joystick\SDL_gamepad_db.h">
       <Filter>joystick</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\joystick\SDL_joystick_c.h">
@@ -892,9 +892,6 @@
     <ClCompile Include="..\..\src\events\SDL_events.c">
       <Filter>events</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\events\SDL_gesture.c">
-      <Filter>events</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\events\SDL_keyboard.c">
       <Filter>events</Filter>
     </ClCompile>
@@ -925,7 +922,7 @@
     <ClCompile Include="..\..\src\joystick\controller_type.c">
       <Filter>joystick</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\joystick\SDL_gamecontroller.c">
+    <ClCompile Include="..\..\src\joystick\SDL_gamepad.c">
       <Filter>joystick</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\joystick\SDL_joystick.c">
@@ -980,6 +977,9 @@
       <Filter>libm</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\libm\s_floor.c">
+      <Filter>libm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\libm\s_modf.c">
       <Filter>libm</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\libm\s_scalbn.c">
@@ -1372,6 +1372,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\..\src\main\windows\version.rc" />
+    <ResourceCompile Include="..\..\src\core\windows\version.rc" />
   </ItemGroup>
 </Project>

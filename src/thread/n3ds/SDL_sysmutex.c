@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -51,10 +51,10 @@ void SDL_DestroyMutex(SDL_mutex *mutex)
 }
 
 /* Lock the mutex */
-int SDL_LockMutex(SDL_mutex *mutex)
+int SDL_LockMutex(SDL_mutex *mutex) SDL_NO_THREAD_SAFETY_ANALYSIS /* clang doesn't know about NULL mutexes */
 {
     if (mutex == NULL) {
-        return SDL_InvalidParamError("mutex");
+        return 0;
     }
 
     RecursiveLock_Lock(&mutex->lock);
@@ -66,17 +66,17 @@ int SDL_LockMutex(SDL_mutex *mutex)
 int SDL_TryLockMutex(SDL_mutex *mutex)
 {
     if (mutex == NULL) {
-        return SDL_InvalidParamError("mutex");
+        return 0;
     }
 
     return RecursiveLock_TryLock(&mutex->lock);
 }
 
 /* Unlock the mutex */
-int SDL_mutexV(SDL_mutex *mutex)
+int SDL_UnlockMutex(SDL_mutex *mutex) SDL_NO_THREAD_SAFETY_ANALYSIS /* clang doesn't know about NULL mutexes */
 {
     if (mutex == NULL) {
-        return SDL_InvalidParamError("mutex");
+        return 0;
     }
 
     RecursiveLock_Unlock(&mutex->lock);
@@ -85,5 +85,3 @@ int SDL_mutexV(SDL_mutex *mutex)
 }
 
 #endif /* SDL_THREAD_N3DS */
-
-/* vi: set sts=4 ts=4 sw=4 expandtab: */

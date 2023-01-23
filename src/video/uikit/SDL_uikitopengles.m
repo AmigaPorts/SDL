@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -51,8 +51,7 @@
 
 @end
 
-void *
-UIKit_GL_GetProcAddress(_THIS, const char *proc)
+SDL_FunctionPointer UIKit_GL_GetProcAddress(_THIS, const char *proc)
 {
     /* Look through all SO's for the proc symbol.  Here's why:
      * -Looking for the path to the OpenGL Library seems not to work in the iOS Simulator.
@@ -128,8 +127,7 @@ int UIKit_GL_SwapWindow(_THIS, SDL_Window *window)
     return 0;
 }
 
-SDL_GLContext
-UIKit_GL_CreateContext(_THIS, SDL_Window *window)
+SDL_GLContext UIKit_GL_CreateContext(_THIS, SDL_Window *window)
 {
     @autoreleasepool {
         SDLEAGLContext *context = nil;
@@ -234,5 +232,3 @@ void UIKit_GL_RestoreCurrentContext(void)
 }
 
 #endif /* SDL_VIDEO_DRIVER_UIKIT */
-
-/* vi: set ts=4 sw=4 expandtab: */

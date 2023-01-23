@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,6 +23,7 @@
 #endif
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 #include "testutils.h"
 
 static SDL_AudioSpec spec;
@@ -109,7 +110,7 @@ iteration()
                     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't open '%s': %s\n", name, SDL_GetError());
                 } else {
                     SDL_Log("Opened '%s' as %u\n", name, (unsigned int)dev);
-                    SDL_PauseAudioDevice(dev, 0);
+                    SDL_PlayAudioDevice(dev);
                 }
             }
         } else if (e.type == SDL_AUDIODEVICEREMOVED) {
@@ -178,7 +179,7 @@ int main(int argc, char *argv[])
         SDL_Log("%i: %s", i, SDL_GetAudioDriver(i));
     }
 
-    SDL_Log("Select a driver with the SDL_AUDIODRIVER environment variable.\n");
+    SDL_Log("Select a driver with the SDL_AUDIO_DRIVER environment variable.\n");
     SDL_Log("Using audio driver: %s\n", SDL_GetCurrentAudioDriver());
 
 #ifdef __EMSCRIPTEN__
@@ -193,10 +194,8 @@ int main(int argc, char *argv[])
     /* Clean up on signal */
     /* Quit audio first, then free WAV. This prevents access violations in the audio threads. */
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
-    SDL_FreeWAV(sound);
+    SDL_free(sound);
     SDL_free(filename);
     SDL_Quit();
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -42,7 +42,7 @@ extern "C" {
 #if SDL_VIDEO_OPENGL
 #include <opengl/GLView.h>
 #endif
-#include "../../main/haiku/SDL_BApp.h"
+#include "../../core/haiku/SDL_BApp.h"
 
 enum WinCommands
 {
@@ -749,5 +749,3 @@ class SDL_BWin : public BWindow
  *                         buffer provided by DirectConnected() is invalidated.
  */
 #endif /* SDL_BWin_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

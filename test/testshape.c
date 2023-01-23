@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -12,6 +12,7 @@
 #include <stdlib.h>
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 
 #define SHAPED_WINDOW_X         150
 #define SHAPED_WINDOW_Y         150
@@ -27,12 +28,18 @@ typedef struct LoadedPicture
 
 void render(SDL_Renderer *renderer, SDL_Texture *texture, SDL_Rect texture_dimensions)
 {
+    SDL_FRect dst;
+
     /* Clear render-target to blue. */
     SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0xff, 0xff);
     SDL_RenderClear(renderer);
 
     /* Render the texture. */
-    SDL_RenderCopy(renderer, texture, &texture_dimensions, &texture_dimensions);
+    dst.x = (float)texture_dimensions.x;
+    dst.y = (float)texture_dimensions.y;
+    dst.w = (float)texture_dimensions.w;
+    dst.h = (float)texture_dimensions.h;
+    SDL_RenderTexture(renderer, texture, &texture_dimensions, &dst);
 
     SDL_RenderPresent(renderer);
 }
@@ -62,7 +69,7 @@ int main(int argc, char **argv)
         exit(-1);
     }
 
-    if (SDL_VideoInit(NULL) == -1) {
+    if (SDL_Init(SDL_INIT_VIDEO) == -1) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not initialize SDL video.");
         exit(-2);
     }
@@ -81,10 +88,10 @@ int main(int argc, char **argv)
         pictures[i].name = argv[i + 1];
         if (pictures[i].surface == NULL) {
             for (j = 0; j < num_pictures; j++) {
-                SDL_FreeSurface(pictures[j].surface);
+                SDL_DestroySurface(pictures[j].surface);
             }
             SDL_free(pictures);
-            SDL_VideoQuit();
+            SDL_Quit();
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not load surface from named bitmap file: %s", argv[i + 1]);
             exit(-3);
         }
@@ -106,21 +113,21 @@ int main(int argc, char **argv)
     SDL_SetWindowPosition(window, SHAPED_WINDOW_X, SHAPED_WINDOW_Y);
     if (window == NULL) {
         for (i = 0; i < num_pictures; i++) {
-            SDL_FreeSurface(pictures[i].surface);
+            SDL_DestroySurface(pictures[i].surface);
         }
         SDL_free(pictures);
-        SDL_VideoQuit();
+        SDL_Quit();
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not create shaped window for SDL_Shape.");
         exit(-4);
     }
-    renderer = SDL_CreateRenderer(window, -1, 0);
+    renderer = SDL_CreateRenderer(window, NULL, 0);
     if (renderer == NULL) {
         SDL_DestroyWindow(window);
         for (i = 0; i < num_pictures; i++) {
-            SDL_FreeSurface(pictures[i].surface);
+            SDL_DestroySurface(pictures[i].surface);
         }
         SDL_free(pictures);
-        SDL_VideoQuit();
+        SDL_Quit();
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not create rendering context for SDL_Shape window.");
         exit(-5);
     }
@@ -137,12 +144,12 @@ int main(int argc, char **argv)
                 }
             }
             for (i = 0; i < num_pictures; i++) {
-                SDL_FreeSurface(pictures[i].surface);
+                SDL_DestroySurface(pictures[i].surface);
             }
             SDL_free(pictures);
             SDL_DestroyRenderer(renderer);
             SDL_DestroyWindow(window);
-            SDL_VideoQuit();
+            SDL_Quit();
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not create texture for SDL_shape.");
             exit(-6);
         }
@@ -197,13 +204,11 @@ int main(int argc, char **argv)
     SDL_DestroyWindow(window);
     /* Free the original surfaces backing the textures. */
     for (i = 0; i < num_pictures; i++) {
-        SDL_FreeSurface(pictures[i].surface);
+        SDL_DestroySurface(pictures[i].surface);
     }
     SDL_free(pictures);
-    /* Call SDL_VideoQuit() before quitting. */
-    SDL_VideoQuit();
+    /* Call SDL_Quit() before quitting. */
+    SDL_Quit();
 
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

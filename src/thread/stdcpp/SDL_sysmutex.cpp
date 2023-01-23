@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -55,12 +55,12 @@ SDL_DestroyMutex(SDL_mutex *mutex)
     }
 }
 
-/* Lock the semaphore */
+/* Lock the mutex */
 extern "C" int
-SDL_mutexP(SDL_mutex *mutex)
+SDL_LockMutex(SDL_mutex *mutex) SDL_NO_THREAD_SAFETY_ANALYSIS /* clang doesn't know about NULL mutexes */
 {
     if (mutex == NULL) {
-        return SDL_InvalidParamError("mutex");
+        return 0;
     }
 
     try {
@@ -75,8 +75,9 @@ SDL_mutexP(SDL_mutex *mutex)
 int SDL_TryLockMutex(SDL_mutex *mutex)
 {
     int retval = 0;
+
     if (mutex == NULL) {
-        return SDL_InvalidParamError("mutex");
+        return 0;
     }
 
     if (mutex->cpp_mutex.try_lock() == false) {
@@ -87,14 +88,12 @@ int SDL_TryLockMutex(SDL_mutex *mutex)
 
 /* Unlock the mutex */
 extern "C" int
-SDL_mutexV(SDL_mutex *mutex)
+SDL_UnlockMutex(SDL_mutex *mutex) SDL_NO_THREAD_SAFETY_ANALYSIS /* clang doesn't know about NULL mutexes */
 {
     if (mutex == NULL) {
-        return SDL_InvalidParamError("mutex");
+        return 0;
     }
 
     mutex->cpp_mutex.unlock();
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

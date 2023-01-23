@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -55,7 +55,7 @@ int SDL_NGAGE_CreateWindowFramebuffer(_THIS, SDL_Window *window, Uint32 *format,
     SDL_NGAGE_DestroyWindowFramebuffer(_this, window);
 
     /* Create a new one */
-    SDL_GetWindowSize(window, &w, &h);
+    SDL_GetWindowSizeInPixels(window, &w, &h);
     surface = SDL_CreateSurface(w, h, surface_format);
     if (surface == NULL) {
         return -1;
@@ -171,7 +171,7 @@ void SDL_NGAGE_DestroyWindowFramebuffer(_THIS, SDL_Window *window)
     SDL_Surface *surface;
 
     surface = (SDL_Surface *)SDL_SetWindowData(window, NGAGE_SURFACE, NULL);
-    SDL_FreeSurface(surface);
+    SDL_DestroySurface(surface);
 }
 
 /*****************************************************************************/
@@ -395,5 +395,3 @@ void RedrawWindowL(_THIS)
 }
 
 #endif /* SDL_VIDEO_DRIVER_NGAGE */
-
-/* vi: set ts=4 sw=4 expandtab: */

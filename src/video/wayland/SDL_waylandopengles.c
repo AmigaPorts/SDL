@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -92,14 +92,14 @@ int Wayland_GLES_SetSwapInterval(_THIS, int interval)
     return 0;
 }
 
-int Wayland_GLES_GetSwapInterval(_THIS)
+int Wayland_GLES_GetSwapInterval(_THIS, int *interval)
 {
     if (!_this->egl_data) {
-        SDL_SetError("EGL not initialized");
-        return 0;
+        return SDL_SetError("EGL not initialized");
     }
 
-    return _this->egl_data->egl_swapinterval;
+    *interval =_this->egl_data->egl_swapinterval;
+    return 0;
 }
 
 int Wayland_GLES_SwapWindow(_THIS, SDL_Window *window)
@@ -125,7 +125,7 @@ int Wayland_GLES_SwapWindow(_THIS, SDL_Window *window)
         struct wl_display *display = videodata->display;
         SDL_VideoDisplay *sdldisplay = SDL_GetDisplayForWindow(window);
         /* ~10 frames (or 1 sec), so we'll progress even if throttled to zero. */
-        const Uint64 max_wait = SDL_GetTicksNS() + (sdldisplay->current_mode.refresh_rate ? ((SDL_NS_PER_SECOND * 10) / sdldisplay->current_mode.refresh_rate) : SDL_NS_PER_SECOND);
+        const Uint64 max_wait = SDL_GetTicksNS() + (sdldisplay->current_mode.refresh_rate ? ((SDL_NS_PER_SECOND * 10 * 100) / (int)(sdldisplay->current_mode.refresh_rate * 100)) : SDL_NS_PER_SECOND);
         while (SDL_AtomicGet(&data->swap_interval_ready) == 0) {
             Uint64 now;
 
@@ -202,5 +202,3 @@ EGLSurface Wayland_GLES_GetEGLSurface(_THIS, SDL_Window *window)
 }
 
 #endif /* SDL_VIDEO_DRIVER_WAYLAND && SDL_VIDEO_OPENGL_EGL */
-
-/* vi: set ts=4 sw=4 expandtab: */

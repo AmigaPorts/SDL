@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -331,6 +331,81 @@ void WIN_RectToRECT(const SDL_Rect *sdlrect, RECT *winrect)
     winrect->bottom = sdlrect->y + sdlrect->h - 1;
 }
 
+/* Win32-specific SDL_RunApp(), which does most of the SDL_main work,
+  based on SDL_windows_main.c, placed in the public domain by Sam Lantinga  4/13/98 */
+#ifdef __WIN32__
+
+#include <shellapi.h> /* CommandLineToArgvW() */
+
+/* Pop up an out of memory message, returns to Windows */
+static int
+OutOfMemory(void)
+{
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Fatal Error", "Out of memory - aborting", NULL);
+    return -1;
+}
+
+DECLSPEC int
+SDL_RunApp(int _argc, char* _argv[], SDL_main_func mainFunction, void * reserved)
+{
+
+    /* Gets the arguments with GetCommandLine, converts them to argc and argv
+       and calls SDL_main */
+
+    LPWSTR *argvw;
+    char **argv;
+    int i, argc, result;
+
+    (void)_argc; (void)_argv; (void)reserved;
+
+    argvw = CommandLineToArgvW(GetCommandLineW(), &argc);
+    if (argvw == NULL) {
+        return OutOfMemory();
+    }
+
+    /* Note that we need to be careful about how we allocate/free memory here.
+     * If the application calls SDL_SetMemoryFunctions(), we can't rely on
+     * SDL_free() to use the same allocator after SDL_main() returns.
+     */
+
+    /* Parse it into argv and argc */
+    argv = (char **)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (argc + 1) * sizeof(*argv));
+    if (argv == NULL) {
+        return OutOfMemory();
+    }
+    for (i = 0; i < argc; ++i) {
+        DWORD len;
+        char *arg = WIN_StringToUTF8W(argvw[i]);
+        if (arg == NULL) {
+            return OutOfMemory();
+        }
+        len = (DWORD)SDL_strlen(arg);
+        argv[i] = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, len + 1);
+        if (!argv[i]) {
+            return OutOfMemory();
+        }
+        SDL_memcpy(argv[i], arg, len);
+        SDL_free(arg);
+    }
+    argv[i] = NULL;
+    LocalFree(argvw);
+
+    SDL_SetMainReady();
+
+    /* Run the application main() code */
+    result = mainFunction(argc, argv);
+
+    /* Free argv, to avoid memory leak */
+    for (i = 0; i < argc; ++i) {
+        HeapFree(GetProcessHeap(), 0, argv[i]);
+    }
+    HeapFree(GetProcessHeap(), 0, argv);
+
+    return result;
+}
+
+#endif /* __WIN32__ */
+
 #endif /* defined(__WIN32__) || defined(__WINRT__) || defined(__GDK__) */
 
 /*
@@ -378,5 +453,3 @@ SDL_DXGIGetOutputInfo(int displayIndex, int *adapterIndex, int *outputIndex)
 #endif /* __WIN32__ || __WINGDK__ */
 
 #endif /* !SDL_VIDEO_DRIVER_WINDOWS */
-
-/* vi: set ts=4 sw=4 expandtab: */

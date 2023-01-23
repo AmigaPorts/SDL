@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -354,16 +354,11 @@ void SDL_WinRTApp::Run()
     }
 }
 
-static bool IsSDLWindowEventPending(SDL_WindowEventID windowEventID)
+static bool IsSDLWindowEventPending(SDL_EventType windowEventID)
 {
     SDL_Event events[128];
-    const int count = SDL_PeepEvents(events, sizeof(events) / sizeof(SDL_Event), SDL_PEEKEVENT, SDL_WINDOWEVENT, SDL_WINDOWEVENT);
-    for (int i = 0; i < count; ++i) {
-        if (events[i].window.event == windowEventID) {
-            return true;
-        }
-    }
-    return false;
+    const int count = SDL_PeepEvents(events, sizeof(events) / sizeof(SDL_Event), SDL_PEEKEVENT, windowEventID, windowEventID);
+    return (count > 0);
 }
 
 bool SDL_WinRTApp::ShouldWaitForAppResumeEvents()
@@ -552,7 +547,7 @@ void SDL_WinRTApp::OnWindowActivated(CoreWindow ^ sender, WindowActivatedEventAr
              */
 #if (WINAPI_FAMILY != WINAPI_FAMILY_PHONE_APP) || (NTDDI_VERSION >= NTDDI_WINBLUE)
             Point cursorPos = WINRT_TransformCursorPosition(window, sender->PointerPosition, TransformToSDLWindowSize);
-            SDL_SendMouseMotion(0, window, 0, 0, (int)cursorPos.X, (int)cursorPos.Y);
+            SDL_SendMouseMotion(0, window, 0, 0, cursorPos.X, cursorPos.Y);
 #endif
 
             /* TODO, WinRT: see if the Win32 bugfix from https://hg.libsdl.org/SDL/rev/d278747da408 needs to be applied (on window activation) */
@@ -775,5 +770,3 @@ void SDL_WinRTApp::OnGamepadAdded(Platform::Object ^ sender, Windows::Gaming::In
     */
 }
 #endif
-
-/* vi: set ts=4 sw=4 expandtab: */

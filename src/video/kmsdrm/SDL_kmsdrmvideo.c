@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -35,7 +35,6 @@
 #include "../../core/openbsd/SDL_wscons.h"
 #endif
 
-#define SDL_ENABLE_SYSWM_KMSDRM
 #include <SDL3/SDL_syswm.h>
 
 /* KMS/DRM declarations */
@@ -170,6 +169,28 @@ static int get_driindex(void)
     return available;
 }
 
+static float CalculateRefreshRate(drmModeModeInfo *mode)
+{
+    unsigned int num, den;
+
+    num = mode->clock * 1000;
+    den = mode->htotal * mode->vtotal;
+
+    if (mode->flags & DRM_MODE_FLAG_INTERLACE) {
+        num *= 2;
+    }
+
+    if (mode->flags & DRM_MODE_FLAG_DBLSCAN) {
+        den *= 2;
+    }
+
+    if (mode->vscan > 1) {
+        den *= mode->vscan;
+    }
+
+    return ((100 * num) / den) / 100.0f;
+}
+
 static int KMSDRM_Available(void)
 {
 #ifdef __OpenBSD__
@@ -302,7 +323,9 @@ static SDL_VideoDevice *KMSDRM_CreateDevice(void)
     return device;
 
 cleanup:
-    SDL_free(device);
+    if (device) {
+    	SDL_free(device);
+    }
 
     if (viddata) {
         SDL_free(viddata);
@@ -850,7 +873,7 @@ static void KMSDRM_AddDisplay(_THIS, drmModeConnector *connector, drmModeRes *re
     display.driverdata = dispdata;
     display.desktop_mode.w = dispdata->mode.hdisplay;
     display.desktop_mode.h = dispdata->mode.vdisplay;
-    display.desktop_mode.refresh_rate = dispdata->mode.vrefresh;
+    display.desktop_mode.refresh_rate = CalculateRefreshRate(&dispdata->mode);
     display.desktop_mode.format = SDL_PIXELFORMAT_ARGB8888;
     display.desktop_mode.driverdata = modedata;
     display.current_mode = display.desktop_mode;
@@ -1161,7 +1184,7 @@ int KMSDRM_CreateSurfaces(_THIS, SDL_Window *window)
 
     display->current_mode.w = dispdata->mode.hdisplay;
     display->current_mode.h = dispdata->mode.vdisplay;
-    display->current_mode.refresh_rate = dispdata->mode.vrefresh;
+    display->current_mode.refresh_rate = CalculateRefreshRate(&dispdata->mode);
     display->current_mode.format = SDL_PIXELFORMAT_ARGB8888;
 
     windata->gs = KMSDRM_gbm_surface_create(viddata->gbm_dev,
@@ -1274,7 +1297,7 @@ void KMSDRM_GetDisplayModes(_THIS, SDL_VideoDisplay *display)
 
         mode.w = conn->modes[i].hdisplay;
         mode.h = conn->modes[i].vdisplay;
-        mode.refresh_rate = conn->modes[i].vrefresh;
+        mode.refresh_rate = CalculateRefreshRate(&conn->modes[i]);
         mode.format = SDL_PIXELFORMAT_ARGB8888;
         mode.driverdata = modedata;
 
@@ -1490,7 +1513,7 @@ int KMSDRM_CreateWindow(_THIS, SDL_Window *window)
         /* Create the window surfaces with the size we have just chosen.
            Needs the window diverdata in place. */
         ret = KMSDRM_CreateSurfaces(_this, window);
-        if (ret == 0) {
+        if (ret != 0) {
             return SDL_SetError("Can't window GBM/EGL surfaces on window creation.");
         }
     } /* NON-Vulkan block ends. */
@@ -1592,5 +1615,3 @@ int KMSDRM_GetWindowWMInfo(_THIS, SDL_Window *window, struct SDL_SysWMinfo *info
 }
 
 #endif /* SDL_VIDEO_DRIVER_KMSDRM */
-
-/* vi: set ts=4 sw=4 expandtab: */

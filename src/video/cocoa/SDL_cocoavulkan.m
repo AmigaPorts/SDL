@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,7 +33,6 @@
 #include "SDL_cocoametalview.h"
 #include "SDL_cocoavulkan.h"
 
-#define SDL_ENABLE_SYSWM_COCOA
 #include <SDL3/SDL_syswm.h>
 
 #include <dlfcn.h>
@@ -165,7 +164,6 @@ void Cocoa_Vulkan_UnloadLibrary(_THIS)
 }
 
 SDL_bool Cocoa_Vulkan_GetInstanceExtensions(_THIS,
-                                            SDL_Window *window,
                                             unsigned *count,
                                             const char **names)
 {

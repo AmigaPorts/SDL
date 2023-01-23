@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -28,7 +28,7 @@
 #include <KernelKit.h>
 #include <OpenGLKit.h>
 #include "SDL_BWin.h"
-#include "../../main/haiku/SDL_BApp.h"
+#include "../../core/haiku/SDL_BApp.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -63,7 +63,7 @@ int HAIKU_GL_LoadLibrary(_THIS, const char *path)
     return 0;
 }
 
-void *HAIKU_GL_GetProcAddress(_THIS, const char *proc)
+SDL_FunctionPointer HAIKU_GL_GetProcAddress(_THIS, const char *proc)
 {
     if (_this->gl_config.dll_handle != NULL) {
         void *location = NULL;
@@ -72,7 +72,7 @@ void *HAIKU_GL_GetProcAddress(_THIS, const char *proc)
             get_image_symbol((image_id) (addr_t) _this->gl_config.dll_handle,
                               proc, B_SYMBOL_TYPE_ANY,
                               &location)) == B_OK) {
-            return location;
+            return (SDL_FunctionPointer)location;
         } else {
                 SDL_SetError("Couldn't find OpenGL symbol");
                 return NULL;
@@ -159,9 +159,8 @@ int HAIKU_GL_SetSwapInterval(_THIS, int interval) {
     return SDL_Unsupported();
 }
 
-int HAIKU_GL_GetSwapInterval(_THIS) {
-    /* TODO: Implement this, if necessary? */
-    return 0;
+int HAIKU_GL_GetSwapInterval(_THIS, int *interval) {
+    return SDL_Unsupported();
 }
 
 
@@ -193,5 +192,3 @@ void HAIKU_GL_RebootContexts(_THIS) {
 #endif
 
 #endif /* SDL_VIDEO_DRIVER_HAIKU && SDL_VIDEO_OPENGL */
-
-/* vi: set ts=4 sw=4 expandtab: */

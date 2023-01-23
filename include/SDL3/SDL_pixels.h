@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -31,7 +31,7 @@
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_endian.h>
 
-#include <SDL3/begin_code.h>
+#include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
 extern "C" {
@@ -363,9 +363,9 @@ extern DECLSPEC const char* SDLCALL SDL_GetPixelFormatName(Uint32 format);
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_MasksToPixelFormatEnum
+ * \sa SDL_GetPixelFormatEnumForMasks
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_PixelFormatEnumToMasks(Uint32 format,
+extern DECLSPEC SDL_bool SDLCALL SDL_GetMasksForPixelFormatEnum(Uint32 format,
                                                             int *bpp,
                                                             Uint32 * Rmask,
                                                             Uint32 * Gmask,
@@ -387,9 +387,9 @@ extern DECLSPEC SDL_bool SDLCALL SDL_PixelFormatEnumToMasks(Uint32 format,
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_PixelFormatEnumToMasks
+ * \sa SDL_GetMasksForPixelFormatEnum
  */
-extern DECLSPEC Uint32 SDLCALL SDL_MasksToPixelFormatEnum(int bpp,
+extern DECLSPEC Uint32 SDLCALL SDL_GetPixelFormatEnumForMasks(int bpp,
                                                           Uint32 Rmask,
                                                           Uint32 Gmask,
                                                           Uint32 Bmask,
@@ -408,20 +408,20 @@ extern DECLSPEC Uint32 SDLCALL SDL_MasksToPixelFormatEnum(int bpp,
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_FreeFormat
+ * \sa SDL_DestroyPixelFormat
  */
-extern DECLSPEC SDL_PixelFormat * SDLCALL SDL_AllocFormat(Uint32 pixel_format);
+extern DECLSPEC SDL_PixelFormat * SDLCALL SDL_CreatePixelFormat(Uint32 pixel_format);
 
 /**
- * Free an SDL_PixelFormat structure allocated by SDL_AllocFormat().
+ * Free an SDL_PixelFormat structure allocated by SDL_CreatePixelFormat().
  *
  * \param format the SDL_PixelFormat structure to free
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_AllocFormat
+ * \sa SDL_CreatePixelFormat
  */
-extern DECLSPEC void SDLCALL SDL_FreeFormat(SDL_PixelFormat *format);
+extern DECLSPEC void SDLCALL SDL_DestroyPixelFormat(SDL_PixelFormat *format);
 
 /**
  * Create a palette structure with the specified number of color entries.
@@ -435,9 +435,9 @@ extern DECLSPEC void SDLCALL SDL_FreeFormat(SDL_PixelFormat *format);
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_FreePalette
+ * \sa SDL_DestroyPalette
  */
-extern DECLSPEC SDL_Palette *SDLCALL SDL_AllocPalette(int ncolors);
+extern DECLSPEC SDL_Palette *SDLCALL SDL_CreatePalette(int ncolors);
 
 /**
  * Set the palette for a pixel format structure.
@@ -449,8 +449,8 @@ extern DECLSPEC SDL_Palette *SDLCALL SDL_AllocPalette(int ncolors);
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_AllocPalette
- * \sa SDL_FreePalette
+ * \sa SDL_CreatePalette
+ * \sa SDL_DestroyPalette
  */
 extern DECLSPEC int SDLCALL SDL_SetPixelFormatPalette(SDL_PixelFormat * format,
                                                       SDL_Palette *palette);
@@ -467,7 +467,7 @@ extern DECLSPEC int SDLCALL SDL_SetPixelFormatPalette(SDL_PixelFormat * format,
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_AllocPalette
+ * \sa SDL_CreatePalette
  * \sa SDL_CreateSurface
  */
 extern DECLSPEC int SDLCALL SDL_SetPaletteColors(SDL_Palette * palette,
@@ -475,15 +475,15 @@ extern DECLSPEC int SDLCALL SDL_SetPaletteColors(SDL_Palette * palette,
                                                  int firstcolor, int ncolors);
 
 /**
- * Free a palette created with SDL_AllocPalette().
+ * Free a palette created with SDL_CreatePalette().
  *
  * \param palette the SDL_Palette structure to be freed
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_AllocPalette
+ * \sa SDL_CreatePalette
  */
-extern DECLSPEC void SDLCALL SDL_FreePalette(SDL_Palette * palette);
+extern DECLSPEC void SDLCALL SDL_DestroyPalette(SDL_Palette * palette);
 
 /**
  * Map an RGB triple to an opaque pixel value for a given pixel format.
@@ -614,8 +614,6 @@ extern DECLSPEC void SDLCALL SDL_GetRGBA(Uint32 pixel,
 #ifdef __cplusplus
 }
 #endif
-#include <SDL3/close_code.h>
+#include <SDL3/SDL_close_code.h>
 
 #endif /* SDL_pixels_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

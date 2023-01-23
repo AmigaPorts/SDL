@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -36,5 +36,3 @@ extern SDL_bool X11_IsScreenKeyboardShown(_THIS, SDL_Window *window);
 extern KeySym X11_KeyCodeToSym(_THIS, KeyCode, unsigned char group);
 
 #endif /* SDL_x11keyboard_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

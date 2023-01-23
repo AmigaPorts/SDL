@@ -6,8 +6,11 @@ for doing ad-hoc testing related to AmigaOS 4 port.
 */
 
 #include <stdio.h>
-#include "SDL2/SDL.h"
-#include "SDL2/SDL_opengl.h"
+#include <string.h>
+#include <stdlib.h>
+
+#include "SDL3/SDL.h"
+#include "SDL3/SDL_opengl.h"
 
 #if SDL_BYTEORDER != SDL_BIG_ENDIAN
 #warning "wrong endian?"
@@ -35,14 +38,14 @@ static SDL_bool eventLoopInner(void)
                 puts("Quit");
                 running = SDL_FALSE;
                 break;
-
+#if 0
             case SDL_WINDOWEVENT:
                 {
                     SDL_WindowEvent * we = (SDL_WindowEvent *)&e;
-                    printf("Window event %d window %d\n", we->event, we->windowID);
+                    printf("Window event %d window %d\n", we->type, we->windowID);
                 }
                 break;
-
+#endif
             case SDL_SYSWMEVENT:
                 printf("Sys WM event\n");
                 break;
@@ -90,7 +93,11 @@ static SDL_bool eventLoopInner(void)
                         SDL_SetWindowSize(w, rand() % 1000, rand() % 1000);
                     } else if (strcmp("c", te->text) == 0) {
                         static int c = 1;
-                        SDL_ShowCursor(c);
+			if (c) {
+                            SDL_ShowCursor();
+			} else {
+                            SDL_HideCursor();
+			}
                         c ^= 1;
                     } else if (strcmp("l", te->text) == 0) {
                         puts("Flash");
@@ -116,7 +123,7 @@ static SDL_bool eventLoopInner(void)
             case SDL_MOUSEMOTION:
                 {
                     SDL_MouseMotionEvent * me = (SDL_MouseMotionEvent *)&e;
-                    printf("Mouse motion x=%d, y=%d, xrel=%d, yrel=%d\n", me->x, me->y, me->xrel, me->yrel);
+                    printf("Mouse motion x=%f, y=%f, xrel=%f, yrel=%f\n", me->x, me->y, me->xrel, me->yrel);
                 }
                 break;
 
@@ -137,7 +144,7 @@ static SDL_bool eventLoopInner(void)
             case SDL_MOUSEWHEEL:
                 {
                     SDL_MouseWheelEvent * me = (SDL_MouseWheelEvent *)&me;
-                    printf("Mouse wheel x=%d, y=%d\n", me->x, me->y);
+                    printf("Mouse wheel x=%f, y=%f\n", me->x, me->y);
                 }
                 break;
 
@@ -495,13 +502,13 @@ static void testRenderer()
     SDL_Window * g = SDL_CreateWindow("Green", 200, 200, 100, 100, SDL_WINDOW_RESIZABLE);
     SDL_Window * b = SDL_CreateWindow("Blue", 400, 400, 100, 100, SDL_WINDOW_RESIZABLE);
 
-    SDL_Renderer * rr = SDL_CreateRenderer(r, -1, SDL_RENDERER_SOFTWARE);
-    SDL_Renderer * gr = SDL_CreateRenderer(g, -1, SDL_RENDERER_SOFTWARE);
-    SDL_Renderer * br = SDL_CreateRenderer(b, -1, SDL_RENDERER_ACCELERATED);
+    SDL_Renderer * rr = SDL_CreateRenderer(r, NULL, SDL_RENDERER_SOFTWARE);
+    SDL_Renderer * gr = SDL_CreateRenderer(g, NULL, SDL_RENDERER_SOFTWARE);
+    SDL_Renderer * br = SDL_CreateRenderer(b, NULL, SDL_RENDERER_ACCELERATED);
 
-    SDL_RenderSetLogicalSize(rr, 50, 50);
-    SDL_RenderSetLogicalSize(gr, 80, 80);
-    SDL_RenderSetLogicalSize(br, 90, 90);
+    SDL_SetRenderLogicalSize(rr, 50, 50);
+    SDL_SetRenderLogicalSize(gr, 80, 80);
+    SDL_SetRenderLogicalSize(br, 90, 90);
 
     if (r && g && b && rr && gr && br) {
         while (eventLoopInner()) {
@@ -534,11 +541,11 @@ static void testDraw()
 {
     SDL_Window * w = SDL_CreateWindow("Draw", 100, 100, 200, 200, SDL_WINDOW_RESIZABLE);
 
-    SDL_Renderer * r = SDL_CreateRenderer(w, -1, /*SDL_RENDERER_SOFTWARE*/ SDL_RENDERER_ACCELERATED);
+    SDL_Renderer * r = SDL_CreateRenderer(w, NULL, /*SDL_RENDERER_SOFTWARE*/ SDL_RENDERER_ACCELERATED);
 
     if (w && r) {
         while (eventLoopInner()) {
-            SDL_Rect rect;
+            SDL_FRect rect;
 
             SDL_SetRenderDrawColor(r, 100, 100, 100, 255);
             SDL_RenderClear(r);
@@ -566,11 +573,11 @@ static void testRenderVsync()
 
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
-    SDL_Renderer * r = SDL_CreateRenderer(w, -1, /*SDL_RENDERER_SOFTWARE*/ SDL_RENDERER_ACCELERATED);
+    SDL_Renderer * r = SDL_CreateRenderer(w, NULL, /*SDL_RENDERER_SOFTWARE*/ SDL_RENDERER_ACCELERATED);
 
     if (w && r) {
         while (eventLoopInner()) {
-            SDL_Rect rect;
+            SDL_FRect rect;
 
             SDL_SetRenderDrawColor(r, 100, 100, 100, 255);
             SDL_RenderClear(r);
@@ -597,7 +604,7 @@ static void testBmp()
     SDL_Surface *s = SDL_LoadBMP("sample.bmp");
 
     if (s) {
-        SDL_FreeSurface(s);
+        SDL_DestroySurface(s);
     } else {
         printf("%s\n", SDL_GetError());
     }
@@ -663,13 +670,13 @@ static void testSystemCursors()
             SDL_SetWindowTitle(w, buf);
 
             SDL_SetCursor( SDL_CreateSystemCursor(c) );
-            SDL_ShowCursor(1);
+            SDL_ShowCursor();
 
             SDL_Delay(1000);
 
             if (++c == SDL_NUM_SYSTEM_CURSORS) {
                 c = 0;
-                SDL_ShowCursor(0);
+                SDL_HideCursor();
                 SDL_SetWindowTitle(w, "Hidden");
                 SDL_Delay(1000);
             }
@@ -684,11 +691,7 @@ static void testCustomCursor()
     int w = 64;
     int h = 64;
 
-    SDL_Surface *surface = SDL_CreateRGBSurface(0, w, h, 32,
-                                   0x00FF0000,
-                                   0x0000FF00,
-                                   0x000000FF,
-                                   0xFF000000);
+    SDL_Surface *surface = SDL_CreateSurface(w, h, SDL_PIXELFORMAT_ARGB8888);
 
     if (surface) {
 
@@ -723,7 +726,7 @@ static void testCustomCursor()
             SDL_DestroyWindow(w);
         }
 
-        SDL_FreeSurface(surface);
+        SDL_DestroySurface(surface);
     }
 }
 
@@ -783,10 +786,10 @@ static void testGlobalMouseState()
 
         while (eventLoopInner()) {
 
-            int x = 0;
-            int y = 0;
+            float x = 0;
+            float y = 0;
 
-            printf("State 0x%x (%d, %d)\n", SDL_GetGlobalMouseState(&x, &y), x, y);
+            printf("State 0x%x (%f, %f)\n", SDL_GetGlobalMouseState(&x, &y), x, y);
             SDL_Delay(1000);
         }
 
@@ -802,10 +805,10 @@ static void testGlobalMouseWarp()
 
         while (eventLoopInner()) {
 
-            int x = rand() % 800;
-            int y = rand() % 600;
+            float x = rand() % 800;
+            float y = rand() % 600;
 
-            printf("Warping to %d, %d\n", x, y);
+            printf("Warping to %f, %f\n", x, y);
             SDL_WarpMouseGlobal(x, y);
 
             SDL_Delay(1000);

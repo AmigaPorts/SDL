@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -44,11 +44,6 @@ struct joystick_hwdata
     {
         int axis[2];
     } *hats;
-    /* The current Linux joystick driver maps balls to two axes */
-    struct hwdata_ball
-    {
-        int axis[2];
-    } *balls;
 
     /* Support for the Linux 2.4 unified input interface */
     Uint8 key_map[KEY_MAX];
@@ -95,5 +90,3 @@ struct joystick_hwdata
 };
 
 #endif /* SDL_sysjoystick_c_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

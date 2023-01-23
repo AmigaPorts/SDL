@@ -55,7 +55,7 @@ OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
         return SDL_SetError("Not supported texture format");
     }
 
-    if (!SDL_PixelFormatEnumToMasks
+    if (!SDL_GetMasksForPixelFormatEnum
         (texture->format, &bpp, &Rmask, &Gmask, &Bmask, &Amask)) {
         return SDL_SetError("Unknown texture format");
     }

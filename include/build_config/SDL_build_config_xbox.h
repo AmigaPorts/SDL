@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,7 +23,7 @@
 #define SDL_build_config_wingdk_h_
 #define SDL_build_config_h_
 
-#include <SDL3/SDL_platform.h>
+#include <SDL3/SDL_platform_defines.h>
 
 /* Windows GDK does not need Windows SDK version checks because it requires
  * a recent version of the Windows 10 SDK. */
@@ -204,14 +204,19 @@
 #define SDL_VIDEO_DRIVER_DUMMY  1
 #define SDL_VIDEO_DRIVER_WINDOWS    1
 
-/* #ifndef SDL_VIDEO_RENDER_D3D
-#define SDL_VIDEO_RENDER_D3D    1
-#endif*/
-#if !defined(SDL_VIDEO_RENDER_D3D11) && defined(HAVE_D3D11_H)
-#define SDL_VIDEO_RENDER_D3D11  1
-#endif
 #if !defined(SDL_VIDEO_RENDER_D3D12) && defined(HAVE_D3D12_H)
 #define SDL_VIDEO_RENDER_D3D12  1
+#endif
+
+/* Enable OpenGL support */
+#ifndef SDL_VIDEO_OPENGL
+#define SDL_VIDEO_OPENGL    1
+#endif
+#ifndef SDL_VIDEO_OPENGL_WGL
+#define SDL_VIDEO_OPENGL_WGL    1
+#endif
+#ifndef SDL_VIDEO_RENDER_OGL
+#define SDL_VIDEO_RENDER_OGL    1
 #endif
 
 /* Enable system power support */
@@ -226,5 +231,3 @@
 #define SDL_DISABLE_WINDOWS_IME 1
 
 #endif /* SDL_build_config_wingdk_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

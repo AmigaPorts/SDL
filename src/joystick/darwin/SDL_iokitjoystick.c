@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -750,7 +750,6 @@ static int DARWIN_JoystickOpen(SDL_Joystick *joystick, int device_index)
 
     joystick->naxes = device->axes;
     joystick->nhats = device->hats;
-    joystick->nballs = 0;
     joystick->nbuttons = device->buttons;
     return 0;
 }
@@ -927,6 +926,7 @@ static void DARWIN_JoystickUpdate(SDL_Joystick *joystick)
     recElement *element;
     SInt32 value, range;
     int i, goodRead = SDL_FALSE;
+    Uint64 timestamp = SDL_GetTicksNS();
 
     if (device == NULL) {
         return;
@@ -945,7 +945,7 @@ static void DARWIN_JoystickUpdate(SDL_Joystick *joystick)
     while (element) {
         goodRead = GetHIDScaledCalibratedState(device, element, -32768, 32767, &value);
         if (goodRead) {
-            SDL_PrivateJoystickAxis(joystick, i, value);
+            SDL_SendJoystickAxis(timestamp, joystick, i, value);
         }
 
         element = element->pNext;
@@ -960,7 +960,7 @@ static void DARWIN_JoystickUpdate(SDL_Joystick *joystick)
             if (value > 1) { /* handle pressure-sensitive buttons */
                 value = 1;
             }
-            SDL_PrivateJoystickButton(joystick, i, value);
+            SDL_SendJoystickButton(timestamp, joystick, i, value);
         }
 
         element = element->pNext;
@@ -1016,7 +1016,7 @@ static void DARWIN_JoystickUpdate(SDL_Joystick *joystick)
                 break;
             }
 
-            SDL_PrivateJoystickHat(joystick, i, pos);
+            SDL_SendJoystickHat(timestamp, joystick, i, pos);
         }
 
         element = element->pNext;
@@ -1075,5 +1075,3 @@ SDL_JoystickDriver SDL_DARWIN_JoystickDriver = {
 };
 
 #endif /* SDL_JOYSTICK_IOKIT */
-
-/* vi: set ts=4 sw=4 expandtab: */

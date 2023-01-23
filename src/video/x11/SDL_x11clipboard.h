@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -45,5 +45,3 @@ extern Atom X11_GetSDLCutBufferClipboardExternalFormat(Display *display, enum ES
 extern Atom X11_GetSDLCutBufferClipboardInternalFormat(Display *display, enum ESDLX11ClipboardMimeType mime_type);
 
 #endif /* SDL_x11clipboard_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -91,19 +91,18 @@
 #define CPU_HAS_RDTSC    (1 << 0)
 #define CPU_HAS_ALTIVEC  (1 << 1)
 #define CPU_HAS_MMX      (1 << 2)
-#define CPU_HAS_3DNOW    (1 << 3)
-#define CPU_HAS_SSE      (1 << 4)
-#define CPU_HAS_SSE2     (1 << 5)
-#define CPU_HAS_SSE3     (1 << 6)
-#define CPU_HAS_SSE41    (1 << 7)
-#define CPU_HAS_SSE42    (1 << 8)
-#define CPU_HAS_AVX      (1 << 9)
-#define CPU_HAS_AVX2     (1 << 10)
-#define CPU_HAS_NEON     (1 << 11)
-#define CPU_HAS_AVX512F  (1 << 12)
-#define CPU_HAS_ARM_SIMD (1 << 13)
-#define CPU_HAS_LSX      (1 << 14)
-#define CPU_HAS_LASX     (1 << 15)
+#define CPU_HAS_SSE      (1 << 3)
+#define CPU_HAS_SSE2     (1 << 4)
+#define CPU_HAS_SSE3     (1 << 5)
+#define CPU_HAS_SSE41    (1 << 6)
+#define CPU_HAS_SSE42    (1 << 7)
+#define CPU_HAS_AVX      (1 << 8)
+#define CPU_HAS_AVX2     (1 << 9)
+#define CPU_HAS_NEON     (1 << 10)
+#define CPU_HAS_AVX512F  (1 << 11)
+#define CPU_HAS_ARM_SIMD (1 << 12)
+#define CPU_HAS_LSX      (1 << 13)
+#define CPU_HAS_LASX     (1 << 14)
 
 #define CPU_CFG2      0x2
 #define CPU_CFG2_LSX  (1 << 6)
@@ -145,7 +144,7 @@ static int CPU_haveCPUID(void)
     : "%eax", "%ecx"
     );
 #elif (defined(__GNUC__) || defined(__llvm__)) && defined(__x86_64__)
-/* Technically, if this is being compiled under __x86_64__ then it has 
+/* Technically, if this is being compiled under __x86_64__ then it has
    CPUid by definition.  But it's nice to be able to prove it.  :)      */
     __asm__ (
 "        pushfq                      # Get original EFLAGS             \n"
@@ -528,31 +527,6 @@ static int CPU_readCPUCFG(void)
 #define CPU_haveLASX() (CPU_readCPUCFG() & CPU_CFG2_LASX)
 
 #if defined(__e2k__)
-inline int
-CPU_have3DNow(void)
-{
-#if defined(__3dNOW__)
-    return 1;
-#else
-    return 0;
-#endif
-}
-#else
-static int CPU_have3DNow(void)
-{
-    if (CPU_CPUIDMaxFunction > 0) { /* that is, do we have CPUID at all? */
-        int a, b, c, d;
-        cpuid(0x80000000, a, b, c, d);
-        if (a >= 0x80000001) {
-            cpuid(0x80000001, a, b, c, d);
-            return d & 0x80000000;
-        }
-    }
-    return 0;
-}
-#endif
-
-#if defined(__e2k__)
 #define CPU_haveRDTSC() (0)
 #if defined(__MMX__)
 #define CPU_haveMMX() (1)
@@ -918,10 +892,6 @@ static Uint32 SDL_GetCPUFeatures(void)
             SDL_CPUFeatures |= CPU_HAS_MMX;
             SDL_SIMDAlignment = SDL_max(SDL_SIMDAlignment, 8);
         }
-        if (CPU_have3DNow()) {
-            SDL_CPUFeatures |= CPU_HAS_3DNOW;
-            SDL_SIMDAlignment = SDL_max(SDL_SIMDAlignment, 8);
-        }
         if (CPU_haveSSE()) {
             SDL_CPUFeatures |= CPU_HAS_SSE;
             SDL_SIMDAlignment = SDL_max(SDL_SIMDAlignment, 16);
@@ -974,7 +944,7 @@ static Uint32 SDL_GetCPUFeatures(void)
     return SDL_CPUFeatures;
 }
 
-#define CPU_FEATURE_AVAILABLE(f) ((SDL_GetCPUFeatures() & f) ? SDL_TRUE : SDL_FALSE)
+#define CPU_FEATURE_AVAILABLE(f) ((SDL_GetCPUFeatures() & (f)) ? SDL_TRUE : SDL_FALSE)
 
 SDL_bool SDL_HasRDTSC(void)
 {
@@ -991,12 +961,6 @@ SDL_bool
 SDL_HasMMX(void)
 {
     return CPU_FEATURE_AVAILABLE(CPU_HAS_MMX);
-}
-
-SDL_bool
-SDL_Has3DNow(void)
-{
-    return CPU_FEATURE_AVAILABLE(CPU_HAS_3DNOW);
 }
 
 SDL_bool
@@ -1153,91 +1117,6 @@ SDL_SIMDGetAlignment(void)
     return SDL_SIMDAlignment;
 }
 
-void *
-SDL_SIMDAlloc(const size_t len)
-{
-    const size_t alignment = SDL_SIMDGetAlignment();
-    const size_t padding = (alignment - (len % alignment)) % alignment;
-    Uint8 *retval = NULL;
-    Uint8 *ptr;
-    size_t to_allocate;
-
-    /* alignment + padding + sizeof (void *) is bounded (a few hundred
-     * bytes max), so no need to check for overflow within that argument */
-    if (SDL_size_add_overflow(len, alignment + padding + sizeof(void *), &to_allocate)) {
-        return NULL;
-    }
-
-    ptr = (Uint8 *)SDL_malloc(to_allocate);
-    if (ptr) {
-        /* store the actual allocated pointer right before our aligned pointer. */
-        retval = ptr + sizeof(void *);
-        retval += alignment - (((size_t)retval) % alignment);
-        *(((void **)retval) - 1) = ptr;
-    }
-    return retval;
-}
-
-void *
-SDL_SIMDRealloc(void *mem, const size_t len)
-{
-    const size_t alignment = SDL_SIMDGetAlignment();
-    const size_t padding = (alignment - (len % alignment)) % alignment;
-    Uint8 *retval = (Uint8 *)mem;
-    void *oldmem = mem;
-    size_t memdiff = 0, ptrdiff;
-    Uint8 *ptr;
-    size_t to_allocate;
-
-    /* alignment + padding + sizeof (void *) is bounded (a few hundred
-     * bytes max), so no need to check for overflow within that argument */
-    if (SDL_size_add_overflow(len, alignment + padding + sizeof(void *), &to_allocate)) {
-        return NULL;
-    }
-
-    if (mem) {
-        mem = *(((void **)mem) - 1);
-
-        /* Check the delta between the real pointer and user pointer */
-        memdiff = ((size_t)oldmem) - ((size_t)mem);
-    }
-
-    ptr = (Uint8 *)SDL_realloc(mem, to_allocate);
-
-    if (ptr == NULL) {
-        return NULL; /* Out of memory, bail! */
-    }
-
-    /* Store the actual allocated pointer right before our aligned pointer. */
-    retval = ptr + sizeof(void *);
-    retval += alignment - (((size_t)retval) % alignment);
-
-    /* Make sure the delta is the same! */
-    if (mem) {
-        ptrdiff = ((size_t)retval) - ((size_t)ptr);
-        if (memdiff != ptrdiff) { /* Delta has changed, copy to new offset! */
-            oldmem = (void *)(((uintptr_t)ptr) + memdiff);
-
-            /* Even though the data past the old `len` is undefined, this is the
-             * only length value we have, and it guarantees that we copy all the
-             * previous memory anyhow.
-             */
-            SDL_memmove(retval, oldmem, len);
-        }
-    }
-
-    /* Actually store the allocated pointer, finally. */
-    *(((void **)retval) - 1) = ptr;
-    return retval;
-}
-
-void SDL_SIMDFree(void *ptr)
-{
-    if (ptr) {
-        SDL_free(*(((void **)ptr) - 1));
-    }
-}
-
 #ifdef TEST_MAIN
 
 #include <stdio.h>
@@ -1251,7 +1130,6 @@ int main()
     printf("RDTSC: %d\n", SDL_HasRDTSC());
     printf("Altivec: %d\n", SDL_HasAltiVec());
     printf("MMX: %d\n", SDL_HasMMX());
-    printf("3DNow: %d\n", SDL_Has3DNow());
     printf("SSE: %d\n", SDL_HasSSE());
     printf("SSE2: %d\n", SDL_HasSSE2());
     printf("SSE3: %d\n", SDL_HasSSE3());
@@ -1269,5 +1147,3 @@ int main()
 }
 
 #endif /* TEST_MAIN */
-
-/* vi: set ts=4 sw=4 expandtab: */

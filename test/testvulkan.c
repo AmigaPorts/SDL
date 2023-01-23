@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -12,6 +12,7 @@
 #include <stdlib.h>
 
 #include <SDL3/SDL_test_common.h>
+#include <SDL3/SDL_main.h>
 
 #if defined(__ANDROID__) && defined(__ARM_EABI__) && !defined(__ARM_ARCH_7A__)
 
@@ -191,7 +192,7 @@ static void quit(int rc)
 
 static void loadGlobalFunctions(void)
 {
-    vkGetInstanceProcAddr = SDL_Vulkan_GetVkGetInstanceProcAddr();
+    vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr();
     if (!vkGetInstanceProcAddr) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "SDL_Vulkan_GetVkGetInstanceProcAddr(): %s\n",
@@ -226,7 +227,7 @@ static void createInstance(void)
     appInfo.apiVersion = VK_API_VERSION_1_0;
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceCreateInfo.pApplicationInfo = &appInfo;
-    if (!SDL_Vulkan_GetInstanceExtensions(NULL, &extensionCount, NULL)) {
+    if (!SDL_Vulkan_GetInstanceExtensions(&extensionCount, NULL)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "SDL_Vulkan_GetInstanceExtensions(): %s\n",
                      SDL_GetError());
@@ -237,7 +238,7 @@ static void createInstance(void)
         SDL_OutOfMemory();
         quit(2);
     }
-    if (!SDL_Vulkan_GetInstanceExtensions(NULL, &extensionCount, extensions)) {
+    if (!SDL_Vulkan_GetInstanceExtensions(&extensionCount, extensions)) {
         SDL_free((void *)extensions);
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
                      "SDL_Vulkan_GetInstanceExtensions(): %s\n",
@@ -1153,5 +1154,3 @@ int main(int argc, char **argv)
 }
 
 #endif
-
-/* vi: set ts=4 sw=4 expandtab: */

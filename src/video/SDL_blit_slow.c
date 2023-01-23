@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,7 +24,7 @@
 #include "SDL_blit_slow.h"
 
 #define FORMAT_ALPHA                0
-#define FORMAT_NO_ALPHA             -1
+#define FORMAT_NO_ALPHA             (-1)
 #define FORMAT_2101010              1
 #define FORMAT_HAS_ALPHA(format)    format == 0
 #define FORMAT_HAS_NO_ALPHA(format) format < 0
@@ -200,5 +200,3 @@ void SDL_Blit_Slow(SDL_BlitInfo *info)
         info->dst += info->dst_pitch;
     }
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

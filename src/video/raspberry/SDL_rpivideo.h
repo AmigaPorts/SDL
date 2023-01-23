@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,16 +19,14 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef __SDL_RPIVIDEO_H__
-#define __SDL_RPIVIDEO_H__
+#ifndef SDL_rpivideo_h
+#define SDL_rpivideo_h
 
 #include "SDL_internal.h"
 #include "../SDL_sysvideo.h"
 
 #include <bcm_host.h>
-#include "GLES/gl.h"
-#include "EGL/egl.h"
-#include "EGL/eglext.h"
+#include <SDL3/SDL_egl.h>
 
 typedef struct SDL_VideoData
 {
@@ -82,7 +80,7 @@ void RPI_DestroyWindow(_THIS, SDL_Window *window);
 
 /* OpenGL/OpenGL ES functions */
 int RPI_GLES_LoadLibrary(_THIS, const char *path);
-void *RPI_GLES_GetProcAddress(_THIS, const char *proc);
+SDL_FunctionPointer RPI_GLES_GetProcAddress(_THIS, const char *proc);
 void RPI_GLES_UnloadLibrary(_THIS);
 SDL_GLContext RPI_GLES_CreateContext(_THIS, SDL_Window *window);
 int RPI_GLES_MakeCurrent(_THIS, SDL_Window *window, SDL_GLContext context);
@@ -91,6 +89,4 @@ int RPI_GLES_GetSwapInterval(_THIS);
 int RPI_GLES_SwapWindow(_THIS, SDL_Window *window);
 void RPI_GLES_DeleteContext(_THIS, SDL_GLContext context);
 
-#endif /* __SDL_RPIVIDEO_H__ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif /* SDL_rpivideo_h */

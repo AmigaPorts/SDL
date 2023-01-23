@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -28,7 +28,6 @@
 
 #ifdef SDL_VIDEO_DRIVER_X11
 #include "../../video/x11/SDL_x11video.h"
-#define SDL_ENABLE_SYSWM_X11
 #endif
 #include <SDL3/SDL_syswm.h>
 
@@ -62,28 +61,28 @@ static Uint32 IBus_ModState(void)
     SDL_Keymod sdl_mods = SDL_GetModState();
 
     /* Not sure about MOD3, MOD4 and HYPER mappings */
-    if (sdl_mods & KMOD_LSHIFT) {
+    if (sdl_mods & SDL_KMOD_LSHIFT) {
         ibus_mods |= IBUS_SHIFT_MASK;
     }
-    if (sdl_mods & KMOD_CAPS) {
+    if (sdl_mods & SDL_KMOD_CAPS) {
         ibus_mods |= IBUS_LOCK_MASK;
     }
-    if (sdl_mods & KMOD_LCTRL) {
+    if (sdl_mods & SDL_KMOD_LCTRL) {
         ibus_mods |= IBUS_CONTROL_MASK;
     }
-    if (sdl_mods & KMOD_LALT) {
+    if (sdl_mods & SDL_KMOD_LALT) {
         ibus_mods |= IBUS_MOD1_MASK;
     }
-    if (sdl_mods & KMOD_NUM) {
+    if (sdl_mods & SDL_KMOD_NUM) {
         ibus_mods |= IBUS_MOD2_MASK;
     }
-    if (sdl_mods & KMOD_MODE) {
+    if (sdl_mods & SDL_KMOD_MODE) {
         ibus_mods |= IBUS_MOD5_MASK;
     }
-    if (sdl_mods & KMOD_LGUI) {
+    if (sdl_mods & SDL_KMOD_LGUI) {
         ibus_mods |= IBUS_SUPER_MASK;
     }
-    if (sdl_mods & KMOD_RGUI) {
+    if (sdl_mods & SDL_KMOD_RGUI) {
         ibus_mods |= IBUS_META_MASK;
     }
 
@@ -483,6 +482,9 @@ static SDL_bool IBus_SetupConnection(SDL_DBusContext *dbus, const char *addr)
         result = SDL_DBus_CallMethodOnConnection(ibus_conn, ibus_service, IBUS_PATH, ibus_interface, "CreateInputContext",
                                                  DBUS_TYPE_STRING, &client_name, DBUS_TYPE_INVALID,
                                                  DBUS_TYPE_OBJECT_PATH, &path, DBUS_TYPE_INVALID);
+    } else {
+        /* re-using dbus->session_conn */
+        dbus->connection_ref(ibus_conn);
     }
 
     if (result) {
@@ -747,5 +749,3 @@ void SDL_IBus_PumpEvents(void)
 }
 
 #endif
-
-/* vi: set ts=4 sw=4 expandtab: */

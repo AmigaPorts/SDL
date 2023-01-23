@@ -6,7 +6,6 @@
 
 #include "yuv_rgb.h"
 
-/*#include <x86intrin.h>*/
 
 #define PRECISION 6
 #define PRECISION_FACTOR (1<<PRECISION)

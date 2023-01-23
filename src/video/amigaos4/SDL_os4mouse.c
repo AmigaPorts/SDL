@@ -204,11 +204,11 @@ OS4_CreateHiddenCursor()
     SDL_Surface *surface = SDL_CreateSurface(1, 1, SDL_PIXELFORMAT_ARGB8888);
 
     if (surface) {
-        SDL_FillRect(surface, NULL, 0x0);
+        SDL_FillSurfaceRect(surface, NULL, 0x0);
 
         cursor = OS4_CreateCursor(surface, 0, 0);
 
-        SDL_FreeSurface(surface);
+        SDL_DestroySurface(surface);
     }
 
     return cursor;
@@ -366,7 +366,7 @@ OS4_RefreshCursorState(void)
 }
 
 static int
-OS4_WarpMouseInternal(struct Screen *screen, int x, int y)
+OS4_WarpMouseInternal(struct Screen *screen, float x, float y)
 {
     SDL_VideoDevice *device    = SDL_GetVideoDevice();
     SDL_VideoData *videoData   = device->driverdata;
@@ -418,22 +418,22 @@ OS4_WarpMouseInternal(struct Screen *screen, int x, int y)
 }
 
 static int
-OS4_WarpMouseGlobal(int x, int y)
+OS4_WarpMouseGlobal(float x, float y)
 {
-    dprintf("Warping mouse to %d, %d\n", x, y);
+    dprintf("Warping mouse to %f, %f\n", x, y);
 
     return OS4_WarpMouseInternal(NULL, x, y);
 }
 
 static void
-OS4_WarpMouse(SDL_Window * window, int x, int y)
+OS4_WarpMouse(SDL_Window * window, float x, float y)
 {
     SDL_WindowData *winData = window->driverdata;
     struct Window *syswin = winData->syswin;
 
     BOOL warpHostPointer;
 
-    dprintf("Warping mouse to %d, %d\n", x, y);
+    dprintf("Warping mouse to %f, %f\n", x, y);
 
     /* If the host mouse pointer is outside of the SDL window or the SDL
      * window is inactive then we just need to warp SDL's notion of where
@@ -470,7 +470,7 @@ OS4_SetRelativeMouseMode(SDL_bool enabled)
 }
 
 static Uint32
-OS4_GetGlobalMouseState(int * x, int * y)
+OS4_GetGlobalMouseState(float * x, float * y)
 {
     uint32 buttons = 0;
 

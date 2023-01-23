@@ -77,7 +77,7 @@ OS4_GLES_LoadLibrary(_THIS, const char * path)
     return 0;
 }
 
-void *
+SDL_FunctionPointer
 OS4_GLES_GetProcAddress(_THIS, const char * proc)
 {
     void *func = NULL;

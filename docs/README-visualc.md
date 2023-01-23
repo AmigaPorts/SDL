@@ -29,7 +29,6 @@ Later, we will refer to the following `.lib` and `.dll` files that have just bee
 
 -   `./VisualC/Win32/Debug/SDL3.dll` or `./VisualC/Win32/Release/SDL3.dll`
 -   `./VisualC/Win32/Debug/SDL3.lib` or `./VisualC/Win32/Release/SDL3.lib`
--   `./VisualC/Win32/Debug/SDL3_main.lib` or `./VisualC/Win32/Release/SDL3_main.lib`
 
 _Note for the `x64` versions, just replace `Win32` in the path with `x64`_
 
@@ -61,10 +60,9 @@ Copy the following file into your Project directory:
 
 -   `SDL3.dll`
 
-Add the following files to your project (It is not necessary to copy them to your project directory):
+Add the following file to your project (It is not necessary to copy it to your project directory):
 
 -   `SDL3.lib`
--   `SDL3_main.lib`
 
 To add them to your project, right click on your project, and select
 `Add files to project`.
@@ -78,7 +76,8 @@ and type the names of the libraries to link with in the "Additional Options:" bo
 Here's a sample SDL snippet to verify everything is setup in your IDE:
 
 ```
-    #include "SDL.h"
+    #include <SDL3/SDL.h>
+    #include <SDL3/SDL_main.h> // only include this one in the source file with main()!
 
     int main( int argc, char* argv[] )
     {
@@ -88,8 +87,8 @@ Here's a sample SDL snippet to verify everything is setup in your IDE:
         SDL_Renderer* renderer = NULL;
 
         SDL_Init(SDL_INIT_VIDEO);
-        window = SDL_CreateWindow("Hello SDL", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
-        renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+        window = SDL_CreateWindow("Hello SDL", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIDTH, HEIGHT, 0);
+        renderer = SDL_CreateRenderer(window, NULL, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
  
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);

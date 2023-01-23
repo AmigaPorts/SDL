@@ -62,8 +62,6 @@ LOCAL_SRC_FILES := \
 LOCAL_CFLAGS += -DGL_GLEXT_PROTOTYPES
 LOCAL_CFLAGS += \
 	-Wall -Wextra \
-	-Wdocumentation \
-	-Wdocumentation-unknown-command \
 	-Wmissing-prototypes \
 	-Wunreachable-code-break \
 	-Wunneeded-internal-declaration \
@@ -106,23 +104,6 @@ LOCAL_LDLIBS :=
 LOCAL_LDFLAGS :=
 
 LOCAL_EXPORT_LDLIBS := -ldl -lGLESv1_CM -lGLESv2 -llog -landroid
-
-include $(BUILD_STATIC_LIBRARY)
-
-
-###########################
-#
-# SDL main static library
-#
-###########################
-
-include $(CLEAR_VARS)
-
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/include
-
-LOCAL_MODULE := SDL3_main
-
-LOCAL_MODULE_FILENAME := libSDL3_main
 
 include $(BUILD_STATIC_LIBRARY)
 

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -31,7 +31,7 @@
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_error.h>
 
-#include <SDL3/begin_code.h>
+#include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
 extern "C" {
@@ -42,7 +42,7 @@ extern "C" {
  */
 #define SDL_MS_PER_SECOND   1000
 #define SDL_US_PER_SECOND   1000000
-#define SDL_NS_PER_SECOND   1000000000LLU
+#define SDL_NS_PER_SECOND   1000000000LL
 #define SDL_NS_PER_MS       1000000
 #define SDL_NS_PER_US       1000
 #define SDL_MS_TO_NS(MS)    (((Uint64)(MS)) * SDL_NS_PER_MS)
@@ -193,8 +193,6 @@ extern DECLSPEC SDL_bool SDLCALL SDL_RemoveTimer(SDL_TimerID id);
 #ifdef __cplusplus
 }
 #endif
-#include <SDL3/close_code.h>
+#include <SDL3/SDL_close_code.h>
 
 #endif /* SDL_timer_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -31,11 +31,9 @@
 #ifdef SDL_VIDEO_DRIVER_COCOA
 #import <AppKit/NSWindow.h>
 #import <AppKit/NSView.h>
-#define SDL_ENABLE_SYSWM_COCOA
 #endif
 #ifdef SDL_VIDEO_DRIVER_UIKIT
 #import <UIKit/UIKit.h>
-#define SDL_ENABLE_SYSWM_UIKIT
 #endif
 #include <SDL3/SDL_syswm.h>
 
@@ -1252,7 +1250,7 @@ static SDL_bool SetDrawState(SDL_Renderer *renderer, const SDL_RenderCommand *cm
             METAL_GetOutputSize(renderer, &output.w, &output.h);
         }
 
-        if (SDL_IntersectRect(&output, &clip, &clip)) {
+        if (SDL_GetRectIntersection(&output, &clip, &clip)) {
             MTLScissorRect mtlrect;
             mtlrect.x = clip.x;
             mtlrect.y = clip.y;
@@ -1517,7 +1515,7 @@ METAL_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rect *rect,
         [mtltexture getBytes:temp_pixels bytesPerRow:temp_pitch fromRegion:mtlregion mipmapLevel:0];
 
         temp_format = (mtltexture.pixelFormat == MTLPixelFormatBGRA8Unorm) ? SDL_PIXELFORMAT_ARGB8888 : SDL_PIXELFORMAT_ABGR8888;
-        status = SDL_ConvertPixels(rect->w, rect->h, temp_format, temp_pixels, temp_pitch, pixel_format, pixels, pitch);
+        status = SDL_ConvertPixels(rect->w, rect->h, temp_format, temp_pixels, (int)temp_pitch, pixel_format, pixels, pitch);
         SDL_free(temp_pixels);
         return status;
     }
@@ -1988,5 +1986,3 @@ SDL_RenderDriver METAL_RenderDriver = {
 };
 
 #endif /* SDL_VIDEO_RENDER_METAL && !SDL_RENDER_DISABLED */
-
-/* vi: set ts=4 sw=4 expandtab: */

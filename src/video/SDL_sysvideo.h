@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -69,7 +69,7 @@ typedef struct SDL_WindowUserData
 struct SDL_Window
 {
     const void *magic;
-    Uint32 id;
+    SDL_WindowID id;
     char *title;
     SDL_Surface *icon;
     int x, y;
@@ -110,7 +110,7 @@ struct SDL_Window
 };
 #define FULLSCREEN_VISIBLE(W)                \
     (((W)->flags & SDL_WINDOW_FULLSCREEN) && \
-     ((W)->flags & SDL_WINDOW_SHOWN) &&      \
+     !((W)->flags & SDL_WINDOW_HIDDEN) &&      \
      !((W)->flags & SDL_WINDOW_MINIMIZED))
 
 /*
@@ -143,7 +143,7 @@ struct SDL_SysWMinfo;
 /* Video device flags */
 typedef enum
 {
-    VIDEO_DEVICE_QUIRK_DISABLE_DISPLAY_MODE_SWITCHING = 0x01,
+    VIDEO_DEVICE_QUIRK_MODE_SWITCHING_EMULATED = 0x01,
     VIDEO_DEVICE_QUIRK_DISABLE_UNSET_FULLSCREEN_ON_MINIMIZE = 0x02,
 } DeviceQuirkFlags;
 
@@ -177,6 +177,11 @@ struct SDL_VideoDevice
     /*
      * Display functions
      */
+
+    /*
+     * Refresh the display list
+     */
+    void (*RefreshDisplays)(_THIS);
 
     /*
      * Get the bounds of a display
@@ -259,14 +264,14 @@ struct SDL_VideoDevice
      * OpenGL support
      */
     int (*GL_LoadLibrary)(_THIS, const char *path);
-    void *(*GL_GetProcAddress)(_THIS, const char *proc);
+    SDL_FunctionPointer (*GL_GetProcAddress)(_THIS, const char *proc);
     void (*GL_UnloadLibrary)(_THIS);
     SDL_GLContext (*GL_CreateContext)(_THIS, SDL_Window *window);
     int (*GL_MakeCurrent)(_THIS, SDL_Window *window, SDL_GLContext context);
     void (*GL_GetDrawableSize)(_THIS, SDL_Window *window, int *w, int *h);
     SDL_EGLSurface (*GL_GetEGLSurface)(_THIS, SDL_Window *window);
     int (*GL_SetSwapInterval)(_THIS, int interval);
-    int (*GL_GetSwapInterval)(_THIS);
+    int (*GL_GetSwapInterval)(_THIS, int *interval);
     int (*GL_SwapWindow)(_THIS, SDL_Window *window);
     void (*GL_DeleteContext)(_THIS, SDL_GLContext context);
     void (*GL_DefaultProfileConfig)(_THIS, int *mask, int *major, int *minor);
@@ -277,7 +282,7 @@ struct SDL_VideoDevice
      */
     int (*Vulkan_LoadLibrary)(_THIS, const char *path);
     void (*Vulkan_UnloadLibrary)(_THIS);
-    SDL_bool (*Vulkan_GetInstanceExtensions)(_THIS, SDL_Window *window, unsigned *count, const char **names);
+    SDL_bool (*Vulkan_GetInstanceExtensions)(_THIS, unsigned *count, const char **names);
     SDL_bool (*Vulkan_CreateSurface)(_THIS, SDL_Window *window, VkInstance instance, VkSurfaceKHR *surface);
     void (*Vulkan_GetDrawableSize)(_THIS, SDL_Window *window, int *w, int *h);
 
@@ -344,7 +349,7 @@ struct SDL_VideoDevice
     SDL_Window *windows;
     SDL_Window *grabbed_window;
     Uint8 window_magic;
-    Uint32 next_object_id;
+    SDL_WindowID next_object_id;
     char *clipboard_text;
     char *primary_selection_text;
     SDL_bool setting_display_mode;
@@ -500,6 +505,7 @@ extern void SDL_OnWindowEnter(SDL_Window *window);
 extern void SDL_OnWindowLeave(SDL_Window *window);
 extern void SDL_OnWindowFocusGained(SDL_Window *window);
 extern void SDL_OnWindowFocusLost(SDL_Window *window);
+extern void SDL_OnWindowDisplayChanged(SDL_Window *window);
 extern void SDL_UpdateWindowGrab(SDL_Window *window);
 extern SDL_Window *SDL_GetFocusWindow(void);
 
@@ -509,10 +515,6 @@ extern float SDL_ComputeDiagonalDPI(int hpix, int vpix, float hinches, float vin
 
 extern void SDL_ToggleDragAndDropSupport(void);
 
-extern int SDL_GetPointDisplayIndex(const SDL_Point *point);
-
-extern int SDL_GL_SwapWindowWithResult(SDL_Window *window);
+extern int SDL_GetDisplayIndexForPoint(const SDL_Point *point);
 
 #endif /* SDL_sysvideo_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

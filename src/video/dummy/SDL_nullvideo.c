@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -62,7 +62,7 @@ static void DUMMY_EVDEV_Poll(_THIS);
 
 static int DUMMY_Available(void)
 {
-    const char *envr = SDL_GetHint(SDL_HINT_VIDEODRIVER);
+    const char *envr = SDL_GetHint(SDL_HINT_VIDEO_DRIVER);
     if (envr) {
         if (SDL_strcmp(envr, DUMMYVID_DRIVER_NAME) == 0) {
             return 1;
@@ -146,7 +146,7 @@ int DUMMY_VideoInit(_THIS)
     mode.format = SDL_PIXELFORMAT_RGB888;
     mode.w = 1024;
     mode.h = 768;
-    mode.refresh_rate = 0;
+    mode.refresh_rate = 0.0f;
     mode.driverdata = NULL;
     if (SDL_AddBasicVideoDisplay(&mode) < 0) {
         return -1;
@@ -175,5 +175,3 @@ void DUMMY_VideoQuit(_THIS)
 }
 
 #endif /* SDL_VIDEO_DRIVER_DUMMY */
-
-/* vi: set ts=4 sw=4 expandtab: */

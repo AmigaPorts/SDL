@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -38,7 +38,6 @@
 #include "SDL_x11opengles.h"
 #endif
 
-#define SDL_ENABLE_SYSWM_X11
 #include <SDL3/SDL_syswm.h>
 
 #define _NET_WM_STATE_REMOVE 0l
@@ -306,9 +305,9 @@ static int SetupWindowData(_THIS, SDL_Window *window, Window w, BOOL created)
         window->w = attrib.width;
         window->h = attrib.height;
         if (attrib.map_state != IsUnmapped) {
-            window->flags |= SDL_WINDOW_SHOWN;
+            window->flags &= ~SDL_WINDOW_HIDDEN;
         } else {
-            window->flags &= ~SDL_WINDOW_SHOWN;
+            window->flags |= SDL_WINDOW_HIDDEN;
         }
         data->visual = attrib.visual;
         data->colormap = attrib.colormap;
@@ -1183,7 +1182,7 @@ void X11_HideWindow(_THIS, SDL_Window *window)
     }
 }
 
-static void SetWindowActive(_THIS, SDL_Window *window)
+static void X11_SetWindowActive(_THIS, SDL_Window *window)
 {
     SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
     SDL_DisplayData *displaydata =
@@ -1218,11 +1217,11 @@ void X11_RaiseWindow(_THIS, SDL_Window *window)
     Display *display = data->videodata->display;
 
     X11_XRaiseWindow(display, data->xwindow);
-    SetWindowActive(_this, window);
+    X11_SetWindowActive(_this, window);
     X11_XFlush(display);
 }
 
-static void SetWindowMaximized(_THIS, SDL_Window *window, SDL_bool maximized)
+static void X11_SetWindowMaximized(_THIS, SDL_Window *window, SDL_bool maximized)
 {
     SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
     SDL_DisplayData *displaydata =
@@ -1270,7 +1269,7 @@ static void SetWindowMaximized(_THIS, SDL_Window *window, SDL_bool maximized)
 
 void X11_MaximizeWindow(_THIS, SDL_Window *window)
 {
-    SetWindowMaximized(_this, window, SDL_TRUE);
+    X11_SetWindowMaximized(_this, window, SDL_TRUE);
 }
 
 void X11_MinimizeWindow(_THIS, SDL_Window *window)
@@ -1286,9 +1285,9 @@ void X11_MinimizeWindow(_THIS, SDL_Window *window)
 
 void X11_RestoreWindow(_THIS, SDL_Window *window)
 {
-    SetWindowMaximized(_this, window, SDL_FALSE);
+    X11_SetWindowMaximized(_this, window, SDL_FALSE);
     X11_ShowWindow(_this, window);
-    SetWindowActive(_this, window);
+    X11_SetWindowActive(_this, window);
 }
 
 /* This asks the Window Manager to handle fullscreen for us. This is the modern way. */
@@ -1774,5 +1773,3 @@ int SDL_X11_SetWindowTitle(Display *display, Window xwindow, char *title)
 }
 
 #endif /* SDL_VIDEO_DRIVER_X11 */
-
-/* vi: set ts=4 sw=4 expandtab: */

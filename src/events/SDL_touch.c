@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -39,7 +39,7 @@ static SDL_TouchID track_touchid;
 #endif
 
 /* Public functions */
-int SDL_TouchInit(void)
+int SDL_InitTouch(void)
 {
     return 0;
 }
@@ -188,10 +188,6 @@ int SDL_AddTouch(SDL_TouchID touchID, SDL_TouchDeviceType type, const char *name
     SDL_touchDevices[index]->fingers = NULL;
     SDL_touchDevices[index]->name = SDL_strdup(name ? name : "");
 
-    /* Record this touch device for gestures */
-    /* We could do this on the fly in the gesture code if we wanted */
-    SDL_GestureAddTouch(touchID);
-
     return index;
 }
 
@@ -264,19 +260,19 @@ int SDL_SendTouch(Uint64 timestamp, SDL_TouchID id, SDL_FingerID fingerid, SDL_W
                 if (window) {
                     if (down) {
                         if (finger_touching == SDL_FALSE) {
-                            int pos_x = (int)(x * (float)window->w);
-                            int pos_y = (int)(y * (float)window->h);
+                            float pos_x = (x * (float)window->w);
+                            float pos_y = (y * (float)window->h);
                             if (pos_x < 0) {
                                 pos_x = 0;
                             }
-                            if (pos_x > window->w - 1) {
-                                pos_x = window->w - 1;
+                            if (pos_x > (float)(window->w - 1)) {
+                                pos_x = (float)(window->w - 1);
                             }
-                            if (pos_y < 0) {
-                                pos_y = 0;
+                            if (pos_y < 0.0f) {
+                                pos_y = 0.0f;
                             }
-                            if (pos_y > window->h - 1) {
-                                pos_y = window->h - 1;
+                            if (pos_y > (float)(window->h - 1)) {
+                                pos_y = (float)(window->h - 1);
                             }
                             SDL_SendMouseMotion(timestamp, window, SDL_TOUCH_MOUSEID, 0, pos_x, pos_y);
                             SDL_SendMouseButton(timestamp, window, SDL_TOUCH_MOUSEID, SDL_PRESSED, SDL_BUTTON_LEFT);
@@ -323,7 +319,7 @@ int SDL_SendTouch(Uint64 timestamp, SDL_TouchID id, SDL_FingerID fingerid, SDL_W
         }
 
         posted = 0;
-        if (SDL_GetEventState(SDL_FINGERDOWN) == SDL_ENABLE) {
+        if (SDL_EventEnabled(SDL_FINGERDOWN)) {
             SDL_Event event;
             event.type = SDL_FINGERDOWN;
             event.common.timestamp = timestamp;
@@ -344,7 +340,7 @@ int SDL_SendTouch(Uint64 timestamp, SDL_TouchID id, SDL_FingerID fingerid, SDL_W
         }
 
         posted = 0;
-        if (SDL_GetEventState(SDL_FINGERUP) == SDL_ENABLE) {
+        if (SDL_EventEnabled(SDL_FINGERUP)) {
             SDL_Event event;
             event.type = SDL_FINGERUP;
             event.common.timestamp = timestamp;
@@ -388,19 +384,19 @@ int SDL_SendTouchMotion(Uint64 timestamp, SDL_TouchID id, SDL_FingerID fingerid,
             if (id != SDL_MOUSE_TOUCHID) {
                 if (window) {
                     if (finger_touching == SDL_TRUE && track_touchid == id && track_fingerid == fingerid) {
-                        int pos_x = (int)(x * (float)window->w);
-                        int pos_y = (int)(y * (float)window->h);
-                        if (pos_x < 0) {
-                            pos_x = 0;
+                        float pos_x = (x * (float)window->w);
+                        float pos_y = (y * (float)window->h);
+                        if (pos_x < 0.0f) {
+                            pos_x = 0.0f;
                         }
-                        if (pos_x > window->w - 1) {
-                            pos_x = window->w - 1;
+                        if (pos_x > (float)(window->w - 1)) {
+                            pos_x = (float)(window->w - 1);
                         }
-                        if (pos_y < 0) {
-                            pos_y = 0;
+                        if (pos_y < 0.0f) {
+                            pos_y = 0.0f;
                         }
-                        if (pos_y > window->h - 1) {
-                            pos_y = window->h - 1;
+                        if (pos_y > (float)(window->h - 1)) {
+                            pos_y = (float)(window->h - 1);
                         }
                         SDL_SendMouseMotion(timestamp, window, SDL_TOUCH_MOUSEID, 0, pos_x, pos_y);
                     }
@@ -441,7 +437,7 @@ int SDL_SendTouchMotion(Uint64 timestamp, SDL_TouchID id, SDL_FingerID fingerid,
 
     /* Post the event, if desired */
     posted = 0;
-    if (SDL_GetEventState(SDL_FINGERMOTION) == SDL_ENABLE) {
+    if (SDL_EventEnabled(SDL_FINGERMOTION)) {
         SDL_Event event;
         event.type = SDL_FINGERMOTION;
         event.common.timestamp = timestamp;
@@ -483,12 +479,9 @@ void SDL_DelTouch(SDL_TouchID id)
 
     SDL_num_touch--;
     SDL_touchDevices[index] = SDL_touchDevices[SDL_num_touch];
-
-    /* Delete this touch device for gestures */
-    SDL_GestureDelTouch(id);
 }
 
-void SDL_TouchQuit(void)
+void SDL_QuitTouch(void)
 {
     int i;
 
@@ -499,7 +492,4 @@ void SDL_TouchQuit(void)
 
     SDL_free(SDL_touchDevices);
     SDL_touchDevices = NULL;
-    SDL_GestureQuit();
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

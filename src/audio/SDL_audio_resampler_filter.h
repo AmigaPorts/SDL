@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -1057,5 +1057,3 @@ static const float ResamplerFilterDifference[RESAMPLER_FILTER_SIZE] = {
     -0.000001176f, -0.000001149f, -0.000001123f, -0.000001096f, -0.000001070f,
     0.000000000f
 };
-
-/* vi: set ts=4 sw=4 expandtab: */

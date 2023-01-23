@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -151,7 +151,7 @@ int NGAGE_VideoInit(_THIS)
     mode.format = SDL_PIXELFORMAT_RGB444;
     mode.w = 176;
     mode.h = 208;
-    mode.refresh_rate = 0;
+    mode.refresh_rate = 0.0f;
     mode.driverdata = NULL;
     if (SDL_AddBasicVideoDisplay(&mode) < 0) {
         return -1;
@@ -174,5 +174,3 @@ void NGAGE_VideoQuit(_THIS)
 }
 
 #endif /* SDL_VIDEO_DRIVER_NGAGE */
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -49,5 +49,3 @@ typedef struct sprite_header
 SDL_COMPILE_TIME_ASSERT(sprite_header, sizeof(sprite_header) == 44);
 
 #endif /* SDL_riscosdefs_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

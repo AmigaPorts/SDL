@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -140,7 +140,7 @@ static int SDL_UpperSoftStretch(SDL_Surface *src, const SDL_Rect *srcrect,
 #define FIXED_POINT(i) ((Uint32)(i) << 16)
 #define SRC_INDEX(fp)  ((Uint32)(fp) >> 16)
 #define INTEGER(fp)    ((Uint32)(fp) >> PRECISION)
-#define FRAC(fp)       ((Uint32)(fp >> (16 - PRECISION)) & ((1 << PRECISION) - 1))
+#define FRAC(fp)       ((Uint32)((fp) >> (16 - PRECISION)) & ((1 << PRECISION) - 1))
 #define FRAC_ZERO      0
 #define FRAC_ONE       (1 << PRECISION)
 #define FP_ONE         FIXED_POINT(1)
@@ -950,5 +950,3 @@ int SDL_LowerSoftStretchNearest(SDL_Surface *s, const SDL_Rect *srcrect,
         return scale_mat_nearest_1(src, src_w, src_h, src_pitch, dst, dst_w, dst_h, dst_pitch);
     }
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -249,14 +249,14 @@ static void UIKit_FreeDisplayModeData(SDL_DisplayMode *mode)
     }
 }
 
-static NSUInteger UIKit_GetDisplayModeRefreshRate(UIScreen *uiscreen)
+static float UIKit_GetDisplayModeRefreshRate(UIScreen *uiscreen)
 {
 #ifdef __IPHONE_10_3
     if ([uiscreen respondsToSelector:@selector(maximumFramesPerSecond)]) {
-        return uiscreen.maximumFramesPerSecond;
+        return (float)uiscreen.maximumFramesPerSecond;
     }
 #endif
-    return 0;
+    return 0.0f;
 }
 
 static int UIKit_AddSingleDisplayMode(SDL_VideoDisplay *display, int w, int h,
@@ -270,7 +270,7 @@ static int UIKit_AddSingleDisplayMode(SDL_VideoDisplay *display, int w, int h,
     }
 
     mode.format = SDL_PIXELFORMAT_ABGR8888;
-    mode.refresh_rate = (int)UIKit_GetDisplayModeRefreshRate(uiscreen);
+    mode.refresh_rate = UIKit_GetDisplayModeRefreshRate(uiscreen);
     mode.w = w;
     mode.h = h;
 
@@ -315,7 +315,7 @@ int UIKit_AddDisplay(UIScreen *uiscreen, SDL_bool send_event)
     }
 
     mode.format = SDL_PIXELFORMAT_ABGR8888;
-    mode.refresh_rate = (int)UIKit_GetDisplayModeRefreshRate(uiscreen);
+    mode.refresh_rate = UIKit_GetDisplayModeRefreshRate(uiscreen);
     mode.w = (int)size.width;
     mode.h = (int)size.height;
 
@@ -578,5 +578,3 @@ void SDL_OnApplicationDidChangeStatusBarOrientation()
 #endif /* !TARGET_OS_TV */
 
 #endif /* SDL_VIDEO_DRIVER_UIKIT */
-
-/* vi: set ts=4 sw=4 expandtab: */

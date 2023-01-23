@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -148,7 +148,7 @@ void Android_PumpEvents_Blocking(_THIS)
 #endif
 
             /* Make sure SW Keyboard is restored when an app becomes foreground */
-            if (SDL_IsTextInputActive()) {
+            if (SDL_TextInputActive()) {
                 Android_StartTextInput(_this); /* Only showTextInput */
             }
         }
@@ -232,7 +232,7 @@ void Android_PumpEvents_NonBlocking(_THIS)
 #endif
 
             /* Make sure SW Keyboard is restored when an app becomes foreground */
-            if (SDL_IsTextInputActive()) {
+            if (SDL_TextInputActive()) {
                 Android_StartTextInput(_this); /* Only showTextInput */
             }
         }
@@ -266,5 +266,3 @@ void Android_PumpEvents_NonBlocking(_THIS)
 }
 
 #endif /* SDL_VIDEO_DRIVER_ANDROID */
-
-/* vi: set ts=4 sw=4 expandtab: */

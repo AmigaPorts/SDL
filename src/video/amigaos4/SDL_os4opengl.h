@@ -26,13 +26,13 @@
 #include "SDL_os4window.h"
 
 extern int OS4_GL_LoadLibrary(_THIS, const char *path);
-extern void *OS4_GL_GetProcAddress(_THIS, const char *proc);
+extern SDL_FunctionPointer OS4_GL_GetProcAddress(_THIS, const char *proc);
 extern void OS4_GL_UnloadLibrary(_THIS);
 extern SDL_GLContext OS4_GL_CreateContext(_THIS, SDL_Window * window);
 extern int OS4_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context);
 extern void OS4_GL_GetDrawableSize(_THIS, SDL_Window * window, int *w, int *h);
 extern int OS4_GL_SetSwapInterval(_THIS, int interval);
-extern int OS4_GL_GetSwapInterval(_THIS);
+extern int OS4_GL_GetSwapInterval(_THIS, int* interval);
 extern int OS4_GL_SwapWindow(_THIS, SDL_Window * window);
 extern void OS4_GL_DeleteContext(_THIS, SDL_GLContext context);
 

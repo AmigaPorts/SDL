@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -28,7 +28,6 @@
 
 #ifdef SDL_VIDEO_DRIVER_X11
 #include "../../video/x11/SDL_x11video.h"
-#define SDL_ENABLE_SYSWM_X11
 #endif
 #include <SDL3/SDL_syswm.h>
 
@@ -41,7 +40,7 @@
 
 #define DBUS_TIMEOUT 500
 
-typedef struct _FcitxClient
+typedef struct FcitxClient
 {
     SDL_DBusContext *dbus;
 
@@ -339,28 +338,28 @@ static Uint32 Fcitx_ModState(void)
     Uint32 fcitx_mods = 0;
     SDL_Keymod sdl_mods = SDL_GetModState();
 
-    if (sdl_mods & KMOD_SHIFT) {
+    if (sdl_mods & SDL_KMOD_SHIFT) {
         fcitx_mods |= (1 << 0);
     }
-    if (sdl_mods & KMOD_CAPS) {
+    if (sdl_mods & SDL_KMOD_CAPS) {
         fcitx_mods |= (1 << 1);
     }
-    if (sdl_mods & KMOD_CTRL) {
+    if (sdl_mods & SDL_KMOD_CTRL) {
         fcitx_mods |= (1 << 2);
     }
-    if (sdl_mods & KMOD_ALT) {
+    if (sdl_mods & SDL_KMOD_ALT) {
         fcitx_mods |= (1 << 3);
     }
-    if (sdl_mods & KMOD_NUM) {
+    if (sdl_mods & SDL_KMOD_NUM) {
         fcitx_mods |= (1 << 4);
     }
-    if (sdl_mods & KMOD_MODE) {
+    if (sdl_mods & SDL_KMOD_MODE) {
         fcitx_mods |= (1 << 7);
     }
-    if (sdl_mods & KMOD_LGUI) {
+    if (sdl_mods & SDL_KMOD_LGUI) {
         fcitx_mods |= (1 << 6);
     }
-    if (sdl_mods & KMOD_RGUI) {
+    if (sdl_mods & SDL_KMOD_RGUI) {
         fcitx_mods |= (1 << 28);
     }
 
@@ -485,5 +484,3 @@ void SDL_Fcitx_PumpEvents(void)
         usleep(10);
     }
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

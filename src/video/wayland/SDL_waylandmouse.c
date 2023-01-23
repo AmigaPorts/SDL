@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -271,6 +271,14 @@ static SDL_bool wayland_get_system_cursor(SDL_VideoData *vdata, Wayland_CursorDa
         return SDL_FALSE;
     }
 
+    /* Fallback to the default cursor if the chosen one wasn't found */
+    if (!cursor) {
+        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "left_ptr");
+        if (!cursor) {
+            return SDL_FALSE;
+        }
+    }
+
     /* ... Set the cursor data, finally. */
     cdata->buffer = WAYLAND_wl_cursor_image_get_buffer(cursor->images[0]);
     cdata->hot_x = cursor->images[0]->hotspot_x;
@@ -525,7 +533,7 @@ static int Wayland_ShowCursor(SDL_Cursor *cursor)
     return 0;
 }
 
-static void Wayland_WarpMouse(SDL_Window *window, int x, int y)
+static void Wayland_WarpMouse(SDL_Window *window, float x, float y)
 {
     SDL_VideoDevice *vd = SDL_GetVideoDevice();
     SDL_VideoData *d = vd->driverdata;
@@ -541,11 +549,6 @@ static void Wayland_WarpMouse(SDL_Window *window, int x, int y)
             input->relative_mode_override = SDL_TRUE;
         }
     }
-}
-
-static int Wayland_WarpMouseGlobal(int x, int y)
-{
-    return SDL_Unsupported();
 }
 
 static int Wayland_SetRelativeMouseMode(SDL_bool enabled)
@@ -646,7 +649,6 @@ void Wayland_InitMouse(void)
     mouse->ShowCursor = Wayland_ShowCursor;
     mouse->FreeCursor = Wayland_FreeCursor;
     mouse->WarpMouse = Wayland_WarpMouse;
-    mouse->WarpMouseGlobal = Wayland_WarpMouseGlobal;
     mouse->SetRelativeMouseMode = Wayland_SetRelativeMouseMode;
 
     input->relative_mode_override = SDL_FALSE;
@@ -674,5 +676,3 @@ void Wayland_FiniMouse(SDL_VideoData *data)
 }
 
 #endif /* SDL_VIDEO_DRIVER_WAYLAND */
-
-/* vi: set ts=4 sw=4 expandtab: */

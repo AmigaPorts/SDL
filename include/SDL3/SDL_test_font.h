@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -30,7 +30,7 @@
 #ifndef SDL_test_font_h_
 #define SDL_test_font_h_
 
-#include <SDL3/begin_code.h>
+#include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
 extern "C" {
@@ -51,7 +51,7 @@ extern "C" {
  *
  *  \returns 0 on success, -1 on failure.
  */
-int SDLTest_DrawCharacter(SDL_Renderer *renderer, int x, int y, Uint32 c);
+int SDLTest_DrawCharacter(SDL_Renderer *renderer, float x, float y, Uint32 c);
 
 /**
  *  \brief Draw a UTF-8 string in the currently set font.
@@ -65,14 +65,14 @@ int SDLTest_DrawCharacter(SDL_Renderer *renderer, int x, int y, Uint32 c);
  *
  *  \returns 0 on success, -1 on failure.
  */
-int SDLTest_DrawString(SDL_Renderer *renderer, int x, int y, const char *s);
+int SDLTest_DrawString(SDL_Renderer *renderer, float x, float y, const char *s);
 
 /**
  *  \brief Data used for multi-line text output
  */
 typedef struct SDLTest_TextWindow
 {
-    SDL_Rect rect;
+    SDL_FRect rect;
     int current;
     int numlines;
     char **lines;
@@ -90,7 +90,7 @@ typedef struct SDLTest_TextWindow
  *
  *  \since This function is available since SDL 2.24.0
  */
-SDLTest_TextWindow *SDLTest_TextWindowCreate(int x, int y, int w, int h);
+SDLTest_TextWindow *SDLTest_TextWindowCreate(float x, float y, float w, float h);
 
 /**
  *  \brief Display a multi-line text output window
@@ -161,8 +161,6 @@ void SDLTest_CleanupTextDrawing(void);
 #ifdef __cplusplus
 }
 #endif
-#include <SDL3/close_code.h>
+#include <SDL3/SDL_close_code.h>
 
 #endif /* SDL_test_font_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

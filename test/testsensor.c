@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -13,6 +13,7 @@
 /* Simple test of the SDL sensor code */
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 
 static const char *GetSensorTypeString(SDL_SensorType type)
 {
@@ -35,13 +36,13 @@ static const char *GetSensorTypeString(SDL_SensorType type)
 
 static void HandleSensorEvent(SDL_SensorEvent *event)
 {
-    SDL_Sensor *sensor = SDL_SensorFromInstanceID(event->which);
+    SDL_Sensor *sensor = SDL_GetSensorFromInstanceID(event->which);
     if (sensor == NULL) {
         SDL_Log("Couldn't get sensor for sensor event\n");
         return;
     }
 
-    switch (SDL_SensorGetType(sensor)) {
+    switch (SDL_GetSensorType(sensor)) {
     case SDL_SENSOR_ACCEL:
         SDL_Log("Accelerometer update: %.2f, %.2f, %.2f\n", event->data[0], event->data[1], event->data[2]);
         break;
@@ -49,15 +50,15 @@ static void HandleSensorEvent(SDL_SensorEvent *event)
         SDL_Log("Gyro update: %.2f, %.2f, %.2f\n", event->data[0], event->data[1], event->data[2]);
         break;
     default:
-        SDL_Log("Sensor update for sensor type %s\n", GetSensorTypeString(SDL_SensorGetType(sensor)));
+        SDL_Log("Sensor update for sensor type %s\n", GetSensorTypeString(SDL_GetSensorType(sensor)));
         break;
     }
 }
 
 int main(int argc, char **argv)
 {
-    int i;
-    int num_sensors, num_opened;
+    SDL_SensorID *sensors;
+    int i, num_sensors, num_opened;
 
     /* Load the SDL library */
     if (SDL_Init(SDL_INIT_SENSOR) < 0) {
@@ -65,25 +66,28 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    num_sensors = SDL_NumSensors();
+    sensors = SDL_GetSensors(&num_sensors);
     num_opened = 0;
 
     SDL_Log("There are %d sensors available\n", num_sensors);
-    for (i = 0; i < num_sensors; ++i) {
-        SDL_Log("Sensor %" SDL_PRIs32 ": %s, type %s, platform type %d\n",
-                SDL_SensorGetDeviceInstanceID(i),
-                SDL_SensorGetDeviceName(i),
-                GetSensorTypeString(SDL_SensorGetDeviceType(i)),
-                SDL_SensorGetDeviceNonPortableType(i));
+    if (sensors) {
+        for (i = 0; i < num_sensors; ++i) {
+            SDL_Log("Sensor %" SDL_PRIu32 ": %s, type %s, platform type %d\n",
+                    sensors[i],
+                    SDL_GetSensorInstanceName(sensors[i]),
+                    GetSensorTypeString(SDL_GetSensorInstanceType(sensors[i])),
+                    SDL_GetSensorInstanceNonPortableType(sensors[i]));
 
-        if (SDL_SensorGetDeviceType(i) != SDL_SENSOR_UNKNOWN) {
-            SDL_Sensor *sensor = SDL_SensorOpen(i);
-            if (sensor == NULL) {
-                SDL_Log("Couldn't open sensor %" SDL_PRIs32 ": %s\n", SDL_SensorGetDeviceInstanceID(i), SDL_GetError());
-            } else {
-                ++num_opened;
+            if (SDL_GetSensorInstanceType(sensors[i]) != SDL_SENSOR_UNKNOWN) {
+                SDL_Sensor *sensor = SDL_OpenSensor(sensors[i]);
+                if (sensor == NULL) {
+                    SDL_Log("Couldn't open sensor %" SDL_PRIu32 ": %s\n", sensors[i], SDL_GetError());
+                } else {
+                    ++num_opened;
+                }
             }
         }
+        SDL_free(sensors);
     }
     SDL_Log("Opened %d sensors\n", num_opened);
 
@@ -117,5 +121,3 @@ int main(int argc, char **argv)
     SDL_Quit();
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */
