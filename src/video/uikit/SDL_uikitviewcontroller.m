@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -60,6 +60,17 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 }
 #endif
 
+@implementation SDLUITextField : UITextField
+- (BOOL)canPerformAction:(SEL)action withSender:(id)sender
+{
+	if (action == @selector(paste:)) {
+		return NO;
+	}
+
+	return [super canPerformAction:action withSender:sender];
+}
+@end
+
 @implementation SDL_uikitviewcontroller
 {
     CADisplayLink *displayLink;
@@ -68,7 +79,7 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
     void *animationCallbackParam;
 
 #if SDL_IPHONE_KEYBOARD
-    UITextField *textField;
+    SDLUITextField *textField;
     BOOL hardwareKeyboard;
     BOOL showingKeyboard;
     BOOL rotatingOrientation;
@@ -252,7 +263,7 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 - (void)initKeyboard
 {
     obligateForBackspace = @"                                                                "; /* 64 space */
-    textField = [[UITextField alloc] initWithFrame:CGRectZero];
+    textField = [[SDLUITextField alloc] initWithFrame:CGRectZero];
     textField.delegate = self;
     /* placeholder so there is something to delete! */
     textField.text = obligateForBackspace;
@@ -563,5 +574,3 @@ void UIKit_SetTextInputRect(_THIS, const SDL_Rect *rect)
 #endif /* SDL_IPHONE_KEYBOARD */
 
 #endif /* SDL_VIDEO_DRIVER_UIKIT */
-
-/* vi: set ts=4 sw=4 expandtab: */

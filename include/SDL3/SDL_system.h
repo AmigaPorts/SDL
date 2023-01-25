@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,7 +33,7 @@
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_video.h>
 
-#include <SDL3/begin_code.h>
+#include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
 extern "C" {
@@ -88,7 +88,7 @@ typedef struct IDirect3DDevice9 IDirect3DDevice9;
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC IDirect3DDevice9* SDLCALL SDL_RenderGetD3D9Device(SDL_Renderer * renderer);
+extern DECLSPEC IDirect3DDevice9* SDLCALL SDL_GetRenderD3D9Device(SDL_Renderer * renderer);
 
 typedef struct ID3D11Device ID3D11Device;
 
@@ -104,7 +104,7 @@ typedef struct ID3D11Device ID3D11Device;
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC ID3D11Device* SDLCALL SDL_RenderGetD3D11Device(SDL_Renderer * renderer);
+extern DECLSPEC ID3D11Device* SDLCALL SDL_GetRenderD3D11Device(SDL_Renderer * renderer);
 
 #endif /* defined(__WIN32__) || defined(__WINGDK__) */
 
@@ -616,8 +616,6 @@ extern DECLSPEC int SDLCALL SDL_GDKGetTaskQueue(XTaskQueueHandle * outTaskQueue)
 #ifdef __cplusplus
 }
 #endif
-#include <SDL3/close_code.h>
+#include <SDL3/SDL_close_code.h>
 
 #endif /* SDL_system_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

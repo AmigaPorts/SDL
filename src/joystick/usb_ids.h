@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -49,6 +49,11 @@
 #define USB_VENDOR_VALVE        0x28de
 #define USB_VENDOR_ZEROPLUS     0x0c12
 
+// Most Razer devices are not game controllers, and some of them lock up or reset
+// when we send them the Sony third-party query feature report, so don't include that
+// vendor here. Instead add devices as appropriate to controller_type.c
+// Reference: https://github.com/libsdl-org/SDL/issues/6733
+//            https://github.com/libsdl-org/SDL/issues/6799
 #define SONY_THIRDPARTY_VENDOR(X)    \
     (X == USB_VENDOR_DRAGONRISE ||   \
      X == USB_VENDOR_HORI ||         \
@@ -59,7 +64,6 @@
      X == USB_VENDOR_POWERA ||       \
      X == USB_VENDOR_POWERA_ALT ||   \
      X == USB_VENDOR_QANBA ||        \
-     X == USB_VENDOR_RAZER ||        \
      X == USB_VENDOR_SHANWAN ||      \
      X == USB_VENDOR_SHANWAN_ALT ||  \
      X == USB_VENDOR_THRUSTMASTER || \
@@ -100,7 +104,10 @@
 #define USB_PRODUCT_SONY_DS4                              0x05c4
 #define USB_PRODUCT_SONY_DS4_DONGLE                       0x0ba0
 #define USB_PRODUCT_SONY_DS4_SLIM                         0x09cc
+#define USB_PRODUCT_SONY_DS4_STRIKEPAD                    0x05c5
 #define USB_PRODUCT_SONY_DS5                              0x0ce6
+#define USB_PRODUCT_SONY_DS5_EDGE                         0x0df2
+#define USB_PRODUCT_THRUSTMASTER_ESWAPX_PRO               0xd012
 #define USB_PRODUCT_VICTRIX_FS_PRO_V2                     0x0207
 #define USB_PRODUCT_XBOX360_XUSB_CONTROLLER               0x02a1 /* XUSB driver software PID */
 #define USB_PRODUCT_XBOX360_WIRED_CONTROLLER              0x028e
@@ -157,5 +164,3 @@
 #define BLUETOOTH_PRODUCT_LUNA_CONTROLLER 0x0419
 
 #endif /* usb_ids_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -104,7 +104,7 @@ static SDL_Cursor *Emscripten_CreateCursor(SDL_Surface *surface, int hot_x, int 
     }, surface->w, surface->h, hot_x, hot_y, conv_surf->pixels);
     /* *INDENT-ON* */ /* clang-format on */
 
-    SDL_FreeSurface(conv_surf);
+    SDL_DestroySurface(conv_surf);
 
     return Emscripten_CreateCursorFromString(cursor_url, SDL_TRUE);
 }
@@ -204,11 +204,6 @@ static int Emscripten_ShowCursor(SDL_Cursor *cursor)
     return 0;
 }
 
-static void Emscripten_WarpMouse(SDL_Window *window, int x, int y)
-{
-    SDL_Unsupported();
-}
-
 static int Emscripten_SetRelativeMouseMode(SDL_bool enabled)
 {
     SDL_Window *window;
@@ -241,7 +236,6 @@ void Emscripten_InitMouse()
     mouse->CreateCursor = Emscripten_CreateCursor;
     mouse->ShowCursor = Emscripten_ShowCursor;
     mouse->FreeCursor = Emscripten_FreeCursor;
-    mouse->WarpMouse = Emscripten_WarpMouse;
     mouse->CreateSystemCursor = Emscripten_CreateSystemCursor;
     mouse->SetRelativeMouseMode = Emscripten_SetRelativeMouseMode;
 
@@ -253,5 +247,3 @@ void Emscripten_FiniMouse()
 }
 
 #endif /* SDL_VIDEO_DRIVER_EMSCRIPTEN */
-
-/* vi: set ts=4 sw=4 expandtab: */

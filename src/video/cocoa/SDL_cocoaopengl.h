@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -70,13 +70,13 @@ struct SDL_GLDriverData
 
 /* OpenGL functions */
 extern int Cocoa_GL_LoadLibrary(_THIS, const char *path);
-extern void *Cocoa_GL_GetProcAddress(_THIS, const char *proc);
+extern SDL_FunctionPointer Cocoa_GL_GetProcAddress(_THIS, const char *proc);
 extern void Cocoa_GL_UnloadLibrary(_THIS);
 extern SDL_GLContext Cocoa_GL_CreateContext(_THIS, SDL_Window *window);
 extern int Cocoa_GL_MakeCurrent(_THIS, SDL_Window *window,
                                 SDL_GLContext context);
 extern int Cocoa_GL_SetSwapInterval(_THIS, int interval);
-extern int Cocoa_GL_GetSwapInterval(_THIS);
+extern int Cocoa_GL_GetSwapInterval(_THIS, int *interval);
 extern int Cocoa_GL_SwapWindow(_THIS, SDL_Window *window);
 extern void Cocoa_GL_DeleteContext(_THIS, SDL_GLContext context);
 
@@ -87,5 +87,3 @@ extern void Cocoa_GL_DeleteContext(_THIS, SDL_GLContext context);
 #endif /* SDL_VIDEO_OPENGL_CGL */
 
 #endif /* SDL_cocoaopengl_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

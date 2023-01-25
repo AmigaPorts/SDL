@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -60,9 +60,9 @@
 #define SDL_atomic_h_
 
 #include <SDL3/SDL_stdinc.h>
-#include <SDL3/SDL_platform.h>
+#include <SDL3/SDL_platform_defines.h>
 
-#include <SDL3/begin_code.h>
+#include <SDL3/SDL_begin_code.h>
 
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
@@ -77,6 +77,11 @@ extern "C" {
  * holding a lock has been terminated.  For this reason you should
  * minimize the code executed inside an atomic lock and never do
  * expensive things like API or system calls while holding them.
+ *
+ * They are also vulnerable to starvation if the thread holding
+ * the lock is lower priority than other threads and doesn't get
+ * scheduled. In general you should use mutexes instead, since
+ * they have better performance and contention behavior.
  *
  * The atomic locks are not safe to lock recursively.
  *
@@ -239,6 +244,8 @@ typedef void (*SDL_KernelMemoryBarrierFunc)();
     #define SDL_CPUPauseInstruction() __asm__ __volatile__("yield" ::: "memory")
 #elif (defined(__powerpc__) || defined(__powerpc64__))
     #define SDL_CPUPauseInstruction() __asm__ __volatile__("or 27,27,27");
+#elif (defined(__riscv) && __riscv_xlen == 64)
+    #define SDL_CPUPauseInstruction() __asm__ __volatile__(".insn i 0x0F, 0, x0, x0, 0x010");
 #elif defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
     #define SDL_CPUPauseInstruction() _mm_pause()  /* this is actually "rep nop" and not a SIMD instruction. No inline asm in MSVC x86-64! */
 #elif defined(_MSC_VER) && (defined(_M_ARM) || defined(_M_ARM64))
@@ -403,8 +410,6 @@ extern DECLSPEC void* SDLCALL SDL_AtomicGetPtr(void **a);
 }
 #endif
 
-#include <SDL3/close_code.h>
+#include <SDL3/SDL_close_code.h>
 
 #endif /* SDL_atomic_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

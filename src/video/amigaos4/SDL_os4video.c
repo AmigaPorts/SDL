@@ -579,7 +579,7 @@ OS4_CreateDevice(void)
     return device;
 }
 
-VideoBootStrap OS4_bootstrap = {
+VideoBootStrap AMIGAOS4_bootstrap = {
     "amigaos4", "SDL AmigaOS 4 video driver",
     OS4_CreateDevice
 };

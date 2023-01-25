@@ -466,7 +466,7 @@ AMIGAINPUT_Update(SDL_Joystick * joystick)
             if (axisdata < -32768) axisdata = -32768;
 
             if (axisdata != hwdata->axisData[i]) {
-                SDL_PrivateJoystickAxis(joystick, i, (Sint16)axisdata);
+                SDL_SendJoystickAxis(0, joystick, i, (Sint16)axisdata);
                 hwdata->axisData[i] = axisdata;
             }
         }
@@ -480,7 +480,7 @@ AMIGAINPUT_Update(SDL_Joystick * joystick)
             int buttondata = BUFFER_OFFSET(buffer, hwdata->buttonBufferOffset[i]);
 
             if (buttondata != hwdata->buttonData[i]) {
-                SDL_PrivateJoystickButton(joystick, i, buttondata ? SDL_PRESSED : SDL_RELEASED);
+                SDL_SendJoystickButton(0, joystick, 1, buttondata ? SDL_PRESSED : SDL_RELEASED);
                 hwdata->buttonData[i] = buttondata;
             }
         }
@@ -492,7 +492,7 @@ AMIGAINPUT_Update(SDL_Joystick * joystick)
             int hatdata = BUFFER_OFFSET(buffer, hwdata->hatBufferOffset[i]);
 
             if (hatdata != hwdata->hatData[i]) {
-                SDL_PrivateJoystickHat(joystick, i, AMIGAINPUT_MapHatData(hatdata));
+                SDL_SendJoystickHat(0, joystick, i, AMIGAINPUT_MapHatData(hatdata));
                 hwdata->hatData[i] = hatdata;
             }
         }

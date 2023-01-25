@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -10,6 +10,7 @@
   freely.
 */
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 
 static void
 print_devices(int iscapture)
@@ -69,7 +70,7 @@ int main(int argc, char **argv)
         for (i = 0; i < n; ++i) {
             SDL_Log("  %d: %s\n", i, SDL_GetAudioDriver(i));
         }
-        SDL_Log("Select a driver with the SDL_AUDIODRIVER environment variable.\n");
+        SDL_Log("Select a driver with the SDL_AUDIO_DRIVER environment variable.\n");
     }
 
     SDL_Log("Using audio driver: %s\n\n", SDL_GetCurrentAudioDriver());
@@ -100,5 +101,3 @@ int main(int argc, char **argv)
     SDL_Quit();
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

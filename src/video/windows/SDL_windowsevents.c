@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -29,7 +29,6 @@
 #include "../../events/SDL_touch_c.h"
 #include "../../events/scancodes_windows.h"
 
-#define SDL_ENABLE_SYSWM_WINDOWS
 #include <SDL3/SDL_syswm.h>
 
 /* Dropfile support */
@@ -121,7 +120,7 @@ static void WIN_SetMessageTick(DWORD tick)
     if (message_tick) {
         if (tick < message_tick && timestamp_offset) {
             /* The tick counter rolled over, bump our offset */
-            timestamp_offset += SDL_MS_TO_NS(0x100000000LLU);
+            timestamp_offset += SDL_MS_TO_NS(0x100000000LL);
         }
     }
     message_tick = tick;
@@ -517,12 +516,10 @@ static void WIN_UpdateFocus(SDL_Window *window, SDL_bool expect_focus)
 
         /* In relative mode we are guaranteed to have mouse focus if we have keyboard focus */
         if (!SDL_GetMouse()->relative_mode) {
-            SDL_Point point;
+            SDL_FPoint point;
             GetCursorPos(&cursorPos);
             ScreenToClient(hwnd, &cursorPos);
-            point.x = cursorPos.x;
-            point.y = cursorPos.y;
-            WIN_ClientPointToSDL(data->window, &point.x, &point.y);
+            WIN_ClientPointToSDLFloat(data->window, cursorPos.x, cursorPos.y, &point.x, &point.y);
             SDL_SendMouseMotion(WIN_GetEventTimestamp(), window, 0, 0, point.x, point.y);
         }
 
@@ -534,9 +531,9 @@ static void WIN_UpdateFocus(SDL_Window *window, SDL_bool expect_focus)
          */
         WIN_CheckClipboardUpdate(data->videodata);
 
-        SDL_ToggleModState(KMOD_CAPS, (GetKeyState(VK_CAPITAL) & 0x0001) != 0);
-        SDL_ToggleModState(KMOD_NUM, (GetKeyState(VK_NUMLOCK) & 0x0001) != 0);
-        SDL_ToggleModState(KMOD_SCROLL, (GetKeyState(VK_SCROLL) & 0x0001) != 0);
+        SDL_ToggleModState(SDL_KMOD_CAPS, (GetKeyState(VK_CAPITAL) & 0x0001) != 0);
+        SDL_ToggleModState(SDL_KMOD_NUM, (GetKeyState(VK_NUMLOCK) & 0x0001) != 0);
+        SDL_ToggleModState(SDL_KMOD_SCROLL, (GetKeyState(VK_SCROLL) & 0x0001) != 0);
 
         WIN_UpdateWindowICCProfile(data->window, SDL_TRUE);
     } else {
@@ -693,9 +690,9 @@ WIN_KeyboardHookProc(int nCode, WPARAM wParam, LPARAM lParam)
     }
 
     if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
-        SDL_SendKeyboardKey(WIN_GetEventTimestamp(), SDL_PRESSED, scanCode);
+        SDL_SendKeyboardKey(0, SDL_PRESSED, scanCode);
     } else {
-        SDL_SendKeyboardKey(WIN_GetEventTimestamp(), SDL_RELEASED, scanCode);
+        SDL_SendKeyboardKey(0, SDL_RELEASED, scanCode);
 
         /* If the key was down prior to our hook being installed, allow the
            key up message to pass normally the first time. This ensures other
@@ -720,7 +717,7 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     LRESULT returnCode = -1;
 
     /* Send a SDL_SYSWMEVENT if the application wants them */
-    if (SDL_GetEventState(SDL_SYSWMEVENT) == SDL_ENABLE) {
+    if (SDL_EventEnabled(SDL_SYSWMEVENT)) {
         SDL_SysWMmsg wmmsg;
 
         wmmsg.version = SDL_SYSWM_CURRENT_VERSION;
@@ -830,10 +827,9 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             /* Only generate mouse events for real mouse */
             if (GetMouseMessageSource() != SDL_MOUSE_EVENT_SOURCE_TOUCH &&
                 lParam != data->last_pointer_update) {
-                int x = GET_X_LPARAM(lParam);
-                int y = GET_Y_LPARAM(lParam);
+                float x, y;
 
-                WIN_ClientPointToSDL(data->window, &x, &y);
+                WIN_ClientPointToSDLFloat(data->window, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), &x, &y);
 
                 SDL_SendMouseMotion(WIN_GetEventTimestamp(), data->window, 0, 0, x, y);
             }
@@ -897,7 +893,7 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             rawmouse = &inp.data.mouse;
 
             if ((rawmouse->usFlags & 0x01) == MOUSE_MOVE_RELATIVE) {
-                SDL_SendMouseMotion(WIN_GetEventTimestamp(), data->window, mouseID, 1, (int)rawmouse->lLastX, (int)rawmouse->lLastY);
+                SDL_SendMouseMotion(WIN_GetEventTimestamp(), data->window, mouseID, 1, (float)rawmouse->lLastX, (float)rawmouse->lLastY);
             } else if (rawmouse->lLastX || rawmouse->lLastY) {
                 /* This is absolute motion, either using a tablet or mouse over RDP
 
@@ -953,7 +949,7 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                             const int MAX_RELATIVE_MOTION = (h / 6);
                             if (SDL_abs(relX) < MAX_RELATIVE_MOTION &&
                                 SDL_abs(relY) < MAX_RELATIVE_MOTION) {
-                                SDL_SendMouseMotion(WIN_GetEventTimestamp(), data->window, mouseID, 1, relX, relY);
+                                SDL_SendMouseMotion(WIN_GetEventTimestamp(), data->window, mouseID, 1, (float)relX, (float)relY);
                             }
                         }
                     }
@@ -963,7 +959,7 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                         SDL_abs(relY) > MAXIMUM_TABLET_RELATIVE_MOTION) {
                         /* Ignore this motion, probably a pen lift and drop */
                     } else {
-                        SDL_SendMouseMotion(WIN_GetEventTimestamp(), data->window, mouseID, 1, relX, relY);
+                        SDL_SendMouseMotion(WIN_GetEventTimestamp(), data->window, mouseID, 1, (float)relX, (float)relY);
                     }
                 }
 
@@ -991,12 +987,10 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             if (SDL_GetMouseFocus() == data->window && !SDL_GetMouse()->relative_mode && !IsIconic(hwnd)) {
                 SDL_Mouse *mouse;
                 POINT cursorPos;
-                SDL_Point point;
+                SDL_FPoint point;
                 GetCursorPos(&cursorPos);
                 ScreenToClient(hwnd, &cursorPos);
-                point.x = cursorPos.x;
-                point.y = cursorPos.y;
-                WIN_ClientPointToSDL(data->window, &point.x, &point.y);
+                WIN_ClientPointToSDLFloat(data->window, cursorPos.x, cursorPos.y, &point.x, &point.y);
                 mouse = SDL_GetMouse();
                 if (!mouse->was_touch_mouse_events) { /* we're not a touch handler causing a mouse leave? */
                     SDL_SendMouseMotion(WIN_GetEventTimestamp(), data->window, 0, 0, point.x, point.y);
@@ -1272,6 +1266,18 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
         SDL_SendWindowEvent(data->window, SDL_WINDOWEVENT_MOVED, x, y);
 
+        // Moving the window from one display to another can change the size of the window (in the handling of SDL_WINDOWEVENT_MOVED), so we need to re-query the bounds
+        if (GetClientRect(hwnd, &rect)) {
+            ClientToScreen(hwnd, (LPPOINT)&rect);
+            ClientToScreen(hwnd, (LPPOINT)&rect + 1);
+
+            WIN_UpdateClipCursor(data->window);
+
+            x = rect.left;
+            y = rect.top;
+            WIN_ScreenPointToSDL(&x, &y);
+        }
+
         /* Convert client area width/height from pixels to dpi-scaled points */
         w = rect.right - rect.left;
         h = rect.bottom - rect.top;
@@ -1357,8 +1363,10 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
     case WM_SYSCOMMAND:
     {
-        if ((wParam & 0xFFF0) == SC_KEYMENU) {
-            return 0;
+        if (!g_WindowsEnableMenuMnemonics) {
+            if ((wParam & 0xFFF0) == SC_KEYMENU) {
+                return 0;
+            }
         }
 
 #if defined(SC_SCREENSAVE) || defined(SC_MONITORPOWER)
@@ -1781,10 +1789,8 @@ static void WIN_UpdateMouseCapture()
             if (GetCursorPos(&cursorPos) && ScreenToClient(data->hwnd, &cursorPos)) {
                 SDL_bool swapButtons = GetSystemMetrics(SM_SWAPBUTTON) != 0;
                 SDL_MouseID mouseID = SDL_GetMouse()->mouseID;
-                SDL_Point point;
-                point.x = cursorPos.x;
-                point.y = cursorPos.y;
-                WIN_ClientPointToSDL(data->window, &point.x, &point.y);
+                SDL_FPoint point;
+                WIN_ClientPointToSDLFloat(data->window, cursorPos.x, cursorPos.y, &point.x, &point.y);
 
                 SDL_SendMouseMotion(WIN_GetEventTimestamp(), data->window, mouseID, 0, point.x, point.y);
                 SDL_SendMouseButton(WIN_GetEventTimestamp(), data->window, mouseID, GetAsyncKeyState(VK_LBUTTON) & 0x8000 ? SDL_PRESSED : SDL_RELEASED, !swapButtons ? SDL_BUTTON_LEFT : SDL_BUTTON_RIGHT);
@@ -2048,5 +2054,3 @@ void SDL_UnregisterApp()
 }
 
 #endif /* SDL_VIDEO_DRIVER_WINDOWS */
-
-/* vi: set ts=4 sw=4 expandtab: */

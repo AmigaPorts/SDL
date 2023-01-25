@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -25,13 +25,13 @@
  *  Include file for SDL locale services
  */
 
-#ifndef _SDL_locale_h
-#define _SDL_locale_h
+#ifndef SDL_locale_h
+#define SDL_locale_h
 
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_error.h>
 
-#include <SDL3/begin_code.h>
+#include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
 /* *INDENT-OFF* */
@@ -96,8 +96,6 @@ extern DECLSPEC SDL_Locale * SDLCALL SDL_GetPreferredLocales(void);
 }
 /* *INDENT-ON* */
 #endif
-#include <SDL3/close_code.h>
+#include <SDL3/SDL_close_code.h>
 
-#endif /* _SDL_locale_h */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif /* SDL_locale_h */

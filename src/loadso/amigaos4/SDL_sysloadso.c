@@ -137,7 +137,7 @@ SDL_LoadObject(const char *sofile)
     return NULL;
 }
 
-void *
+SDL_FunctionPointer
 SDL_LoadFunction(void *handle, const char *name)
 {
     void *symbol = NULL;
@@ -166,7 +166,10 @@ SDL_UnloadObject(void *handle)
     if (OS4_OpenLibs() && handle) {
         OS4_ObjectHandle *oh = handle;
 
-        Elf32_Error result = iElf->DLClose(oh->elf_handle, oh->shared_object);
+#ifdef DEBUG
+        Elf32_Error result =
+#endif
+        iElf->DLClose(oh->elf_handle, oh->shared_object);
 
         dprintf("DLClose %s\n", (result == ELF32_NO_ERROR) ? "OK" : "failed" );
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,6 +18,7 @@
 #endif
 
 #include <SDL3/SDL_test_common.h>
+#include <SDL3/SDL_main.h>
 #include "testutils.h"
 
 #define WINDOW_WIDTH  640
@@ -31,7 +32,7 @@ typedef struct
     SDL_Renderer *renderer;
     SDL_Texture *background;
     SDL_Texture *sprite;
-    SDL_Rect sprite_rect;
+    SDL_FRect sprite_rect;
     int scale_direction;
 } DrawState;
 
@@ -50,10 +51,10 @@ void Draw(DrawState *s)
 {
     SDL_Rect viewport;
 
-    SDL_RenderGetViewport(s->renderer, &viewport);
+    SDL_GetRenderViewport(s->renderer, &viewport);
 
     /* Draw the background */
-    SDL_RenderCopy(s->renderer, s->background, NULL, NULL);
+    SDL_RenderTexture(s->renderer, s->background, NULL, NULL);
 
     /* Scale and draw the sprite */
     s->sprite_rect.w += s->scale_direction;
@@ -67,10 +68,10 @@ void Draw(DrawState *s)
             s->scale_direction = 1;
         }
     }
-    s->sprite_rect.x = (viewport.w - s->sprite_rect.w) / 2;
-    s->sprite_rect.y = (viewport.h - s->sprite_rect.h) / 2;
+    s->sprite_rect.x = (float)((viewport.w - s->sprite_rect.w) / 2);
+    s->sprite_rect.y = (float)((viewport.h - s->sprite_rect.h) / 2);
 
-    SDL_RenderCopy(s->renderer, s->sprite, NULL, &s->sprite_rect);
+    SDL_RenderTexture(s->renderer, s->sprite, NULL, &s->sprite_rect);
 
     /* Update the screen! */
     SDL_RenderPresent(s->renderer);
@@ -121,6 +122,7 @@ int main(int argc, char *argv[])
     drawstates = SDL_stack_alloc(DrawState, state->num_windows);
     for (i = 0; i < state->num_windows; ++i) {
         DrawState *drawstate = &drawstates[i];
+        int w, h;
 
         drawstate->window = state->windows[i];
         drawstate->renderer = state->renderers[i];
@@ -129,8 +131,9 @@ int main(int argc, char *argv[])
         if (!drawstate->sprite || !drawstate->background) {
             quit(2);
         }
-        SDL_QueryTexture(drawstate->sprite, NULL, NULL,
-                         &drawstate->sprite_rect.w, &drawstate->sprite_rect.h);
+        SDL_QueryTexture(drawstate->sprite, NULL, NULL, &w, &h);
+        drawstate->sprite_rect.w = (float)w;
+        drawstate->sprite_rect.h = (float)h;
         drawstate->scale_direction = 1;
     }
 
@@ -160,5 +163,3 @@ int main(int argc, char *argv[])
     quit(0);
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -13,6 +13,7 @@
 #include <stdlib.h>
 
 #include <SDL3/SDL_test_common.h>
+#include <SDL3/SDL_main.h>
 
 static SDLTest_CommonState *state;
 
@@ -66,7 +67,7 @@ int main(int argc, char *argv[])
         SDL_RenderPresent(renderer);
     }
 
-    SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
+    SDL_SetEventEnabled(SDL_DROPFILE, SDL_TRUE);
 
     /* Main render loop */
     done = 0;
@@ -93,5 +94,3 @@ int main(int argc, char *argv[])
     /* keep the compiler happy ... */
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

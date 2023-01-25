@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -37,7 +37,6 @@
 int KMSDRM_Vulkan_LoadLibrary(_THIS, const char *path);
 void KMSDRM_Vulkan_UnloadLibrary(_THIS);
 SDL_bool KMSDRM_Vulkan_GetInstanceExtensions(_THIS,
-                                             SDL_Window *window,
                                              unsigned *count,
                                              const char **names);
 void KMSDRM_Vulkan_GetDrawableSize(_THIS, SDL_Window *window, int *w, int *h);
@@ -49,5 +48,3 @@ SDL_bool KMSDRM_Vulkan_CreateSurface(_THIS,
 #endif
 
 #endif /* SDL_kmsdrm_vulkan_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

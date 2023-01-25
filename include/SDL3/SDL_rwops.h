@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -32,7 +32,7 @@
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_error.h>
 
-#include <SDL3/begin_code.h>
+#include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
 extern "C" {
@@ -58,7 +58,7 @@ typedef struct SDL_RWops
 
     /**
      *  Seek to \c offset relative to \c whence, one of stdio's whence values:
-     *  RW_SEEK_SET, RW_SEEK_CUR, RW_SEEK_END
+     *  SDL_RW_SEEK_SET, SDL_RW_SEEK_CUR, SDL_RW_SEEK_END
      *
      *  \return the final offset in the data stream, or -1 on error.
      */
@@ -66,22 +66,32 @@ typedef struct SDL_RWops
                              int whence);
 
     /**
-     *  Read up to \c maxnum objects each of size \c size from the data
-     *  stream to the area pointed at by \c ptr.
+     *  Read up to \c size bytes from the data stream to the area pointed
+     *  at by \c ptr.
      *
-     *  \return the number of objects read, or 0 at error or end of file.
+     *  It is an error to use a negative \c size, but this parameter is
+     *  signed so you definitely cannot overflow the return value on a
+     *  successful run with enormous amounts of data.
+     *
+     *  \return the number of objects read, or 0 on end of file, or -1 on error.
      */
-    size_t (SDLCALL * read) (struct SDL_RWops * context, void *ptr,
-                             size_t size, size_t maxnum);
+    Sint64 (SDLCALL * read) (struct SDL_RWops * context, void *ptr,
+                             Sint64 size);
 
     /**
-     *  Write exactly \c num objects each of size \c size from the area
-     *  pointed at by \c ptr to data stream.
+     *  Write exactly \c size bytes from the area pointed at by \c ptr
+     *  to data stream. May write less than requested (error, non-blocking i/o,
+     *  etc). Returns -1 on error when nothing was written.
      *
-     *  \return the number of objects written, or 0 at error or end of file.
+     *  It is an error to use a negative \c size, but this parameter is
+     *  signed so you definitely cannot overflow the return value on a
+     *  successful run with enormous amounts of data.
+     *
+     *  \return the number of bytes written, which might be less than \c size,
+     *          and -1 on error.
      */
-    size_t (SDLCALL * write) (struct SDL_RWops * context, const void *ptr,
-                              size_t size, size_t num);
+    Sint64 (SDLCALL * write) (struct SDL_RWops * context, const void *ptr,
+                              Sint64 size);
 
     /**
      *  Close and free an allocated SDL_RWops structure.
@@ -281,26 +291,26 @@ extern DECLSPEC SDL_RWops *SDLCALL SDL_RWFromConstMem(const void *mem,
  * read/write a common data source, you should use the built-in
  * implementations in SDL, like SDL_RWFromFile() or SDL_RWFromMem(), etc.
  *
- * You must free the returned pointer with SDL_FreeRW(). Depending on your
+ * You must free the returned pointer with SDL_DestroyRW(). Depending on your
  * operating system and compiler, there may be a difference between the
  * malloc() and free() your program uses and the versions SDL calls
  * internally. Trying to mix the two can cause crashing such as segmentation
  * faults. Since all SDL_RWops must free themselves when their **close**
  * method is called, all SDL_RWops must be allocated through this function, so
- * they can all be freed correctly with SDL_FreeRW().
+ * they can all be freed correctly with SDL_DestroyRW().
  *
  * \returns a pointer to the allocated memory on success, or NULL on failure;
  *          call SDL_GetError() for more information.
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_FreeRW
+ * \sa SDL_DestroyRW
  */
-extern DECLSPEC SDL_RWops *SDLCALL SDL_AllocRW(void);
+extern DECLSPEC SDL_RWops *SDLCALL SDL_CreateRW(void);
 
 /**
  * Use this function to free an SDL_RWops structure allocated by
- * SDL_AllocRW().
+ * SDL_CreateRW().
  *
  * Applications do not need to use this function unless they are providing
  * their own SDL_RWops implementation. If you just need a SDL_RWops to
@@ -309,22 +319,22 @@ extern DECLSPEC SDL_RWops *SDLCALL SDL_AllocRW(void);
  * call the **close** method on those SDL_RWops pointers when you are done
  * with them.
  *
- * Only use SDL_FreeRW() on pointers returned by SDL_AllocRW(). The pointer is
+ * Only use SDL_DestroyRW() on pointers returned by SDL_CreateRW(). The pointer is
  * invalid as soon as this function returns. Any extra memory allocated during
- * creation of the SDL_RWops is not freed by SDL_FreeRW(); the programmer must
+ * creation of the SDL_RWops is not freed by SDL_DestroyRW(); the programmer must
  * be responsible for managing that memory in their **close** method.
  *
  * \param area the SDL_RWops structure to be freed
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_AllocRW
+ * \sa SDL_CreateRW
  */
-extern DECLSPEC void SDLCALL SDL_FreeRW(SDL_RWops * area);
+extern DECLSPEC void SDLCALL SDL_DestroyRW(SDL_RWops * area);
 
-#define RW_SEEK_SET 0       /**< Seek from the beginning of data */
-#define RW_SEEK_CUR 1       /**< Seek relative to current read point */
-#define RW_SEEK_END 2       /**< Seek relative to the end of data */
+#define SDL_RW_SEEK_SET 0       /**< Seek from the beginning of data */
+#define SDL_RW_SEEK_CUR 1       /**< Seek relative to current read point */
+#define SDL_RW_SEEK_END 2       /**< Seek relative to the end of data */
 
 /**
  * Use this function to get the size of the data stream in an SDL_RWops.
@@ -347,9 +357,9 @@ extern DECLSPEC Sint64 SDLCALL SDL_RWsize(SDL_RWops *context);
  *
  * `whence` may be any of the following values:
  *
- * - `RW_SEEK_SET`: seek from the beginning of data
- * - `RW_SEEK_CUR`: seek relative to current read point
- * - `RW_SEEK_END`: seek relative to the end of data
+ * - `SDL_RW_SEEK_SET`: seek from the beginning of data
+ * - `SDL_RW_SEEK_CUR`: seek relative to current read point
+ * - `SDL_RW_SEEK_END`: seek relative to the end of data
  *
  * If this stream can not seek, it will return -1.
  *
@@ -361,7 +371,7 @@ extern DECLSPEC Sint64 SDLCALL SDL_RWsize(SDL_RWops *context);
  * \param context a pointer to an SDL_RWops structure
  * \param offset an offset in bytes, relative to **whence** location; can be
  *               negative
- * \param whence any of `RW_SEEK_SET`, `RW_SEEK_CUR`, `RW_SEEK_END`
+ * \param whence any of `SDL_RW_SEEK_SET`, `SDL_RW_SEEK_CUR`, `SDL_RW_SEEK_END`
  * \returns the final offset in the data stream after the seek or -1 on error.
  *
  * \since This function is available since SDL 3.0.0.
@@ -381,7 +391,7 @@ extern DECLSPEC Sint64 SDLCALL SDL_RWseek(SDL_RWops *context,
  * Determine the current read/write offset in an SDL_RWops data stream.
  *
  * SDL_RWtell is actually a wrapper function that calls the SDL_RWops's `seek`
- * method, with an offset of 0 bytes from `RW_SEEK_CUR`, to simplify
+ * method, with an offset of 0 bytes from `SDL_RW_SEEK_CUR`, to simplify
  * application development.
  *
  * Prior to SDL 2.0.10, this function was a macro.
@@ -406,22 +416,25 @@ extern DECLSPEC Sint64 SDLCALL SDL_RWtell(SDL_RWops *context);
 /**
  * Read from a data source.
  *
- * This function reads up to `maxnum` objects each of size `size` from the
- * data source to the area pointed at by `ptr`. This function may read less
- * objects than requested. It will return zero when there has been an error or
- * the data stream is completely read.
+ * This function reads up `size` bytes from the data source to the area
+ * pointed at by `ptr`. This function may read less bytes than requested.
+ * It will return zero when the data stream is completely read, or
+ * -1 on error. For streams that support non-blocking
+ * operation, if nothing was read because it would require blocking,
+ * this function returns -2 to distinguish that this is not an error or
+ * end-of-file, and the caller can try again later.
  *
  * SDL_RWread() is actually a function wrapper that calls the SDL_RWops's
  * `read` method appropriately, to simplify application development.
  *
- * Prior to SDL 2.0.10, this function was a macro.
+ * It is an error to specify a negative `size`, but this parameter is
+ * signed so you definitely cannot overflow the return value on a
+ * successful run with enormous amounts of data.
  *
  * \param context a pointer to an SDL_RWops structure
  * \param ptr a pointer to a buffer to read data into
- * \param size the size of each object to read, in bytes
- * \param maxnum the maximum number of objects to be read
- * \returns the number of objects read, or 0 at error or end of file; call
- *          SDL_GetError() for more information.
+ * \param size the number of bytes to read from the data source.
+ * \returns the number of bytes read, 0 at end of file, -1 on error, and -2 for data not ready with a non-blocking context.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -432,28 +445,35 @@ extern DECLSPEC Sint64 SDLCALL SDL_RWtell(SDL_RWops *context);
  * \sa SDL_RWseek
  * \sa SDL_RWwrite
  */
-extern DECLSPEC size_t SDLCALL SDL_RWread(SDL_RWops *context,
-                                          void *ptr, size_t size,
-                                          size_t maxnum);
+extern DECLSPEC Sint64 SDLCALL SDL_RWread(SDL_RWops *context, void *ptr, Sint64 size);
 
 /**
  * Write to an SDL_RWops data stream.
  *
- * This function writes exactly `num` objects each of size `size` from the
- * area pointed at by `ptr` to the stream. If this fails for any reason, it'll
- * return less than `num` to demonstrate how far the write progressed. On
- * success, it returns `num`.
+ * This function writes exactly `size` bytes from the area pointed at by
+ * `ptr` to the stream. If this fails for any reason, it'll return less
+ * than `size` to demonstrate how far the write progressed. On success,
+ * it returns `num`.
+ *
+ * On error, this function still attempts to write as much as possible,
+ * so it might return a positive value less than the requested write
+ * size. If the function failed to write anything and there was an
+ * actual error, it will return -1. For streams that support non-blocking
+ * operation, if nothing was written because it would require blocking,
+ * this function returns -2 to distinguish that this is not an error and
+ * the caller can try again later.
  *
  * SDL_RWwrite is actually a function wrapper that calls the SDL_RWops's
  * `write` method appropriately, to simplify application development.
  *
- * Prior to SDL 2.0.10, this function was a macro.
+ * It is an error to specify a negative `size`, but this parameter is
+ * signed so you definitely cannot overflow the return value on a
+ * successful run with enormous amounts of data.
  *
  * \param context a pointer to an SDL_RWops structure
  * \param ptr a pointer to a buffer containing data to write
- * \param size the size of an object to write, in bytes
- * \param num the number of objects to write
- * \returns the number of objects written, which will be less than **num** on
+ * \param size the number of bytes to write
+ * \returns the number of bytes written, which will be less than `num` on
  *          error; call SDL_GetError() for more information.
  *
  * \since This function is available since SDL 3.0.0.
@@ -465,16 +485,15 @@ extern DECLSPEC size_t SDLCALL SDL_RWread(SDL_RWops *context,
  * \sa SDL_RWread
  * \sa SDL_RWseek
  */
-extern DECLSPEC size_t SDLCALL SDL_RWwrite(SDL_RWops *context,
-                                           const void *ptr, size_t size,
-                                           size_t num);
+extern DECLSPEC Sint64 SDLCALL SDL_RWwrite(SDL_RWops *context,
+                                           const void *ptr, Sint64 size);
 
 /**
  * Close and free an allocated SDL_RWops structure.
  *
  * SDL_RWclose() closes and cleans up the SDL_RWops stream. It releases any
  * resources used by the stream and frees the SDL_RWops itself with
- * SDL_FreeRW(). This returns 0 on success, or -1 if the stream failed to
+ * SDL_DestroyRW(). This returns 0 on success, or -1 if the stream failed to
  * flush to its output (e.g. to disk).
  *
  * Note that if this fails to flush the stream to disk, this function reports
@@ -785,8 +804,6 @@ extern DECLSPEC size_t SDLCALL SDL_WriteBE64(SDL_RWops * dst, Uint64 value);
 #ifdef __cplusplus
 }
 #endif
-#include <SDL3/close_code.h>
+#include <SDL3/SDL_close_code.h>
 
 #endif /* SDL_rwops_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -41,7 +41,7 @@
 
 #include <SDL3/SDL_stdinc.h>
 
-#include <SDL3/begin_code.h>
+#include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
 extern "C" {
@@ -296,8 +296,8 @@ extern "C" {
  *
  *  This variable can be set to the following values:
  *
- *    "0"     - You'll call SDL_JoystickUpdate() manually
- *    "1"     - SDL will automatically call SDL_JoystickUpdate() (default)
+ *    "0"     - You'll call SDL_UpdateJoysticks() manually
+ *    "1"     - SDL will automatically call SDL_UpdateJoysticks() (default)
  *
  *  This hint can be toggled on and off at runtime.
  */
@@ -308,8 +308,8 @@ extern "C" {
  *
  *  This variable can be set to the following values:
  *
- *    "0"     - You'll call SDL_SensorUpdate() manually
- *    "1"     - SDL will automatically call SDL_SensorUpdate() (default)
+ *    "0"     - You'll call SDL_UpdateSensors() manually
+ *    "1"     - SDL will automatically call SDL_UpdateSensors() (default)
  *
  *  This hint can be toggled on and off at runtime.
  */
@@ -452,20 +452,20 @@ extern "C" {
 /**
  *  \brief  A variable that lets you manually hint extra gamecontroller db entries.
  *
- *  The variable should be newline delimited rows of gamecontroller config data, see SDL_gamecontroller.h
+ *  The variable should be newline delimited rows of gamecontroller config data, see SDL_gamepad.h
  *
- *  This hint must be set before calling SDL_Init(SDL_INIT_GAMECONTROLLER)
- *  You can update mappings after the system is initialized with SDL_GameControllerMappingForGUID() and SDL_GameControllerAddMapping()
+ *  This hint must be set before calling SDL_Init(SDL_INIT_GAMEPAD)
+ *  You can update mappings after the system is initialized with SDL_GetGamepadMappingForGUID() and SDL_AddGamepadMapping()
  */
 #define SDL_HINT_GAMECONTROLLERCONFIG "SDL_GAMECONTROLLERCONFIG"
 
 /**
  *  \brief  A variable that lets you provide a file with extra gamecontroller db entries.
  *
- *  The file should contain lines of gamecontroller config data, see SDL_gamecontroller.h
+ *  The file should contain lines of gamecontroller config data, see SDL_gamepad.h
  *
- *  This hint must be set before calling SDL_Init(SDL_INIT_GAMECONTROLLER)
- *  You can update mappings after the system is initialized with SDL_GameControllerMappingForGUID() and SDL_GameControllerAddMapping()
+ *  This hint must be set before calling SDL_Init(SDL_INIT_GAMEPAD)
+ *  You can update mappings after the system is initialized with SDL_GetGamepadMappingForGUID() and SDL_AddGamepadMapping()
  */
 #define SDL_HINT_GAMECONTROLLERCONFIG_FILE "SDL_GAMECONTROLLERCONFIG_FILE"
 
@@ -484,7 +484,7 @@ extern "C" {
  *      PS5
  *      SwitchPro
  *
- *  This hint affects what driver is used, and must be set before calling SDL_Init(SDL_INIT_GAMECONTROLLER)
+ *  This hint affects what driver is used, and must be set before calling SDL_Init(SDL_INIT_GAMEPAD)
  */
 #define SDL_HINT_GAMECONTROLLERTYPE "SDL_GAMECONTROLLERTYPE"
 
@@ -676,7 +676,7 @@ extern "C" {
   *    "0"       - Left and right Joy-Con controllers will not be in vertical mode (the default)
   *    "1"       - Left and right Joy-Con controllers will be in vertical mode
   *
-  *  This hint must be set before calling SDL_Init(SDL_INIT_GAMECONTROLLER)
+  *  This hint must be set before calling SDL_Init(SDL_INIT_GAMEPAD)
   */
 #define SDL_HINT_JOYSTICK_HIDAPI_VERTICAL_JOY_CONS "SDL_JOYSTICK_HIDAPI_VERTICAL_JOY_CONS"
 
@@ -1400,7 +1400,7 @@ extern "C" {
 #define SDL_HINT_RENDER_DRIVER              "SDL_RENDER_DRIVER"
 
 /**
- *  \brief  A variable controlling the scaling policy for SDL_RenderSetLogicalSize.
+ *  \brief  A variable controlling the scaling policy for SDL_SetRenderLogicalSize.
  *
  *  This variable can be set to the following values:
  *    "0" or "letterbox" - Uses letterbox/sidebars to fit the entire rendering on screen
@@ -1942,6 +1942,28 @@ extern "C" {
 #define SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING "SDL_WINDOWS_DISABLE_THREAD_NAMING"
 
 /**
+ *  \brief Controls whether menus can be opened with their keyboard shortcut (Alt+mnemonic).
+ *
+ *  If the mnemonics are enabled, then menus can be opened by pressing the Alt
+ *  key and the corresponding mnemonic (for example, Alt+F opens the File menu).
+ *  However, in case an invalid mnemonic is pressed, Windows makes an audible
+ *  beep to convey that nothing happened. This is true even if the window has
+ *  no menu at all!
+ *
+ *  Because most SDL applications don't have menus, and some want to use the Alt
+ *  key for other purposes, SDL disables mnemonics (and the beeping) by default.
+ *
+ *  Note: This also affects keyboard events: with mnemonics enabled, when a
+ *  menu is opened from the keyboard, you will not receive a KEYUP event for
+ *  the mnemonic key, and *might* not receive one for Alt.
+ *
+ *  This variable can be set to the following values:
+ *    "0"       - Alt+mnemonic does nothing, no beeping. (default)
+ *    "1"       - Alt+mnemonic opens menus, invalid mnemonics produce a beep.
+ */
+#define SDL_HINT_WINDOWS_ENABLE_MENU_MNEMONICS "SDL_WINDOWS_ENABLE_MENU_MNEMONICS"
+
+/**
  *  \brief  A variable controlling whether the windows message loop is processed by SDL 
  *
  *  This variable can be set to the following values:
@@ -2313,7 +2335,7 @@ extern "C" {
  *  This hint is available since SDL 2.0.22. Before then, you could set
  *  the environment variable to get the same effect.
  */
-#define SDL_HINT_VIDEODRIVER "SDL_VIDEODRIVER"
+#define SDL_HINT_VIDEO_DRIVER "SDL_VIDEO_DRIVER"
 
 /**
  *  \brief  A variable that decides what audio backend to use.
@@ -2336,7 +2358,7 @@ extern "C" {
  *  This hint is available since SDL 2.0.22. Before then, you could set
  *  the environment variable to get the same effect.
  */
-#define SDL_HINT_AUDIODRIVER "SDL_AUDIODRIVER"
+#define SDL_HINT_AUDIO_DRIVER "SDL_AUDIO_DRIVER"
 
 /**
  *  \brief  A variable that decides what KMSDRM device to use.
@@ -2503,14 +2525,16 @@ typedef void (SDLCALL *SDL_HintCallback)(void *userdata, const char *name, const
  * \param callback An SDL_HintCallback function that will be called when the
  *                 hint value changes
  * \param userdata a pointer to pass to the callback function
+ * \returns 0 on success or a negative error code on failure; call
+ *          SDL_GetError() for more information.
  *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_DelHintCallback
  */
-extern DECLSPEC void SDLCALL SDL_AddHintCallback(const char *name,
-                                                 SDL_HintCallback callback,
-                                                 void *userdata);
+extern DECLSPEC int SDLCALL SDL_AddHintCallback(const char *name,
+                                                SDL_HintCallback callback,
+                                                void *userdata);
 
 /**
  * Remove a function watching a particular hint.
@@ -2549,8 +2573,6 @@ extern DECLSPEC void SDLCALL SDL_ClearHints(void);
 #ifdef __cplusplus
 }
 #endif
-#include <SDL3/close_code.h>
+#include <SDL3/SDL_close_code.h>
 
 #endif /* SDL_hints_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

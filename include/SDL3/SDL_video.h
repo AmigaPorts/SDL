@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,11 +33,14 @@
 #include <SDL3/SDL_rect.h>
 #include <SDL3/SDL_surface.h>
 
-#include <SDL3/begin_code.h>
+#include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+
+typedef Uint32 SDL_WindowID;
 
 /**
  *  \brief  The structure that defines a display mode
@@ -55,7 +58,7 @@ typedef struct
     Uint32 format;              /**< pixel format */
     int w;                      /**< width, in screen coordinates */
     int h;                      /**< height, in screen coordinates */
-    int refresh_rate;           /**< refresh rate (or zero for unspecified) */
+    float refresh_rate;         /**< refresh rate (or zero for unspecified) */
     void *driverdata;           /**< driver-specific data, initialize to 0 */
 } SDL_DisplayMode;
 
@@ -103,7 +106,7 @@ typedef enum
 {
     SDL_WINDOW_FULLSCREEN = 0x00000001,         /**< fullscreen window */
     SDL_WINDOW_OPENGL = 0x00000002,             /**< window usable with OpenGL context */
-    SDL_WINDOW_SHOWN = 0x00000004,              /**< window is visible */
+    /* 0x4 was SDL_WINDOW_SHOWN in SDL2, please reserve this bit for sdl2-compat. */
     SDL_WINDOW_HIDDEN = 0x00000008,             /**< window is not visible */
     SDL_WINDOW_BORDERLESS = 0x00000010,         /**< no window decoration */
     SDL_WINDOW_RESIZABLE = 0x00000020,          /**< window can be resized */
@@ -147,48 +150,6 @@ typedef enum
 #define SDL_WINDOWPOS_CENTERED         SDL_WINDOWPOS_CENTERED_DISPLAY(0)
 #define SDL_WINDOWPOS_ISCENTERED(X)    \
             (((X)&0xFFFF0000) == SDL_WINDOWPOS_CENTERED_MASK)
-
-/**
- *  \brief Event subtype for window events
- */
-typedef enum
-{
-    SDL_WINDOWEVENT_NONE,           /**< Never used */
-    SDL_WINDOWEVENT_SHOWN,          /**< Window has been shown */
-    SDL_WINDOWEVENT_HIDDEN,         /**< Window has been hidden */
-    SDL_WINDOWEVENT_EXPOSED,        /**< Window has been exposed and should be
-                                         redrawn */
-    SDL_WINDOWEVENT_MOVED,          /**< Window has been moved to data1, data2
-                                     */
-    SDL_WINDOWEVENT_RESIZED,        /**< Window has been resized to data1xdata2 */
-    SDL_WINDOWEVENT_SIZE_CHANGED,   /**< The window size has changed, either as
-                                         a result of an API call or through the
-                                         system or user changing the window size. */
-    SDL_WINDOWEVENT_MINIMIZED,      /**< Window has been minimized */
-    SDL_WINDOWEVENT_MAXIMIZED,      /**< Window has been maximized */
-    SDL_WINDOWEVENT_RESTORED,       /**< Window has been restored to normal size
-                                         and position */
-    SDL_WINDOWEVENT_ENTER,          /**< Window has gained mouse focus */
-    SDL_WINDOWEVENT_LEAVE,          /**< Window has lost mouse focus */
-    SDL_WINDOWEVENT_FOCUS_GAINED,   /**< Window has gained keyboard focus */
-    SDL_WINDOWEVENT_FOCUS_LOST,     /**< Window has lost keyboard focus */
-    SDL_WINDOWEVENT_CLOSE,          /**< The window manager requests that the window be closed */
-    SDL_WINDOWEVENT_TAKE_FOCUS,     /**< Window is being offered a focus (should SetWindowInputFocus() on itself or a subwindow, or ignore) */
-    SDL_WINDOWEVENT_HIT_TEST,       /**< Window had a hit test that wasn't SDL_HITTEST_NORMAL. */
-    SDL_WINDOWEVENT_ICCPROF_CHANGED,/**< The ICC profile of the window's display has changed. */
-    SDL_WINDOWEVENT_DISPLAY_CHANGED /**< Window has been moved to display data1. */
-} SDL_WindowEventID;
-
-/**
- *  \brief Event subtype for display events
- */
-typedef enum
-{
-    SDL_DISPLAYEVENT_NONE,          /**< Never used */
-    SDL_DISPLAYEVENT_ORIENTATION,   /**< Display orientation has changed to data1 */
-    SDL_DISPLAYEVENT_CONNECTED,     /**< Display has been added to the system */
-    SDL_DISPLAYEVENT_DISCONNECTED   /**< Display has been removed from the system */
-} SDL_DisplayEventID;
 
 /**
  *  \brief Display orientation
@@ -324,48 +285,6 @@ extern DECLSPEC int SDLCALL SDL_GetNumVideoDrivers(void);
 extern DECLSPEC const char *SDLCALL SDL_GetVideoDriver(int index);
 
 /**
- * Initialize the video subsystem, optionally specifying a video driver.
- *
- * This function initializes the video subsystem, setting up a connection to
- * the window manager, etc, and determines the available display modes and
- * pixel formats, but does not initialize a window or graphics mode.
- *
- * If you use this function and you haven't used the SDL_INIT_VIDEO flag with
- * either SDL_Init() or SDL_InitSubSystem(), you should call SDL_VideoQuit()
- * before calling SDL_Quit().
- *
- * It is safe to call this function multiple times. SDL_VideoInit() will call
- * SDL_VideoQuit() itself if the video subsystem has already been initialized.
- *
- * You can use SDL_GetNumVideoDrivers() and SDL_GetVideoDriver() to find a
- * specific `driver_name`.
- *
- * \param driver_name the name of a video driver to initialize, or NULL for
- *                    the default driver
- * \returns 0 on success or a negative error code on failure; call
- *          SDL_GetError() for more information.
- *
- * \since This function is available since SDL 3.0.0.
- *
- * \sa SDL_GetNumVideoDrivers
- * \sa SDL_GetVideoDriver
- * \sa SDL_InitSubSystem
- * \sa SDL_VideoQuit
- */
-extern DECLSPEC int SDLCALL SDL_VideoInit(const char *driver_name);
-
-/**
- * Shut down the video subsystem, if initialized with SDL_VideoInit().
- *
- * This function closes all windows, and restores the original video mode.
- *
- * \since This function is available since SDL 3.0.0.
- *
- * \sa SDL_VideoInit
- */
-extern DECLSPEC void SDLCALL SDL_VideoQuit(void);
-
-/**
  * Get the name of the currently initialized video driver.
  *
  * \returns the name of the current video driver or NULL if no driver has been
@@ -463,10 +382,10 @@ extern DECLSPEC int SDLCALL SDL_GetDisplayUsableBounds(int displayIndex, SDL_Rec
  * **WARNING**: This reports the DPI that the hardware reports, and it is not
  * always reliable! It is almost always better to use SDL_GetWindowSize() to
  * find the window size, which might be in logical points instead of pixels,
- * and then SDL_GetWindowSizeInPixels(), SDL_GL_GetDrawableSize(), 
- * SDL_Vulkan_GetDrawableSize(), SDL_Metal_GetDrawableSize(), or 
+ * and then SDL_GetWindowSizeInPixels(), SDL_GL_GetDrawableSize(),
+ * SDL_Vulkan_GetDrawableSize(), SDL_Metal_GetDrawableSize(), or
  * SDL_GetRendererOutputSize(), and compare the two values to get an actual
- * scaling value between the two. We will be rethinking how high-dpi details 
+ * scaling value between the two. We will be rethinking how high-dpi details
  * should be managed in SDL3 to make things more consistent, reliable, and clear.
  *
  * \param displayIndex the index of the display from which DPI information
@@ -624,7 +543,7 @@ extern DECLSPEC SDL_DisplayMode * SDLCALL SDL_GetClosestDisplayMode(int displayI
  * \sa SDL_GetDisplayBounds
  * \sa SDL_GetNumVideoDisplays
  */
-extern DECLSPEC int SDLCALL SDL_GetPointDisplayIndex(const SDL_Point * point);
+extern DECLSPEC int SDLCALL SDL_GetDisplayIndexForPoint(const SDL_Point * point);
 
 /**
  * Get the index of the display primarily containing a rect
@@ -639,7 +558,7 @@ extern DECLSPEC int SDLCALL SDL_GetPointDisplayIndex(const SDL_Point * point);
  * \sa SDL_GetDisplayBounds
  * \sa SDL_GetNumVideoDisplays
  */
-extern DECLSPEC int SDLCALL SDL_GetRectDisplayIndex(const SDL_Rect * rect);
+extern DECLSPEC int SDLCALL SDL_GetDisplayIndexForRect(const SDL_Rect * rect);
 
 /**
  * Get the index of the display associated with a window.
@@ -740,9 +659,7 @@ extern DECLSPEC Uint32 SDLCALL SDL_GetWindowPixelFormat(SDL_Window * window);
  * - `SDL_WINDOW_ALLOW_HIGHDPI`: window should be created in high-DPI mode if
  *   supported (>= SDL 2.0.1)
  *
- * `SDL_WINDOW_SHOWN` is ignored by SDL_CreateWindow(). The SDL_Window is
- * implicitly shown if SDL_WINDOW_HIDDEN is not set. `SDL_WINDOW_SHOWN` may be
- * queried later using SDL_GetWindowFlags().
+ * The SDL_Window is implicitly shown if SDL_WINDOW_HIDDEN is not set.
  *
  * On Apple's macOS, you **must** set the NSHighResolutionCapable Info.plist
  * property to YES, otherwise you will not receive a High-DPI OpenGL canvas.
@@ -829,7 +746,7 @@ extern DECLSPEC SDL_Window * SDLCALL SDL_CreateWindowFrom(const void *data);
  *
  * \sa SDL_GetWindowFromID
  */
-extern DECLSPEC Uint32 SDLCALL SDL_GetWindowID(SDL_Window * window);
+extern DECLSPEC SDL_WindowID SDLCALL SDL_GetWindowID(SDL_Window * window);
 
 /**
  * Get a window from a stored ID.
@@ -845,7 +762,7 @@ extern DECLSPEC Uint32 SDLCALL SDL_GetWindowID(SDL_Window * window);
  *
  * \sa SDL_GetWindowID
  */
-extern DECLSPEC SDL_Window * SDLCALL SDL_GetWindowFromID(Uint32 id);
+extern DECLSPEC SDL_Window * SDLCALL SDL_GetWindowFromID(SDL_WindowID id);
 
 /**
  * Get the window flags.
@@ -1007,7 +924,7 @@ extern DECLSPEC void SDLCALL SDL_SetWindowSize(SDL_Window * window, int w,
  * The window size in screen coordinates may differ from the size in pixels,
  * if the window was created with `SDL_WINDOW_ALLOW_HIGHDPI` on a platform
  * with high-dpi support (e.g. iOS or macOS). Use SDL_GetWindowSizeInPixels(),
- * SDL_GL_GetDrawableSize(), SDL_Vulkan_GetDrawableSize(), or 
+ * SDL_GL_GetDrawableSize(), SDL_Vulkan_GetDrawableSize(), or
  * SDL_GetRendererOutputSize() to get the real client area size in pixels.
  *
  * \param window the window to query the width and height from
@@ -1344,7 +1261,7 @@ extern DECLSPEC int SDLCALL SDL_UpdateWindowSurface(SDL_Window * window);
  *
  * \param window the window to update
  * \param rects an array of SDL_Rect structures representing areas of the
- *              surface to copy
+ *              surface to copy, in pixels
  * \param numrects the number of rectangles
  * \returns 0 on success or a negative error code on failure; call
  *          SDL_GetError() for more information.
@@ -1699,7 +1616,7 @@ extern DECLSPEC void SDLCALL SDL_DestroyWindow(SDL_Window * window);
  * \sa SDL_DisableScreenSaver
  * \sa SDL_EnableScreenSaver
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_IsScreenSaverEnabled(void);
+extern DECLSPEC SDL_bool SDLCALL SDL_ScreenSaverEnabled(void);
 
 /**
  * Allow the screen to be blanked by a screen saver.
@@ -1707,7 +1624,7 @@ extern DECLSPEC SDL_bool SDLCALL SDL_IsScreenSaverEnabled(void);
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_DisableScreenSaver
- * \sa SDL_IsScreenSaverEnabled
+ * \sa SDL_ScreenSaverEnabled
  */
 extern DECLSPEC void SDLCALL SDL_EnableScreenSaver(void);
 
@@ -1723,7 +1640,7 @@ extern DECLSPEC void SDLCALL SDL_EnableScreenSaver(void);
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_EnableScreenSaver
- * \sa SDL_IsScreenSaverEnabled
+ * \sa SDL_ScreenSaverEnabled
  */
 extern DECLSPEC void SDLCALL SDL_DisableScreenSaver(void);
 
@@ -1806,7 +1723,7 @@ extern DECLSPEC int SDLCALL SDL_GL_LoadLibrary(const char *path);
  * \sa SDL_GL_LoadLibrary
  * \sa SDL_GL_UnloadLibrary
  */
-extern DECLSPEC void *SDLCALL SDL_GL_GetProcAddress(const char *proc);
+extern DECLSPEC SDL_FunctionPointer SDLCALL SDL_GL_GetProcAddress(const char *proc);
 
 /**
  * Get an EGL library function by name.
@@ -1823,7 +1740,7 @@ extern DECLSPEC void *SDLCALL SDL_GL_GetProcAddress(const char *proc);
  *
  * \sa SDL_GL_GetCurrentEGLDisplay
  */
-extern DECLSPEC void *SDLCALL SDL_EGL_GetProcAddress(const char *proc);
+extern DECLSPEC SDL_FunctionPointer SDLCALL SDL_EGL_GetProcAddress(const char *proc);
 
 /**
  * Unload the OpenGL library previously loaded by SDL_GL_LoadLibrary().
@@ -2075,18 +1992,20 @@ extern DECLSPEC int SDLCALL SDL_GL_SetSwapInterval(int interval);
  * Get the swap interval for the current OpenGL context.
  *
  * If the system can't determine the swap interval, or there isn't a valid
- * current context, this function will return 0 as a safe default.
+ * current context, this function will set *interval to 0 as a safe default.
  *
- * \returns 0 if there is no vertical retrace synchronization, 1 if the buffer
+ * \param interval Output interval value. 0 if there is no vertical retrace synchronization, 1 if the buffer
  *          swap is synchronized with the vertical retrace, and -1 if late
- *          swaps happen immediately instead of waiting for the next retrace;
+ *          swaps happen immediately instead of waiting for the next retrace
+ *
+ * \returns 0 on success or -1 error.
  *          call SDL_GetError() for more information.
  *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GL_SetSwapInterval
  */
-extern DECLSPEC int SDLCALL SDL_GL_GetSwapInterval(void);
+extern DECLSPEC int SDLCALL SDL_GL_GetSwapInterval(int *interval);
 
 /**
  * Update a window with OpenGL rendering.
@@ -2100,9 +2019,12 @@ extern DECLSPEC int SDLCALL SDL_GL_GetSwapInterval(void);
  *
  * \param window the window to change
  *
+ * \returns 0 on success or a negative error code on failure; call
+ *          SDL_GetError() for more information.
+ *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC void SDLCALL SDL_GL_SwapWindow(SDL_Window * window);
+extern DECLSPEC int SDLCALL SDL_GL_SwapWindow(SDL_Window * window);
 
 /**
  * Delete an OpenGL context.
@@ -2122,8 +2044,6 @@ extern DECLSPEC void SDLCALL SDL_GL_DeleteContext(SDL_GLContext context);
 #ifdef __cplusplus
 }
 #endif
-#include <SDL3/close_code.h>
+#include <SDL3/SDL_close_code.h>
 
 #endif /* SDL_video_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

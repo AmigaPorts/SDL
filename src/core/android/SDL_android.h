@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -47,7 +47,8 @@ extern SDL_DisplayOrientation Android_JNI_GetDisplayOrientation(void);
 extern int Android_JNI_GetDisplayDPI(float *ddpi, float *xdpi, float *ydpi);
 
 /* Audio support */
-extern int Android_JNI_OpenAudioDevice(int iscapture, SDL_AudioSpec *spec);
+extern void Android_DetectDevices(void);
+extern int Android_JNI_OpenAudioDevice(int iscapture, int device_id, SDL_AudioSpec *spec);
 extern void *Android_JNI_GetAudioBuffer(void);
 extern void Android_JNI_WriteAudioBuffer(void);
 extern int Android_JNI_CaptureAudioBuffer(void *buffer, int buflen);
@@ -62,8 +63,8 @@ extern SDL_bool Android_IsChromebook(void);
 int Android_JNI_FileOpen(SDL_RWops *ctx, const char *fileName, const char *mode);
 Sint64 Android_JNI_FileSize(SDL_RWops *ctx);
 Sint64 Android_JNI_FileSeek(SDL_RWops *ctx, Sint64 offset, int whence);
-size_t Android_JNI_FileRead(SDL_RWops *ctx, void *buffer, size_t size, size_t maxnum);
-size_t Android_JNI_FileWrite(SDL_RWops *ctx, const void *buffer, size_t size, size_t num);
+Sint64 Android_JNI_FileRead(SDL_RWops *ctx, void *buffer, Sint64 size);
+Sint64 Android_JNI_FileWrite(SDL_RWops *ctx, const void *buffer, Sint64 size);
 int Android_JNI_FileClose(SDL_RWops *ctx);
 
 /* Environment support */
@@ -143,5 +144,3 @@ void Android_ActivityMutex_Lock_Running(void);
 }
 /* *INDENT-ON* */
 #endif
-
-/* vi: set ts=4 sw=4 expandtab: */

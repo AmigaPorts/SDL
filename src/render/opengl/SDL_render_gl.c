@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -21,7 +21,7 @@
 #include "SDL_internal.h"
 
 #if SDL_VIDEO_RENDER_OGL && !SDL_RENDER_DISABLED
-#include "../../video/SDL_sysvideo.h" /* For SDL_GL_SwapWindowWithResult and SDL_RecreateWindow */
+#include "../../video/SDL_sysvideo.h" /* For SDL_RecreateWindow */
 #include <SDL3/SDL_opengl.h>
 #include "../SDL_sysrender.h"
 #include "SDL_shaders_gl.h"
@@ -245,20 +245,13 @@ static int GL_LoadFunctions(GL_RenderData *data)
 #define SDL_PROC(ret, func, params) data->func = func;
 #else
     int retval = 0;
-#ifdef __AMIGAOS4__
-#define SDL_PROC(ret,func,params)                                                             \
-    do {                                                                                      \
-        data->func = SDL_GL_GetProcAddress(#func);                                            \
-    } while ( 0 );
-#else
 #define SDL_PROC(ret, func, params)                                                           \
     do {                                                                                      \
-        data->func = SDL_GL_GetProcAddress(#func);                                            \
+        data->func = (ret (APIENTRY *) params)SDL_GL_GetProcAddress(#func);                                            \
         if (!data->func) {                                                                    \
             retval = SDL_SetError("Couldn't load GL function %s: %s", #func, SDL_GetError()); \
         }                                                                                     \
     } while (0);
-#endif /* __AMIGAOS4__ */
 #endif /* __SDL_NOGETPROCADDR__ */
 
 #include "SDL_glfuncs.h"
@@ -336,8 +329,8 @@ static void GL_WindowEvent(SDL_Renderer *renderer, const SDL_WindowEvent *event)
      * changed behind our backs. x/y changes might seem weird but viewport
      * resets have been observed on macOS at minimum!
      */
-    if (event->event == SDL_WINDOWEVENT_SIZE_CHANGED ||
-        event->event == SDL_WINDOWEVENT_MOVED) {
+    if (event->type == SDL_WINDOWEVENT_SIZE_CHANGED ||
+        event->type == SDL_WINDOWEVENT_MOVED) {
         GL_RenderData *data = (GL_RenderData *)renderer->driverdata;
         data->drawstate.viewport_dirty = SDL_TRUE;
     }
@@ -386,6 +379,10 @@ static GLenum GetBlendEquation(SDL_BlendOperation operation)
         return GL_FUNC_SUBTRACT;
     case SDL_BLENDOPERATION_REV_SUBTRACT:
         return GL_FUNC_REVERSE_SUBTRACT;
+    case SDL_BLENDOPERATION_MINIMUM:
+        return GL_MIN;
+    case SDL_BLENDOPERATION_MAXIMUM:
+        return GL_MAX;
     default:
         return GL_INVALID_ENUM;
     }
@@ -1521,7 +1518,7 @@ static int GL_RenderPresent(SDL_Renderer *renderer)
 {
     GL_ActivateRenderer(renderer);
 
-    return SDL_GL_SwapWindowWithResult(renderer->window);
+    return SDL_GL_SwapWindow(renderer->window);
 }
 
 static void GL_DestroyTexture(SDL_Renderer *renderer, SDL_Texture *texture)
@@ -1692,6 +1689,7 @@ static int GL_UnbindTexture(SDL_Renderer *renderer, SDL_Texture *texture)
 static int GL_SetVSync(SDL_Renderer *renderer, const int vsync)
 {
     int retval;
+    int interval = 0;
     if (vsync) {
         retval = SDL_GL_SetSwapInterval(1);
     } else {
@@ -1700,7 +1698,13 @@ static int GL_SetVSync(SDL_Renderer *renderer, const int vsync)
     if (retval != 0) {
         return retval;
     }
-    if (SDL_GL_GetSwapInterval() > 0) {
+
+    retval = SDL_GL_GetSwapInterval(&interval);
+    if (retval < 0) {
+        return retval;
+    }
+
+    if (interval > 0) {
         renderer->info.flags |= SDL_RENDERER_PRESENTVSYNC;
     } else {
         renderer->info.flags &= ~SDL_RENDERER_PRESENTVSYNC;
@@ -1845,8 +1849,16 @@ static SDL_Renderer *GL_CreateRenderer(SDL_Window *window, Uint32 flags)
     } else {
         SDL_GL_SetSwapInterval(0);
     }
-    if (SDL_GL_GetSwapInterval() > 0) {
-        renderer->info.flags |= SDL_RENDERER_PRESENTVSYNC;
+
+    {
+        int interval = 0;
+        if (SDL_GL_GetSwapInterval(&interval) < 0) {
+            /* Error */
+        } else {
+            if (interval > 0) {
+                renderer->info.flags |= SDL_RENDERER_PRESENTVSYNC;
+            }
+        }
     }
 
     /* Check for debug output support */
@@ -2005,5 +2017,3 @@ SDL_RenderDriver GL_RenderDriver = {
 };
 
 #endif /* SDL_VIDEO_RENDER_OGL && !SDL_RENDER_DISABLED */
-
-/* vi: set ts=4 sw=4 expandtab: */

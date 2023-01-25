@@ -35,8 +35,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\include\SDL3\begin_code.h" />
-    <ClInclude Include="..\include\SDL3\close_code.h" />
+    <ClInclude Include="..\include\SDL3\SDL_begin_code.h" />
+    <ClInclude Include="..\include\SDL3\SDL_close_code.h" />
     <ClInclude Include="..\include\SDL3\SDL.h" />
     <ClInclude Include="..\include\SDL3\SDL_assert.h" />
     <ClInclude Include="..\include\SDL3\SDL_atomic.h" />
@@ -62,6 +62,7 @@
     <ClInclude Include="..\include\SDL3\SDL_locale.h" />
     <ClInclude Include="..\include\SDL3\SDL_log.h" />
     <ClInclude Include="..\include\SDL3\SDL_main.h" />
+    <ClInclude Include="..\include\SDL3\SDL_main_impl.h" />
     <ClInclude Include="..\include\SDL3\SDL_misc.h" />
     <ClInclude Include="..\include\SDL3\SDL_mouse.h" />
     <ClInclude Include="..\include\SDL3\SDL_mutex.h" />
@@ -69,6 +70,7 @@
     <ClInclude Include="..\include\SDL3\SDL_opengles2.h" />
     <ClInclude Include="..\include\SDL3\SDL_pixels.h" />
     <ClInclude Include="..\include\SDL3\SDL_platform.h" />
+    <ClInclude Include="..\include\SDL3\SDL_platform_defines.h" />
     <ClInclude Include="..\include\SDL3\SDL_power.h" />
     <ClInclude Include="..\include\SDL3\SDL_quit.h" />
     <ClInclude Include="..\include\SDL3\SDL_rect.h" />
@@ -120,7 +122,8 @@
     <ClInclude Include="..\src\haptic\windows\SDL_windowshaptic_c.h" />
     <ClInclude Include="..\src\haptic\windows\SDL_xinputhaptic_c.h" />
     <ClInclude Include="..\src\joystick\controller_type.h" />
-    <ClInclude Include="..\src\joystick\SDL_gamecontrollerdb.h" />
+    <ClInclude Include="..\src\joystick\SDL_gamepad_c.h" />
+    <ClInclude Include="..\src\joystick\SDL_gamepad_db.h" />
     <ClInclude Include="..\src\joystick\SDL_joystick_c.h" />
     <ClInclude Include="..\src\joystick\SDL_sysjoystick.h" />
     <ClInclude Include="..\src\joystick\virtual\SDL_virtualjoystick_c.h" />
@@ -291,7 +294,6 @@
     <ClCompile Include="..\src\events\SDL_displayevents.c" />
     <ClCompile Include="..\src\events\SDL_dropevents.c" />
     <ClCompile Include="..\src\events\SDL_events.c" />
-    <ClCompile Include="..\src\events\SDL_gesture.c" />
     <ClCompile Include="..\src\events\SDL_keyboard.c" />
     <ClCompile Include="..\src\events\SDL_mouse.c" />
     <ClCompile Include="..\src\events\SDL_quit.c" />
@@ -317,7 +319,7 @@
     <ClCompile Include="..\src\hidapi\SDL_hidapi.c" />
     <ClCompile Include="..\src\joystick\dummy\SDL_sysjoystick.c" />
     <ClCompile Include="..\src\joystick\controller_type.c" />
-    <ClCompile Include="..\src\joystick\SDL_gamecontroller.c" />
+    <ClCompile Include="..\src\joystick\SDL_gamepad.c" />
     <ClCompile Include="..\src\joystick\SDL_joystick.c" />
     <ClCompile Include="..\src\joystick\virtual\SDL_virtualjoystick.c" />
     <ClCompile Include="..\src\joystick\windows\SDL_dinputjoystick.c" />

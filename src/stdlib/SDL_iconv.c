@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -112,7 +112,7 @@ enum
 #define ENCODING_UCS4NATIVE  ENCODING_UCS4LE
 #endif
 
-struct _SDL_iconv_t
+struct SDL_iconv_data_t
 {
     int src_fmt;
     int dst_fmt;
@@ -861,5 +861,3 @@ SDL_iconv_string(const char *tocode, const char *fromcode, const char *inbuf,
 
     return string;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

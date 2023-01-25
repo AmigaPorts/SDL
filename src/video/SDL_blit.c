@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -140,9 +140,6 @@ static SDL_BlitFunc SDL_ChooseBlitFunc(Uint32 src_format, Uint32 dst_format, int
         } else {
             if (SDL_HasMMX()) {
                 features |= SDL_CPU_MMX;
-            }
-            if (SDL_Has3DNow()) {
-                features |= SDL_CPU_3DNOW;
             }
             if (SDL_HasSSE()) {
                 features |= SDL_CPU_SSE;
@@ -284,5 +281,3 @@ int SDL_CalculateBlit(SDL_Surface *surface)
 
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -12,6 +12,7 @@
 
 /* Program to test surround sound audio channels */
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 
 static int total_channels;
 static int active_channel;
@@ -178,7 +179,7 @@ int main(int argc, char *argv[])
         total_channels = spec.channels;
         active_channel = 0;
 
-        SDL_PauseAudioDevice(dev, 0);
+        SDL_PlayAudioDevice(dev);
 
         for (j = 0; j < total_channels; j++) {
             int sine_freq = is_lfe_channel(j, total_channels) ? LFE_SINE_FREQ_HZ : SINE_FREQ_HZ;
@@ -199,5 +200,3 @@ int main(int argc, char *argv[])
     SDL_Quit();
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

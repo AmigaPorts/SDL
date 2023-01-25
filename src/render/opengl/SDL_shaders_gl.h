@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -56,5 +56,3 @@ extern void GL_SelectShader(GL_ShaderContext *ctx, GL_Shader shader);
 extern void GL_DestroyShaderContext(GL_ShaderContext *ctx);
 
 #endif /* SDL_shaders_gl_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

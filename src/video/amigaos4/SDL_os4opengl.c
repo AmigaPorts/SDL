@@ -84,7 +84,7 @@ OS4_GL_LoadLibrary(_THIS, const char * path)
     return 0;
 }
 
-void *
+SDL_FunctionPointer
 OS4_GL_GetProcAddress(_THIS, const char * proc)
 {
     void *func = NULL;
@@ -151,9 +151,20 @@ OS4_GL_AllocateBuffers(_THIS, int width, int height, int depth, SDL_WindowData *
         return SDL_FALSE;
     }
 
-    uint32 srcFmt = IGraphics->GetBitMapAttr(data->glBackBuffer, BMA_PIXELFORMAT);
-    uint32 src2Fmt = IGraphics->GetBitMapAttr(data->glFrontBuffer, BMA_PIXELFORMAT);
-    uint32 dstFmt = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_PIXELFORMAT);
+#ifdef DEBUG
+    uint32 srcFmt =
+#endif
+    IGraphics->GetBitMapAttr(data->glBackBuffer, BMA_PIXELFORMAT);
+
+#ifdef DEBUG
+    uint32 src2Fmt =
+#endif
+    IGraphics->GetBitMapAttr(data->glFrontBuffer, BMA_PIXELFORMAT);
+
+#ifdef DEBUG
+    uint32 dstFmt =
+#endif
+    IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_PIXELFORMAT);
 
     dprintf("SRC FMT %u, SRC2 FMT %u, DST FMT %u\n", srcFmt, src2Fmt, dstFmt);
 
@@ -282,13 +293,15 @@ OS4_GL_SetSwapInterval(_THIS, int interval)
 }
 
 int
-OS4_GL_GetSwapInterval(_THIS)
+OS4_GL_GetSwapInterval(_THIS, int* interval)
 {
     //dprintf("Called\n");
 
     SDL_VideoData *data = _this->driverdata;
 
-    return data->vsyncEnabled ? 1 : 0;
+    *interval = data->vsyncEnabled ? 1 : 0;
+
+    return 0;
 }
 
 int

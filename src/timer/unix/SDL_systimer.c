@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -162,8 +162,8 @@ void SDL_DelayNS(Uint64 ns)
 
     /* Set the timeout interval */
 #if HAVE_NANOSLEEP
-    remaining.tv_sec = (ns / SDL_NS_PER_SECOND);
-    remaining.tv_nsec = (ns % SDL_NS_PER_SECOND);
+    remaining.tv_sec = (time_t)(ns / SDL_NS_PER_SECOND);
+    remaining.tv_nsec = (long)(ns % SDL_NS_PER_SECOND);
 #else
     then = SDL_GetTicksNS();
 #endif
@@ -183,11 +183,10 @@ void SDL_DelayNS(Uint64 ns)
             break;
         }
         ns -= elapsed;
-
 #ifdef __AMIGAOS4__
         was_error = usleep(ns / 1000);
 #else
-        tv.tv_sec = (ns / SDL_NS_PER_SECOND)
+        tv.tv_sec = (ns / SDL_NS_PER_SECOND);
         tv.tv_usec = SDL_NS_TO_US(ns % SDL_NS_PER_SECOND);
 
         was_error = select(0, NULL, NULL, NULL, &tv);
@@ -197,5 +196,3 @@ void SDL_DelayNS(Uint64 ns)
 }
 
 #endif /* SDL_TIMER_UNIX */
-
-/* vi: set ts=4 sw=4 expandtab: */

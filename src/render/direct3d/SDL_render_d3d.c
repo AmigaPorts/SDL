@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -28,7 +28,6 @@
 #include "../SDL_d3dmath.h"
 #include "../../video/windows/SDL_windowsvideo.h"
 
-#define SDL_ENABLE_SYSWM_WINDOWS
 #include <SDL3/SDL_syswm.h>
 
 #if SDL_VIDEO_RENDER_D3D
@@ -300,7 +299,7 @@ static int D3D_ActivateRenderer(SDL_Renderer *renderer)
             SDL_GetWindowDisplayMode(window, &fullscreen_mode);
             data->pparams.Windowed = FALSE;
             data->pparams.BackBufferFormat = PixelFormatToD3DFMT(fullscreen_mode.format);
-            data->pparams.FullScreen_RefreshRateInHz = fullscreen_mode.refresh_rate;
+            data->pparams.FullScreen_RefreshRateInHz = (UINT)SDL_ceilf(fullscreen_mode.refresh_rate);
         } else {
             data->pparams.Windowed = TRUE;
             data->pparams.BackBufferFormat = D3DFMT_UNKNOWN;
@@ -332,7 +331,7 @@ static void D3D_WindowEvent(SDL_Renderer *renderer, const SDL_WindowEvent *event
 {
     D3D_RenderData *data = (D3D_RenderData *)renderer->driverdata;
 
-    if (event->event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+    if (event->type == SDL_WINDOWEVENT_SIZE_CHANGED) {
         data->updateSize = SDL_TRUE;
     }
 }
@@ -1627,7 +1626,7 @@ D3D_CreateRenderer(SDL_Window *window, Uint32 flags)
     if (window_flags & SDL_WINDOW_FULLSCREEN && (window_flags & SDL_WINDOW_FULLSCREEN_DESKTOP) != SDL_WINDOW_FULLSCREEN_DESKTOP) {
         pparams.Windowed = FALSE;
         pparams.BackBufferFormat = PixelFormatToD3DFMT(fullscreen_mode.format);
-        pparams.FullScreen_RefreshRateInHz = fullscreen_mode.refresh_rate;
+        pparams.FullScreen_RefreshRateInHz = (UINT)SDL_ceilf(fullscreen_mode.refresh_rate);
     } else {
         pparams.Windowed = TRUE;
         pparams.BackBufferFormat = D3DFMT_UNKNOWN;
@@ -1738,7 +1737,7 @@ SDL_RenderDriver D3D_RenderDriver = {
 #if defined(__WIN32__) || defined(__WINGDK__)
 /* This function needs to always exist on Windows, for the Dynamic API. */
 IDirect3DDevice9 *
-SDL_RenderGetD3D9Device(SDL_Renderer *renderer)
+SDL_GetRenderD3D9Device(SDL_Renderer *renderer)
 {
     IDirect3DDevice9 *device = NULL;
 
@@ -1760,5 +1759,3 @@ SDL_RenderGetD3D9Device(SDL_Renderer *renderer)
     return device;
 }
 #endif /* defined(__WIN32__) || defined(__WINGDK__) */
-
-/* vi: set ts=4 sw=4 expandtab: */

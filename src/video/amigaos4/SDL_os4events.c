@@ -80,14 +80,14 @@ OS4_SyncKeyModifiers(_THIS)
     const UWORD qualifiers = IInput->PeekQualifier();
 
     const struct QualifierItem map[] = {
-        { IEQUALIFIER_LSHIFT, KMOD_LSHIFT, "Left Shift" },
-        { IEQUALIFIER_RSHIFT, KMOD_RSHIFT, "Right Shift" },
-        { IEQUALIFIER_CAPSLOCK, KMOD_CAPS, "Capslock" },
-        { IEQUALIFIER_CONTROL, KMOD_CTRL, "Control" },
-        { IEQUALIFIER_LALT, KMOD_LALT, "Left Alt" },
-        { IEQUALIFIER_RALT, KMOD_RALT, "Right Alt" },
-        { IEQUALIFIER_LCOMMAND, KMOD_LGUI, "Left Amiga" },
-        { IEQUALIFIER_RCOMMAND, KMOD_RGUI, "Right Amiga" }
+        { IEQUALIFIER_LSHIFT, SDL_KMOD_LSHIFT, "Left Shift" },
+        { IEQUALIFIER_RSHIFT, SDL_KMOD_RSHIFT, "Right Shift" },
+        { IEQUALIFIER_CAPSLOCK, SDL_KMOD_CAPS, "Capslock" },
+        { IEQUALIFIER_CONTROL, SDL_KMOD_CTRL, "Control" },
+        { IEQUALIFIER_LALT, SDL_KMOD_LALT, "Left Alt" },
+        { IEQUALIFIER_RALT, SDL_KMOD_RALT, "Right Alt" },
+        { IEQUALIFIER_LCOMMAND, SDL_KMOD_LGUI, "Left Amiga" },
+        { IEQUALIFIER_RCOMMAND, SDL_KMOD_RGUI, "Right Amiga" }
     };
 
     dprintf("Current qualifiers: %d\n", qualifiers);

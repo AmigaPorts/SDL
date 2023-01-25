@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -78,7 +78,7 @@ static GUID IID_IGameBarStatics_ = { MAKELONG(0xA292, 0x1DB9), 0xCC78, 0x4173, {
 */
 static IGameBarStatics_ *WINRT_GetGameBar()
 {
-    wchar_t *wClassName = L"Windows.Gaming.UI.GameBar";
+    const wchar_t *wClassName = L"Windows.Gaming.UI.GameBar";
     HSTRING hClassName;
     IActivationFactory *pActivationFactory = NULL;
     IGameBarStatics_ *pGameBar = NULL;
@@ -183,5 +183,3 @@ void WINRT_QuitGameBar(_THIS)
 }
 
 #endif /* SDL_VIDEO_DRIVER_WINRT */
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -64,8 +64,7 @@ int VITA_GLES_LoadLibrary(_THIS, const char *path)
     return 0;
 }
 
-void *
-VITA_GLES_GetProcAddress(_THIS, const char *proc)
+SDL_FunctionPointer VITA_GLES_GetProcAddress(_THIS, const char *proc)
 {
     return eglGetProcAddress(proc);
 }
@@ -78,8 +77,7 @@ void VITA_GLES_UnloadLibrary(_THIS)
 static EGLint width = 960;
 static EGLint height = 544;
 
-SDL_GLContext
-VITA_GLES_CreateContext(_THIS, SDL_Window *window)
+SDL_GLContext VITA_GLES_CreateContext(_THIS, SDL_Window *window)
 {
 
     SDL_WindowData *wdata = (SDL_WindowData *)window->driverdata;
@@ -218,5 +216,3 @@ void VITA_GLES_DeleteContext(_THIS, SDL_GLContext context)
 }
 
 #endif /* SDL_VIDEO_DRIVER_VITA */
-
-/* vi: set ts=4 sw=4 expandtab: */

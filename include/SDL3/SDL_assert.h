@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,7 +24,7 @@
 
 #include <SDL3/SDL_stdinc.h>
 
-#include <SDL3/begin_code.h>
+#include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
 extern "C" {
@@ -51,7 +51,7 @@ assert can have unique static variables associated with it.
 /* Don't include intrin.h here because it contains C++ code */
     extern void __cdecl __debugbreak(void);
     #define SDL_TriggerBreakpoint() __debugbreak()
-#elif _SDL_HAS_BUILTIN(__builtin_debugtrap)
+#elif SDL_HAS_BUILTIN(__builtin_debugtrap)
     #define SDL_TriggerBreakpoint() __builtin_debugtrap()
 #elif (defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__))
     #define SDL_TriggerBreakpoint() __asm__ __volatile__ ( "int $3\n\t" )
@@ -309,18 +309,10 @@ extern DECLSPEC const SDL_AssertData * SDLCALL SDL_GetAssertionReport(void);
  */
 extern DECLSPEC void SDLCALL SDL_ResetAssertionReport(void);
 
-
-/* these had wrong naming conventions until 2.0.4. Please update your app! */
-#define SDL_assert_state SDL_AssertState
-#define SDL_assert_data SDL_AssertData
-
-
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus
 }
 #endif
-#include <SDL3/close_code.h>
+#include <SDL3/SDL_close_code.h>
 
 #endif /* SDL_assert_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

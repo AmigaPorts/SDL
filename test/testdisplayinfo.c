@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -15,6 +15,7 @@
 #include <stdlib.h>
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 
 static void
 print_mode(const char *prefix, const SDL_DisplayMode *mode)
@@ -23,7 +24,7 @@ print_mode(const char *prefix, const SDL_DisplayMode *mode)
         return;
     }
 
-    SDL_Log("%s: fmt=%s w=%d h=%d refresh=%d\n",
+    SDL_Log("%s: fmt=%s w=%d h=%d refresh=%gHz\n",
             prefix, SDL_GetPixelFormatName(mode->format),
             mode->w, mode->h, mode->refresh_rate);
 }
@@ -90,5 +91,3 @@ int main(int argc, char *argv[])
     SDL_Quit();
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

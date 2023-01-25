@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,7 +33,7 @@
 #include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL_rwops.h>
 
-#include <SDL3/begin_code.h>
+#include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
 extern "C" {
@@ -42,7 +42,7 @@ extern "C" {
 /**
  * The structure that defines a point (integer)
  *
- * \sa SDL_EnclosePoints
+ * \sa SDL_GetRectEnclosingPoints
  * \sa SDL_PointInRect
  */
 typedef struct SDL_Point
@@ -54,8 +54,8 @@ typedef struct SDL_Point
 /**
  * The structure that defines a point (floating point)
  *
- * \sa SDL_EncloseFPoints
- * \sa SDL_PointInFRect
+ * \sa SDL_GetRectEnclosingPointsFloat
+ * \sa SDL_PointInRectFloat
  */
 typedef struct SDL_FPoint
 {
@@ -68,12 +68,12 @@ typedef struct SDL_FPoint
  * A rectangle, with the origin at the upper left (integer).
  *
  * \sa SDL_RectEmpty
- * \sa SDL_RectEquals
- * \sa SDL_HasIntersection
- * \sa SDL_IntersectRect
- * \sa SDL_IntersectRectAndLine
- * \sa SDL_UnionRect
- * \sa SDL_EnclosePoints
+ * \sa SDL_RectsEqual
+ * \sa SDL_HasRectIntersection
+ * \sa SDL_GetRectIntersection
+ * \sa SDL_GetRectAndLineIntersection
+ * \sa SDL_GetRectUnion
+ * \sa SDL_GetRectEnclosingPoints
  */
 typedef struct SDL_Rect
 {
@@ -85,15 +85,15 @@ typedef struct SDL_Rect
 /**
  * A rectangle, with the origin at the upper left (floating point).
  *
- * \sa SDL_FRectEmpty
- * \sa SDL_FRectEquals
- * \sa SDL_FRectEqualsEpsilon
- * \sa SDL_HasIntersectionF
- * \sa SDL_IntersectFRect
- * \sa SDL_IntersectFRectAndLine
- * \sa SDL_UnionFRect
- * \sa SDL_EncloseFPoints
- * \sa SDL_PointInFRect
+ * \sa SDL_RectEmptyFloat
+ * \sa SDL_RectsEqualFloat
+ * \sa SDL_RectsEqualEpsilon
+ * \sa SDL_HasRectIntersectionFloat
+ * \sa SDL_GetRectIntersectionFloat
+ * \sa SDL_GetRectAndLineIntersectionFloat
+ * \sa SDL_GetRectUnionFloat
+ * \sa SDL_GetRectEnclosingPointsFloat
+ * \sa SDL_PointInRectFloat
  */
 typedef struct SDL_FRect
 {
@@ -124,7 +124,7 @@ SDL_FORCE_INLINE SDL_bool SDL_RectEmpty(const SDL_Rect *r)
 /**
  * Returns true if the two rectangles are equal.
  */
-SDL_FORCE_INLINE SDL_bool SDL_RectEquals(const SDL_Rect *a, const SDL_Rect *b)
+SDL_FORCE_INLINE SDL_bool SDL_RectsEqual(const SDL_Rect *a, const SDL_Rect *b)
 {
     return (a && b && (a->x == b->x) && (a->y == b->y) &&
             (a->w == b->w) && (a->h == b->h)) ? SDL_TRUE : SDL_FALSE;
@@ -141,9 +141,9 @@ SDL_FORCE_INLINE SDL_bool SDL_RectEquals(const SDL_Rect *a, const SDL_Rect *b)
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_IntersectRect
+ * \sa SDL_GetRectIntersection
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_HasIntersection(const SDL_Rect * A,
+extern DECLSPEC SDL_bool SDLCALL SDL_HasRectIntersection(const SDL_Rect * A,
                                                      const SDL_Rect * B);
 
 /**
@@ -159,9 +159,9 @@ extern DECLSPEC SDL_bool SDLCALL SDL_HasIntersection(const SDL_Rect * A,
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_HasIntersection
+ * \sa SDL_HasRectIntersection
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_IntersectRect(const SDL_Rect * A,
+extern DECLSPEC SDL_bool SDLCALL SDL_GetRectIntersection(const SDL_Rect * A,
                                                    const SDL_Rect * B,
                                                    SDL_Rect * result);
 
@@ -175,7 +175,7 @@ extern DECLSPEC SDL_bool SDLCALL SDL_IntersectRect(const SDL_Rect * A,
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC void SDLCALL SDL_UnionRect(const SDL_Rect * A,
+extern DECLSPEC void SDLCALL SDL_GetRectUnion(const SDL_Rect * A,
                                            const SDL_Rect * B,
                                            SDL_Rect * result);
 
@@ -196,7 +196,7 @@ extern DECLSPEC void SDLCALL SDL_UnionRect(const SDL_Rect * A,
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_EnclosePoints(const SDL_Point * points,
+extern DECLSPEC SDL_bool SDLCALL SDL_GetRectEnclosingPoints(const SDL_Point * points,
                                                    int count,
                                                    const SDL_Rect * clip,
                                                    SDL_Rect * result);
@@ -219,7 +219,7 @@ extern DECLSPEC SDL_bool SDLCALL SDL_EnclosePoints(const SDL_Point * points,
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_IntersectRectAndLine(const SDL_Rect *
+extern DECLSPEC SDL_bool SDLCALL SDL_GetRectAndLineIntersection(const SDL_Rect *
                                                           rect, int *X1,
                                                           int *Y1, int *X2,
                                                           int *Y2);
@@ -230,7 +230,7 @@ extern DECLSPEC SDL_bool SDLCALL SDL_IntersectRectAndLine(const SDL_Rect *
 /**
  * Returns true if point resides inside a rectangle.
  */
-SDL_FORCE_INLINE SDL_bool SDL_PointInFRect(const SDL_FPoint *p, const SDL_FRect *r)
+SDL_FORCE_INLINE SDL_bool SDL_PointInRectFloat(const SDL_FPoint *p, const SDL_FRect *r)
 {
     return ( (p->x >= r->x) && (p->x < (r->x + r->w)) &&
              (p->y >= r->y) && (p->y < (r->y + r->h)) ) ? SDL_TRUE : SDL_FALSE;
@@ -239,7 +239,7 @@ SDL_FORCE_INLINE SDL_bool SDL_PointInFRect(const SDL_FPoint *p, const SDL_FRect 
 /**
  * Returns true if the rectangle has no area.
  */
-SDL_FORCE_INLINE SDL_bool SDL_FRectEmpty(const SDL_FRect *r)
+SDL_FORCE_INLINE SDL_bool SDL_RectEmptyFloat(const SDL_FRect *r)
 {
     return ((!r) || (r->w <= 0.0f) || (r->h <= 0.0f)) ? SDL_TRUE : SDL_FALSE;
 }
@@ -249,7 +249,7 @@ SDL_FORCE_INLINE SDL_bool SDL_FRectEmpty(const SDL_FRect *r)
  *
  * \since This function is available since SDL 2.0.22.
  */
-SDL_FORCE_INLINE SDL_bool SDL_FRectEqualsEpsilon(const SDL_FRect *a, const SDL_FRect *b, const float epsilon)
+SDL_FORCE_INLINE SDL_bool SDL_RectsEqualEpsilon(const SDL_FRect *a, const SDL_FRect *b, const float epsilon)
 {
     return (a && b && ((a == b) ||
             ((SDL_fabsf(a->x - b->x) <= epsilon) &&
@@ -264,9 +264,9 @@ SDL_FORCE_INLINE SDL_bool SDL_FRectEqualsEpsilon(const SDL_FRect *a, const SDL_F
  *
  * \since This function is available since SDL 2.0.22.
  */
-SDL_FORCE_INLINE SDL_bool SDL_FRectEquals(const SDL_FRect *a, const SDL_FRect *b)
+SDL_FORCE_INLINE SDL_bool SDL_RectsEqualFloat(const SDL_FRect *a, const SDL_FRect *b)
 {
-    return SDL_FRectEqualsEpsilon(a, b, SDL_FLT_EPSILON);
+    return SDL_RectsEqualEpsilon(a, b, SDL_FLT_EPSILON);
 }
 
 /**
@@ -280,9 +280,9 @@ SDL_FORCE_INLINE SDL_bool SDL_FRectEquals(const SDL_FRect *a, const SDL_FRect *b
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_IntersectRect
+ * \sa SDL_GetRectIntersection
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_HasIntersectionF(const SDL_FRect * A,
+extern DECLSPEC SDL_bool SDLCALL SDL_HasRectIntersectionFloat(const SDL_FRect * A,
                                                       const SDL_FRect * B);
 
 /**
@@ -298,9 +298,9 @@ extern DECLSPEC SDL_bool SDLCALL SDL_HasIntersectionF(const SDL_FRect * A,
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_HasIntersectionF
+ * \sa SDL_HasRectIntersectionFloat
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_IntersectFRect(const SDL_FRect * A,
+extern DECLSPEC SDL_bool SDLCALL SDL_GetRectIntersectionFloat(const SDL_FRect * A,
                                                     const SDL_FRect * B,
                                                     SDL_FRect * result);
 
@@ -314,7 +314,7 @@ extern DECLSPEC SDL_bool SDLCALL SDL_IntersectFRect(const SDL_FRect * A,
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC void SDLCALL SDL_UnionFRect(const SDL_FRect * A,
+extern DECLSPEC void SDLCALL SDL_GetRectUnionFloat(const SDL_FRect * A,
                                             const SDL_FRect * B,
                                             SDL_FRect * result);
 
@@ -336,7 +336,7 @@ extern DECLSPEC void SDLCALL SDL_UnionFRect(const SDL_FRect * A,
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_EncloseFPoints(const SDL_FPoint * points,
+extern DECLSPEC SDL_bool SDLCALL SDL_GetRectEnclosingPointsFloat(const SDL_FPoint * points,
                                                     int count,
                                                     const SDL_FRect * clip,
                                                     SDL_FRect * result);
@@ -360,7 +360,7 @@ extern DECLSPEC SDL_bool SDLCALL SDL_EncloseFPoints(const SDL_FPoint * points,
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_IntersectFRectAndLine(const SDL_FRect *
+extern DECLSPEC SDL_bool SDLCALL SDL_GetRectAndLineIntersectionFloat(const SDL_FRect *
                                                            rect, float *X1,
                                                            float *Y1, float *X2,
                                                            float *Y2);
@@ -369,8 +369,6 @@ extern DECLSPEC SDL_bool SDLCALL SDL_IntersectFRectAndLine(const SDL_FRect *
 #ifdef __cplusplus
 }
 #endif
-#include <SDL3/close_code.h>
+#include <SDL3/SDL_close_code.h>
 
 #endif /* SDL_rect_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

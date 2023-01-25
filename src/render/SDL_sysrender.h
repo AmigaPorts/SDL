@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -249,10 +249,6 @@ struct SDL_Renderer
     /* List of triangle indices to draw rects */
     int rect_index_order[6];
 
-    /* Remainder from scaled relative motion */
-    float xrel;
-    float yrel;
-
     /* The list of textures */
     SDL_Texture *textures;
     SDL_Texture *target;
@@ -317,8 +313,8 @@ extern SDL_BlendOperation SDL_GetBlendModeAlphaOperation(SDL_BlendMode blendMode
    the next call, because it might be in an array that gets realloc()'d. */
 extern void *SDL_AllocateRenderVertices(SDL_Renderer *renderer, const size_t numbytes, const size_t alignment, size_t *offset);
 
-extern int SDL_PrivateLowerBlitScaled(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect, SDL_ScaleMode scaleMode);
-extern int SDL_PrivateUpperBlitScaled(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect, SDL_ScaleMode scaleMode);
+extern int SDL_PrivateBlitSurfaceUncheckedScaled(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect, SDL_ScaleMode scaleMode);
+extern int SDL_PrivateBlitSurfaceScaled(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect, SDL_ScaleMode scaleMode);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus
@@ -326,5 +322,3 @@ extern int SDL_PrivateUpperBlitScaled(SDL_Surface *src, const SDL_Rect *srcrect,
 #endif
 
 #endif /* SDL_sysrender_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

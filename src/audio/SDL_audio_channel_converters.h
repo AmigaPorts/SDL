@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -1398,5 +1398,3 @@ static const SDL_AudioFilter channel_converters[8][8] = { /* [from][to] */
                                                           { SDL_Convert61ToMono, SDL_Convert61ToStereo, SDL_Convert61To21, SDL_Convert61ToQuad, SDL_Convert61To41, SDL_Convert61To51, NULL, SDL_Convert61To71 },
                                                           { SDL_Convert71ToMono, SDL_Convert71ToStereo, SDL_Convert71To21, SDL_Convert71ToQuad, SDL_Convert71To41, SDL_Convert71To51, SDL_Convert71To61, NULL }
 };
-
-/* vi: set ts=4 sw=4 expandtab: */

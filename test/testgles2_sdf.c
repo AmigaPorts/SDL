@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -16,6 +16,7 @@
 #endif
 
 #include <SDL3/SDL_test_common.h>
+#include <SDL3/SDL_main.h>
 #include "testutils.h"
 
 #if defined(__IOS__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__) || defined(__WINDOWS__) || defined(__LINUX__)
@@ -72,7 +73,7 @@ static int LoadContext(GLES2_Context *data)
 #else
 #define SDL_PROC(ret, func, params)                                                            \
     do {                                                                                       \
-        data->func = SDL_GL_GetProcAddress(#func);                                             \
+        data->func = (ret (APIENTRY *) params)SDL_GL_GetProcAddress(#func);                    \
         if (!data->func) {                                                                     \
             return SDL_SetError("Couldn't load GLES2 function %s: %s", #func, SDL_GetError()); \
         }                                                                                      \
@@ -354,30 +355,30 @@ void loop()
             break;
         }
 
-        case SDL_WINDOWEVENT:
-            switch (event.window.event) {
-            case SDL_WINDOWEVENT_RESIZED:
-                for (i = 0; i < state->num_windows; ++i) {
-                    if (event.window.windowID == SDL_GetWindowID(state->windows[i])) {
-                        int w, h;
-                        status = SDL_GL_MakeCurrent(state->windows[i], context[i]);
-                        if (status) {
-                            SDL_Log("SDL_GL_MakeCurrent(): %s\n", SDL_GetError());
-                            break;
-                        }
-                        /* Change view port to the new window dimensions */
-                        SDL_GL_GetDrawableSize(state->windows[i], &w, &h);
-                        ctx.glViewport(0, 0, w, h);
-                        state->window_w = event.window.data1;
-                        state->window_h = event.window.data2;
-                        /* Update window content */
-                        Render(event.window.data1, event.window.data2, &datas[i]);
-                        SDL_GL_SwapWindow(state->windows[i]);
+        case SDL_WINDOWEVENT_RESIZED:
+            for (i = 0; i < state->num_windows; ++i) {
+                if (event.window.windowID == SDL_GetWindowID(state->windows[i])) {
+                    int w, h;
+                    status = SDL_GL_MakeCurrent(state->windows[i], context[i]);
+                    if (status) {
+                        SDL_Log("SDL_GL_MakeCurrent(): %s\n", SDL_GetError());
                         break;
                     }
+                    /* Change view port to the new window dimensions */
+                    SDL_GL_GetDrawableSize(state->windows[i], &w, &h);
+                    ctx.glViewport(0, 0, w, h);
+                    state->window_w = event.window.data1;
+                    state->window_h = event.window.data2;
+                    /* Update window content */
+                    Render(event.window.data1, event.window.data2, &datas[i]);
+                    SDL_GL_SwapWindow(state->windows[i]);
+                    break;
                 }
-                break;
             }
+            break;
+
+        default:
+            break;
         }
         SDLTest_CommonEvent(state, &event, &done);
     }
@@ -787,5 +788,3 @@ int main(int argc, char *argv[])
 }
 
 #endif /* HAVE_OPENGLES2 */
-
-/* vi: set ts=4 sw=4 expandtab: */

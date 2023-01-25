@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -21,5 +21,3 @@
 #include "SDL_internal.h"
 
 typedef int SYS_ThreadHandle;
-
-/* vi: set ts=4 sw=4 expandtab: */

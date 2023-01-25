@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -31,7 +31,7 @@
 #include "SDL_bopengl.h"
 #endif
 
-#include "../../main/haiku/SDL_BApp.h"
+#include "../../core/haiku/SDL_BApp.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -169,7 +169,7 @@ static void _BDisplayModeToSdlDisplayMode(display_mode *bmode,
         SDL_DisplayMode *mode) {
     mode->w = bmode->virtual_width;
     mode->h = bmode->virtual_height;
-    mode->refresh_rate = (int)get_refresh_rate(*bmode);
+    mode->refresh_rate = get_refresh_rate(*bmode);
 
 #if WRAP_BMODE
     SDL_DisplayModeData *data = (SDL_DisplayModeData*)SDL_calloc(1,
@@ -302,5 +302,3 @@ int HAIKU_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode
 #endif
 
 #endif /* SDL_VIDEO_DRIVER_HAIKU */
-
-/* vi: set ts=4 sw=4 expandtab: */

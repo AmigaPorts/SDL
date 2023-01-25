@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,7 +33,7 @@ static int SDL_SendDrop(SDL_Window *window, const SDL_EventType evtype, const ch
     int posted = 0;
 
     /* Post the event, if desired */
-    if (SDL_GetEventState(evtype) == SDL_ENABLE) {
+    if (SDL_EventEnabled(evtype)) {
         const SDL_bool need_begin = window ? !window->is_dropping : !app_is_dropping;
         SDL_Event event;
 
@@ -85,5 +85,3 @@ int SDL_SendDropComplete(SDL_Window *window)
 {
     return SDL_SendDrop(window, SDL_DROPCOMPLETE, NULL);
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -16,6 +16,7 @@
 #endif
 
 #include <SDL3/SDL_test_common.h>
+#include <SDL3/SDL_main.h>
 
 #if defined(__IOS__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__) || defined(__WINDOWS__) || defined(__LINUX__) || defined(__AMIGAOS4__)
 #define HAVE_OPENGLES2
@@ -70,8 +71,8 @@ static int LoadContext(GLES2_Context *data)
 #else
 #define SDL_PROC(ret, func, params)                                                            \
     do {                                                                                       \
-        data->my##func = SDL_GL_GetProcAddress(#func);                                         \
-        if (!data->func) {                                                                     \
+        data->my##func = (ret (APIENTRY *) params)SDL_GL_GetProcAddress(#func);                \
+        if (!data->my##func) {                                                                 \
             return SDL_SetError("Couldn't load GLES2 function %s: %s", #func, SDL_GetError()); \
         }                                                                                      \
     } while (0);
@@ -261,7 +262,7 @@ link_program(struct shader_data *data)
 
 /* 3D data. Vertex range -0.5..0.5 in all axes.
  * Z -0.5 is near, 0.5 is far. */
-const float _vertices[] = {
+const float g_vertices[] = {
     /* Front face. */
     /* Bottom left */
     -0.5,
@@ -390,7 +391,7 @@ const float _vertices[] = {
     0.5,
 };
 
-const float _colors[] = {
+const float g_colors[] = {
     /* Front face */
     /* Bottom left */
     1.0, 0.0, 0.0, /* red */
@@ -447,7 +448,7 @@ const float _colors[] = {
     1.0, 0.0, 1.0, /* magenta */
 };
 
-const char *_shader_vert_src =
+const char *g_shader_vert_src =
     " attribute vec4 av4position; "
     " attribute vec3 av3color; "
     " uniform mat4 mvp; "
@@ -457,7 +458,7 @@ const char *_shader_vert_src =
     "    gl_Position = mvp * av4position; "
     " } ";
 
-const char *_shader_frag_src =
+const char *g_shader_frag_src =
     " precision lowp float; "
     " varying vec3 vv3color; "
     " void main() { "
@@ -566,7 +567,7 @@ loop_threaded()
 
     /* Wait for events */
     while (SDL_WaitEvent(&event) && !done) {
-        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE) {
+        if (event.type == SDL_WINDOWEVENT_CLOSE) {
             SDL_Window *window = SDL_GetWindowFromID(event.window.windowID);
             if (window) {
                 for (i = 0; i < state->num_windows; ++i) {
@@ -800,8 +801,8 @@ int main(int argc, char *argv[])
         data->angle_z = 0;
 
         /* Shader Initialization */
-        process_shader(&data->shader_vert, _shader_vert_src, GL_VERTEX_SHADER);
-        process_shader(&data->shader_frag, _shader_frag_src, GL_FRAGMENT_SHADER);
+        process_shader(&data->shader_vert, g_shader_vert_src, GL_VERTEX_SHADER);
+        process_shader(&data->shader_frag, g_shader_frag_src, GL_FRAGMENT_SHADER);
 
         /* Create shader_program (ready to attach shaders) */
         data->shader_program = GL_CHECK(ctx.myglCreateProgram());
@@ -826,13 +827,13 @@ int main(int argc, char *argv[])
 
         GL_CHECK(ctx.myglGenBuffers(1, &data->position_buffer));
         GL_CHECK(ctx.myglBindBuffer(GL_ARRAY_BUFFER, data->position_buffer));
-        GL_CHECK(ctx.myglBufferData(GL_ARRAY_BUFFER, sizeof(_vertices), _vertices, GL_STATIC_DRAW));
+        GL_CHECK(ctx.myglBufferData(GL_ARRAY_BUFFER, sizeof(g_vertices), g_vertices, GL_STATIC_DRAW));
         GL_CHECK(ctx.myglVertexAttribPointer(data->attr_position, 3, GL_FLOAT, GL_FALSE, 0, 0));
         GL_CHECK(ctx.myglBindBuffer(GL_ARRAY_BUFFER, 0));
 
         GL_CHECK(ctx.myglGenBuffers(1, &data->color_buffer));
         GL_CHECK(ctx.myglBindBuffer(GL_ARRAY_BUFFER, data->color_buffer));
-        GL_CHECK(ctx.myglBufferData(GL_ARRAY_BUFFER, sizeof(_colors), _colors, GL_STATIC_DRAW));
+        GL_CHECK(ctx.myglBufferData(GL_ARRAY_BUFFER, sizeof(g_colors), g_colors, GL_STATIC_DRAW));
         GL_CHECK(ctx.myglVertexAttribPointer(data->attr_color, 3, GL_FLOAT, GL_FALSE, 0, 0));
         GL_CHECK(ctx.myglBindBuffer(GL_ARRAY_BUFFER, 0));
 
@@ -898,5 +899,3 @@ int main(int argc, char *argv[])
 }
 
 #endif /* HAVE_OPENGLES2 */
-
-/* vi: set ts=4 sw=4 expandtab: */

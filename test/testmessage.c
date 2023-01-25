@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -15,6 +15,7 @@
 #include <stdlib.h>
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 
 /* Call this instead of exit(), so we can clean up SDL: atexit() is evil. */
 static void
@@ -187,7 +188,7 @@ int main(int argc, char *argv[])
         /* On wayland, no window will actually show until something has
            actually been displayed.
         */
-        SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
+        SDL_Renderer *renderer = SDL_CreateRenderer(window, NULL, 0);
         SDL_RenderPresent(renderer);
 
         success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
@@ -209,5 +210,3 @@ int main(int argc, char *argv[])
     SDL_Quit();
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

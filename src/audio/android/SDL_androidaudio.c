@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -34,6 +34,7 @@
 static SDL_AudioDevice *audioDevice = NULL;
 static SDL_AudioDevice *captureDevice = NULL;
 
+
 static int ANDROIDAUDIO_OpenDevice(_THIS, const char *devname)
 {
     SDL_AudioFormat test_format;
@@ -53,7 +54,7 @@ static int ANDROIDAUDIO_OpenDevice(_THIS, const char *devname)
         return SDL_OutOfMemory();
     }
 
-    for (test_format = SDL_FirstAudioFormat(this->spec.format); test_format; test_format = SDL_NextAudioFormat()) {
+    for (test_format = SDL_GetFirstAudioFormat(this->spec.format); test_format; test_format = SDL_GetNextAudioFormat()) {
         if ((test_format == AUDIO_U8) ||
             (test_format == AUDIO_S16) ||
             (test_format == AUDIO_F32)) {
@@ -67,8 +68,14 @@ static int ANDROIDAUDIO_OpenDevice(_THIS, const char *devname)
         return SDL_SetError("%s: Unsupported audio format", "android");
     }
 
-    if (Android_JNI_OpenAudioDevice(iscapture, &this->spec) < 0) {
-        return -1;
+    {
+        int audio_device_id = 0;
+        if (devname != NULL) {
+            audio_device_id = SDL_atoi(devname);
+        }
+        if (Android_JNI_OpenAudioDevice(iscapture, audio_device_id, &this->spec) < 0) {
+            return -1;
+        }
     }
 
     SDL_CalculateAudioSpec(&this->spec);
@@ -115,17 +122,19 @@ static void ANDROIDAUDIO_CloseDevice(_THIS)
 static SDL_bool ANDROIDAUDIO_Init(SDL_AudioDriverImpl *impl)
 {
     /* Set the function pointers */
+    impl->DetectDevices = Android_DetectDevices;
     impl->OpenDevice = ANDROIDAUDIO_OpenDevice;
     impl->PlayDevice = ANDROIDAUDIO_PlayDevice;
     impl->GetDeviceBuf = ANDROIDAUDIO_GetDeviceBuf;
     impl->CloseDevice = ANDROIDAUDIO_CloseDevice;
     impl->CaptureFromDevice = ANDROIDAUDIO_CaptureFromDevice;
     impl->FlushCapture = ANDROIDAUDIO_FlushCapture;
+    impl->AllowsArbitraryDeviceNames = SDL_TRUE;
 
     /* and the capabilities */
     impl->HasCaptureSupport = SDL_TRUE;
-    impl->OnlyHasDefaultOutputDevice = SDL_TRUE;
-    impl->OnlyHasDefaultCaptureDevice = SDL_TRUE;
+    impl->OnlyHasDefaultOutputDevice = SDL_FALSE;
+    impl->OnlyHasDefaultCaptureDevice = SDL_FALSE;
 
     return SDL_TRUE; /* this audio target is available. */
 }
@@ -194,5 +203,3 @@ void ANDROIDAUDIO_ResumeDevices(void) {}
 void ANDROIDAUDIO_PauseDevices(void) {}
 
 #endif /* SDL_AUDIO_DRIVER_ANDROID */
-
-/* vi: set ts=4 sw=4 expandtab: */

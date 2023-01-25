@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -251,14 +251,14 @@ Cocoa_CreateImage(SDL_Surface *surface)
                                                     bytesPerRow:converted->pitch
                                                    bitsPerPixel:converted->format->BitsPerPixel];
     if (imgrep == nil) {
-        SDL_FreeSurface(converted);
+        SDL_DestroySurface(converted);
         return nil;
     }
 
     /* Copy the pixels */
     pixels = [imgrep bitmapData];
     SDL_memcpy(pixels, converted->pixels, converted->h * converted->pitch);
-    SDL_FreeSurface(converted);
+    SDL_DestroySurface(converted);
 
     /* Premultiply the alpha channel */
     for (i = (surface->h * surface->w); i--;) {

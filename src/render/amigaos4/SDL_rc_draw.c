@@ -514,7 +514,7 @@ OS4_RenderDrawLines(SDL_Renderer * renderer, const SDL_Point * points,
             y2 = points[i + 1].y;
 
             /* Clipping - is it possible to do with RastPort? */
-            if (!SDL_IntersectRectAndLine(&data->cliprect, &x1, &y1, &x2, &y2)) {
+            if (!SDL_GetRectAndLineIntersection(&data->cliprect, &x1, &y1, &x2, &y2)) {
                 continue;
             }
 
@@ -588,7 +588,7 @@ OS4_RenderDrawLines(SDL_Renderer * renderer, const SDL_Point * points,
                 ld.y2 = points[i + 1].y;
 
                 /* Clipping */
-                if (!SDL_IntersectRectAndLine(&data->cliprect, &ld.x1, &ld.y1, &ld.x2, &ld.y2)) {
+                if (!SDL_GetRectAndLineIntersection(&data->cliprect, &ld.x1, &ld.y1, &ld.x2, &ld.y2)) {
                     continue;
                 }
 

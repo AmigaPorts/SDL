@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,6 +24,7 @@
 
 #include "../SDL_sysvideo.h"
 #include "../SDL_pixels_c.h"
+#include "../../SDL_hints_c.h"
 
 #include "SDL_windowsvideo.h"
 #include "SDL_windowsframebuffer.h"
@@ -38,24 +39,22 @@ static void WIN_VideoQuit(_THIS);
 
 /* Hints */
 SDL_bool g_WindowsEnableMessageLoop = SDL_TRUE;
+SDL_bool g_WindowsEnableMenuMnemonics = SDL_FALSE;
 SDL_bool g_WindowFrameUsableWhileCursorHidden = SDL_TRUE;
 
 static void SDLCALL UpdateWindowsEnableMessageLoop(void *userdata, const char *name, const char *oldValue, const char *newValue)
 {
-    if (newValue && *newValue == '0') {
-        g_WindowsEnableMessageLoop = SDL_FALSE;
-    } else {
-        g_WindowsEnableMessageLoop = SDL_TRUE;
-    }
+    g_WindowsEnableMessageLoop = SDL_GetStringBoolean(newValue, SDL_TRUE);
+}
+
+static void SDLCALL UpdateWindowsEnableMenuMnemonics(void *userdata, const char *name, const char *oldValue, const char *newValue)
+{
+    g_WindowsEnableMenuMnemonics = SDL_GetStringBoolean(newValue, SDL_FALSE);
 }
 
 static void SDLCALL UpdateWindowFrameUsableWhileCursorHidden(void *userdata, const char *name, const char *oldValue, const char *newValue)
 {
-    if (newValue && *newValue == '0') {
-        g_WindowFrameUsableWhileCursorHidden = SDL_FALSE;
-    } else {
-        g_WindowFrameUsableWhileCursorHidden = SDL_TRUE;
-    }
+    g_WindowFrameUsableWhileCursorHidden = SDL_GetStringBoolean(newValue, SDL_TRUE);
 }
 
 #if !defined(__XBOXONE__) && !defined(__XBOXSERIES__)
@@ -154,6 +153,7 @@ static SDL_VideoDevice *WIN_CreateDevice(void)
     device->VideoInit = WIN_VideoInit;
     device->VideoQuit = WIN_VideoQuit;
 #if !defined(__XBOXONE__) && !defined(__XBOXSERIES__)
+    device->RefreshDisplays = WIN_RefreshDisplays;
     device->GetDisplayBounds = WIN_GetDisplayBounds;
     device->GetDisplayUsableBounds = WIN_GetDisplayUsableBounds;
     device->GetDisplayDPI = WIN_GetDisplayDPI;
@@ -430,7 +430,7 @@ int WIN_VideoInit(_THIS)
 
         SDL_zero(current_mode);
         D3D12_XBOX_GetResolution(&current_mode.w, &current_mode.h);
-        current_mode.refresh_rate = 60;
+        current_mode.refresh_rate = 60.0f;
         current_mode.format = SDL_PIXELFORMAT_ARGB8888;
 
         SDL_zero(display);
@@ -449,6 +449,7 @@ int WIN_VideoInit(_THIS)
 #endif
 
     SDL_AddHintCallback(SDL_HINT_WINDOWS_ENABLE_MESSAGELOOP, UpdateWindowsEnableMessageLoop, NULL);
+    SDL_AddHintCallback(SDL_HINT_WINDOWS_ENABLE_MENU_MNEMONICS, UpdateWindowsEnableMenuMnemonics, NULL);
     SDL_AddHintCallback(SDL_HINT_WINDOW_FRAME_USABLE_WHILE_CURSOR_HIDDEN, UpdateWindowFrameUsableWhileCursorHidden, NULL);
 
 #if !defined(__XBOXONE__) && !defined(__XBOXSERIES__)

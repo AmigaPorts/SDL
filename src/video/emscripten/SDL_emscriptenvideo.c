@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -130,7 +130,7 @@ int Emscripten_VideoInit(_THIS)
     mode.format = SDL_PIXELFORMAT_RGB888;
     emscripten_get_screen_size(&mode.w, &mode.h);
 
-    mode.refresh_rate = 0;
+    mode.refresh_rate = 0.0f;
     mode.driverdata = NULL;
     if (SDL_AddBasicVideoDisplay(&mode) < 0) {
         return -1;
@@ -354,5 +354,3 @@ static void Emscripten_SetWindowTitle(_THIS, SDL_Window *window)
 }
 
 #endif /* SDL_VIDEO_DRIVER_EMSCRIPTEN */
-
-/* vi: set ts=4 sw=4 expandtab: */

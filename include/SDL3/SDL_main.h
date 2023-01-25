@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -43,20 +43,23 @@
 /* On WinRT, SDL provides a main function that initializes CoreApplication,
    creating an instance of IFrameworkView in the process.
 
-   Please note that #include'ing SDL_main.h is not enough to get a main()
-   function working.  In non-XAML apps, the file,
-   src/main/winrt/SDL_WinRT_main_NonXAML.cpp, or a copy of it, must be compiled
-   into the app itself.  In XAML apps, the function, SDL_WinRTRunApp must be
-   called, with a pointer to the Direct3D-hosted XAML control passed in.
+   Ideally, #include'ing SDL_main.h is enough to get a main() function working.
+   However, that requires the source file your main() is in to be compiled
+   as C++ *and* with the /ZW compiler flag. If that's not feasible, add an
+   otherwise empty .cpp file that only contains `#include <SDL3/SDL_main.h>`
+   and build that with /ZW (still include SDL_main.h in your other file with main()!).
+   In XAML apps, instead the function SDL_RunApp() must be called with a pointer
+   to the Direct3D-hosted XAML control passed in as the "reserved" argument.
 */
 #define SDL_MAIN_NEEDED
 
 #elif defined(__GDK__)
 /* On GDK, SDL provides a main function that initializes the game runtime.
 
-   Please note that #include'ing SDL_main.h is not enough to get a main()
-   function working. You must either link against SDL3_main or, if not possible,
-   call the SDL_GDKRunApp function from your entry point.
+   If you prefer to write your own WinMain-function instead of having SDL
+   provide one that calls your main() function,
+   #define SDL_MAIN_HANDLED before #include'ing SDL_main.h
+   and call the SDL_RunApp function from your entry point.
 */
 #define SDL_MAIN_NEEDED
 
@@ -64,9 +67,8 @@
 /* On iOS SDL provides a main function that creates an application delegate
    and starts the iOS application run loop.
 
-   If you link with SDL dynamically on iOS, the main function can't be in a
-   shared library, so you need to link with libSDL_main.a, which includes a
-   stub main function that calls into the shared library to start execution.
+   To use it, just #include SDL_main.h in the source file that contains your
+   main() function.
 
    See src/video/uikit/SDL_uikitappdelegate.m for more details.
  */
@@ -108,6 +110,14 @@
 */
 #define SDL_MAIN_AVAILABLE
 
+#elif defined(__NGAGE__)
+
+/*
+   TODO: not sure if it should be SDL_MAIN_NEEDED, in SDL2 ngage had a
+        main implementation, but wasn't mentioned in SDL_main.h
+ */
+#define SDL_MAIN_AVAILABLE
+
 #endif
 #endif /* SDL_MAIN_HANDLED */
 
@@ -134,7 +144,7 @@
 #define main    SDL_main
 #endif
 
-#include <SDL3/begin_code.h>
+#include <SDL3/SDL_begin_code.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -160,6 +170,31 @@ extern SDLMAIN_DECLSPEC int SDL_main(int argc, char *argv[]);
  * \sa SDL_Init
  */
 extern DECLSPEC void SDLCALL SDL_SetMainReady(void);
+
+/**
+ * Initializes and launches an SDL application, by doing platform-specific
+ * initialization before calling your mainFunction and cleanups after it returns,
+ * if that is needed for a specific platform, otherwise it just calls mainFunction.
+ * You can use this if you want to use your own main() implementation
+ * without using SDL_main (like when using SDL_MAIN_HANDLED).
+ * When using this, you do *not* need SDL_SetMainReady().
+ *
+ * \param argc The argc parameter from the application's main() function,
+ *             or 0 if the platform's main-equivalent has no argc
+ * \param argv The argv parameter from the application's main() function,
+ *             or NULL  if the platform's main-equivalent has no argv
+ * \param mainFunction Your SDL app's C-style main(), an SDL_main_func.
+ *                     NOT the function you're calling this from!
+ *                     Its name doesn't matter, but its signature must be
+ *                     like int my_main(int argc, char* argv[])
+ * \param reserved should be NULL (reserved for future use, will probably
+ *                 be platform-specific then)
+ * \return the return value from mainFunction: 0 on success, -1 on failure;
+ *         SDL_GetError() might have more information on the failure
+ *
+ * \since This function is available since SDL 3.0.0.
+ */
+extern DECLSPEC int SDLCALL SDL_RunApp(int argc, char* argv[], SDL_main_func mainFunction, void * reserved);
 
 #if defined(__WIN32__) || defined(__GDK__)
 
@@ -210,54 +245,27 @@ extern DECLSPEC void SDLCALL SDL_UnregisterApp(void);
 
 #ifdef __WINRT__
 
-/**
- * Initialize and launch an SDL/WinRT application.
- *
- * \param mainFunction the SDL app's C-style main(), an SDL_main_func
- * \param reserved reserved for future use; should be NULL
- * \returns 0 on success or -1 on failure; call SDL_GetError() to retrieve
- *          more information on the failure.
- *
- * \since This function is available since SDL 2.0.3.
- */
-extern DECLSPEC int SDLCALL SDL_WinRTRunApp(SDL_main_func mainFunction, void * reserved);
+/* for compatibility with SDL2's function of this name */
+#define SDL_WinRTRunApp(MAIN_FUNC, RESERVED)  SDL_RunApp(0, NULL, MAIN_FUNC, RESERVED)
 
 #endif /* __WINRT__ */
 
 #if defined(__IOS__)
 
-/**
- * Initializes and launches an SDL application.
- *
- * \param argc The argc parameter from the application's main() function
- * \param argv The argv parameter from the application's main() function
- * \param mainFunction The SDL app's C-style main(), an SDL_main_func
- * \return the return value from mainFunction
- *
- * \since This function is available since SDL 3.0.0.
- */
-extern DECLSPEC int SDLCALL SDL_UIKitRunApp(int argc, char *argv[], SDL_main_func mainFunction);
+/* for compatibility with SDL2's function of this name */
+#define SDL_UIKitRunApp(ARGC, ARGV, MAIN_FUNC)  SDL_RunApp(ARGC, ARGV, MAIN_FUNC, NULL)
 
 #endif /* __IOS__ */
 
 #ifdef __GDK__
 
-/**
- * Initialize and launch an SDL GDK application.
- *
- * \param mainFunction the SDL app's C-style main(), an SDL_main_func
- * \param reserved reserved for future use; should be NULL
- * \returns 0 on success or -1 on failure; call SDL_GetError() to retrieve
- *          more information on the failure.
- *
- * \since This function is available since SDL 3.0.0.
- */
-extern DECLSPEC int SDLCALL SDL_GDKRunApp(SDL_main_func mainFunction, void *reserved);
+/* for compatibility with SDL2's function of this name */
+#define SDL_GDKRunApp(MAIN_FUNC, RESERVED)  SDL_RunApp(0, NULL, MAIN_FUNC, RESERVED)
 
 /**
  * Callback from the application to let the suspend continue.
  *
- * \since This function is available since SDL 3.0.0.
+ * \since This function is available since SDL 2.28.0.
  */
 extern DECLSPEC void SDLCALL SDL_GDKSuspendComplete(void);
 
@@ -266,8 +274,34 @@ extern DECLSPEC void SDLCALL SDL_GDKSuspendComplete(void);
 #ifdef __cplusplus
 }
 #endif
-#include <SDL3/close_code.h>
+
+#include <SDL3/SDL_close_code.h>
+
+#if !defined(SDL_MAIN_HANDLED) && !defined(SDL_MAIN_NOIMPL)
+/* include header-only SDL_main implementations */
+#if defined(__WIN32__) || defined(__GDK__) || defined(__IOS__) || defined(__TVOS__) \
+    || defined(__3DS__) || defined(__NGAGE__) || defined(__PS2__) || defined(__PSP__)
+
+/* platforms whichs main (-equivalent) can be implemented in plain C */
+#include <SDL3/SDL_main_impl.h>
+
+#elif defined(__WINRT__) /* C++ platforms */
+
+#ifdef __cplusplus
+#include <SDL3/SDL_main_impl.h>
+#else
+/* Note: to get rid of the following warning, you can #define SDL_MAIN_NOIMPL before including SDL_main.h
+ *  in your C sourcefile that contains the standard main. Do *not* use SDL_MAIN_HANDLED for that, then SDL_main won't find your main()!
+ */
+#ifdef _MSC_VER
+#pragma message("Note: Your platform needs the SDL_main implementation in a C++ source file. You can keep your main() in plain C (then continue including SDL_main.h there!) and create a fresh .cpp file that only contains #include <SDL3/SDL_main.h>")
+#elif defined(__GNUC__) /* gcc, clang, mingw and compatible are matched by this and have #warning */
+#warning "Note: Your platform needs the SDL_main implementation in a C++ source file. You can keep your main() in plain C and create a fresh .cpp file that only contains #include <SDL3/SDL_main.h>"
+#endif /* __GNUC__ */
+#endif /* __cplusplus */
+
+#endif /* C++ platforms like __WINRT__ etc */
+
+#endif /* SDL_MAIN_HANDLED */
 
 #endif /* SDL_main_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

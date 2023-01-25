@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -22,6 +22,7 @@
 #endif
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 #include "testutils.h"
 
 static struct
@@ -58,12 +59,12 @@ open_audio()
     device = SDL_OpenAudioDevice(NULL, SDL_FALSE, &wave.spec, NULL, 0);
     if (!device) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't open audio: %s\n", SDL_GetError());
-        SDL_FreeWAV(wave.sound);
+        SDL_free(wave.sound);
         quit(2);
     }
 
     /* Let the audio run */
-    SDL_PauseAudioDevice(device, SDL_FALSE);
+    SDL_PlayAudioDevice(device);
 }
 
 #ifndef __EMSCRIPTEN__
@@ -170,10 +171,8 @@ int main(int argc, char *argv[])
 
     /* Clean up on signal */
     close_audio();
-    SDL_FreeWAV(wave.sound);
+    SDL_free(wave.sound);
     SDL_free(filename);
     SDL_Quit();
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

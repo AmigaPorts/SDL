@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -34,7 +34,6 @@
 #include "SDL_uikitview.h"
 #include "SDL_uikitopenglview.h"
 
-#define SDL_ENABLE_SYSWM_UIKIT
 #include <SDL3/SDL_syswm.h>
 
 #include <Foundation/Foundation.h>
@@ -98,9 +97,6 @@ static int SetupWindowData(_THIS, SDL_Window *window, UIWindow *uiwindow, SDL_bo
     window->driverdata = (void *)CFBridgingRetain(data);
 
     data.uiwindow = uiwindow;
-
-    /* only one window on iOS, always shown */
-    window->flags &= ~SDL_WINDOW_HIDDEN;
 
     if (displaydata.uiscreen != [UIScreen mainScreen]) {
         window->flags &= ~SDL_WINDOW_RESIZABLE;   /* window is NEVER resizable */
@@ -479,5 +475,3 @@ int SDL_iPhoneSetAnimationCallback(SDL_Window *window, int interval, void (*call
 }
 
 #endif /* SDL_VIDEO_DRIVER_UIKIT */
-
-/* vi: set ts=4 sw=4 expandtab: */

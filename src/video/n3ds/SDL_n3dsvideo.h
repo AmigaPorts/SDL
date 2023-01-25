@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -34,5 +34,3 @@ typedef struct SDL_WindowData
 #define FRAMEBUFFER_FORMAT SDL_PIXELFORMAT_RGBA8888
 
 #endif /* SDL_n3dsvideo_h_ */
-
-/* vi: set sts=4 ts=4 sw=4 expandtab: */

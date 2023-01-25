@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,7 +33,7 @@
 #include <SDL3/SDL_keycode.h>
 #include <SDL3/SDL_video.h>
 
-#include <SDL3/begin_code.h>
+#include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
 extern "C" {
@@ -269,7 +269,7 @@ extern DECLSPEC void SDLCALL SDL_StartTextInput(void);
  *
  * \sa SDL_StartTextInput
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_IsTextInputActive(void);
+extern DECLSPEC SDL_bool SDLCALL SDL_TextInputActive(void);
 
 /**
  * Stop receiving any text input events.
@@ -295,7 +295,7 @@ extern DECLSPEC void SDLCALL SDL_ClearComposition(void);
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_IsTextInputShown(void);
+extern DECLSPEC SDL_bool SDLCALL SDL_TextInputShown(void);
 
 /**
  * Set the rectangle used to type Unicode text inputs.
@@ -326,7 +326,7 @@ extern DECLSPEC void SDLCALL SDL_SetTextInputRect(const SDL_Rect *rect);
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_StartTextInput
- * \sa SDL_IsScreenKeyboardShown
+ * \sa SDL_ScreenKeyboardShown
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_HasScreenKeyboardSupport(void);
 
@@ -340,14 +340,12 @@ extern DECLSPEC SDL_bool SDLCALL SDL_HasScreenKeyboardSupport(void);
  *
  * \sa SDL_HasScreenKeyboardSupport
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_IsScreenKeyboardShown(SDL_Window *window);
+extern DECLSPEC SDL_bool SDLCALL SDL_ScreenKeyboardShown(SDL_Window *window);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus
 }
 #endif
-#include <SDL3/close_code.h>
+#include <SDL3/SDL_close_code.h>
 
 #endif /* SDL_keyboard_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

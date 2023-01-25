@@ -143,7 +143,7 @@ OS4_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
 
     dprintf("Called with event %d\n", event->event);
 
-    if (event->event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+    if (event->type == SDL_WINDOWEVENT_SIZE_CHANGED) {
 
         /* Next time ActivateRenderer() is called, new bitmap will be created */
         if (data->bitmap) {
@@ -394,7 +394,7 @@ OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_Rect * points, int count,
             SDL_Rect clipped;
 
             /* Perform clipping - is it possible to use RastPort? */
-            if (!SDL_IntersectRect(&points[i], &data->cliprect, &clipped)) {
+            if (!SDL_GetRectIntersection(&points[i], &data->cliprect, &clipped)) {
                 continue;
             }
 

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -79,6 +79,7 @@ typedef struct
     struct zxdg_output_manager_v1 *xdg_output_manager;
     struct wp_viewporter *viewporter;
     struct wp_fractional_scale_manager_v1 *fractional_scale_manager;
+    struct zwp_input_timestamps_manager_v1 *input_timestamps_manager;
 
     EGLDisplay edpy;
     EGLContext context;
@@ -133,5 +134,3 @@ extern SDL_bool Wayland_LoadLibdecor(SDL_VideoData *data, SDL_bool ignore_xdg);
 extern SDL_bool Wayland_VideoReconnect(_THIS);
 
 #endif /* SDL_waylandvideo_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

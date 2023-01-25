@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -10,6 +10,7 @@
   freely.
 */
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 
 /*
  * Watcom C flags these as Warning 201: "Unreachable code" if you just
@@ -392,7 +393,6 @@ int TestCPUInfo(SDL_bool verbose)
         SDL_Log("RDTSC %s\n", SDL_HasRDTSC() ? "detected" : "not detected");
         SDL_Log("AltiVec %s\n", SDL_HasAltiVec() ? "detected" : "not detected");
         SDL_Log("MMX %s\n", SDL_HasMMX() ? "detected" : "not detected");
-        SDL_Log("3DNow! %s\n", SDL_Has3DNow() ? "detected" : "not detected");
         SDL_Log("SSE %s\n", SDL_HasSSE() ? "detected" : "not detected");
         SDL_Log("SSE2 %s\n", SDL_HasSSE2() ? "detected" : "not detected");
         SDL_Log("SSE3 %s\n", SDL_HasSSE3() ? "detected" : "not detected");
@@ -461,5 +461,3 @@ int main(int argc, char *argv[])
 
     return status;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

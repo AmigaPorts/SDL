@@ -19,7 +19,7 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "SDL3/SDL_platform.h"
+#include "SDL_internal.h"
 
 /* wrapper functions for MiniGL */
 

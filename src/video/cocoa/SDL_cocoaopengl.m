@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -239,8 +239,7 @@ int Cocoa_GL_LoadLibrary(_THIS, const char *path)
     return 0;
 }
 
-void *
-Cocoa_GL_GetProcAddress(_THIS, const char *proc)
+SDL_FunctionPointer Cocoa_GL_GetProcAddress(_THIS, const char *proc)
 {
     return SDL_LoadFunction(_this->gl_config.dll_handle, proc);
 }
@@ -251,8 +250,7 @@ void Cocoa_GL_UnloadLibrary(_THIS)
     _this->gl_config.dll_handle = NULL;
 }
 
-SDL_GLContext
-Cocoa_GL_CreateContext(_THIS, SDL_Window *window)
+SDL_GLContext Cocoa_GL_CreateContext(_THIS, SDL_Window *window)
 {
     @autoreleasepool {
         SDL_VideoDisplay *display = SDL_GetDisplayForWindow(window);
@@ -467,11 +465,16 @@ int Cocoa_GL_SetSwapInterval(_THIS, int interval)
     }
 }
 
-int Cocoa_GL_GetSwapInterval(_THIS)
+int Cocoa_GL_GetSwapInterval(_THIS, int *interval)
 {
     @autoreleasepool {
         SDLOpenGLContext *nscontext = (__bridge SDLOpenGLContext *)SDL_GL_GetCurrentContext();
-        return nscontext ? SDL_AtomicGet(&nscontext->swapIntervalSetting) : 0;
+        if (nscontext) {
+            *interval = SDL_AtomicGet(&nscontext->swapIntervalSetting);
+            return 0;
+        } else {
+            return SDL_SetError("no OpenGL context");
+        }
     }
 }
 
@@ -526,5 +529,3 @@ void Cocoa_GL_DeleteContext(_THIS, SDL_GLContext context)
 #endif
 
 #endif /* SDL_VIDEO_OPENGL_CGL */
-
-/* vi: set ts=4 sw=4 expandtab: */

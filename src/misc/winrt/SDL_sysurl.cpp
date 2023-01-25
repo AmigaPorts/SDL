@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -36,5 +36,3 @@ int SDL_SYS_OpenURL(const char *url)
     Windows::System::Launcher::LaunchUriAsync(uri);
     return 0; // oh well, we're not waiting on an async task here.
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

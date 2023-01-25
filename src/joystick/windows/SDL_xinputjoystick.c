@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -409,7 +409,7 @@ static void UpdateXInputJoystickBatteryInformation(SDL_Joystick *joystick, XINPU
             }
         }
 
-        SDL_PrivateJoystickBatteryLevel(joystick, ePowerLevel);
+        SDL_SendJoystickBatteryLevel(joystick, ePowerLevel);
     }
 }
 
@@ -424,16 +424,17 @@ static void UpdateXInputJoystickState_OLD(SDL_Joystick *joystick, XINPUT_STATE_E
     };
     WORD wButtons = pXInputState->Gamepad.wButtons;
     Uint8 button;
+    Uint64 timestamp = SDL_GetTicksNS();
 
-    SDL_PrivateJoystickAxis(joystick, 0, (Sint16)pXInputState->Gamepad.sThumbLX);
-    SDL_PrivateJoystickAxis(joystick, 1, (Sint16)(-SDL_max(-32767, pXInputState->Gamepad.sThumbLY)));
-    SDL_PrivateJoystickAxis(joystick, 2, (Sint16)pXInputState->Gamepad.sThumbRX);
-    SDL_PrivateJoystickAxis(joystick, 3, (Sint16)(-SDL_max(-32767, pXInputState->Gamepad.sThumbRY)));
-    SDL_PrivateJoystickAxis(joystick, 4, (Sint16)(((int)pXInputState->Gamepad.bLeftTrigger * 65535 / 255) - 32768));
-    SDL_PrivateJoystickAxis(joystick, 5, (Sint16)(((int)pXInputState->Gamepad.bRightTrigger * 65535 / 255) - 32768));
+    SDL_SendJoystickAxis(timestamp, joystick, 0, (Sint16)pXInputState->Gamepad.sThumbLX);
+    SDL_SendJoystickAxis(timestamp, joystick, 1, (Sint16)(-SDL_max(-32767, pXInputState->Gamepad.sThumbLY)));
+    SDL_SendJoystickAxis(timestamp, joystick, 2, (Sint16)pXInputState->Gamepad.sThumbRX);
+    SDL_SendJoystickAxis(timestamp, joystick, 3, (Sint16)(-SDL_max(-32767, pXInputState->Gamepad.sThumbRY)));
+    SDL_SendJoystickAxis(timestamp, joystick, 4, (Sint16)(((int)pXInputState->Gamepad.bLeftTrigger * 65535 / 255) - 32768));
+    SDL_SendJoystickAxis(timestamp, joystick, 5, (Sint16)(((int)pXInputState->Gamepad.bRightTrigger * 65535 / 255) - 32768));
 
     for (button = 0; button < (Uint8)SDL_arraysize(s_XInputButtons); ++button) {
-        SDL_PrivateJoystickButton(joystick, button, (wButtons & s_XInputButtons[button]) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, button, (wButtons & s_XInputButtons[button]) ? SDL_PRESSED : SDL_RELEASED);
     }
 
     UpdateXInputJoystickBatteryInformation(joystick, pBatteryInformation);
@@ -450,16 +451,17 @@ static void UpdateXInputJoystickState(SDL_Joystick *joystick, XINPUT_STATE_EX *p
     WORD wButtons = pXInputState->Gamepad.wButtons;
     Uint8 button;
     Uint8 hat = SDL_HAT_CENTERED;
+    Uint64 timestamp = SDL_GetTicksNS();
 
-    SDL_PrivateJoystickAxis(joystick, 0, pXInputState->Gamepad.sThumbLX);
-    SDL_PrivateJoystickAxis(joystick, 1, ~pXInputState->Gamepad.sThumbLY);
-    SDL_PrivateJoystickAxis(joystick, 2, ((int)pXInputState->Gamepad.bLeftTrigger * 257) - 32768);
-    SDL_PrivateJoystickAxis(joystick, 3, pXInputState->Gamepad.sThumbRX);
-    SDL_PrivateJoystickAxis(joystick, 4, ~pXInputState->Gamepad.sThumbRY);
-    SDL_PrivateJoystickAxis(joystick, 5, ((int)pXInputState->Gamepad.bRightTrigger * 257) - 32768);
+    SDL_SendJoystickAxis(timestamp, joystick, 0, pXInputState->Gamepad.sThumbLX);
+    SDL_SendJoystickAxis(timestamp, joystick, 1, ~pXInputState->Gamepad.sThumbLY);
+    SDL_SendJoystickAxis(timestamp, joystick, 2, ((int)pXInputState->Gamepad.bLeftTrigger * 257) - 32768);
+    SDL_SendJoystickAxis(timestamp, joystick, 3, pXInputState->Gamepad.sThumbRX);
+    SDL_SendJoystickAxis(timestamp, joystick, 4, ~pXInputState->Gamepad.sThumbRY);
+    SDL_SendJoystickAxis(timestamp, joystick, 5, ((int)pXInputState->Gamepad.bRightTrigger * 257) - 32768);
 
     for (button = 0; button < (Uint8)SDL_arraysize(s_XInputButtons); ++button) {
-        SDL_PrivateJoystickButton(joystick, button, (wButtons & s_XInputButtons[button]) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, button, (wButtons & s_XInputButtons[button]) ? SDL_PRESSED : SDL_RELEASED);
     }
 
     if (wButtons & XINPUT_GAMEPAD_DPAD_UP) {
@@ -474,7 +476,7 @@ static void UpdateXInputJoystickState(SDL_Joystick *joystick, XINPUT_STATE_EX *p
     if (wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) {
         hat |= SDL_HAT_RIGHT;
     }
-    SDL_PrivateJoystickHat(joystick, 0, hat);
+    SDL_SendJoystickHat(timestamp, joystick, 0, hat);
 
     UpdateXInputJoystickBatteryInformation(joystick, pBatteryInformation);
 }
@@ -600,5 +602,3 @@ void SDL_XINPUT_JoystickQuit(void)
 }
 
 #endif /* SDL_JOYSTICK_XINPUT */
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,16 +1,16 @@
 # Makefile to build the AmigaOS4 SDL tests
 
-CC		= ppc-amigaos-gcc
-CFLAGS	= -gstabs -O2 -Wall -g -I../include -DHAVE_OPENGL
-LIBS	= -L.. -use-dynld -lSDL2_test -lSDL2 -athread=native
+CC     = ppc-amigaos-gcc
+CFLAGS = -gstabs -O2 -Wall -g -I../include -DHAVE_OPENGL
+LIBS   = -L.. -use-dynld -lSDL3_test -lSDL3 -athread=native
 
 TARGETS = \
 	checkkeys \
-	controllermap \
+	gamepadmap \
 	helloworld \
 	loopwave \
 	loopwavequeue \
-	sdl2benchmark \
+	sdl3benchmark \
 	testatomic \
 	testaudiocapture \
 	testaudiohotplug \
@@ -19,16 +19,15 @@ TARGETS = \
 	testbounds \
 	testcustomcursor \
 	testdisplayinfo \
-	testdraw2 \
+	testdraw \
 	testdrawchessboard \
 	testdropfile \
 	testerror \
 	testfile \
 	testfilesystem \
-	testgamecontroller \
+	testgamepad \
 	testgeometry \
-	testgesture \
-	testgl2 \
+	testgl \
 	testgles \
 	testgles2 \
 	testhaptic \
@@ -46,7 +45,7 @@ TARGETS = \
 	testmultiaudio \
 	testnative \
 	testoffscreen \
-	testoverlay2 \
+	testoverlay \
 	testplatform \
 	testpower \
 	testqsort \
@@ -60,7 +59,7 @@ TARGETS = \
 	testsensor \
 	testshader \
 	testshape \
-	testsprite2 \
+	testsprite \
 	testspriteminimal \
 	teststreaming \
 	testthread \
@@ -69,7 +68,7 @@ TARGETS = \
 	testver \
 	testviewport \
 	testvulkan \
-	testwm2 \
+	testwm \
 	testyuv \
 	torturethread \
 
@@ -87,7 +86,7 @@ loopwave: loopwave.o testutils.o
 loopwavequeue: loopwavequeue.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
-sdl2benchmark: sdl2benchmark.o
+sdl3benchmark: sdl3benchmark.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testresample: testresample.o
@@ -141,7 +140,7 @@ testrelative: testrelative.o
 testhittesting: testhittesting.o
 	$(CC) -o $@ $^ $(LIBS)
 
-testdraw2: testdraw2.o
+testdraw: testdraw.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testdrawchessboard: testdrawchessboard.o
@@ -156,16 +155,13 @@ testerror: testerror.o
 testfile: testfile.o
 	$(CC) -o $@ $^ $(LIBS)
 
-testgamecontroller: testgamecontroller.o testutils.o
+testgamepad: testgamepad.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testgeometry: testgeometry.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
  
-testgesture: testgesture.o
-	$(CC) -o $@ $^ $(LIBS)
- 
-testgl2: testgl2.o
+testgl: testgl.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testgles: testgles.o
@@ -213,7 +209,7 @@ testnative: testnative.o testnativeamigaos4.o testutils.o
 testoffscreen: testoffscreen.o
 	$(CC) -o $@ $^ $(LIBS)
 
-testoverlay2: testoverlay2.o testyuv_cvt.o testutils.o
+testoverlay: testoverlay.o testyuv_cvt.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testplatform: testplatform.o
@@ -243,7 +239,7 @@ testshader: testshader.o
 testshape: testshape.o
 	$(CC) -o $@ $^ $(LIBS)
 
-testsprite2: testsprite2.o testutils.o
+testsprite: testsprite.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testspriteminimal: testspriteminimal.o testutils.o
@@ -261,7 +257,7 @@ testver: testver.o
 testviewport: testviewport.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
-testwm2: testwm2.o
+testwm: testwm.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testyuv: testyuv.o testyuv_cvt.o
@@ -288,7 +284,7 @@ testbounds: testbounds.o
 testcustomcursor: testcustomcursor.o
 	$(CC) -o $@ $^ $(LIBS)
 
-controllermap: controllermap.o testutils.o
+gamepadmap: gamepadmap.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testvulkan: testvulkan.o

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -61,7 +61,7 @@ int Android_SurfaceHeight = 0;
 static int Android_DeviceWidth = 0;
 static int Android_DeviceHeight = 0;
 static Uint32 Android_ScreenFormat = SDL_PIXELFORMAT_RGB565; /* Default SurfaceView format, in case this is queried before being filled */
-static int Android_ScreenRate = 0;
+static float Android_ScreenRate = 0.0f;
 SDL_sem *Android_PauseSem = NULL;
 SDL_sem *Android_ResumeSem = NULL;
 SDL_mutex *Android_ActivityMutex = NULL;
@@ -217,7 +217,7 @@ void Android_SetScreenResolution(int surfaceWidth, int surfaceHeight, int device
     Android_SurfaceHeight = surfaceHeight;
     Android_DeviceWidth = deviceWidth;
     Android_DeviceHeight = deviceHeight;
-    Android_ScreenRate = (int)rate;
+    Android_ScreenRate = rate;
 }
 
 static Uint32 format_to_pixelFormat(int format)
@@ -293,5 +293,3 @@ void Android_SendResize(SDL_Window *window)
 }
 
 #endif /* SDL_VIDEO_DRIVER_ANDROID */
-
-/* vi: set ts=4 sw=4 expandtab: */

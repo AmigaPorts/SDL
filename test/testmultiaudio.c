@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -10,6 +10,7 @@
   freely.
 */
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 
 #include <stdio.h> /* for fflush() and stdout */
 
@@ -59,9 +60,9 @@ void loop()
 #ifdef __EMSCRIPTEN__
         emscripten_cancel_main_loop();
 #endif
-        SDL_PauseAudioDevice(cbd[0].dev, 1);
+        SDL_PauseAudioDevice(cbd[0].dev);
         SDL_CloseAudioDevice(cbd[0].dev);
-        SDL_FreeWAV(sound);
+        SDL_free(sound);
         SDL_Quit();
     }
 }
@@ -97,7 +98,7 @@ test_multi_audio(int devcount)
         if (cbd[0].dev == 0) {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Open device failed: %s\n", SDL_GetError());
         } else {
-            SDL_PauseAudioDevice(cbd[0].dev, 0);
+            SDL_PlayAudioDevice(cbd[0].dev);
 #ifdef __EMSCRIPTEN__
             emscripten_set_main_loop(loop, 0, 1);
 #else
@@ -109,7 +110,7 @@ test_multi_audio(int devcount)
 #endif
                 SDL_Delay(100);
             }
-            SDL_PauseAudioDevice(cbd[0].dev, 1);
+            SDL_PauseAudioDevice(cbd[0].dev);
 #endif
             SDL_Log("done.\n");
             SDL_CloseAudioDevice(cbd[0].dev);
@@ -130,7 +131,7 @@ test_multi_audio(int devcount)
 
     for (i = 0; i < devcount; i++) {
         if (cbd[i].dev) {
-            SDL_PauseAudioDevice(cbd[i].dev, 0);
+            SDL_PlayAudioDevice(cbd[i].dev);
         }
     }
 
@@ -153,7 +154,7 @@ test_multi_audio(int devcount)
 #ifndef __EMSCRIPTEN__
     for (i = 0; i < devcount; i++) {
         if (cbd[i].dev) {
-            SDL_PauseAudioDevice(cbd[i].dev, 1);
+            SDL_PauseAudioDevice(cbd[i].dev);
             SDL_CloseAudioDevice(cbd[i].dev);
         }
     }
@@ -189,7 +190,7 @@ int main(int argc, char **argv)
                          SDL_GetError());
         } else {
             test_multi_audio(devcount);
-            SDL_FreeWAV(sound);
+            SDL_free(sound);
         }
 
         SDL_free(file);
@@ -198,5 +199,3 @@ int main(int argc, char **argv)
     SDL_Quit();
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

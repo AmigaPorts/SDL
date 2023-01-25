@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -70,12 +70,12 @@ void PSP_DestroyWindow(_THIS, SDL_Window *window);
 
 /* OpenGL/OpenGL ES functions */
 int PSP_GL_LoadLibrary(_THIS, const char *path);
-void *PSP_GL_GetProcAddress(_THIS, const char *proc);
+SDL_FunctionPointer PSP_GL_GetProcAddress(_THIS, const char *proc);
 void PSP_GL_UnloadLibrary(_THIS);
 SDL_GLContext PSP_GL_CreateContext(_THIS, SDL_Window *window);
 int PSP_GL_MakeCurrent(_THIS, SDL_Window *window, SDL_GLContext context);
 int PSP_GL_SetSwapInterval(_THIS, int interval);
-int PSP_GL_GetSwapInterval(_THIS);
+int PSP_GL_GetSwapInterval(_THIS, int *interval);
 int PSP_GL_SwapWindow(_THIS, SDL_Window *window);
 void PSP_GL_DeleteContext(_THIS, SDL_GLContext context);
 
@@ -86,5 +86,3 @@ void PSP_HideScreenKeyboard(_THIS, SDL_Window *window);
 SDL_bool PSP_IsScreenKeyboardShown(_THIS, SDL_Window *window);
 
 #endif /* SDL_pspvideo_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */

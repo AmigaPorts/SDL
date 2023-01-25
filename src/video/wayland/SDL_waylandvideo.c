@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -53,6 +53,7 @@
 #include "viewporter-client-protocol.h"
 #include "primary-selection-unstable-v1-client-protocol.h"
 #include "fractional-scale-v1-client-protocol.h"
+#include "input-timestamps-unstable-v1-client-protocol.h"
 
 #ifdef HAVE_LIBDECOR_H
 #include <libdecor.h>
@@ -271,7 +272,7 @@ static SDL_VideoDevice *Wayland_CreateDevice(void)
 
     device->free = Wayland_DeleteDevice;
 
-    device->quirk_flags = VIDEO_DEVICE_QUIRK_DISABLE_DISPLAY_MODE_SWITCHING |
+    device->quirk_flags = VIDEO_DEVICE_QUIRK_MODE_SWITCHING_EMULATED |
                           VIDEO_DEVICE_QUIRK_DISABLE_UNSET_FULLSCREEN_ON_MINIMIZE;
 
     return device;
@@ -569,7 +570,7 @@ static void display_handle_done(void *data,
         native_mode.w = driverdata->native_width;
         native_mode.h = driverdata->native_height;
     }
-    native_mode.refresh_rate = (int)SDL_round(driverdata->refresh / 1000.0); /* mHz to Hz */
+    native_mode.refresh_rate = ((100 * driverdata->refresh) / 1000) / 100.0f; /* mHz to Hz */
     native_mode.driverdata = driverdata->output;
 
     /* The scaled desktop mode */
@@ -591,7 +592,7 @@ static void display_handle_done(void *data,
         desktop_mode.w = driverdata->height;
         desktop_mode.h = driverdata->width;
     }
-    desktop_mode.refresh_rate = (int)SDL_round(driverdata->refresh / 1000.0); /* mHz to Hz */
+    desktop_mode.refresh_rate = ((100 * driverdata->refresh) / 1000) / 100.0f; /* mHz to Hz */
     desktop_mode.driverdata = driverdata->output;
 
     /*
@@ -849,6 +850,11 @@ static void display_handle_global(void *data, struct wl_registry *registry, uint
         d->viewporter = wl_registry_bind(d->registry, id, &wp_viewporter_interface, 1);
     } else if (SDL_strcmp(interface, "wp_fractional_scale_manager_v1") == 0) {
         d->fractional_scale_manager = wl_registry_bind(d->registry, id, &wp_fractional_scale_manager_v1_interface, 1);
+    } else if (SDL_strcmp(interface, "zwp_input_timestamps_manager_v1") == 0) {
+        d->input_timestamps_manager = wl_registry_bind(d->registry, id, &zwp_input_timestamps_manager_v1_interface, 1);
+        if (d->input) {
+            Wayland_RegisterTimestampListeners(d->input);
+        }
 #ifdef SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH
     } else if (SDL_strcmp(interface, "qt_touch_extension") == 0) {
         Wayland_touch_create(d, id);
@@ -1099,6 +1105,11 @@ static void Wayland_VideoCleanup(_THIS)
         data->fractional_scale_manager = NULL;
     }
 
+    if (data->input_timestamps_manager) {
+        zwp_input_timestamps_manager_v1_destroy(data->input_timestamps_manager);
+        data->input_timestamps_manager = NULL;
+    }
+
     if (data->compositor) {
         wl_compositor_destroy(data->compositor);
         data->compositor = NULL;
@@ -1174,5 +1185,3 @@ void Wayland_VideoQuit(_THIS)
 }
 
 #endif /* SDL_VIDEO_DRIVER_WAYLAND */
-
-/* vi: set ts=4 sw=4 expandtab: */

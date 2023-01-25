@@ -182,7 +182,10 @@ GetVariable(const char* const name)
 static void
 SaveVariable(const char* const name, const char* const value, uint32 control)
 {
-    const int32 success = IDOS->SetVar(name, value, -1, LV_VAR | GVF_GLOBAL_ONLY | control);
+#ifdef DEBUG
+    const int32 success =
+#endif
+    IDOS->SetVar(name, value, -1, LV_VAR | GVF_GLOBAL_ONLY | control);
 
     dprintf("name '%s', value '%s', success %ld\n", name, value, success);
 }
@@ -190,7 +193,10 @@ SaveVariable(const char* const name, const char* const value, uint32 control)
 static void
 DeleteVariable(const char* const name, uint32 control)
 {
-    const int32 success = IDOS->DeleteVar(name, LV_VAR | GVF_GLOBAL_ONLY | control);
+#ifdef DEBUG
+    const int32 success =
+#endif
+    IDOS->DeleteVar(name, LV_VAR | GVF_GLOBAL_ONLY | control);
 
     dprintf("name '%s', success %d\n", name, success);
 }
