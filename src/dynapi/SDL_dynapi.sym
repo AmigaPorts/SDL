@@ -164,7 +164,7 @@ SDL3_0.0.0 {
     SDL_GetDefaultCursor;
     SDL_GetDesktopDisplayMode;
     SDL_GetDisplayBounds;
-    SDL_GetDisplayDPI;
+    SDL_GetDisplayPhysicalDPI;
     SDL_GetDisplayIndexForPoint;
     SDL_GetDisplayIndexForRect;
     SDL_GetDisplayMode;
@@ -199,8 +199,8 @@ SDL3_0.0.0 {
     SDL_GetGamepadMappingForGUID;
     SDL_GetGamepadMappingForIndex;
     SDL_GetGamepadName;
-    SDL_GetGamepadNumTouchpadFingers;
-    SDL_GetGamepadNumTouchpads;
+    SDL_GetNumGamepadTouchpadFingers;
+    SDL_GetNumGamepadTouchpads;
     SDL_GetGamepadPath;
     SDL_GetGamepadPlayerIndex;
     SDL_GetGamepadProduct;
@@ -841,6 +841,7 @@ SDL3_0.0.0 {
     SDL_PlayAudioDevice;
     SDL_aligned_alloc;
     SDL_aligned_free;
+    SDL_ConvertAudioSamples;
     # extra symbols go here (don't modify this line)
   local: *;
 };

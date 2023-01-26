@@ -771,7 +771,7 @@ OS4_SetWindowFullscreen(_THIS, SDL_Window * window, SDL_VideoDisplay * display, 
                     if (oldWidth != width || oldHeight != height) {
 
                         dprintf("Inform SDL about window resize\n");
-                        SDL_SendWindowEvent(window, SDL_WINDOWEVENT_RESIZED,
+                        SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESIZED,
                             width, height);
                     }
                 }
@@ -1000,7 +1000,7 @@ OS4_MaximizeWindow(_THIS, SDL_Window * window)
     // ...then remove the flag so that user event can be triggered
     window->flags &= ~SDL_WINDOW_MAXIMIZED;
 
-    SDL_SendWindowEvent(window, SDL_WINDOWEVENT_MAXIMIZED, 0, 0);
+    SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_MAXIMIZED, 0, 0);
 }
 
 void
@@ -1030,7 +1030,7 @@ OS4_RestoreWindow(_THIS, SDL_Window * window)
 
         OS4_SetWindowBox(_this, window);
 
-        SDL_SendWindowEvent(window, SDL_WINDOWEVENT_RESTORED, 0, 0);
+        SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESTORED, 0, 0);
     } else {
         dprintf("Don't know what to do\n");
     }
@@ -1090,7 +1090,7 @@ OS4_IconifyWindow(_THIS, SDL_Window * window)
 
                 OS4_HideWindow(_this, window);
 
-                SDL_SendWindowEvent(window, SDL_WINDOWEVENT_MINIMIZED, 0, 0);
+                SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_MINIMIZED, 0, 0);
             }
 
             IIcon->FreeDiskObject(diskObject);
@@ -1111,7 +1111,7 @@ OS4_UniconifyWindow(_THIS, SDL_Window * window)
         OS4_RemoveAppIcon(_this, data);
         OS4_ShowWindow(_this, window);
 
-        SDL_SendWindowEvent(window, SDL_WINDOWEVENT_RESTORED, 0, 0);
+        SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESTORED, 0, 0);
     } else {
         dprintf("Window '%s' isn't in iconified (minimized) state\n", window->title);
     }
