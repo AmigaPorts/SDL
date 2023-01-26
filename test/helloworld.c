@@ -34,7 +34,7 @@ static SDL_bool eventLoopInner(void)
 
     while(SDL_PollEvent(&e)) {
         switch (e.type) {
-            case SDL_QUIT:
+            case SDL_EVENT_QUIT:
                 puts("Quit");
                 running = SDL_FALSE;
                 break;
@@ -46,11 +46,11 @@ static SDL_bool eventLoopInner(void)
                 }
                 break;
 #endif
-            case SDL_SYSWMEVENT:
+	    case SDL_EVENT_SYSWM:
                 printf("Sys WM event\n");
                 break;
 
-            case SDL_KEYDOWN:
+            case SDL_EVENT_KEY_DOWN:
                 {
                     SDL_KeyboardEvent * ke = (SDL_KeyboardEvent *)&e;
                     printf("Key down scancode %d (%s), keycode %d (%s), mod %d\n",
@@ -64,18 +64,18 @@ static SDL_bool eventLoopInner(void)
                 }
                 break;
 
-            case SDL_KEYUP:
+            case SDL_EVENT_KEY_UP:
                 {
                     SDL_KeyboardEvent * ke = (SDL_KeyboardEvent *)&e;
                     printf("Key up %d\n", ke->keysym.scancode);
                 }
                 break;
 
-            case SDL_TEXTEDITING:
+            case SDL_EVENT_TEXT_EDITING:
                 puts("Text editing");
                 break;
 
-            case SDL_TEXTINPUT:
+            case SDL_EVENT_TEXT_INPUT:
                 {
                     SDL_TextEditingEvent * te = (SDL_TextEditingEvent *)&e;
                     SDL_Window * w = SDL_GetWindowFromID(te->windowID);
@@ -120,28 +120,28 @@ static SDL_bool eventLoopInner(void)
                 }
                 break;
 
-            case SDL_MOUSEMOTION:
+            case SDL_EVENT_MOUSE_MOTION:
                 {
                     SDL_MouseMotionEvent * me = (SDL_MouseMotionEvent *)&e;
                     printf("Mouse motion x=%f, y=%f, xrel=%f, yrel=%f\n", me->x, me->y, me->xrel, me->yrel);
                 }
                 break;
 
-            case SDL_MOUSEBUTTONDOWN:
+            case SDL_EVENT_MOUSE_BUTTONDOWN:
                 {
                     SDL_MouseButtonEvent * me = (SDL_MouseButtonEvent *)&me;
                     printf("Mouse button down %d, state %d\n", (int)me->button, (int)me->state);
                 }
                 break;
 
-            case SDL_MOUSEBUTTONUP:
+            case SDL_EVENT_MOUSE_BUTTONUP:
                 {
                     SDL_MouseButtonEvent * me = (SDL_MouseButtonEvent *)&me;
                     printf("Mouse button up %d, state %d\n", (int)me->button, (int)me->state);
                 }
                 break;
 
-            case SDL_MOUSEWHEEL:
+            case SDL_EVENT_MOUSE_WHEEL:
                 {
                     SDL_MouseWheelEvent * me = (SDL_MouseWheelEvent *)&me;
                     printf("Mouse wheel x=%f, y=%f\n", me->x, me->y);

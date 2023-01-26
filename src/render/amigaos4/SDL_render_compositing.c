@@ -142,7 +142,7 @@ OS4_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
 
     dprintf("Called with event %d\n", event->event);
 
-    if (event->type == SDL_WINDOWEVENT_SIZE_CHANGED) {
+    if (event->type == SDL_EVENT_WINDOW_SIZE_CHANGED) {
 
         /* Next time ActivateRenderer() is called, new bitmap will be created */
         if (data->bitmap) {

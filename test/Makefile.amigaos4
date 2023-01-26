@@ -104,6 +104,7 @@ testautomation: testautomation.o \
 		      testautomation_events.o \
 		      testautomation_guid.o \
 		      testautomation_hints.o \
+		      testautomation_images.o \
 		      testautomation_joystick.o \
 		      testautomation_keyboard.o \
 		      testautomation_main.o \

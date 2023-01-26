@@ -484,7 +484,7 @@ OS4_HandleMouseButtons(_THIS, struct MyIntuiMessage * imsg)
 
                 hti->htr = SDL_HITTEST_NORMAL;
                 // TODO: shape resize? OpenGL resize?
-                SDL_SendWindowEvent(sdlwin, SDL_WINDOWEVENT_RESIZED,
+                SDL_SendWindowEvent(sdlwin, SDL_EVENT_WINDOW_RESIZED,
                     imsg->Width, imsg->Height);
             }
         }
@@ -535,7 +535,7 @@ OS4_HandleResize(_THIS, struct MyIntuiMessage * imsg)
             if (imsg->Width != sdlwin->w || imsg->Height != sdlwin->h) {
                 SDL_WindowData *data = (SDL_WindowData *)sdlwin->driverdata;
 
-                SDL_SendWindowEvent(sdlwin, SDL_WINDOWEVENT_RESIZED,
+                SDL_SendWindowEvent(sdlwin, SDL_EVENT_WINDOW_RESIZED,
                     imsg->Width,
                     imsg->Height);
 
@@ -557,7 +557,7 @@ OS4_HandleMove(_THIS, struct MyIntuiMessage * imsg)
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
     if (sdlwin) {
-            SDL_SendWindowEvent(sdlwin, SDL_WINDOWEVENT_MOVED,
+            SDL_SendWindowEvent(sdlwin, SDL_EVENT_WINDOW_MOVED,
                 imsg->IDCMPWindow->LeftEdge,
                 imsg->IDCMPWindow->TopEdge);
 
@@ -572,7 +572,7 @@ OS4_HandleActivation(_THIS, struct MyIntuiMessage * imsg, SDL_bool activated)
 
     if (sdlwin) {
         if (activated) {
-            SDL_SendWindowEvent(sdlwin, SDL_WINDOWEVENT_SHOWN, 0, 0);
+            SDL_SendWindowEvent(sdlwin, SDL_EVENT_WINDOW_SHOWN, 0, 0);
             OS4_SyncKeyModifiers(_this);
 
             if (SDL_GetKeyboardFocus() != sdlwin) {
@@ -596,7 +596,7 @@ OS4_HandleClose(_THIS, struct MyIntuiMessage * imsg)
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
     if (sdlwin) {
-       SDL_SendWindowEvent(sdlwin, SDL_WINDOWEVENT_CLOSE, 0, 0);
+       SDL_SendWindowEvent(sdlwin, SDL_EVENT_WINDOW_CLOSE_REQUESTED, 0, 0);
     }
 }
 

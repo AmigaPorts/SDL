@@ -189,7 +189,7 @@
 #define SDL_GetDefaultCursor SDL_GetDefaultCursor_REAL
 #define SDL_GetDesktopDisplayMode SDL_GetDesktopDisplayMode_REAL
 #define SDL_GetDisplayBounds SDL_GetDisplayBounds_REAL
-#define SDL_GetDisplayDPI SDL_GetDisplayDPI_REAL
+#define SDL_GetDisplayPhysicalDPI SDL_GetDisplayPhysicalDPI_REAL
 #define SDL_GetDisplayIndexForPoint SDL_GetDisplayIndexForPoint_REAL
 #define SDL_GetDisplayIndexForRect SDL_GetDisplayIndexForRect_REAL
 #define SDL_GetDisplayMode SDL_GetDisplayMode_REAL
@@ -224,8 +224,8 @@
 #define SDL_GetGamepadMappingForGUID SDL_GetGamepadMappingForGUID_REAL
 #define SDL_GetGamepadMappingForIndex SDL_GetGamepadMappingForIndex_REAL
 #define SDL_GetGamepadName SDL_GetGamepadName_REAL
-#define SDL_GetGamepadNumTouchpadFingers SDL_GetGamepadNumTouchpadFingers_REAL
-#define SDL_GetGamepadNumTouchpads SDL_GetGamepadNumTouchpads_REAL
+#define SDL_GetNumGamepadTouchpadFingers SDL_GetNumGamepadTouchpadFingers_REAL
+#define SDL_GetNumGamepadTouchpads SDL_GetNumGamepadTouchpads_REAL
 #define SDL_GetGamepadPath SDL_GetGamepadPath_REAL
 #define SDL_GetGamepadPlayerIndex SDL_GetGamepadPlayerIndex_REAL
 #define SDL_GetGamepadProduct SDL_GetGamepadProduct_REAL
@@ -868,3 +868,4 @@
 #define SDL_PlayAudioDevice SDL_PlayAudioDevice_REAL
 #define SDL_aligned_alloc SDL_aligned_alloc_REAL
 #define SDL_aligned_free SDL_aligned_free_REAL
+#define SDL_ConvertAudioSamples SDL_ConvertAudioSamples_REAL
