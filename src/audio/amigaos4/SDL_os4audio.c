@@ -22,23 +22,18 @@
 
 #if SDL_AUDIO_DRIVER_AMIGAOS4
 
-// This optimisation assumes that allocated audio buffers
-// are sufficiently aligned to treat as arrays of longwords.
-// Which they should be, as far as I can tell.
-#define POSSIBLY_DANGEROUS_OPTIMISATION 1
-
 #include "SDL_audio.h"
 #include "SDL_timer.h"
 #include "../SDL_audio_c.h"
 #include "../SDL_sysaudio.h"
 #include "SDL_os4audio.h"
 
-#include <proto/exec.h>
-
 #include "../../main/amigaos4/SDL_os4debug.h"
 
+#include <proto/exec.h>
+
 /* The tag name used by the AmigaOS4 audio driver */
-#define DRIVER_NAME         "amigaos4"
+#define DRIVER_NAME "amigaos4"
 
 static SDL_bool
 OS4_OpenAhiDevice(OS4AudioData * os4data)
@@ -186,14 +181,12 @@ OS4_CloseDevice(_THIS)
 
     OS4_CloseAhiDevice(os4data);
 
-    if (os4data->audioBuffer[0]) {
-        SDL_free(os4data->audioBuffer[0]);
-        os4data->audioBuffer[0] = NULL;
-    }
-
-    if (os4data->audioBuffer[1]) {
-        SDL_free(os4data->audioBuffer[1]);
-        os4data->audioBuffer[1] = NULL;
+    int i;
+    for (i = 0; i < 2; i++) {
+        if (os4data->audioBuffer[i]) {
+            SDL_free(os4data->audioBuffer[i]);
+            os4data->audioBuffer[i] = NULL;
+        }
     }
 
     SDL_free(os4data);
@@ -217,12 +210,38 @@ OS4_OpenDevice(_THIS, const char * devname)
     SDL_memset(_this->hidden, 0, sizeof(OS4AudioData));
     os4data = _this->hidden;
 
-    if ((_this->spec.format & 0xff) != 8) {
-        _this->spec.format = AUDIO_S16MSB;
+    switch (_this->spec.format & 0xFF) {
+        case 8:
+            dprintf("8-bits requested, use AUDIO_S8\n");
+            _this->spec.format = AUDIO_S8;
+            break;
+        case 16:
+            dprintf("16 bits requested, use AUDIO_S16MSB\n");
+            _this->spec.format = AUDIO_S16MSB;
+            break;
+        case 32:
+            dprintf("32 bits requested, use AUDIO_S32MSB\n");
+            _this->spec.format = AUDIO_S32MSB;
+            break;
+        default:
+            dprintf("%u bits requested, fallback to AUDIO_S16MSB\n", _this->spec.format & 0xFF);
+            _this->spec.format = AUDIO_S16MSB;
+            break;
     }
 
-    dprintf("New format = 0x%x\n", _this->spec.format);
-    dprintf("Buffer size = %d\n", _this->spec.size);
+    /* AHI supports 1, 2 or 8 channels sound: 3-7 channels may be converted to 7.1 format */
+    if (_this->spec.channels < 1 || _this->spec.channels > 8) {
+        dprintf("%u channels requested, fallback to stereo", _this->spec.channels);
+        _this->spec.channels = 2;
+    } else if (_this->spec.channels > 2) {
+        dprintf("%u channels requested, use 8 channel AUDIO_S32MSB\n", _this->spec.channels);
+        _this->spec.channels = 8;
+        _this->spec.format = AUDIO_S32MSB;
+    }
+
+    dprintf("SDL audio format = 0x%x\n", _this->spec.format);
+    dprintf("Buffer size = %u\n", _this->spec.size);
+    dprintf("Channels = %u\n", _this->spec.channels);
 
     /* Calculate the final parameters for this audio specification */
     SDL_CalculateAudioSpec(&_this->spec);
@@ -241,16 +260,41 @@ OS4_OpenDevice(_THIS, const char * devname)
     SDL_memset(os4data->audioBuffer[0], _this->spec.silence, _this->spec.size);
     SDL_memset(os4data->audioBuffer[1], _this->spec.silence, _this->spec.size);
 
+    /* Decide AHI format */
     switch(_this->spec.format) {
         case AUDIO_S8:
-        case AUDIO_U8:
             os4data->ahiType = (_this->spec.channels < 2) ? AHIST_M8S : AHIST_S8S;
             break;
 
+        case AUDIO_S16MSB:
+            os4data->ahiType = (_this->spec.channels < 2) ? AHIST_M16S : AHIST_S16S;
+            break;
+
+        case AUDIO_S32MSB:
+            switch (_this->spec.channels) {
+                case 1:
+                    os4data->ahiType = AHIST_M32S;
+                    break;
+                case 2:
+                    os4data->ahiType = AHIST_S32S;
+                    break;
+                case 8:
+                    os4data->ahiType = AHIST_L7_1;
+                    break;
+                default:
+                    dprintf("Unsupported channel count %u for 32-bit mode\n", _this->spec.channels);
+                    os4data->ahiType = AHIST_M32S;
+                    break;
+            }
+            break;
+
         default:
+            dprintf("Unsupported audio format 0x%X requested\n", _this->spec.format);
             os4data->ahiType = (_this->spec.channels < 2) ? AHIST_M16S : AHIST_S16S;
             break;
     }
+
+    dprintf("AHI format 0x%X\n", os4data->ahiType);
 
     return result;
 }
@@ -282,6 +326,45 @@ OS4_WaitDevice(_THIS)
     //dprintf("Called\n");
 }
 
+#define SDL_FC  2
+#define SDL_LFE 3
+#define SDL_BL  4
+#define SDL_BR  5
+#define SDL_SL  6
+#define SDL_SR  7
+
+#define AHI_BL  2
+#define AHI_BR  3
+#define AHI_SL  4
+#define AHI_SR  5
+#define AHI_FC  6
+#define AHI_LFE 7
+
+static void
+OS4_RemapSurround(Sint32* buffer, int samples)
+{
+    int i;
+    for (i = 0; i < samples; i++) {
+        Sint32 bl, br, sl, sr, fc, lfe;
+
+        bl = buffer[SDL_BL];
+        br = buffer[SDL_BR];
+        sl = buffer[SDL_SL];
+        sr = buffer[SDL_SR];
+        fc = buffer[SDL_FC];
+        lfe = buffer[SDL_LFE];
+
+        buffer[AHI_BL] = bl;
+        buffer[AHI_BR] = br;
+        buffer[AHI_SL] = sl;
+        buffer[AHI_SR] = sr;
+        buffer[AHI_FC] = fc;
+        buffer[AHI_LFE] = lfe;
+
+        buffer += 8;
+    }
+}
+
 static void
 OS4_PlayDevice(_THIS)
 {
@@ -310,28 +393,11 @@ OS4_PlayDevice(_THIS)
     ahiRequest->ahir_Frequency      = spec->freq;
     ahiRequest->ahir_Type           = os4data->ahiType;
 
-    // Convert to signed?
-    if (spec->format == AUDIO_U8) {
-#if POSSIBLY_DANGEROUS_OPTIMISATION
-        int i, n;
-        uint32 *mixbuf = (uint32 *)os4data->audioBuffer[current];
-        n = os4data->audioBufferSize / 4; // let the gcc optimiser decide the best way to divide by 4
-        for (i = 0; i < n; i++) {
-            *(mixbuf++) ^= 0x80808080;
-        }
+    /* Let SDL handle possible conversions between formats, channels etc., but
+       because order of 7.1 channels is different (AHI <-> SDL), remap it here */
 
-        if (0 != (n = os4data->audioBufferSize & 3)) {
-            uint8 *mixbuf8 = (uint8 *)mixbuf;
-            for (i = 0; i < n; i++) {
-                *(mixbuf8++) -= 128;
-            }
-        }
-#else
-        int i;
-        for (i = 0; i < os4data->audioBufferSize; i++) {
-            os4data->audioBuffer[current][i] -= 128;
-        }
-#endif
+    if (spec->channels == 8) {
+        OS4_RemapSurround((Sint32 *)os4data->audioBuffer[current], spec->samples);
     }
 
     IExec->SendIO((struct IORequest *)ahiRequest);
