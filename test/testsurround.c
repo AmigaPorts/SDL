@@ -21,7 +21,15 @@ static int active_channel;
 #define SAMPLE_RATE_HZ        48000
 #define QUICK_TEST_TIME_MSEC  100
 #define CHANNEL_TEST_TIME_SEC 5
+
+#define USE_32BIT_MODE
+
+#ifdef USE_32BIT_MODE
+#define MAX_AMPLITUDE         SDL_MAX_SINT32
+//#define MAX_AMPLITUDE         1.0f
+#else
 #define MAX_AMPLITUDE         SDL_MAX_SINT16
+#endif
 
 #define SINE_FREQ_HZ     500
 #define LFE_SINE_FREQ_HZ 50
@@ -94,8 +102,15 @@ is_lfe_channel(int channel_index, int channel_count)
 void SDLCALL
 fill_buffer(void *unused, Uint8 *stream, int len)
 {
-    Sint16 *buffer = (Sint16 *)stream;
-    int samples = len / sizeof(Sint16);
+#ifdef USE_32BIT_MODE
+#define TYPE Sint32
+//#define TYPE float
+#else
+#define TYPE Sint16
+#endif
+
+    TYPE *buffer = (TYPE *)stream;
+    int samples = len / sizeof(TYPE);
     static int total_samples = 0;
     int i;
 
@@ -121,7 +136,7 @@ fill_buffer(void *unused, Uint8 *stream, int len)
             amplitude = MAX_AMPLITUDE;
         }
 
-        buffer[i] = (Sint16)(SDL_sin(6.283185f * sine_freq * time) * amplitude);
+        buffer[i] = (TYPE)(SDL_sin(6.283185f * sine_freq * time) * amplitude);
 
         /* Reset our state for next callback if this channel test is finished */
         if (total_samples == CHANNEL_TEST_TIME_SEC * SAMPLE_RATE_HZ) {
@@ -164,9 +179,15 @@ int main(int argc, char *argv[])
         }
 
         spec.freq = SAMPLE_RATE_HZ;
+#ifdef USE_32BIT_MODE
+        spec.format = AUDIO_S32SYS;
+        //spec.format = AUDIO_F32SYS;
+#else
         spec.format = AUDIO_S16SYS;
+#endif
         spec.samples = 4096;
         spec.callback = fill_buffer;
+        spec.channels = 8;
 
         dev = SDL_OpenAudioDevice(devname, 0, &spec, NULL, 0);
         if (dev == 0) {
