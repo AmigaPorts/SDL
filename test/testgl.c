@@ -58,8 +58,7 @@ static int LoadContext(GL_Context *data)
 }
 
 /* Call this instead of exit(), so we can clean up SDL: atexit() is evil. */
-static void
-quit(int rc)
+static void quit(int rc)
 {
     if (context) {
         /* SDL_GL_MakeCurrent(0, NULL); */ /* doesn't do anything */
@@ -69,8 +68,7 @@ quit(int rc)
     exit(rc);
 }
 
-static void
-Render()
+static void Render(void)
 {
     static float color[8][3] = {
         { 1.0, 1.0, 0.0 },
@@ -94,7 +92,7 @@ Render()
     };
 
     /* Do our drawing, too. */
-    ctx.glClearColor(0.0, 0.0, 0.0, 1.0);
+    ctx.glClearColor(0.0, 0.0, 0.0, 0.0 /* used with --transparent */);
     ctx.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     ctx.glBegin(GL_QUADS);
@@ -202,7 +200,7 @@ int main(int argc, char *argv[])
     int fsaa, accel;
     int value;
     int i, done;
-    SDL_DisplayMode mode;
+    const SDL_DisplayMode *mode;
     SDL_Event event;
     Uint64 then, now;
     Uint32 frames;
@@ -293,8 +291,10 @@ int main(int argc, char *argv[])
         swap_interval = 0;
     }
 
-    SDL_GetCurrentDisplayMode(0, &mode);
-    SDL_Log("Screen BPP    : %" SDL_PRIu32 "\n", SDL_BITSPERPIXEL(mode.format));
+    mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
+    if (mode) {
+        SDL_Log("Screen BPP    : %" SDL_PRIu32 "\n", SDL_BITSPERPIXEL(mode->format));
+    }
 
     ret_interval = SDL_GL_GetSwapInterval(&interval);
     if (ret_interval < 0) {
@@ -305,7 +305,7 @@ int main(int argc, char *argv[])
 
     SDL_GetWindowSize(state->windows[0], &dw, &dh);
     SDL_Log("Window Size   : %d,%d\n", dw, dh);
-    SDL_GL_GetDrawableSize(state->windows[0], &dw, &dh);
+    SDL_GetWindowSizeInPixels(state->windows[0], &dw, &dh);
     SDL_Log("Draw Size     : %d,%d\n", dw, dh);
     SDL_Log("\n");
     SDL_Log("Vendor        : %s\n", ctx.glGetString(GL_VENDOR));
@@ -411,7 +411,7 @@ int main(int argc, char *argv[])
             if (update_swap_interval) {
                 SDL_GL_SetSwapInterval(swap_interval);
             }
-            SDL_GL_GetDrawableSize(state->windows[i], &w, &h);
+            SDL_GetWindowSizeInPixels(state->windows[i], &w, &h);
             ctx.glViewport(0, 0, w, h);
             Render();
             SDL_GL_SwapWindow(state->windows[i]);

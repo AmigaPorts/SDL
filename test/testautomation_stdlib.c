@@ -3,14 +3,15 @@
  */
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_test.h>
+#include "testautomation_suites.h"
 
 /* Test case functions */
 
 /**
- * @brief Call to SDL_strlcpy
+ * \brief Call to SDL_strlcpy
  */
 #undef SDL_strlcpy
-int stdlib_strlcpy(void *arg)
+static int stdlib_strlcpy(void *arg)
 {
     size_t result;
     char text[1024];
@@ -42,10 +43,10 @@ int stdlib_strlcpy(void *arg)
 #endif
 
 /**
- * @brief Call to SDL_snprintf
+ * \brief Call to SDL_snprintf
  */
 #undef SDL_snprintf
-int stdlib_snprintf(void *arg)
+static int stdlib_snprintf(void *arg)
 {
     int result;
     int predicted;
@@ -181,7 +182,7 @@ int stdlib_snprintf(void *arg)
             expected = f_and_g_test_cases[i].expected_f;
             SDLTest_AssertPass("Call to SDL_snprintf(\"%%f\", %g)", value);
             SDLTest_AssertCheck(SDL_strcmp(text, expected) == 0, "Check text, expected: '%s', got: '%s'", expected, text);
-            SDLTest_AssertCheck(result == SDL_strlen(expected), "Check result value, expected: %d, got: %d", SDL_strlen(expected), result);
+            SDLTest_AssertCheck(result == SDL_strlen(expected), "Check result value, expected: %d, got: %d", (int)SDL_strlen(expected), result);
             SDLTest_AssertCheck(predicted == result, "Check predicted value, expected: %d, got: %d", result, predicted);
 
             result = SDL_snprintf(text, sizeof(text), "%g", value);
@@ -189,7 +190,7 @@ int stdlib_snprintf(void *arg)
             expected = f_and_g_test_cases[i].expected_g;
             SDLTest_AssertPass("Call to SDL_snprintf(\"%%g\", %g)", value);
             SDLTest_AssertCheck(SDL_strcmp(text, expected) == 0, "Check text, expected: '%s', got: '%s'", expected, text);
-            SDLTest_AssertCheck(result == SDL_strlen(expected), "Check result value, expected: %d, got: %d", SDL_strlen(expected), result);
+            SDLTest_AssertCheck(result == SDL_strlen(expected), "Check result value, expected: %d, got: %d", (int)SDL_strlen(expected), result);
             SDLTest_AssertCheck(predicted == result, "Check predicted value, expected: %d, got: %d", result, predicted);
         }
     }
@@ -209,9 +210,9 @@ int stdlib_snprintf(void *arg)
 #endif
 
 /**
- * @brief Call to SDL_getenv and SDL_setenv
+ * \brief Call to SDL_getenv and SDL_setenv
  */
-int stdlib_getsetenv(void *arg)
+static int stdlib_getsetenv(void *arg)
 {
     const int nameLen = 16;
     char name[17];
@@ -352,10 +353,10 @@ int stdlib_getsetenv(void *arg)
 #endif
 
 /**
- * @brief Call to SDL_sscanf
+ * \brief Call to SDL_sscanf
  */
 #undef SDL_sscanf
-int stdlib_sscanf(void *arg)
+static int stdlib_sscanf(void *arg)
 {
     int output;
     int result;
@@ -445,9 +446,9 @@ int stdlib_sscanf(void *arg)
 #endif
 
 /**
- * @brief Call to SDL_aligned_alloc
+ * \brief Call to SDL_aligned_alloc
  */
-int stdlib_aligned_alloc(void *arg)
+static int stdlib_aligned_alloc(void *arg)
 {
     size_t i, alignment;
     void *ptr;

@@ -23,11 +23,11 @@
 static SDL_mutex *mutex = NULL;
 static SDL_threadID mainthread;
 static SDL_Thread *threads[6];
-static SDL_atomic_t doterminate;
+static SDL_AtomicInt doterminate;
 
-/*
+/**
  * SDL_Quit() shouldn't be used with atexit() directly because
- *  calling conventions may differ...
+ * calling conventions may differ...
  */
 static void
 SDL_Quit_Wrapper(void)
@@ -35,18 +35,18 @@ SDL_Quit_Wrapper(void)
     SDL_Quit();
 }
 
-void printid(void)
+static void printid(void)
 {
     SDL_Log("Process %lu:  exiting\n", SDL_ThreadID());
 }
 
-void terminate(int sig)
+static void terminate(int sig)
 {
     (void)signal(SIGINT, terminate);
     SDL_AtomicSet(&doterminate, 1);
 }
 
-void closemutex(int sig)
+static void closemutex(int sig)
 {
     SDL_threadID id = SDL_ThreadID();
     int i;
@@ -59,7 +59,7 @@ void closemutex(int sig)
     exit(sig);
 }
 
-int SDLCALL
+static int SDLCALL
 Run(void *data)
 {
     if (SDL_ThreadID() == mainthread) {
@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
     (void)atexit(printid);
     for (i = 0; i < maxproc; ++i) {
         char name[64];
-        (void)SDL_snprintf(name, sizeof name, "Worker%d", i);
+        (void)SDL_snprintf(name, sizeof(name), "Worker%d", i);
         threads[i] = SDL_CreateThread(Run, name, NULL);
         if (threads[i] == NULL) {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create thread!\n");

@@ -29,7 +29,7 @@ extern void OS4_GLES_UnloadLibrary(_THIS);
 extern SDL_GLContext OS4_GLES_CreateContext(_THIS, SDL_Window * window);
 extern int OS4_GLES_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context);
 extern int OS4_GLES_SwapWindow(_THIS, SDL_Window * window);
-extern void OS4_GLES_DeleteContext(_THIS, SDL_GLContext context);
+extern int OS4_GLES_DeleteContext(_THIS, SDL_GLContext context);
 
 extern SDL_bool OS4_GLES_ResizeContext(_THIS, SDL_Window * window);
 extern void OS4_GLES_UpdateWindowPointer(_THIS, SDL_Window * window);

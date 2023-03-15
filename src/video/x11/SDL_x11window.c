@@ -74,8 +74,8 @@ static Bool X11_XIfEventTimeout(Display *display, XEvent *event_return, Bool (*p
 
 static SDL_bool X11_IsWindowMapped(_THIS, SDL_Window *window)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
-    SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
+    SDL_WindowData *data = window->driverdata;
+    SDL_VideoData *videodata = _this->driverdata;
     XWindowAttributes attr;
 
     X11_XGetWindowAttributes(videodata->display, data->xwindow, &attr);
@@ -89,7 +89,7 @@ static SDL_bool X11_IsWindowMapped(_THIS, SDL_Window *window)
 #if 0
 static SDL_bool X11_IsActionAllowed(SDL_Window *window, Atom action)
 {
-    SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
+    SDL_WindowData *data = window->driverdata;
     Atom _NET_WM_ALLOWED_ACTIONS = data->videodata->_NET_WM_ALLOWED_ACTIONS;
     Atom type;
     Display *display = data->videodata->display;
@@ -114,7 +114,7 @@ static SDL_bool X11_IsActionAllowed(SDL_Window *window, Atom action)
 
 void X11_SetNetWMState(_THIS, Window xwindow, Uint32 flags)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
+    SDL_VideoData *videodata = _this->driverdata;
     Display *display = videodata->display;
     /* !!! FIXME: just dereference videodata below instead of copying to locals. */
     Atom _NET_WM_STATE = videodata->_NET_WM_STATE;
@@ -133,7 +133,7 @@ void X11_SetNetWMState(_THIS, Window xwindow, Uint32 flags)
        If we did, this would indicate to the window manager that we don't
        actually want to be mapped during X11_XMapRaised(), which would be bad.
      *
-    if (flags & SDL_WINDOW_HIDDEN) {
+    if ((flags & SDL_WINDOW_HIDDEN) != 0) {
         atoms[count++] = _NET_WM_STATE_HIDDEN;
     }
     */
@@ -166,10 +166,62 @@ void X11_SetNetWMState(_THIS, Window xwindow, Uint32 flags)
     }
 }
 
+static void X11_ConstrainPopup(SDL_Window *window)
+{
+    /* Clamp popup windows to the output borders */
+    if (SDL_WINDOW_IS_POPUP(window)) {
+        SDL_Window *w;
+        SDL_DisplayID displayID;
+        SDL_Rect rect;
+        int abs_x = window->x;
+        int abs_y = window->y;
+        int offset_x = 0, offset_y = 0;
+
+        /* Calculate the total offset from the parents */
+        for (w = window->parent; w->parent != NULL; w = w->parent) {
+            offset_x += w->x;
+            offset_y += w->y;
+        }
+
+        offset_x += w->x;
+        offset_y += w->y;
+        abs_x += offset_x;
+        abs_y += offset_y;
+
+        displayID = SDL_GetDisplayForWindow(w);
+
+        SDL_GetDisplayBounds(displayID, &rect);
+        if (abs_x + window->w > rect.x + rect.w) {
+            abs_x -= (abs_x + window->w) - (rect.x + rect.w);
+        }
+        if (abs_y + window->h > rect.y + rect.h) {
+            abs_y -= (abs_y + window->h) - (rect.y + rect.h);
+        }
+        abs_x = SDL_max(abs_x, rect.x);
+        abs_y = SDL_max(abs_y, rect.y);
+
+        window->x = window->windowed.x = abs_x - offset_x;
+        window->y = window->windowed.y = abs_y - offset_y;
+    }
+}
+
+static void X11_SetKeyboardFocus(SDL_Window *window)
+{
+    SDL_Window *topmost = window;
+
+    /* Find the topmost parent */
+    while (topmost->parent != NULL) {
+        topmost = topmost->parent;
+    }
+
+    topmost->driverdata->keyboard_focus = window;
+    SDL_SetKeyboardFocus(window);
+}
+
 Uint32
 X11_GetNetWMState(_THIS, SDL_Window *window, Window xwindow)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
+    SDL_VideoData *videodata = _this->driverdata;
     Display *display = videodata->display;
     Atom _NET_WM_STATE = videodata->_NET_WM_STATE;
     Atom _NET_WM_STATE_HIDDEN = videodata->_NET_WM_STATE_HIDDEN;
@@ -207,7 +259,13 @@ X11_GetNetWMState(_THIS, SDL_Window *window, Window xwindow)
         }
 
         if (fullscreen == 1) {
-            flags |= SDL_WINDOW_FULLSCREEN;
+            if (window->flags & SDL_WINDOW_FULLSCREEN) {
+                /* Pick whatever state the window expects */
+                flags |= (window->flags & SDL_WINDOW_FULLSCREEN);
+            } else {
+                /* Assume we're fullscreen desktop */
+                flags |= SDL_WINDOW_FULLSCREEN;
+            }
         }
 
         if (maximized == 3) {
@@ -249,7 +307,7 @@ X11_GetNetWMState(_THIS, SDL_Window *window, Window xwindow)
 
 static int SetupWindowData(_THIS, SDL_Window *window, Window w, BOOL created)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
+    SDL_VideoData *videodata = _this->driverdata;
     SDL_WindowData *data;
     int numwindows = videodata->numwindows;
     int windowlistlength = videodata->windowlistlength;
@@ -280,11 +338,7 @@ static int SetupWindowData(_THIS, SDL_Window *window, Window w, BOOL created)
         windowlist[numwindows] = data;
         videodata->numwindows++;
     } else {
-        windowlist =
-            (SDL_WindowData **)SDL_realloc(windowlist,
-                                           (numwindows +
-                                            1) *
-                                               sizeof(*windowlist));
+        windowlist = (SDL_WindowData **)SDL_realloc(windowlist, (numwindows + 1) * sizeof(*windowlist));
         if (windowlist == NULL) {
             SDL_free(data);
             return SDL_OutOfMemory();
@@ -300,8 +354,10 @@ static int SetupWindowData(_THIS, SDL_Window *window, Window w, BOOL created)
         XWindowAttributes attrib;
 
         X11_XGetWindowAttributes(data->videodata->display, w, &attrib);
-        window->x = attrib.x;
-        window->y = attrib.y;
+        if (!SDL_WINDOW_IS_POPUP(window)) {
+            window->x = attrib.x;
+            window->y = attrib.y;
+        }
         window->w = attrib.width;
         window->h = attrib.height;
         if (attrib.map_state != IsUnmapped) {
@@ -369,13 +425,13 @@ static void SetWindowBordered(Display *display, int screen, Window window, SDL_b
 
 int X11_CreateWindow(_THIS, SDL_Window *window)
 {
-    SDL_VideoData *data = (SDL_VideoData *)_this->driverdata;
-    SDL_DisplayData *displaydata =
-        (SDL_DisplayData *)SDL_GetDisplayForWindow(window)->driverdata;
+    SDL_VideoData *data = _this->driverdata;
+    SDL_DisplayData *displaydata = SDL_GetDisplayDriverDataForWindow(window);
     const SDL_bool force_override_redirect = SDL_GetHintBoolean(SDL_HINT_X11_FORCE_OVERRIDE_REDIRECT, SDL_FALSE);
     SDL_WindowData *windowdata;
     Display *display = data->display;
     int screen = displaydata->screen;
+    const int transparent = (window->flags & SDL_WINDOW_TRANSPARENT) ? SDL_TRUE : SDL_FALSE;
     Visual *visual;
     int depth;
     XSetWindowAttributes xattr;
@@ -391,6 +447,8 @@ int X11_CreateWindow(_THIS, SDL_Window *window)
     Atom _NET_WM_PID;
     long fevent = 0;
     const char *hint = NULL;
+    int win_x, win_y;
+    SDL_bool undefined_position = SDL_FALSE;
 
 #if SDL_VIDEO_OPENGL_GLX || SDL_VIDEO_OPENGL_EGL
     const char *forced_visual_id = SDL_GetHint(SDL_HINT_VIDEO_X11_WINDOW_VISUALID);
@@ -420,12 +478,12 @@ int X11_CreateWindow(_THIS, SDL_Window *window)
             && (!_this->gl_data || X11_GL_UseEGL(_this))
 #endif
         ) {
-            vinfo = X11_GLES_GetVisual(_this, display, screen);
+            vinfo = X11_GLES_GetVisual(_this, display, screen, transparent);
         } else
 #endif
         {
 #if SDL_VIDEO_OPENGL_GLX
-            vinfo = X11_GL_GetVisual(_this, display, screen);
+            vinfo = X11_GL_GetVisual(_this, display, screen, transparent);
 #endif
         }
 
@@ -526,6 +584,18 @@ int X11_CreateWindow(_THIS, SDL_Window *window)
                                 visual, AllocNone);
     }
 
+    if (window->undefined_x && window->undefined_y &&
+        window->last_displayID == SDL_GetPrimaryDisplay()) {
+        undefined_position = SDL_TRUE;
+    }
+
+    if (SDL_WINDOW_IS_POPUP(window)) {
+        X11_ConstrainPopup(window);
+    }
+    SDL_RelativeToGlobalForWindow(window,
+                                      window->windowed.x, window->windowed.y,
+                                      &win_x, &win_y);
+
     /* Always create this with the window->windowed.* fields; if we're
        creating a windowed mode window, that's fine. If we're creating a
        fullscreen window, the window manager will want to know these values
@@ -533,7 +603,7 @@ int X11_CreateWindow(_THIS, SDL_Window *window)
        migration to fullscreen after CreateSDLWindow returns, which will
        put all the SDL_Window fields and system state as expected. */
     w = X11_XCreateWindow(display, RootWindow(display, screen),
-                          window->windowed.x, window->windowed.y, window->windowed.w, window->windowed.h,
+                          win_x, win_y, window->windowed.w, window->windowed.h,
                           0, depth, InputOutput, visual,
                           (CWOverrideRedirect | CWBackPixmap | CWBorderPixel |
                            CWBackingStore | CWColormap),
@@ -543,7 +613,7 @@ int X11_CreateWindow(_THIS, SDL_Window *window)
     }
 
     SetWindowBordered(display, screen, w,
-                      (window->flags & SDL_WINDOW_BORDERLESS) == 0);
+                      !(window->flags & SDL_WINDOW_BORDERLESS));
 
     sizehints = X11_XAllocSizeHints();
     /* Setup the normal size hints */
@@ -553,9 +623,11 @@ int X11_CreateWindow(_THIS, SDL_Window *window)
         sizehints->min_height = sizehints->max_height = window->h;
         sizehints->flags |= (PMaxSize | PMinSize);
     }
-    sizehints->x = window->x;
-    sizehints->y = window->y;
-    sizehints->flags |= USPosition;
+    if (!undefined_position) {
+        sizehints->x = win_x;
+        sizehints->y = win_y;
+        sizehints->flags |= USPosition;
+    }
 
     /* Setup the input hints so we get keyboard input */
     wmhints = X11_XAllocWMHints();
@@ -633,7 +705,7 @@ int X11_CreateWindow(_THIS, SDL_Window *window)
         X11_XDestroyWindow(display, w);
         return -1;
     }
-    windowdata = (SDL_WindowData *)window->driverdata;
+    windowdata = window->driverdata;
 
 #if SDL_VIDEO_OPENGL_ES || SDL_VIDEO_OPENGL_ES2 || SDL_VIDEO_OPENGL_EGL
     if ((window->flags & SDL_WINDOW_OPENGL) &&
@@ -649,7 +721,7 @@ int X11_CreateWindow(_THIS, SDL_Window *window)
         }
 
         /* Create the GLES window surface */
-        windowdata->egl_surface = SDL_EGL_CreateSurface(_this, (NativeWindowType)w);
+        windowdata->egl_surface = SDL_EGL_CreateSurface(_this, window, (NativeWindowType)w);
 
         if (windowdata->egl_surface == EGL_NO_SURFACE) {
             return SDL_SetError("Could not create GLES window surface");
@@ -665,6 +737,13 @@ int X11_CreateWindow(_THIS, SDL_Window *window)
         X11_XGetICValues(windowdata->ic, XNFilterEvents, &fevent, NULL);
     }
 #endif
+
+    /* Tooltips do not receive input */
+    if ((window->flags & SDL_WINDOW_TOOLTIP) && SDL_X11_HAVE_XSHAPE) {
+        Region region = X11_XCreateRegion();
+        X11_XShapeCombineRegion(display, w, ShapeInput, 0, 0, region, ShapeSet);
+        X11_XDestroyRegion(region);
+    }
 
     X11_Xinput2SelectTouch(_this, window);
 
@@ -698,7 +777,7 @@ int X11_CreateWindowFrom(_THIS, SDL_Window *window, const void *data)
 char *
 X11_GetWindowTitle(_THIS, Window xwindow)
 {
-    SDL_VideoData *data = (SDL_VideoData *)_this->driverdata;
+    SDL_VideoData *data = _this->driverdata;
     Display *display = data->display;
     int status, real_format;
     Atom real_type;
@@ -730,51 +809,12 @@ X11_GetWindowTitle(_THIS, Window xwindow)
 
 void X11_SetWindowTitle(_THIS, SDL_Window *window)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
     Window xwindow = data->xwindow;
     Display *display = data->videodata->display;
     char *title = window->title ? window->title : "";
 
     SDL_X11_SetWindowTitle(display, xwindow, title);
-}
-
-void X11_SetWindowIcon(_THIS, SDL_Window *window, SDL_Surface *icon)
-{
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
-    Display *display = data->videodata->display;
-    Atom _NET_WM_ICON = data->videodata->_NET_WM_ICON;
-
-    if (icon) {
-        int propsize;
-        long *propdata;
-
-        /* Set the _NET_WM_ICON property */
-        SDL_assert(icon->format->format == SDL_PIXELFORMAT_ARGB8888);
-        propsize = 2 + (icon->w * icon->h);
-        propdata = SDL_malloc(propsize * sizeof(long));
-        if (propdata) {
-            int x, y;
-            Uint32 *src;
-            long *dst;
-
-            propdata[0] = icon->w;
-            propdata[1] = icon->h;
-            dst = &propdata[2];
-            for (y = 0; y < icon->h; ++y) {
-                src = (Uint32 *)((Uint8 *)icon->pixels + y * icon->pitch);
-                for (x = 0; x < icon->w; ++x) {
-                    *dst++ = *src++;
-                }
-            }
-            X11_XChangeProperty(display, data->xwindow, _NET_WM_ICON, XA_CARDINAL,
-                                32, PropModeReplace, (unsigned char *)propdata,
-                                propsize);
-        }
-        SDL_free(propdata);
-    } else {
-        X11_XDeleteProperty(display, data->xwindow, _NET_WM_ICON);
-    }
-    X11_XFlush(display);
 }
 
 static SDL_bool caught_x11_error = SDL_FALSE;
@@ -786,15 +826,75 @@ static int X11_CatchAnyError(Display *d, XErrorEvent *e)
     return 0;
 }
 
-void X11_SetWindowPosition(_THIS, SDL_Window *window)
+int X11_SetWindowIcon(_THIS, SDL_Window *window, SDL_Surface *icon)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
+    Display *display = data->videodata->display;
+    Atom _NET_WM_ICON = data->videodata->_NET_WM_ICON;
+    int rc = 0;
+    int (*prevHandler)(Display *, XErrorEvent *) = NULL;
+
+    if (icon) {
+        int x, y;
+        int propsize;
+        long *propdata;
+        Uint32 *src;
+        long *dst;
+
+        /* Set the _NET_WM_ICON property */
+        SDL_assert(icon->format->format == SDL_PIXELFORMAT_ARGB8888);
+        propsize = 2 + (icon->w * icon->h);
+        propdata = SDL_malloc(propsize * sizeof(long));
+
+        if (!propdata) {
+            return SDL_OutOfMemory();
+        }
+
+        X11_XSync(display, False);
+        prevHandler = X11_XSetErrorHandler(X11_CatchAnyError);
+
+        propdata[0] = icon->w;
+        propdata[1] = icon->h;
+        dst = &propdata[2];
+
+        for (y = 0; y < icon->h; ++y) {
+            src = (Uint32 *)((Uint8 *)icon->pixels + y * icon->pitch);
+            for (x = 0; x < icon->w; ++x) {
+                *dst++ = *src++;
+            }
+        }
+
+        X11_XChangeProperty(display, data->xwindow, _NET_WM_ICON, XA_CARDINAL,
+                                32, PropModeReplace, (unsigned char *)propdata,
+                                propsize);
+        SDL_free(propdata);
+
+        if (caught_x11_error) {
+            rc = SDL_SetError("An error occurred while trying to set the window's icon");
+        }
+    }
+
+    X11_XFlush(display);
+
+    if (prevHandler != NULL) {
+        X11_XSetErrorHandler(prevHandler);
+        caught_x11_error = SDL_FALSE;
+    }
+
+    return rc;
+}
+
+void X11_UpdateWindowPosition(SDL_Window *window)
+{
+    SDL_Window *w;
+    SDL_WindowData *data = window->driverdata;
     Display *display = data->videodata->display;
     int (*prev_handler)(Display *, XErrorEvent *) = NULL;
     unsigned int childCount;
     Window childReturn, root, parent;
     Window *children;
     XWindowAttributes attrs;
+    int dest_x, dest_y;
     int orig_x, orig_y;
     Uint64 timeout;
 
@@ -804,8 +904,12 @@ void X11_SetWindowPosition(_THIS, SDL_Window *window)
     X11_XTranslateCoordinates(display, parent, DefaultRootWindow(display),
                               attrs.x, attrs.y, &orig_x, &orig_y, &childReturn);
 
+    SDL_RelativeToGlobalForWindow(window,
+                                      window->x - data->border_left, window->y - data->border_top,
+                                      &dest_x, &dest_y);
+
     /*Attempt to move the window*/
-    X11_XMoveWindow(display, data->xwindow, window->x - data->border_left, window->y - data->border_top);
+    X11_XMoveWindow(display, data->xwindow, dest_x, dest_y);
 
     /* Wait a brief time to see if the window manager decided to let this move happen.
        If the window changes at all, even to an unexpected value, we break out. */
@@ -824,10 +928,13 @@ void X11_SetWindowPosition(_THIS, SDL_Window *window)
 
         if (!caught_x11_error) {
             if ((x != orig_x) || (y != orig_y)) {
+                if (SDL_WINDOW_IS_POPUP(window)) {
+                    SDL_GlobalToRelativeForWindow(window, x, y, &x, &y);
+                }
                 window->x = x;
                 window->y = y;
                 break; /* window moved, time to go. */
-            } else if ((x == window->x) && (y == window->y)) {
+            } else if ((x == dest_x) && (y == dest_y)) {
                 break; /* we're at the place we wanted to be anyhow, drop out. */
             }
         }
@@ -841,11 +948,23 @@ void X11_SetWindowPosition(_THIS, SDL_Window *window)
 
     X11_XSetErrorHandler(prev_handler);
     caught_x11_error = SDL_FALSE;
+
+    for (w = window->first_child; w != NULL; w = w->next_sibling) {
+        X11_UpdateWindowPosition(w);
+    }
+}
+
+void X11_SetWindowPosition(_THIS, SDL_Window *window)
+{
+    if (SDL_WINDOW_IS_POPUP(window)) {
+        X11_ConstrainPopup(window);
+    }
+    X11_UpdateWindowPosition(window);
 }
 
 void X11_SetWindowMinimumSize(_THIS, SDL_Window *window)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
     Display *display = data->videodata->display;
 
     if (window->flags & SDL_WINDOW_RESIZABLE) {
@@ -873,7 +992,7 @@ void X11_SetWindowMinimumSize(_THIS, SDL_Window *window)
 
 void X11_SetWindowMaximumSize(_THIS, SDL_Window *window)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
     Display *display = data->videodata->display;
 
     if (window->flags & SDL_WINDOW_RESIZABLE) {
@@ -901,7 +1020,7 @@ void X11_SetWindowMaximumSize(_THIS, SDL_Window *window)
 
 void X11_SetWindowSize(_THIS, SDL_Window *window)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
     Display *display = data->videodata->display;
     int (*prev_handler)(Display *, XErrorEvent *) = NULL;
     XWindowAttributes attrs;
@@ -913,9 +1032,6 @@ void X11_SetWindowSize(_THIS, SDL_Window *window)
     orig_w = attrs.width;
     orig_h = attrs.height;
 
-    if (SDL_IsShapedWindow(window)) {
-        X11_ResizeWindowShape(window);
-    }
     if (!(window->flags & SDL_WINDOW_RESIZABLE)) {
         /* Apparently, if the X11 Window is set to a 'non-resizable' window, you cannot resize it using the X11_XResizeWindow, thus
            we must set the size hints to adjust the window size. */
@@ -977,6 +1093,10 @@ void X11_SetWindowSize(_THIS, SDL_Window *window)
         }
 
         if (SDL_GetTicks() >= timeout) {
+            /* Timeout occurred and window size didn't change
+             * window manager likely denied the resize. */
+            window->w = orig_w;
+            window->h = orig_h;
             break;
         }
 
@@ -989,7 +1109,7 @@ void X11_SetWindowSize(_THIS, SDL_Window *window)
 
 int X11_GetWindowBordersSize(_THIS, SDL_Window *window, int *top, int *left, int *bottom, int *right)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
 
     *left = data->border_left;
     *right = data->border_right;
@@ -1001,7 +1121,7 @@ int X11_GetWindowBordersSize(_THIS, SDL_Window *window, int *top, int *left, int
 
 int X11_SetWindowOpacity(_THIS, SDL_Window *window, float opacity)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
     Display *display = data->videodata->display;
     Atom _NET_WM_WINDOW_OPACITY = data->videodata->_NET_WM_WINDOW_OPACITY;
 
@@ -1019,8 +1139,8 @@ int X11_SetWindowOpacity(_THIS, SDL_Window *window, float opacity)
 
 int X11_SetWindowModalFor(_THIS, SDL_Window *modal_window, SDL_Window *parent_window)
 {
-    SDL_WindowData *data = (SDL_WindowData *)modal_window->driverdata;
-    SDL_WindowData *parent_data = (SDL_WindowData *)parent_window->driverdata;
+    SDL_WindowData *data = modal_window->driverdata;
+    SDL_WindowData *parent_data = parent_window->driverdata;
     Display *display = data->videodata->display;
 
     X11_XSetTransientForHint(display, data->xwindow, parent_data->xwindow);
@@ -1030,7 +1150,7 @@ int X11_SetWindowModalFor(_THIS, SDL_Window *modal_window, SDL_Window *parent_wi
 int X11_SetWindowInputFocus(_THIS, SDL_Window *window)
 {
     if (X11_IsWindowMapped(_this, window)) {
-        SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+        SDL_WindowData *data = window->driverdata;
         Display *display = data->videodata->display;
         X11_XSetInputFocus(display, data->xwindow, RevertToNone, CurrentTime);
         X11_XFlush(display);
@@ -1041,11 +1161,10 @@ int X11_SetWindowInputFocus(_THIS, SDL_Window *window)
 
 void X11_SetWindowBordered(_THIS, SDL_Window *window, SDL_bool bordered)
 {
-    const SDL_bool focused = ((window->flags & SDL_WINDOW_INPUT_FOCUS) != 0);
-    const SDL_bool visible = ((window->flags & SDL_WINDOW_HIDDEN) == 0);
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
-    SDL_DisplayData *displaydata =
-        (SDL_DisplayData *)SDL_GetDisplayForWindow(window)->driverdata;
+    const SDL_bool focused = (window->flags & SDL_WINDOW_INPUT_FOCUS) ? SDL_TRUE : SDL_FALSE;
+    const SDL_bool visible = (!(window->flags & SDL_WINDOW_HIDDEN)) ? SDL_TRUE : SDL_FALSE;
+    SDL_WindowData *data = window->driverdata;
+    SDL_DisplayData *displaydata = SDL_GetDisplayDriverDataForWindow(window);
     Display *display = data->videodata->display;
     XEvent event;
 
@@ -1076,7 +1195,7 @@ void X11_SetWindowBordered(_THIS, SDL_Window *window, SDL_bool bordered)
 
 void X11_SetWindowResizable(_THIS, SDL_Window *window, SDL_bool resizable)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
     Display *display = data->videodata->display;
 
     XSizeHints *sizehints = X11_XAllocSizeHints();
@@ -1113,8 +1232,8 @@ void X11_SetWindowResizable(_THIS, SDL_Window *window, SDL_bool resizable)
 
 void X11_SetWindowAlwaysOnTop(_THIS, SDL_Window *window, SDL_bool on_top)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
-    SDL_DisplayData *displaydata = (SDL_DisplayData *)SDL_GetDisplayForWindow(window)->driverdata;
+    SDL_WindowData *data = window->driverdata;
+    SDL_DisplayData *displaydata = SDL_GetDisplayDriverDataForWindow(window);
     Display *display = data->videodata->display;
     Atom _NET_WM_STATE = data->videodata->_NET_WM_STATE;
     Atom _NET_WM_STATE_ABOVE = data->videodata->_NET_WM_STATE_ABOVE;
@@ -1142,9 +1261,13 @@ void X11_SetWindowAlwaysOnTop(_THIS, SDL_Window *window, SDL_bool on_top)
 
 void X11_ShowWindow(_THIS, SDL_Window *window)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
     Display *display = data->videodata->display;
     XEvent event;
+
+    if (window->driverdata->hidden_by_parent_focus) {
+        return;
+    }
 
     if (!X11_IsWindowMapped(_this, window)) {
         X11_XMapRaised(display, data->xwindow);
@@ -1163,12 +1286,19 @@ void X11_ShowWindow(_THIS, SDL_Window *window)
         X11_XSetInputFocus(display, data->xwindow, RevertToNone, CurrentTime);
         X11_XFlush(display);
     }
+
+    /* Popup menus grab the keyboard */
+    if (window->flags & SDL_WINDOW_POPUP_MENU) {
+        if (window->parent == SDL_GetKeyboardFocus()) {
+            X11_SetKeyboardFocus(window);
+        }
+    }
 }
 
 void X11_HideWindow(_THIS, SDL_Window *window)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
-    SDL_DisplayData *displaydata = (SDL_DisplayData *)SDL_GetDisplayForWindow(window)->driverdata;
+    SDL_WindowData *data = window->driverdata;
+    SDL_DisplayData *displaydata = SDL_GetDisplayDriverDataForWindow(window);
     Display *display = data->videodata->display;
     XEvent event;
 
@@ -1180,13 +1310,26 @@ void X11_HideWindow(_THIS, SDL_Window *window)
         }
         X11_XFlush(display);
     }
+
+    /* Transfer keyboard focus back to the parent */
+    if (window->flags & SDL_WINDOW_POPUP_MENU) {
+        if (window == SDL_GetKeyboardFocus()) {
+            SDL_Window *new_focus = window->parent;
+
+            /* Find the highest level window that isn't being hidden or destroyed. */
+            while (new_focus->parent != NULL && (new_focus->is_hiding || new_focus->is_destroying)) {
+                new_focus = new_focus->parent;
+            }
+
+            X11_SetKeyboardFocus(new_focus);
+        }
+    }
 }
 
 static void X11_SetWindowActive(_THIS, SDL_Window *window)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
-    SDL_DisplayData *displaydata =
-        (SDL_DisplayData *)SDL_GetDisplayForWindow(window)->driverdata;
+    SDL_WindowData *data = window->driverdata;
+    SDL_DisplayData *displaydata = SDL_GetDisplayDriverDataForWindow(window);
     Display *display = data->videodata->display;
     Atom _NET_ACTIVE_WINDOW = data->videodata->_NET_ACTIVE_WINDOW;
 
@@ -1213,7 +1356,7 @@ static void X11_SetWindowActive(_THIS, SDL_Window *window)
 
 void X11_RaiseWindow(_THIS, SDL_Window *window)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
     Display *display = data->videodata->display;
 
     X11_XRaiseWindow(display, data->xwindow);
@@ -1223,9 +1366,8 @@ void X11_RaiseWindow(_THIS, SDL_Window *window)
 
 static void X11_SetWindowMaximized(_THIS, SDL_Window *window, SDL_bool maximized)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
-    SDL_DisplayData *displaydata =
-        (SDL_DisplayData *)SDL_GetDisplayForWindow(window)->driverdata;
+    SDL_WindowData *data = window->driverdata;
+    SDL_DisplayData *displaydata = SDL_GetDisplayDriverDataForWindow(window);
     Display *display = data->videodata->display;
     Atom _NET_WM_STATE = data->videodata->_NET_WM_STATE;
     Atom _NET_WM_STATE_MAXIMIZED_VERT = data->videodata->_NET_WM_STATE_MAXIMIZED_VERT;
@@ -1236,7 +1378,7 @@ static void X11_SetWindowMaximized(_THIS, SDL_Window *window, SDL_bool maximized
     } else {
         window->flags &= ~SDL_WINDOW_MAXIMIZED;
 
-        if ((window->flags & SDL_WINDOW_FULLSCREEN) != 0) {
+        if (window->flags & SDL_WINDOW_FULLSCREEN) {
             /* Fullscreen windows are maximized on some window managers,
                and this is functional behavior, so don't remove that state
                now, we'll take care of it when we leave fullscreen mode.
@@ -1274,9 +1416,8 @@ void X11_MaximizeWindow(_THIS, SDL_Window *window)
 
 void X11_MinimizeWindow(_THIS, SDL_Window *window)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
-    SDL_DisplayData *displaydata =
-        (SDL_DisplayData *)SDL_GetDisplayForWindow(window)->driverdata;
+    SDL_WindowData *data = window->driverdata;
+    SDL_DisplayData *displaydata = SDL_GetDisplayDriverDataForWindow(window);
     Display *display = data->videodata->display;
 
     X11_XIconifyWindow(display, data->xwindow, displaydata->screen);
@@ -1293,8 +1434,8 @@ void X11_RestoreWindow(_THIS, SDL_Window *window)
 /* This asks the Window Manager to handle fullscreen for us. This is the modern way. */
 static void X11_SetWindowFullscreenViaWM(_THIS, SDL_Window *window, SDL_VideoDisplay *_display, SDL_bool fullscreen)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
-    SDL_DisplayData *displaydata = (SDL_DisplayData *)_display->driverdata;
+    SDL_WindowData *data = window->driverdata;
+    SDL_DisplayData *displaydata = _display->driverdata;
     Display *display = data->videodata->display;
     Atom _NET_WM_STATE = data->videodata->_NET_WM_STATE;
     Atom _NET_WM_STATE_FULLSCREEN = data->videodata->_NET_WM_STATE_FULLSCREEN;
@@ -1351,6 +1492,11 @@ static void X11_SetWindowFullscreenViaWM(_THIS, SDL_Window *window, SDL_VideoDis
         X11_XSendEvent(display, RootWindow(display, displaydata->screen), 0,
                        SubstructureNotifyMask | SubstructureRedirectMask, &e);
 
+        /* Set the position so the window will be on the target display */
+        if (fullscreen) {
+            X11_XMoveWindow(display, data->xwindow, displaydata->x, displaydata->y);
+        }
+
         /* Fullscreen windows sometimes end up being marked maximized by
             window managers. Force it back to how we expect it to be. */
         if (!fullscreen) {
@@ -1359,7 +1505,7 @@ static void X11_SetWindowFullscreenViaWM(_THIS, SDL_Window *window, SDL_VideoDis
             e.xclient.message_type = _NET_WM_STATE;
             e.xclient.format = 32;
             e.xclient.window = data->xwindow;
-            if ((window->flags & SDL_WINDOW_MAXIMIZED) != 0) {
+            if (window->flags & SDL_WINDOW_MAXIMIZED) {
                 e.xclient.data.l[0] = _NET_WM_STATE_ADD;
             } else {
                 e.xclient.data.l[0] = _NET_WM_STATE_REMOVE;
@@ -1476,7 +1622,7 @@ static void X11_ReadProperty(SDL_x11Prop *p, Display *disp, Window w, Atom prop)
 void *
 X11_GetWindowICCProfile(_THIS, SDL_Window *window, size_t *size)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
     Display *display = data->videodata->display;
     XWindowAttributes attributes;
     Atom icc_profile_atom;
@@ -1525,7 +1671,7 @@ X11_GetWindowICCProfile(_THIS, SDL_Window *window, size_t *size)
 
 void X11_SetWindowMouseGrab(_THIS, SDL_Window *window, SDL_bool grabbed)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
     Display *display;
 
     if (data == NULL) {
@@ -1551,7 +1697,7 @@ void X11_SetWindowMouseGrab(_THIS, SDL_Window *window, SDL_bool grabbed)
 
             /* Try for up to 5000ms (5s) to grab. If it still fails, stop trying. */
             for (attempts = 0; attempts < 100; attempts++) {
-                result = X11_XGrabPointer(display, data->xwindow, True, mask, GrabModeAsync,
+                result = X11_XGrabPointer(display, data->xwindow, False, mask, GrabModeAsync,
                                           GrabModeAsync, data->xwindow, None, CurrentTime);
                 if (result == GrabSuccess) {
                     data->mouse_grabbed = SDL_TRUE;
@@ -1580,7 +1726,7 @@ void X11_SetWindowMouseGrab(_THIS, SDL_Window *window, SDL_bool grabbed)
 
 void X11_SetWindowKeyboardGrab(_THIS, SDL_Window *window, SDL_bool grabbed)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
     Display *display;
 
     if (data == NULL) {
@@ -1607,7 +1753,7 @@ void X11_SetWindowKeyboardGrab(_THIS, SDL_Window *window, SDL_bool grabbed)
 
 void X11_DestroyWindow(_THIS, SDL_Window *window)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
 
     if (window->shaper) {
         SDL_ShapeData *shapedata = (SDL_ShapeData *)window->shaper->driverdata;
@@ -1620,7 +1766,7 @@ void X11_DestroyWindow(_THIS, SDL_Window *window)
     }
 
     if (data) {
-        SDL_VideoData *videodata = (SDL_VideoData *)data->videodata;
+        SDL_VideoData *videodata = data->videodata;
         Display *display = videodata->display;
         int numwindows = videodata->numwindows;
         SDL_WindowData **windowlist = videodata->windowlist;
@@ -1659,8 +1805,8 @@ void X11_DestroyWindow(_THIS, SDL_Window *window)
 
 int X11_GetWindowWMInfo(_THIS, SDL_Window *window, SDL_SysWMinfo *info)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
-    SDL_DisplayData *displaydata = (SDL_DisplayData *)SDL_GetDisplayForWindow(window)->driverdata;
+    SDL_WindowData *data = window->driverdata;
+    SDL_DisplayData *displaydata = SDL_GetDisplayDriverDataForWindow(window);
 
     if (data == NULL) {
         /* This sometimes happens in SDL_IBus_UpdateTextRect() while creating the window */
@@ -1681,7 +1827,7 @@ int X11_SetWindowHitTest(SDL_Window *window, SDL_bool enabled)
 
 void X11_AcceptDragAndDrop(SDL_Window *window, SDL_bool accept)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
     Display *display = data->videodata->display;
     Atom XdndAware = X11_XInternAtom(display, "XdndAware", False);
 
@@ -1696,7 +1842,7 @@ void X11_AcceptDragAndDrop(SDL_Window *window, SDL_bool accept)
 
 int X11_FlashWindow(_THIS, SDL_Window *window, SDL_FlashOperation operation)
 {
-    SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *data = window->driverdata;
     Display *display = data->videodata->display;
     XWMHints *wmhints;
 

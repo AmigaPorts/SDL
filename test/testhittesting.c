@@ -16,12 +16,12 @@
 
 #define RESIZE_BORDER 20
 
-const SDL_Rect drag_areas[] = {
+static const SDL_Rect drag_areas[] = {
     { 20, 20, 100, 100 },
     { 200, 70, 100, 100 },
     { 400, 90, 100, 100 }
 };
-const SDL_FRect render_areas[] = {
+static const SDL_FRect render_areas[] = {
     { 20.0f, 20.0f, 100.0f, 100.0f },
     { 200.0f, 70.0f, 100.0f, 100.0f },
     { 400.0f, 90.0f, 100.0f, 100.0f }
@@ -81,7 +81,7 @@ int main(int argc, char **argv)
 
     /* !!! FIXME: check for errors. */
     SDL_Init(SDL_INIT_VIDEO);
-    window = SDL_CreateWindow("Drag the red boxes", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE);
+    window = SDL_CreateWindow("Drag the red boxes", 640, 480, SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE);
     renderer = SDL_CreateRenderer(window, NULL, 0);
 
     if (SDL_SetWindowHitTest(window, hitTest, NULL) == -1) {
@@ -104,11 +104,11 @@ int main(int argc, char **argv)
             nothing_to_do = 0;
 
             switch (e.type) {
-            case SDL_EVENT_MOUSE_BUTTONDOWN:
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 SDL_Log("button down!\n");
                 break;
 
-            case SDL_EVENT_MOUSE_BUTTONUP:
+            case SDL_EVENT_MOUSE_BUTTON_UP:
                 SDL_Log("button up!\n");
                 break;
 

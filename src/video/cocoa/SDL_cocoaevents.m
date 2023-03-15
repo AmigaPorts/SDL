@@ -25,13 +25,6 @@
 #include "SDL_cocoavideo.h"
 #include "../../events/SDL_events_c.h"
 
-/* This define was added in the 10.9 SDK. */
-#ifndef kIOPMAssertPreventUserIdleDisplaySleep
-#define kIOPMAssertPreventUserIdleDisplaySleep kIOPMAssertionTypePreventUserIdleDisplaySleep
-#endif
-#ifndef NSAppKitVersionNumber10_8
-#define NSAppKitVersionNumber10_8 1187
-#endif
 #ifndef MAC_OS_X_VERSION_10_12
 #define NSEventTypeApplicationDefined NSApplicationDefined
 #endif
@@ -42,7 +35,7 @@ static SDL_Window *FindSDLWindowForNSWindow(NSWindow *win)
     SDL_VideoDevice *device = SDL_GetVideoDevice();
     if (device && device->windows) {
         for (sdlwindow = device->windows; sdlwindow; sdlwindow = sdlwindow->next) {
-            NSWindow *nswindow = ((__bridge SDL_WindowData *)sdlwindow->driverdata).nswindow;
+            NSWindow *nswindow = ((__bridge SDL_CocoaWindowData *)sdlwindow->driverdata).nswindow;
             if (win == nswindow) {
                 return sdlwindow;
             }
@@ -136,6 +129,10 @@ static void Cocoa_DispatchEvent(NSEvent *theEvent)
 
 - (id)init;
 - (void)localeDidChange:(NSNotification *)notification;
+- (void)observeValueForKeyPath:(NSString *)keyPath 
+                      ofObject:(id)object 
+                        change:(NSDictionary *)change 
+                       context:(void *)context;
 @end
 
 @implementation SDLAppDelegate : NSObject
@@ -161,6 +158,11 @@ static void Cocoa_DispatchEvent(NSEvent *theEvent)
                    selector:@selector(localeDidChange:)
                        name:NSCurrentLocaleDidChangeNotification
                      object:nil];
+
+        [NSApp addObserver:self
+                forKeyPath:@"effectiveAppearance"
+                   options:NSKeyValueObservingOptionInitial
+                   context:nil];
     }
 
     return self;
@@ -173,6 +175,7 @@ static void Cocoa_DispatchEvent(NSEvent *theEvent)
     [center removeObserver:self name:NSWindowWillCloseNotification object:nil];
     [center removeObserver:self name:NSApplicationDidBecomeActiveNotification object:nil];
     [center removeObserver:self name:NSCurrentLocaleDidChangeNotification object:nil];
+    [NSApp removeObserver:self forKeyPath:@"effectiveAppearance"];
 
     /* Remove our URL event handler only if we set it */
     if ([NSApp delegate] == self) {
@@ -269,9 +272,17 @@ static void Cocoa_DispatchEvent(NSEvent *theEvent)
     }
 }
 
-- (void)localeDidChange:(NSNotification *)notification;
+- (void)localeDidChange:(NSNotification *)notification
 {
     SDL_SendLocaleChangedEvent();
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath 
+                      ofObject:(id)object 
+                        change:(NSDictionary *)change 
+                       context:(void *)context
+{
+    SDL_SetSystemTheme(Cocoa_GetSystemTheme());
 }
 
 - (BOOL)application:(NSApplication *)theApplication openFile:(NSString *)filename
@@ -331,14 +342,10 @@ static NSString *GetApplicationName(void)
 
 static bool LoadMainMenuNibIfAvailable(void)
 {
-#if MAC_OS_X_VERSION_MAX_ALLOWED >= 1080
     NSDictionary *infoDict;
     NSString *mainNibFileName;
     bool success = false;
 
-    if (floor(NSAppKitVersionNumber) < NSAppKitVersionNumber10_8) {
-        return false;
-    }
     infoDict = [[NSBundle mainBundle] infoDictionary];
     if (infoDict) {
         mainNibFileName = [infoDict valueForKey:@"NSMainNibFile"];
@@ -349,9 +356,6 @@ static bool LoadMainMenuNibIfAvailable(void)
     }
 
     return success;
-#else
-    return false;
-#endif
 }
 
 static void CreateApplicationMenus(void)
@@ -571,7 +575,7 @@ void Cocoa_SendWakeupEvent(_THIS, SDL_Window *window)
                                             location:NSMakePoint(0, 0)
                                        modifierFlags:0
                                            timestamp:0.0
-                                        windowNumber:((__bridge SDL_WindowData *)window->driverdata).window_number
+                                        windowNumber:((__bridge SDL_CocoaWindowData *)window->driverdata).window_number
                                              context:nil
                                              subtype:0
                                                data1:0
@@ -581,10 +585,10 @@ void Cocoa_SendWakeupEvent(_THIS, SDL_Window *window)
     }
 }
 
-void Cocoa_SuspendScreenSaver(_THIS)
+int Cocoa_SuspendScreenSaver(_THIS)
 {
     @autoreleasepool {
-        SDL_VideoData *data = (__bridge SDL_VideoData *)_this->driverdata;
+        SDL_CocoaVideoData *data = (__bridge SDL_CocoaVideoData *)_this->driverdata;
 
         if (data.screensaver_assertion) {
             IOPMAssertionRelease(data.screensaver_assertion);
@@ -606,6 +610,7 @@ void Cocoa_SuspendScreenSaver(_THIS)
             data.screensaver_assertion = assertion;
         }
     }
+    return 0;
 }
 
 #endif /* SDL_VIDEO_DRIVER_COCOA */

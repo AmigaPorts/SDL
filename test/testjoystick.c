@@ -99,7 +99,7 @@ DrawRect(SDL_Renderer *r, const int x, const int y, const int w, const int h)
     SDL_RenderFillRect(r, &area);
 }
 
-void loop(void *arg)
+static void loop(void *arg)
 {
     SDL_Event event;
     int i;
@@ -198,7 +198,7 @@ void loop(void *arg)
             }
             SDL_FALLTHROUGH;
         case SDL_EVENT_FINGER_DOWN:
-        case SDL_EVENT_MOUSE_BUTTONDOWN:
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_QUIT:
             done = SDL_TRUE;
             break;
@@ -299,9 +299,7 @@ int main(int argc, char *argv[])
     }
 
     /* Create a window to display joystick axis position */
-    window = SDL_CreateWindow("Joystick Test", SDL_WINDOWPOS_CENTERED,
-                              SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH,
-                              SCREEN_HEIGHT, 0);
+    window = SDL_CreateWindow("Joystick Test", SCREEN_WIDTH, SCREEN_HEIGHT, 0);
     if (window == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create window: %s\n", SDL_GetError());
         return SDL_FALSE;

@@ -3,6 +3,7 @@
  */
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_test.h>
+#include "testautomation_suites.h"
 
 /* Flag indicating if the param should be checked */
 static int g_paramCheck = 0;
@@ -29,9 +30,9 @@ static void timerSetUp(void *arg)
 /* Test case functions */
 
 /**
- * @brief Call to SDL_GetPerformanceCounter
+ * \brief Call to SDL_GetPerformanceCounter
  */
-int timer_getPerformanceCounter(void *arg)
+static int timer_getPerformanceCounter(void *arg)
 {
     Uint64 result;
 
@@ -43,9 +44,9 @@ int timer_getPerformanceCounter(void *arg)
 }
 
 /**
- * @brief Call to SDL_GetPerformanceFrequency
+ * \brief Call to SDL_GetPerformanceFrequency
  */
-int timer_getPerformanceFrequency(void *arg)
+static int timer_getPerformanceFrequency(void *arg)
 {
     Uint64 result;
 
@@ -57,9 +58,9 @@ int timer_getPerformanceFrequency(void *arg)
 }
 
 /**
- * @brief Call to SDL_Delay and SDL_GetTicks
+ * \brief Call to SDL_Delay and SDL_GetTicks
  */
-int timer_delayAndGetTicks(void *arg)
+static int timer_delayAndGetTicks(void *arg)
 {
     const int testDelay = 100;
     const int marginOfError = 25;
@@ -112,9 +113,9 @@ static Uint32 SDLCALL timerTestCallback(Uint32 interval, void *param)
 }
 
 /**
- * @brief Call to SDL_AddTimer and SDL_RemoveTimer
+ * \brief Call to SDL_AddTimer and SDL_RemoveTimer
  */
-int timer_addRemoveTimer(void *arg)
+static int timer_addRemoveTimer(void *arg)
 {
     SDL_TimerID id;
     SDL_bool result;

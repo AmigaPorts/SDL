@@ -18,12 +18,13 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_test.h>
+#include "testautomation_suites.h"
 
 /* ================= Test Case Implementation ================== */
 
-const char *RWopsReadTestFilename = "rwops_read";
-const char *RWopsWriteTestFilename = "rwops_write";
-const char *RWopsAlphabetFilename = "rwops_alphabet";
+static const char *RWopsReadTestFilename = "rwops_read";
+static const char *RWopsWriteTestFilename = "rwops_write";
+static const char *RWopsAlphabetFilename = "rwops_alphabet";
 
 static const char RWopsHelloWorldTestString[] = "Hello World!";
 static const char RWopsHelloWorldCompString[] = "Hello World!";
@@ -31,7 +32,7 @@ static const char RWopsAlphabetString[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 /* Fixture */
 
-void RWopsSetUp(void *arg)
+static void RWopsSetUp(void *arg)
 {
     size_t fileLen;
     FILE *handle;
@@ -74,7 +75,7 @@ void RWopsSetUp(void *arg)
     SDLTest_AssertPass("Creation of test file completed");
 }
 
-void RWopsTearDown(void *arg)
+static void RWopsTearDown(void *arg)
 {
     int result;
 
@@ -89,11 +90,10 @@ void RWopsTearDown(void *arg)
 }
 
 /**
- * @brief Makes sure parameters work properly. Local helper function.
+ * \brief Makes sure parameters work properly. Local helper function.
  *
- * \sa
- * http://wiki.libsdl.org/SDL_RWseek
- * http://wiki.libsdl.org/SDL_RWread
+ * \sa SDL_RWseek
+ * \sa SDL_RWread
  */
 static void testGenericRWopsValidations(SDL_RWops *rw, int write)
 {
@@ -167,13 +167,13 @@ static void testGenericRWopsValidations(SDL_RWops *rw, int write)
         (int)i);
 }
 
-/* !
+/**
  * Negative test for SDL_RWFromFile parameters
  *
- * \sa http://wiki.libsdl.org/SDL_RWFromFile
+ * \sa SDL_RWFromFile
  *
  */
-int rwops_testParamNegative(void)
+static int rwops_testParamNegative(void *arg)
 {
     SDL_RWops *rwops;
 
@@ -214,12 +214,12 @@ int rwops_testParamNegative(void)
 }
 
 /**
- * @brief Tests opening from memory.
+ * \brief Tests opening from memory.
  *
- * \sa http://wiki.libsdl.org/SDL_RWFromMem
- * \sa http://wiki.libsdl.org/SDL_RWClose
+ * \sa SDL_RWFromMem
+ * \sa SDL_RWClose
  */
-int rwops_testMem(void)
+static int rwops_testMem(void *arg)
 {
     char mem[sizeof(RWopsHelloWorldTestString)];
     SDL_RWops *rw;
@@ -253,13 +253,12 @@ int rwops_testMem(void)
 }
 
 /**
- * @brief Tests opening from memory.
+ * \brief Tests opening from memory.
  *
- * \sa
- * http://wiki.libsdl.org/SDL_RWFromConstMem
- * http://wiki.libsdl.org/SDL_RWClose
+ * \sa SDL_RWFromConstMem
+ * \sa SDL_RWClose
  */
-int rwops_testConstMem(void)
+static int rwops_testConstMem(void *arg)
 {
     SDL_RWops *rw;
     int result;
@@ -289,13 +288,12 @@ int rwops_testConstMem(void)
 }
 
 /**
- * @brief Tests reading from file.
+ * \brief Tests reading from file.
  *
- * \sa
- * http://wiki.libsdl.org/SDL_RWFromFile
- * http://wiki.libsdl.org/SDL_RWClose
+ * \sa SDL_RWFromFile
+ * \sa SDL_RWClose
  */
-int rwops_testFileRead(void)
+static int rwops_testFileRead(void *arg)
 {
     SDL_RWops *rw;
     int result;
@@ -337,13 +335,12 @@ int rwops_testFileRead(void)
 }
 
 /**
- * @brief Tests writing from file.
+ * \brief Tests writing from file.
  *
- * \sa
- * http://wiki.libsdl.org/SDL_RWFromFile
- * http://wiki.libsdl.org/SDL_RWClose
+ * \sa SDL_RWFromFile
+ * \sa SDL_RWClose
  */
-int rwops_testFileWrite(void)
+static int rwops_testFileWrite(void *arg)
 {
     SDL_RWops *rw;
     int result;
@@ -385,12 +382,12 @@ int rwops_testFileWrite(void)
 }
 
 /**
- * @brief Tests alloc and free RW context.
+ * \brief Tests alloc and free RW context.
  *
- * \sa http://wiki.libsdl.org/SDL_CreateRW
- * \sa http://wiki.libsdl.org/SDL_DestroyRW
+ * \sa SDL_CreateRW
+ * \sa SDL_DestroyRW
  */
-int rwops_testAllocFree(void)
+static int rwops_testAllocFree(void *arg)
 {
     /* Allocate context */
     SDL_RWops *rw = SDL_CreateRW();
@@ -413,12 +410,12 @@ int rwops_testAllocFree(void)
 }
 
 /**
- * @brief Compare memory and file reads
+ * \brief Compare memory and file reads
  *
- * \sa http://wiki.libsdl.org/SDL_RWFromMem
- * \sa http://wiki.libsdl.org/SDL_RWFromFile
+ * \sa SDL_RWFromMem
+ * \sa SDL_RWFromFile
  */
-int rwops_testCompareRWFromMemWithRWFromFile(void)
+static int rwops_testCompareRWFromMemWithRWFromFile(void *arg)
 {
     int slen = 26;
     char buffer_file[27];
@@ -476,15 +473,14 @@ int rwops_testCompareRWFromMemWithRWFromFile(void)
 }
 
 /**
- * @brief Tests writing and reading from file using endian aware functions.
+ * \brief Tests writing and reading from file using endian aware functions.
  *
- * \sa
- * http://wiki.libsdl.org/SDL_RWFromFile
- * http://wiki.libsdl.org/SDL_RWClose
- * http://wiki.libsdl.org/SDL_ReadBE16
- * http://wiki.libsdl.org/SDL_WriteBE16
+ * \sa SDL_RWFromFile
+ * \sa SDL_RWClose
+ * \sa SDL_ReadBE16
+ * \sa SDL_WriteBE16
  */
-int rwops_testFileWriteReadEndian(void)
+static int rwops_testFileWriteReadEndian(void *arg)
 {
     SDL_RWops *rw;
     Sint64 result;

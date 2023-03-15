@@ -443,7 +443,7 @@ OS4_CreateSystemWindow(_THIS, SDL_Window * window, SDL_VideoDisplay * display)
         WA_Flags, windowFlags,
         WA_IDCMP, IDCMPFlags,
         WA_Hidden, (window->flags & SDL_WINDOW_HIDDEN) ? TRUE : FALSE,
-        WA_GrabFocus, (window->flags & SDL_WINDOW_INPUT_GRABBED) ? POINTER_GRAB_TIMEOUT : 0,
+        WA_GrabFocus, (window->flags & SDL_WINDOW_MOUSE_GRABBED) ? POINTER_GRAB_TIMEOUT : 0,
         WA_UserPort, videodata->userPort,
         WA_BackFill, &OS4_BackFillHook,
         TAG_DONE);

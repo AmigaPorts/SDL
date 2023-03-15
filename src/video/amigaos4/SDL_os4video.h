@@ -31,7 +31,7 @@
 
 /* Private display data */
 
-typedef struct
+struct SDL_VideoData
 {
     STRPTR                  appName;
     uint32                  appId;
@@ -49,7 +49,7 @@ typedef struct
     struct InputIFace       *iInput;
 
     BOOL                    vsyncEnabled;
-} SDL_VideoData;
+};
 
 #define IInput ((SDL_VideoData *) _this->driverdata)->iInput
 

@@ -99,7 +99,74 @@ static float virtual_axis_start_x;
 static float virtual_axis_start_y;
 static SDL_GamepadButton virtual_button_active = SDL_GAMEPAD_BUTTON_INVALID;
 
-static void UpdateWindowTitle()
+
+static void PrintJoystickInfo(SDL_JoystickID instance_id)
+{
+    char guid[64];
+    const char *name;
+    const char *path;
+    const char *description;
+    const char *mapping = NULL;
+
+    SDL_GetJoystickGUIDString(SDL_GetJoystickInstanceGUID(instance_id), guid, sizeof(guid));
+
+    if (SDL_IsGamepad(instance_id)) {
+        name = SDL_GetGamepadInstanceName(instance_id);
+        path = SDL_GetGamepadInstancePath(instance_id);
+        switch (SDL_GetGamepadInstanceType(instance_id)) {
+        case SDL_GAMEPAD_TYPE_AMAZON_LUNA:
+            description = "Amazon Luna Controller";
+            break;
+        case SDL_GAMEPAD_TYPE_GOOGLE_STADIA:
+            description = "Google Stadia Controller";
+            break;
+        case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT:
+        case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT:
+        case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR:
+            description = "Nintendo Switch Joy-Con";
+            break;
+        case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO:
+            description = "Nintendo Switch Pro Controller";
+            break;
+        case SDL_GAMEPAD_TYPE_PS3:
+            description = "PS3 Controller";
+            break;
+        case SDL_GAMEPAD_TYPE_PS4:
+            description = "PS4 Controller";
+            break;
+        case SDL_GAMEPAD_TYPE_PS5:
+            description = "PS5 Controller";
+            break;
+        case SDL_GAMEPAD_TYPE_XBOX360:
+            description = "XBox 360 Controller";
+            break;
+        case SDL_GAMEPAD_TYPE_XBOXONE:
+            description = "XBox One Controller";
+            break;
+        case SDL_GAMEPAD_TYPE_VIRTUAL:
+            description = "Virtual Gamepad";
+            break;
+        default:
+            description = "Gamepad";
+            break;
+        }
+        mapping = SDL_GetGamepadInstanceMapping(instance_id);
+    } else {
+        name = SDL_GetJoystickInstanceName(instance_id);
+        path = SDL_GetJoystickInstancePath(instance_id);
+        description = "Joystick";
+    }
+    SDL_Log("%s: %s%s%s (guid %s, VID 0x%.4x, PID 0x%.4x, player index = %d)\n",
+            description, name ? name : "Unknown", path ? ", " : "", path ? path : "", guid,
+            SDL_GetJoystickInstanceVendor(instance_id),
+            SDL_GetJoystickInstanceProduct(instance_id),
+            SDL_GetJoystickInstancePlayerIndex(instance_id));
+    if (mapping) {
+        SDL_Log("Mapping: %s\n", mapping);
+    }
+}
+
+static void UpdateWindowTitle(void)
 {
     if (window == NULL) {
         return;
@@ -313,7 +380,7 @@ typedef struct
     Uint8 ucLedBlue;                  /* 46 */
 } DS5EffectsState_t;
 
-static void CyclePS5TriggerEffect()
+static void CyclePS5TriggerEffect(void)
 {
     DS5EffectsState_t state;
 
@@ -335,7 +402,7 @@ static void CyclePS5TriggerEffect()
     SDL_SendGamepadEffect(gamepad, &state, sizeof(state));
 }
 
-static SDL_bool ShowingFront()
+static SDL_bool ShowingFront(void)
 {
     SDL_bool showing_front = SDL_TRUE;
     int i;
@@ -349,7 +416,7 @@ static SDL_bool ShowingFront()
             }
         }
     }
-    if ((SDL_GetModState() & SDL_KMOD_SHIFT) != 0) {
+    if (SDL_GetModState() & SDL_KMOD_SHIFT) {
         showing_front = SDL_FALSE;
     }
     return showing_front;
@@ -378,7 +445,7 @@ static int SDLCALL VirtualGamepadSetLED(void *userdata, Uint8 red, Uint8 green, 
     return 0;
 }
 
-static void OpenVirtualGamepad()
+static void OpenVirtualGamepad(void)
 {
     SDL_VirtualJoystickDesc desc;
     SDL_JoystickID virtual_id;
@@ -404,7 +471,7 @@ static void OpenVirtualGamepad()
     }
 }
 
-static void CloseVirtualGamepad()
+static void CloseVirtualGamepad(void)
 {
     int i;
     SDL_JoystickID *joysticks = SDL_GetJoysticks(NULL);
@@ -550,7 +617,7 @@ static void VirtualGamepadMouseUp(float x, float y)
     }
 }
 
-void loop(void *arg)
+static void loop(void *arg)
 {
     SDL_Event event;
     int i;
@@ -562,62 +629,74 @@ void loop(void *arg)
     /* Process all currently pending events */
     while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_EVENT_FIRST, SDL_EVENT_LAST) == 1) {
         switch (event.type) {
+        case SDL_EVENT_JOYSTICK_ADDED:
+            PrintJoystickInfo(event.jdevice.which);
+            break;
+
         case SDL_EVENT_GAMEPAD_ADDED:
-            SDL_Log("Gamepad device %" SDL_PRIu32 " added.\n", event.cdevice.which);
-            AddGamepad(event.cdevice.which, SDL_TRUE);
+            SDL_Log("Gamepad device %" SDL_PRIu32 " added.\n",
+                    event.gdevice.which);
+            AddGamepad(event.gdevice.which, SDL_TRUE);
             break;
 
         case SDL_EVENT_GAMEPAD_REMOVED:
-            SDL_Log("Gamepad device %" SDL_PRIu32 " removed.\n", event.cdevice.which);
-            DelGamepad(event.cdevice.which);
+            SDL_Log("Gamepad device %" SDL_PRIu32 " removed.\n",
+                    event.gdevice.which);
+            DelGamepad(event.gdevice.which);
             break;
 
         case SDL_EVENT_GAMEPAD_TOUCHPAD_DOWN:
         case SDL_EVENT_GAMEPAD_TOUCHPAD_MOTION:
         case SDL_EVENT_GAMEPAD_TOUCHPAD_UP:
             SDL_Log("Gamepad %" SDL_PRIu32 " touchpad %" SDL_PRIs32 " finger %" SDL_PRIs32 " %s %.2f, %.2f, %.2f\n",
-                    event.ctouchpad.which,
-                    event.ctouchpad.touchpad,
-                    event.ctouchpad.finger,
+                    event.gtouchpad.which,
+                    event.gtouchpad.touchpad,
+                    event.gtouchpad.finger,
                     (event.type == SDL_EVENT_GAMEPAD_TOUCHPAD_DOWN ? "pressed at" : (event.type == SDL_EVENT_GAMEPAD_TOUCHPAD_UP ? "released at" : "moved to")),
-                    event.ctouchpad.x,
-                    event.ctouchpad.y,
-                    event.ctouchpad.pressure);
+                    event.gtouchpad.x,
+                    event.gtouchpad.y,
+                    event.gtouchpad.pressure);
             break;
 
 #define VERBOSE_SENSORS
 #ifdef VERBOSE_SENSORS
         case SDL_EVENT_GAMEPAD_SENSOR_UPDATE:
             SDL_Log("Gamepad %" SDL_PRIu32 " sensor %s: %.2f, %.2f, %.2f (%" SDL_PRIu64 ")\n",
-                    event.csensor.which,
-                    GetSensorName((SDL_SensorType)event.csensor.sensor),
-                    event.csensor.data[0],
-                    event.csensor.data[1],
-                    event.csensor.data[2],
-                    event.csensor.sensor_timestamp);
+                    event.gsensor.which,
+                    GetSensorName((SDL_SensorType) event.gsensor.sensor),
+                    event.gsensor.data[0],
+                    event.gsensor.data[1],
+                    event.gsensor.data[2],
+                    event.gsensor.sensor_timestamp);
             break;
 #endif /* VERBOSE_SENSORS */
 
 #define VERBOSE_AXES
 #ifdef VERBOSE_AXES
         case SDL_EVENT_GAMEPAD_AXIS_MOTION:
-            if (event.caxis.value <= (-SDL_JOYSTICK_AXIS_MAX / 2) || event.caxis.value >= (SDL_JOYSTICK_AXIS_MAX / 2)) {
-                SetGamepad(event.caxis.which);
+            if (event.gaxis.value <= (-SDL_JOYSTICK_AXIS_MAX / 2) || event.gaxis.value >= (SDL_JOYSTICK_AXIS_MAX / 2)) {
+                SetGamepad(event.gaxis.which);
             }
-            SDL_Log("Gamepad %" SDL_PRIu32 " axis %s changed to %d\n", event.caxis.which, SDL_GetGamepadStringForAxis((SDL_GamepadAxis)event.caxis.axis), event.caxis.value);
+            SDL_Log("Gamepad %" SDL_PRIu32 " axis %s changed to %d\n",
+                    event.gaxis.which,
+                    SDL_GetGamepadStringForAxis((SDL_GamepadAxis) event.gaxis.axis),
+                    event.gaxis.value);
             break;
 #endif /* VERBOSE_AXES */
 
         case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
         case SDL_EVENT_GAMEPAD_BUTTON_UP:
             if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
-                SetGamepad(event.cbutton.which);
+                SetGamepad(event.gbutton.which);
             }
-            SDL_Log("Gamepad %" SDL_PRIu32 " button %s %s\n", event.cbutton.which, SDL_GetGamepadStringForButton((SDL_GamepadButton)event.cbutton.button), event.cbutton.state ? "pressed" : "released");
+            SDL_Log("Gamepad %" SDL_PRIu32 " button %s %s\n",
+                    event.gbutton.which,
+                    SDL_GetGamepadStringForButton((SDL_GamepadButton) event.gbutton.button),
+                    event.gbutton.state ? "pressed" : "released");
 
             /* Cycle PS5 trigger effects when the microphone button is pressed */
             if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN &&
-                event.cbutton.button == SDL_GAMEPAD_BUTTON_MISC1 &&
+                event.gbutton.button == SDL_GAMEPAD_BUTTON_MISC1 &&
                 SDL_GetGamepadType(gamepad) == SDL_GAMEPAD_TYPE_PS5) {
                 CyclePS5TriggerEffect();
             }
@@ -627,13 +706,13 @@ void loop(void *arg)
             SDL_Log("Gamepad %" SDL_PRIu32 " battery state changed to %s\n", event.jbattery.which, power_level_strings[event.jbattery.level + 1]);
             break;
 
-        case SDL_EVENT_MOUSE_BUTTONDOWN:
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
             if (virtual_joystick) {
                 VirtualGamepadMouseDown(event.button.x, event.button.y);
             }
             break;
 
-        case SDL_EVENT_MOUSE_BUTTONUP:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
             if (virtual_joystick) {
                 VirtualGamepadMouseUp(event.button.x, event.button.y);
             }
@@ -783,11 +862,7 @@ void loop(void *arg)
 int main(int argc, char *argv[])
 {
     int i;
-    SDL_JoystickID *joysticks;
-    int joystick_count = 0;
-    int gamepad_count = 0;
     int gamepad_index = 0;
-    char guid[64];
 
     SDL_SetHint(SDL_HINT_ACCELEROMETER_AS_JOYSTICK, "0");
     SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS4_RUMBLE, "1");
@@ -821,79 +896,8 @@ int main(int argc, char *argv[])
         SDL_Log("\n");
     }
 
-    /* Print information about the gamepads */
-    joysticks = SDL_GetJoysticks(&joystick_count);
-    if (joysticks) {
-        for (i = 0; joysticks[i]; ++i) {
-            SDL_JoystickID instance_id = joysticks[i];
-            const char *name;
-            const char *path;
-            const char *description;
-
-            SDL_GetJoystickGUIDString(SDL_GetJoystickInstanceGUID(instance_id),
-                                      guid, sizeof(guid));
-
-            if (SDL_IsGamepad(instance_id)) {
-                gamepad_count++;
-                name = SDL_GetGamepadInstanceName(instance_id);
-                path = SDL_GetGamepadInstancePath(instance_id);
-                switch (SDL_GetGamepadInstanceType(instance_id)) {
-                case SDL_GAMEPAD_TYPE_AMAZON_LUNA:
-                    description = "Amazon Luna Controller";
-                    break;
-                case SDL_GAMEPAD_TYPE_GOOGLE_STADIA:
-                    description = "Google Stadia Controller";
-                    break;
-                case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT:
-                case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT:
-                case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR:
-                    description = "Nintendo Switch Joy-Con";
-                    break;
-                case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO:
-                    description = "Nintendo Switch Pro Controller";
-                    break;
-                case SDL_GAMEPAD_TYPE_PS3:
-                    description = "PS3 Controller";
-                    break;
-                case SDL_GAMEPAD_TYPE_PS4:
-                    description = "PS4 Controller";
-                    break;
-                case SDL_GAMEPAD_TYPE_PS5:
-                    description = "PS5 Controller";
-                    break;
-                case SDL_GAMEPAD_TYPE_XBOX360:
-                    description = "XBox 360 Controller";
-                    break;
-                case SDL_GAMEPAD_TYPE_XBOXONE:
-                    description = "XBox One Controller";
-                    break;
-                case SDL_GAMEPAD_TYPE_VIRTUAL:
-                    description = "Virtual Gamepad";
-                    break;
-                default:
-                    description = "Gamepad";
-                    break;
-                }
-                AddGamepad(instance_id, SDL_FALSE);
-            } else {
-                name = SDL_GetJoystickInstanceName(instance_id);
-                path = SDL_GetJoystickInstancePath(instance_id);
-                description = "Joystick";
-            }
-            SDL_Log("%s %d: %s%s%s (guid %s, VID 0x%.4x, PID 0x%.4x, player index = %d)\n",
-                    description, i, name ? name : "Unknown", path ? ", " : "", path ? path : "", guid,
-                    SDL_GetJoystickInstanceVendor(instance_id),
-                    SDL_GetJoystickInstanceProduct(instance_id),
-                    SDL_GetJoystickInstancePlayerIndex(instance_id));
-        }
-        SDL_free(joysticks);
-    }
-    SDL_Log("There are %d gamepad(s) attached (%d joystick(s))\n", gamepad_count, joystick_count);
-
     /* Create a window to display gamepad state */
-    window = SDL_CreateWindow("Gamepad Test", SDL_WINDOWPOS_CENTERED,
-                              SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH,
-                              SCREEN_HEIGHT, 0);
+    window = SDL_CreateWindow("Gamepad Test", SCREEN_WIDTH, SCREEN_HEIGHT, 0);
     if (window == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create window: %s\n", SDL_GetError());
         return 2;
@@ -911,7 +915,9 @@ int main(int argc, char *argv[])
     SDL_RenderPresent(screen);
 
     /* scale for platforms that don't give you the window size you asked for. */
-    SDL_SetRenderLogicalSize(screen, SCREEN_WIDTH, SCREEN_HEIGHT);
+    SDL_SetRenderLogicalPresentation(screen, SCREEN_WIDTH, SCREEN_HEIGHT,
+                                     SDL_LOGICAL_PRESENTATION_LETTERBOX,
+                                     SDL_SCALEMODE_LINEAR);
 
     background_front = LoadTexture(screen, "gamepadmap.bmp", SDL_FALSE, NULL, NULL);
     background_back = LoadTexture(screen, "gamepadmap_back.bmp", SDL_FALSE, NULL, NULL);
@@ -926,8 +932,8 @@ int main(int argc, char *argv[])
     SDL_SetTextureColorMod(button_texture, 10, 255, 21);
     SDL_SetTextureColorMod(axis_texture, 10, 255, 21);
 
-    /* !!! FIXME: */
-    /*SDL_SetRenderLogicalSize(screen, background->w, background->h);*/
+    /* Process the initial gamepad list */
+    loop(NULL);
 
     for (i = 1; i < argc; ++i) {
         if (SDL_strcmp(argv[i], "--virtual") == 0) {

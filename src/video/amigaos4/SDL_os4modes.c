@@ -62,8 +62,9 @@ OS4_GetDisplayMode(_THIS, ULONG id, SDL_DisplayMode * mode)
     data->modeid = id;
     data->x = diminfo.Nominal.MinX;
     data->y = diminfo.Nominal.MinY;
-    mode->w = diminfo.Nominal.MaxX - diminfo.Nominal.MinX + 1;
-    mode->h = diminfo.Nominal.MaxY - diminfo.Nominal.MinY + 1;
+    mode->pixel_w = mode->screen_w = diminfo.Nominal.MaxX - diminfo.Nominal.MinX + 1;
+    mode->pixel_h = mode->screen_h = diminfo.Nominal.MaxY - diminfo.Nominal.MinY + 1;
+    mode->display_scale = 1.0f;
     mode->refresh_rate = 60; // grab DTAG_MNTR?
     mode->format = SDL_PIXELFORMAT_UNKNOWN;
 
@@ -132,7 +133,7 @@ OS4_InitModes(_THIS)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
     SDL_VideoDisplay display;
-    SDL_DisplayMode current_mode;
+    static SDL_DisplayMode current_mode; // TODO: test me
     SDL_DisplayData *displaydata;
     ULONG modeid;
 
@@ -158,7 +159,7 @@ OS4_InitModes(_THIS)
     /* OS4 has no multi-monitor support */
     SDL_zero(display);
     display.desktop_mode = current_mode;
-    display.current_mode = current_mode;
+    display.current_mode = &current_mode; // TODO: test me
     display.driverdata = displaydata;
     displaydata->screen = NULL;
 
@@ -170,19 +171,19 @@ OS4_InitModes(_THIS)
 int
 OS4_GetDisplayBounds(_THIS, SDL_VideoDisplay * display, SDL_Rect * rect)
 {
-    SDL_DisplayModeData *data = (SDL_DisplayModeData *) display->current_mode.driverdata;
+    SDL_DisplayModeData *data = (SDL_DisplayModeData *) display->current_mode->driverdata;
 
     rect->x = data->x;
     rect->y = data->y;
-    rect->w = display->current_mode.w;
-    rect->h = display->current_mode.h;
+    rect->w = display->current_mode->screen_w;
+    rect->h = display->current_mode->screen_h;
 
     dprintf("x=%d, y=%d, w=%d, h=%d\n", rect->x, rect->y, rect->w, rect->h);
 
     return 0;
 }
 
-void
+int
 OS4_GetDisplayModes(_THIS, SDL_VideoDisplay * display)
 {
     SDL_DisplayMode mode;
@@ -191,10 +192,9 @@ OS4_GetDisplayModes(_THIS, SDL_VideoDisplay * display)
     dprintf("Called\n");
 
     while ((id = IGraphics->NextDisplayInfo(id)) != INVALID_ID) {
-
         if (OS4_GetDisplayMode(_this, id, &mode)) {
             if (mode.format != SDL_PIXELFORMAT_UNKNOWN) {
-                if (!SDL_AddDisplayMode(display, &mode)) {
+                if (!SDL_AddFullscreenDisplayMode(display, &mode)) {
                     SDL_free(mode.driverdata);
                 }
             } else {
@@ -202,8 +202,10 @@ OS4_GetDisplayModes(_THIS, SDL_VideoDisplay * display)
             }
         } else {
             dprintf("Failed to get display mode for %d\n", id);
+	    return -1;
         }
     }
+    return 0;
 }
 
 void
@@ -247,8 +249,8 @@ OS4_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
     }
 
     displaydata->screen = IIntuition->OpenScreenTags(NULL,
-        SA_Width,       mode->w,
-        SA_Height,      mode->h,
+        SA_Width,       mode->screen_w,
+        SA_Height,      mode->screen_h,
         SA_Depth,       bpp,
         SA_DisplayID,   data->modeid,
         SA_Quiet,       TRUE,
@@ -293,7 +295,7 @@ OS4_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
 
     // Paint it black (it helps in cases where window doesn't fill the screen)
     // ...do we need a backfill hook?
-    IGraphics->RectFillColor(&displaydata->screen->RastPort, 0, 0, mode->w - 1, mode->h - 1, 0xFF000000);
+    IGraphics->RectFillColor(&displaydata->screen->RastPort, 0, 0, mode->screen_w - 1, mode->screen_h - 1, 0xFF000000);
 
     return 0;
 }

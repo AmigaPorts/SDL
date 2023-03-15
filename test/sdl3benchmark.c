@@ -742,8 +742,6 @@ main(int argc, char **argv)
 
         ctx.window = SDL_CreateWindow(
             "SDL2 benchmark",
-            SDL_WINDOWPOS_CENTERED,
-            SDL_WINDOWPOS_CENTERED,
             ctx.width,
             ctx.height,
             SDL_WINDOW_FULLSCREEN);

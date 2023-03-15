@@ -4,13 +4,14 @@
  */
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_test.h>
+#include "testautomation_suites.h"
 
 /* ================= Test Case Implementation ================== */
 
 /* Helper functions */
 
 /**
- * @brief Compare sizes of types.
+ * \brief Compare sizes of types.
  *
  * @note Watcom C flags these as Warning 201: "Unreachable code" if you just
  *  compare them directly, so we push it through a function to keep the
@@ -24,9 +25,9 @@ static int compareSizeOfType(size_t sizeoftype, size_t hardcodetype)
 /* Test case functions */
 
 /**
- * @brief Tests type sizes.
+ * \brief Tests type sizes.
  */
-int platform_testTypes(void *arg)
+static int platform_testTypes(void *arg)
 {
     int ret;
 
@@ -46,9 +47,9 @@ int platform_testTypes(void *arg)
 }
 
 /**
- * @brief Tests platform endianness and SDL_SwapXY functions.
+ * \brief Tests platform endianness and SDL_SwapXY functions.
  */
-int platform_testEndianessAndSwap(void *arg)
+static int platform_testEndianessAndSwap(void *arg)
 {
     int real_byteorder;
     int real_floatwordorder = 0;
@@ -116,22 +117,21 @@ int platform_testEndianessAndSwap(void *arg)
     return TEST_COMPLETED;
 }
 
-/* !
+/**
  * \brief Tests SDL_GetXYZ() functions
- * \sa
- * http://wiki.libsdl.org/SDL_GetPlatform
- * http://wiki.libsdl.org/SDL_GetCPUCount
- * http://wiki.libsdl.org/SDL_GetCPUCacheLineSize
- * http://wiki.libsdl.org/SDL_GetRevision
+ * \sa SDL_GetPlatform
+ * \sa SDL_GetCPUCount
+ * \sa SDL_GetRevision
+ * \sa SDL_GetCPUCacheLineSize
  */
-int platform_testGetFunctions(void *arg)
+static int platform_testGetFunctions(void *arg)
 {
-    char *platform;
-    char *revision;
+    const char *platform;
+    const char *revision;
     int ret;
     size_t len;
 
-    platform = (char *)SDL_GetPlatform();
+    platform = SDL_GetPlatform();
     SDLTest_AssertPass("SDL_GetPlatform()");
     SDLTest_AssertCheck(platform != NULL, "SDL_GetPlatform() != NULL");
     if (platform != NULL) {
@@ -154,27 +154,26 @@ int platform_testGetFunctions(void *arg)
                         "SDL_GetCPUCacheLineSize(): expected size >= 0, was: %i",
                         ret);
 
-    revision = (char *)SDL_GetRevision();
+    revision = SDL_GetRevision();
     SDLTest_AssertPass("SDL_GetRevision()");
     SDLTest_AssertCheck(revision != NULL, "SDL_GetRevision() != NULL");
 
     return TEST_COMPLETED;
 }
 
-/* !
+/**
  * \brief Tests SDL_HasXYZ() functions
- * \sa
- * http://wiki.libsdl.org/SDL_HasAltiVec
- * http://wiki.libsdl.org/SDL_HasMMX
- * http://wiki.libsdl.org/SDL_HasRDTSC
- * http://wiki.libsdl.org/SDL_HasSSE
- * http://wiki.libsdl.org/SDL_HasSSE2
- * http://wiki.libsdl.org/SDL_HasSSE3
- * http://wiki.libsdl.org/SDL_HasSSE41
- * http://wiki.libsdl.org/SDL_HasSSE42
- * http://wiki.libsdl.org/SDL_HasAVX
+ * \sa SDL_HasAltiVec
+ * \sa SDL_HasMMX
+ * \sa SDL_HasRDTSC
+ * \sa SDL_HasSSE
+ * \sa SDL_HasSSE2
+ * \sa SDL_HasSSE3
+ * \sa SDL_HasSSE41
+ * \sa SDL_HasSSE42
+ * \sa SDL_HasAVX
  */
-int platform_testHasFunctions(void *arg)
+static int platform_testHasFunctions(void *arg)
 {
     /* TODO: independently determine and compare values as well */
 
@@ -208,12 +207,11 @@ int platform_testHasFunctions(void *arg)
     return TEST_COMPLETED;
 }
 
-/* !
+/**
  * \brief Tests SDL_GetVersion
- * \sa
- * http://wiki.libsdl.org/SDL_GetVersion
+ * \sa SDL_GetVersion
  */
-int platform_testGetVersion(void *arg)
+static int platform_testGetVersion(void *arg)
 {
     SDL_version linked;
     int major = SDL_MAJOR_VERSION;
@@ -232,10 +230,10 @@ int platform_testGetVersion(void *arg)
     return TEST_COMPLETED;
 }
 
-/* !
+/**
  * \brief Tests SDL_VERSION macro
  */
-int platform_testSDLVersion(void *arg)
+static int platform_testSDLVersion(void *arg)
 {
     SDL_version compiled;
     int major = SDL_MAJOR_VERSION;
@@ -254,10 +252,10 @@ int platform_testSDLVersion(void *arg)
     return TEST_COMPLETED;
 }
 
-/* !
+/**
  * \brief Tests default SDL_Init
  */
-int platform_testDefaultInit(void *arg)
+static int platform_testDefaultInit(void *arg)
 {
     int ret;
     int subsystem;
@@ -276,24 +274,23 @@ int platform_testDefaultInit(void *arg)
     return TEST_COMPLETED;
 }
 
-/* !
+/**
  * \brief Tests SDL_Get/Set/ClearError
- * \sa
- * http://wiki.libsdl.org/SDL_GetError
- * http://wiki.libsdl.org/SDL_SetError
- * http://wiki.libsdl.org/SDL_ClearError
+ * \sa SDL_GetError
+ * \sa SDL_SetError
+ * \sa SDL_ClearError
  */
-int platform_testGetSetClearError(void *arg)
+static int platform_testGetSetClearError(void *arg)
 {
     int result;
     const char *testError = "Testing";
-    char *lastError;
+    const char *lastError;
     size_t len;
 
     SDL_ClearError();
     SDLTest_AssertPass("SDL_ClearError()");
 
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertPass("SDL_GetError()");
     SDLTest_AssertCheck(lastError != NULL,
                         "SDL_GetError() != NULL");
@@ -306,7 +303,7 @@ int platform_testGetSetClearError(void *arg)
     result = SDL_SetError("%s", testError);
     SDLTest_AssertPass("SDL_SetError()");
     SDLTest_AssertCheck(result == -1, "SDL_SetError: expected -1, got: %i", result);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertCheck(lastError != NULL,
                         "SDL_GetError() != NULL");
     if (lastError != NULL) {
@@ -328,22 +325,21 @@ int platform_testGetSetClearError(void *arg)
     return TEST_COMPLETED;
 }
 
-/* !
+/**
  * \brief Tests SDL_SetError with empty input
- * \sa
- * http://wiki.libsdl.org/SDL_SetError
+ * \sa SDL_SetError
  */
-int platform_testSetErrorEmptyInput(void *arg)
+static int platform_testSetErrorEmptyInput(void *arg)
 {
     int result;
     const char *testError = "";
-    char *lastError;
+    const char *lastError;
     size_t len;
 
     result = SDL_SetError("%s", testError);
     SDLTest_AssertPass("SDL_SetError()");
     SDLTest_AssertCheck(result == -1, "SDL_SetError: expected -1, got: %i", result);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertCheck(lastError != NULL,
                         "SDL_GetError() != NULL");
     if (lastError != NULL) {
@@ -370,17 +366,16 @@ int platform_testSetErrorEmptyInput(void *arg)
 #pragma GCC diagnostic ignored "-Wformat-overflow"
 #endif
 
-/* !
+/**
  * \brief Tests SDL_SetError with invalid input
- * \sa
- * http://wiki.libsdl.org/SDL_SetError
+ * \sa SDL_SetError
  */
-int platform_testSetErrorInvalidInput(void *arg)
+static int platform_testSetErrorInvalidInput(void *arg)
 {
     int result;
     const char *invalidError = NULL;
     const char *probeError = "Testing";
-    char *lastError;
+    const char *lastError;
     size_t len;
 
     /* Reset */
@@ -391,7 +386,7 @@ int platform_testSetErrorInvalidInput(void *arg)
     result = SDL_SetError("%s", invalidError);
     SDLTest_AssertPass("SDL_SetError()");
     SDLTest_AssertCheck(result == -1, "SDL_SetError: expected -1, got: %i", result);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertCheck(lastError != NULL,
                         "SDL_GetError() != NULL");
     if (lastError != NULL) {
@@ -410,7 +405,7 @@ int platform_testSetErrorInvalidInput(void *arg)
     result = SDL_SetError("%s", invalidError);
     SDLTest_AssertPass("SDL_SetError(NULL)");
     SDLTest_AssertCheck(result == -1, "SDL_SetError: expected -1, got: %i", result);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertCheck(lastError != NULL,
                         "SDL_GetError() != NULL");
     if (lastError != NULL) {
@@ -428,7 +423,7 @@ int platform_testSetErrorInvalidInput(void *arg)
     result = SDL_SetError("%s", probeError);
     SDLTest_AssertPass("SDL_SetError()");
     SDLTest_AssertCheck(result == -1, "SDL_SetError: expected -1, got: %i", result);
-    lastError = (char *)SDL_GetError();
+    lastError = SDL_GetError();
     SDLTest_AssertCheck(lastError != NULL,
                         "SDL_GetError() != NULL");
     if (lastError != NULL) {
@@ -454,12 +449,11 @@ int platform_testSetErrorInvalidInput(void *arg)
 #pragma GCC diagnostic pop
 #endif
 
-/* !
+/**
  * \brief Tests SDL_GetPowerInfo
- * \sa
- * http://wiki.libsdl.org/SDL_GetPowerInfo
+ * \sa SDL_GetPowerInfo
  */
-int platform_testGetPowerInfo(void *arg)
+static int platform_testGetPowerInfo(void *arg)
 {
     SDL_PowerState state;
     SDL_PowerState stateAgain;

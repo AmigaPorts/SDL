@@ -106,7 +106,7 @@ print_modifiers(char **text, size_t *maxlen)
 }
 
 static void
-PrintModifierState()
+PrintModifierState(void)
 {
     char message[512];
     char *spot;
@@ -160,12 +160,12 @@ PrintText(const char *eventtype, const char *text)
     expanded[0] = '\0';
     for (spot = text; *spot; ++spot) {
         size_t length = SDL_strlen(expanded);
-        (void)SDL_snprintf(expanded + length, sizeof expanded - length, "\\x%.2x", (unsigned char)*spot);
+        (void)SDL_snprintf(expanded + length, sizeof(expanded) - length, "\\x%.2x", (unsigned char)*spot);
     }
     SDL_Log("%s Text (%s): \"%s%s\"\n", eventtype, expanded, *text == '"' ? "\\" : "", text);
 }
 
-void loop()
+static void loop(void)
 {
     SDL_Event event;
     /* Check for events */
@@ -192,7 +192,7 @@ void loop()
         case SDL_EVENT_TEXT_EDITING:
             PrintText("EDIT", event.edit.text);
             break;
-        case SDL_EVENT_TEXTEDITING_EXT:
+        case SDL_EVENT_TEXT_EDITING_EXT:
             PrintText("EDIT_EXT", event.editExt.text);
             SDL_free(event.editExt.text);
             break;
@@ -209,7 +209,7 @@ void loop()
                 SDL_StartTextInput();
             }
             break;
-        case SDL_EVENT_MOUSE_BUTTONDOWN:
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
             /* Left button quits the app, other buttons toggles text input */
             if (event.button.button == SDL_BUTTON_LEFT) {
                 done = 1;
@@ -265,9 +265,7 @@ int main(int argc, char *argv[])
     }
 
     /* Set 640x480 video mode */
-    window = SDL_CreateWindow("CheckKeys Test",
-                              SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                              640, 480, 0);
+    window = SDL_CreateWindow("CheckKeys Test", 640, 480, 0);
     if (window == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create 640x480 window: %s\n",
                      SDL_GetError());

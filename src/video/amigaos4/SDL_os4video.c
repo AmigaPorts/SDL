@@ -304,7 +304,7 @@ OS4_SetMiniGLFunctions(SDL_VideoDevice * device)
     device->GL_GetProcAddress = OS4_GL_GetProcAddress;
     device->GL_UnloadLibrary = OS4_GL_UnloadLibrary;
     device->GL_MakeCurrent = OS4_GL_MakeCurrent;
-    device->GL_GetDrawableSize = OS4_GL_GetDrawableSize;
+    //device->GL_GetDrawableSize = OS4_GL_GetDrawableSize; TODO:
     device->GL_SetSwapInterval = OS4_GL_SetSwapInterval;
     device->GL_GetSwapInterval = OS4_GL_GetSwapInterval;
     device->GL_SwapWindow = OS4_GL_SwapWindow;
@@ -324,7 +324,7 @@ OS4_SetGLESFunctions(SDL_VideoDevice * device)
     device->GL_GetProcAddress = OS4_GLES_GetProcAddress;
     device->GL_UnloadLibrary = OS4_GLES_UnloadLibrary;
     device->GL_MakeCurrent = OS4_GLES_MakeCurrent;
-    device->GL_GetDrawableSize = OS4_GL_GetDrawableSize;
+    //device->GL_GetDrawableSize = OS4_GL_GetDrawableSize; // TODO:
     device->GL_SetSwapInterval = OS4_GL_SetSwapInterval;
     device->GL_GetSwapInterval = OS4_GL_GetSwapInterval;
     device->GL_SwapWindow = OS4_GLES_SwapWindow;
@@ -449,7 +449,7 @@ OS4_SetFunctionPointers(SDL_VideoDevice * device)
 
     device->shape_driver.CreateShaper = OS4_CreateShaper;
     device->shape_driver.SetWindowShape = OS4_SetWindowShape;
-    device->shape_driver.ResizeWindowShape = OS4_ResizeWindowShape;
+    //device->shape_driver.ResizeWindowShape = OS4_ResizeWindowShape; // TODO
 
     device->GetWindowWMInfo = OS4_GetWindowWMInfo;
 

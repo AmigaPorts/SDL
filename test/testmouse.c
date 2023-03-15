@@ -51,7 +51,7 @@ static float wheel_y = SCREEN_HEIGHT * 0.5f;
 
 static SDL_bool done = SDL_FALSE;
 
-void DrawObject(SDL_Renderer *renderer, Object *object)
+static void DrawObject(SDL_Renderer *renderer, Object *object)
 {
     SDL_SetRenderDrawColor(renderer, object->r, object->g, object->b, 255);
 
@@ -80,7 +80,7 @@ void DrawObject(SDL_Renderer *renderer, Object *object)
     }
 }
 
-void DrawObjects(SDL_Renderer *renderer)
+static void DrawObjects(SDL_Renderer *renderer)
 {
     Object *next = objects;
     while (next != NULL) {
@@ -89,7 +89,7 @@ void DrawObjects(SDL_Renderer *renderer)
     }
 }
 
-void AppendObject(Object *object)
+static void AppendObject(Object *object)
 {
     if (objects) {
         Object *next = objects;
@@ -102,7 +102,7 @@ void AppendObject(Object *object)
     }
 }
 
-void loop(void *arg)
+static void loop(void *arg)
 {
     SDL_Renderer *renderer = (SDL_Renderer *)arg;
     SDL_Event event;
@@ -136,7 +136,7 @@ void loop(void *arg)
             active->y2 = event.motion.y;
             break;
 
-        case SDL_EVENT_MOUSE_BUTTONDOWN:
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
             if (active == NULL) {
                 active = SDL_calloc(1, sizeof(*active));
                 active->x1 = active->x2 = event.button.x;
@@ -170,7 +170,7 @@ void loop(void *arg)
             }
             break;
 
-        case SDL_EVENT_MOUSE_BUTTONUP:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
             if (active == NULL) {
                 break;
             }
@@ -261,9 +261,7 @@ int main(int argc, char *argv[])
     }
 
     /* Create a window to display joystick axis position */
-    window = SDL_CreateWindow("Mouse Test", SDL_WINDOWPOS_CENTERED,
-                              SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH,
-                              SCREEN_HEIGHT, 0);
+    window = SDL_CreateWindow("Mouse Test", SCREEN_WIDTH, SCREEN_HEIGHT, 0);
     if (window == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create window: %s\n", SDL_GetError());
         return SDL_FALSE;

@@ -34,7 +34,7 @@ extern void OS4_GL_GetDrawableSize(_THIS, SDL_Window * window, int *w, int *h);
 extern int OS4_GL_SetSwapInterval(_THIS, int interval);
 extern int OS4_GL_GetSwapInterval(_THIS, int* interval);
 extern int OS4_GL_SwapWindow(_THIS, SDL_Window * window);
-extern void OS4_GL_DeleteContext(_THIS, SDL_GLContext context);
+extern int OS4_GL_DeleteContext(_THIS, SDL_GLContext context);
 
 /* Non-SDL functions */
 extern SDL_bool OS4_GL_AllocateBuffers(_THIS, int width, int height, int depth, SDL_WindowData * data);

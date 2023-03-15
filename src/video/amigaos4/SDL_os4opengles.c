@@ -266,19 +266,17 @@ OS4_GLES_SwapWindow(_THIS, SDL_Window * window)
     return -1;
 }
 
-void
+int
 OS4_GLES_DeleteContext(_THIS, SDL_GLContext context)
 {
     dprintf("Called with context=%p\n", context);
 
     if (IOGLES2) {
-
         if (context) {
             SDL_Window *sdlwin;
             Uint32 deletions = 0;
 
             for (sdlwin = _this->windows; sdlwin; sdlwin = sdlwin->next) {
-
                 SDL_WindowData *data = sdlwin->driverdata;
 
                 if (data->glContext == context) {
@@ -293,14 +291,19 @@ OS4_GLES_DeleteContext(_THIS, SDL_GLContext context)
 
             if (deletions == 0) {
                 dprintf("OpenGL ES 2 context doesn't seem to have window binding\n");
+		return -1;
             }
         } else {
             dprintf("No context to delete\n");
+	    return -1;
         }
 
     } else {
         OS4_GLES_LogLibraryError();
+	return -1;
     }
+
+    return 0;
 }
 
 SDL_bool

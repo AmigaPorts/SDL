@@ -127,14 +127,14 @@ static SDL_bool eventLoopInner(void)
                 }
                 break;
 
-            case SDL_EVENT_MOUSE_BUTTONDOWN:
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 {
                     SDL_MouseButtonEvent * me = (SDL_MouseButtonEvent *)&me;
                     printf("Mouse button down %d, state %d\n", (int)me->button, (int)me->state);
                 }
                 break;
 
-            case SDL_EVENT_MOUSE_BUTTONUP:
+            case SDL_EVENT_MOUSE_BUTTON_UP:
                 {
                     SDL_MouseButtonEvent * me = (SDL_MouseButtonEvent *)&me;
                     printf("Mouse button up %d, state %d\n", (int)me->button, (int)me->state);
@@ -178,9 +178,9 @@ static void testPath(void)
 
 static void testWindow()
 {
-    //SDL_Window * w = SDL_CreateWindow("blah", 100, 100, 100, 100, SDL_WINDOW_RESIZABLE);
+    //SDL_Window * w = SDL_CreateWindow("blah", 100, 100, SDL_WINDOW_RESIZABLE);
     SDL_Window * w = SDL_CreateWindow("blah",
-        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 100, 100,
+        100, 100,
         SDL_WINDOW_RESIZABLE |
         0
         //SDL_WINDOW_MINIMIZED
@@ -232,8 +232,8 @@ static void testWindow()
 
 static void testManyWindows()
 {
-    SDL_Window * w = SDL_CreateWindow("blah", 100, 100, 100, 100, 0);
-    SDL_Window * w2 = SDL_CreateWindow("blah2", 200, 100, 100, 100, 0/*SDL_WINDOW_FULLSCREEN*/);
+    SDL_Window * w = SDL_CreateWindow("blah", 100, 100, 0);
+    SDL_Window * w2 = SDL_CreateWindow("blah2", 100, 100, 0/*SDL_WINDOW_FULLSCREEN*/);
 
     if (w && w2) {
         SDL_SetWindowGrab(w, SDL_TRUE);
@@ -247,7 +247,7 @@ static void testManyWindows()
 
 static void testRelativeMouse()
 {
-    SDL_Window * w = SDL_CreateWindow("relative", 100, 100, 100, 100, 0);
+    SDL_Window * w = SDL_CreateWindow("relative", 100, 100, 0);
 
     if (w) {
         //SDL_SetRelativeMouseMode(SDL_FALSE);
@@ -262,7 +262,6 @@ static void testRelativeMouse()
 static void testFullscreen()
 {
     SDL_Window * w = SDL_CreateWindow("Fullscreen",
-        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         640, 480,
         SDL_WINDOW_FULLSCREEN);
 
@@ -295,11 +294,10 @@ static void testFullscreen()
     }
 }
 
+/*
 static void testFullscreenDesktop()
 {
     SDL_Window * w = SDL_CreateWindow("Desktop mode",
-        SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED,
         640, 400,
         SDL_WINDOW_FULLSCREEN_DESKTOP);
 
@@ -309,6 +307,7 @@ static void testFullscreenDesktop()
         SDL_DestroyWindow(w);
     }
 }
+*/
 
 // TODO: should load GL functions
 // NOTE: will not work on OGLES2 (try testgles2.c instead of)
@@ -366,8 +365,6 @@ static void drawUsingFixedFunctionPipeline(SDL_Window *w)
 static SDL_Window* createWindow(const char *name)
 {
     return SDL_CreateWindow(name,
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED,
         400,
         300,
         SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
@@ -476,8 +473,6 @@ static void testOpenGLSwitching()
 static void testFullscreenOpenGL()
 {
     SDL_Window * w = SDL_CreateWindow("Fullscreen",
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED,
         1200,
         900,
         SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL);
@@ -498,17 +493,17 @@ static void testOpenGLVersion()
 
 static void testRenderer()
 {
-    SDL_Window * r = SDL_CreateWindow("Red", 0, 0, 100, 100, SDL_WINDOW_RESIZABLE);
-    SDL_Window * g = SDL_CreateWindow("Green", 200, 200, 100, 100, SDL_WINDOW_RESIZABLE);
-    SDL_Window * b = SDL_CreateWindow("Blue", 400, 400, 100, 100, SDL_WINDOW_RESIZABLE);
+    SDL_Window * r = SDL_CreateWindow("Red", 100, 100, SDL_WINDOW_RESIZABLE);
+    SDL_Window * g = SDL_CreateWindow("Green", 100, 100, SDL_WINDOW_RESIZABLE);
+    SDL_Window * b = SDL_CreateWindow("Blue", 100, 100, SDL_WINDOW_RESIZABLE);
 
     SDL_Renderer * rr = SDL_CreateRenderer(r, NULL, SDL_RENDERER_SOFTWARE);
     SDL_Renderer * gr = SDL_CreateRenderer(g, NULL, SDL_RENDERER_SOFTWARE);
     SDL_Renderer * br = SDL_CreateRenderer(b, NULL, SDL_RENDERER_ACCELERATED);
 
-    SDL_SetRenderLogicalSize(rr, 50, 50);
-    SDL_SetRenderLogicalSize(gr, 80, 80);
-    SDL_SetRenderLogicalSize(br, 90, 90);
+    //SDL_SetRenderLogicalSize(rr, 50, 50);
+    //SDL_SetRenderLogicalSize(gr, 80, 80);
+    //SDL_SetRenderLogicalSize(br, 90, 90);
 
     if (r && g && b && rr && gr && br) {
         while (eventLoopInner()) {
@@ -539,7 +534,7 @@ static void testRenderer()
 
 static void testDraw()
 {
-    SDL_Window * w = SDL_CreateWindow("Draw", 100, 100, 200, 200, SDL_WINDOW_RESIZABLE);
+    SDL_Window * w = SDL_CreateWindow("Draw", 200, 200, SDL_WINDOW_RESIZABLE);
 
     SDL_Renderer * r = SDL_CreateRenderer(w, NULL, /*SDL_RENDERER_SOFTWARE*/ SDL_RENDERER_ACCELERATED);
 
@@ -569,7 +564,7 @@ static void testDraw()
 
 static void testRenderVsync()
 {
-    SDL_Window * w = SDL_CreateWindow("Draw", 100, 100, 200, 200, SDL_WINDOW_RESIZABLE);
+    SDL_Window * w = SDL_CreateWindow("Draw", 200, 200, SDL_WINDOW_RESIZABLE);
 
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
@@ -657,7 +652,7 @@ static void testPC()
 
 static void testSystemCursors()
 {
-    SDL_Window * w = SDL_CreateWindow("blah", 100, 100, 100, 100, 0);
+    SDL_Window * w = SDL_CreateWindow("blah", 100, 100, 0);
 
     if (w) {
         int c = 0;
@@ -712,7 +707,7 @@ static void testCustomCursor()
 
         //SDL_FillRect(surface, NULL, 0xFFFFFFFF);
 
-        SDL_Window * w = SDL_CreateWindow("Custom cursor", 100, 100, 100, 100, 0);
+        SDL_Window * w = SDL_CreateWindow("Custom cursor", 100, 100, 0);
 
         if (w) {
 
@@ -735,7 +730,7 @@ static void testHiddenCursor()
 {
     //SDL_ShowCursor(0);
 
-    SDL_Window * w = SDL_CreateWindow("Hidden cursor", 0, 0, 640, 480, SDL_WINDOW_FULLSCREEN);
+    SDL_Window * w = SDL_CreateWindow("Hidden cursor", 640, 480, SDL_WINDOW_FULLSCREEN);
 
     if (w) {
         while (eventLoopInner()) {
@@ -749,7 +744,7 @@ static void testHiddenCursor()
 
 static void testClipboard()
 {
-    SDL_Window * w = SDL_CreateWindow("Clipboard", 100, 100, 100, 100, 0);
+    SDL_Window * w = SDL_CreateWindow("Clipboard", 100, 100, 0);
 
     if (w) {
 
@@ -780,7 +775,7 @@ static void testHint()
 
 static void testGlobalMouseState()
 {
-    SDL_Window * w = SDL_CreateWindow("Global Mouse State", 100, 100, 100, 100, 0);
+    SDL_Window * w = SDL_CreateWindow("Global Mouse State", 100, 100, 0);
 
     if (w) {
 
@@ -799,7 +794,7 @@ static void testGlobalMouseState()
 
 static void testGlobalMouseWarp()
 {
-    SDL_Window * w = SDL_CreateWindow("Global Mouse Warp", 100, 100, 100, 100, 0);
+    SDL_Window * w = SDL_CreateWindow("Global Mouse Warp", 100, 100, 0);
 
     if (w) {
 
@@ -820,7 +815,7 @@ static void testGlobalMouseWarp()
 
 static void testOpaqueWindow()
 {
-    SDL_Window * w = SDL_CreateWindow("Opaque window", 100, 100, 100, 100, 0);
+    SDL_Window * w = SDL_CreateWindow("Opaque window", 100, 100, 0);
 
     if (w) {
 
@@ -841,7 +836,7 @@ static void testOpaqueWindow()
 
 static void testWindowBordersSize()
 {
-    SDL_Window * w = SDL_CreateWindow("BorderSizes window", 100, 100, 100, 100, SDL_WINDOW_RESIZABLE);
+    SDL_Window * w = SDL_CreateWindow("BorderSizes window", 100, 100, SDL_WINDOW_RESIZABLE);
 
     if (w) {
 
@@ -861,7 +856,7 @@ static void testWindowBordersSize()
 
 static void testHiddenWindow()
 {
-    SDL_Window * w = SDL_CreateWindow("Hidden window", 100, 100, 100, 100, SDL_WINDOW_HIDDEN);
+    SDL_Window * w = SDL_CreateWindow("Hidden window", 100, 100, SDL_WINDOW_HIDDEN);
 
     if (w) {
         int i = 0;
@@ -908,7 +903,7 @@ int main(void)
         if (0) testMessageBox();
         if (0) testBmp();
         if (0) testAltivec();
-        if (0) testFullscreenDesktop();
+        //if (0) testFullscreenDesktop();
         if (0) testRenderVsync();
         if (0) testPC();
         if (0) testPC();
