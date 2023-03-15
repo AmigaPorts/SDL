@@ -35,7 +35,7 @@ typedef struct HitTestInfo
     SDL_Point point;
 } HitTestInfo;
 
-typedef struct
+struct SDL_WindowData
 {
     SDL_Window      * sdlwin;
     struct Window   * syswin;
@@ -55,7 +55,7 @@ typedef struct
     struct Image    * image;
 
     int               originalX, originalY, originalW, originalH;
-} SDL_WindowData;
+};
 
 extern void OS4_GetWindowSize(_THIS, struct Window * window, int * width, int * height);
 extern void OS4_WaitForResize(_THIS, SDL_Window * window, int * width, int * height);

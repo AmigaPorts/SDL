@@ -64,8 +64,6 @@ OS4_CreateShaper(SDL_Window * window)
             result->window = window;
             result->mode.mode = ShapeModeDefault;
             result->mode.parameters.binarizationCutoff = 1;
-            result->userx = 0;
-            result->usery = 0;
 
             if (data) {
                 int resized_properly;

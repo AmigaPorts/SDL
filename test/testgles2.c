@@ -113,7 +113,7 @@ quit(int rc)
         }                                                                                   \
     }
 
-/*
+/**
  * Simulates desktop's glRotatef. The matrix is returned in column-major
  * order.
  */
@@ -154,7 +154,7 @@ rotate_matrix(float angle, float x, float y, float z, float *r)
     }
 }
 
-/*
+/**
  * Simulates gluPerspectiveMatrix
  */
 static void
@@ -177,7 +177,7 @@ perspective_matrix(float fovy, float aspect, float znear, float zfar, float *r)
     r[15] = 0.0f;
 }
 
-/*
+/**
  * Multiplies lhs by rhs and writes out to r. All matrices are 4x4 and column
  * major. In-place multiplication is supported.
  */
@@ -202,7 +202,7 @@ multiply_matrix(const float *lhs, const float *rhs, float *r)
     }
 }
 
-/*
+/**
  * Create shader, load in source, compile, dump debug as necessary.
  *
  * shader: Pointer to return created shader ID.
@@ -262,7 +262,7 @@ link_program(struct shader_data *data)
 
 /* 3D data. Vertex range -0.5..0.5 in all axes.
  * Z -0.5 is near, 0.5 is far. */
-const float g_vertices[] = {
+static const float g_vertices[] = {
     /* Front face. */
     /* Bottom left */
     -0.5,
@@ -391,7 +391,7 @@ const float g_vertices[] = {
     0.5,
 };
 
-const float g_colors[] = {
+static const float g_colors[] = {
     /* Front face */
     /* Bottom left */
     1.0, 0.0, 0.0, /* red */
@@ -448,7 +448,7 @@ const float g_colors[] = {
     1.0, 0.0, 1.0, /* magenta */
 };
 
-const char *g_shader_vert_src =
+static const char *g_shader_vert_src =
     " attribute vec4 av4position; "
     " attribute vec3 av3color; "
     " uniform mat4 mvp; "
@@ -458,7 +458,7 @@ const char *g_shader_vert_src =
     "    gl_Position = mvp * av4position; "
     " } ";
 
-const char *g_shader_frag_src =
+static const char *g_shader_frag_src =
     " precision lowp float; "
     " varying vec3 vv3color; "
     " void main() { "
@@ -519,10 +519,12 @@ Render(unsigned int width, unsigned int height, shader_data *data)
     GL_CHECK(ctx.myglDrawArrays(GL_TRIANGLES, 0, 36));
 }
 
-int done;
-Uint32 frames;
-shader_data *datas;
-thread_data *threads;
+static int done;
+static Uint32 frames;
+static shader_data *datas;
+#ifndef __EMSCRIPTEN__
+static thread_data *threads;
+#endif
 
 static void
 render_window(int index)
@@ -539,7 +541,7 @@ render_window(int index)
         return;
     }
 
-    SDL_GL_GetDrawableSize(state->windows[index], &w, &h);
+    SDL_GetWindowSizeInPixels(state->windows[index], &w, &h);
     Render(w, h, &datas[index]);
     SDL_GL_SwapWindow(state->windows[index]);
     ++frames;
@@ -560,7 +562,7 @@ render_thread_fn(void *render_ctx)
 }
 
 static void
-loop_threaded()
+loop_threaded(void)
 {
     SDL_Event event;
     int i;
@@ -589,7 +591,7 @@ loop_threaded()
 #endif
 
 static void
-loop()
+loop(void)
 {
     SDL_Event event;
     int i;
@@ -615,7 +617,7 @@ int main(int argc, char *argv[])
     int fsaa, accel, threaded;
     int value;
     int i;
-    SDL_DisplayMode mode;
+    const SDL_DisplayMode *mode;
     Uint64 then, now;
     int status;
     shader_data *data;
@@ -714,10 +716,12 @@ int main(int argc, char *argv[])
         SDL_GL_SetSwapInterval(0);
     }
 
-    SDL_GetCurrentDisplayMode(0, &mode);
+    mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
     SDL_Log("Threaded  : %s\n", threaded ? "yes" : "no");
-    SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode.format));
-    SDL_Log("\n");
+    if (mode) {
+        SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode->format));
+        SDL_Log("\n");
+    }
     SDL_Log("Vendor     : %s\n", ctx.myglGetString(GL_VENDOR));
     SDL_Log("Renderer   : %s\n", ctx.myglGetString(GL_RENDERER));
     SDL_Log("Version    : %s\n", ctx.myglGetString(GL_VERSION));
@@ -792,7 +796,7 @@ int main(int argc, char *argv[])
             /* Continue for next window */
             continue;
         }
-        SDL_GL_GetDrawableSize(state->windows[i], &w, &h);
+        SDL_GetWindowSizeInPixels(state->windows[i], &w, &h);
         ctx.myglViewport(0, 0, w, h);
 
         data = &datas[i];

@@ -422,7 +422,7 @@ OS4_WarpMouseGlobal(float x, float y)
     return OS4_WarpMouseInternal(NULL, x, y);
 }
 
-static void
+static int
 OS4_WarpMouse(SDL_Window * window, float x, float y)
 {
     SDL_WindowData *winData = window->driverdata;
@@ -446,18 +446,18 @@ OS4_WarpMouse(SDL_Window * window, float x, float y)
     warpHostPointer = !SDL_GetRelativeMouseMode() && (window == SDL_GetMouseFocus());
 
     if (warpHostPointer) {
-
         struct Screen *screen = (window->flags & SDL_WINDOW_FULLSCREEN) ?
             syswin->WScreen : NULL;
 
         OS4_WarpMouseInternal(screen,
             x + syswin->BorderLeft + syswin->LeftEdge,
             y + syswin->BorderTop + syswin->TopEdge);
-
     } else {
         /* Just warp SDL's notion of the pointer position */
         SDL_SendMouseMotion(0, window, 0, SDL_GetRelativeMouseMode(), x, y);
     }
+
+    return 0;
 }
 
 static int

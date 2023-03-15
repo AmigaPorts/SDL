@@ -132,7 +132,7 @@ init_system_cursor(const char *image[])
 }
 
 static SDLTest_CommonState *state;
-int done;
+static int done;
 static SDL_Cursor *cursors[1 + SDL_NUM_SYSTEM_CURSORS];
 static SDL_SystemCursor cursor_types[1 + SDL_NUM_SYSTEM_CURSORS];
 static int num_cursors;
@@ -147,14 +147,14 @@ quit(int rc)
     exit(rc);
 }
 
-void loop()
+static void loop(void)
 {
     int i;
     SDL_Event event;
     /* Check for events */
     while (SDL_PollEvent(&event)) {
         SDLTest_CommonEvent(state, &event, &done);
-        if (event.type == SDL_EVENT_MOUSE_BUTTONDOWN) {
+        if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
             if (event.button.button == SDL_BUTTON_LEFT) {
                 if (num_cursors == 0) {
                     continue;

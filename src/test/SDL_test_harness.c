@@ -124,8 +124,8 @@ static Uint64 SDLTest_GenerateExecKey(const char *runSeed, const char *suiteName
     }
 
     /* Convert iteration number into a string */
-    SDL_memset(iterationString, 0, sizeof iterationString);
-    (void)SDL_snprintf(iterationString, sizeof iterationString - 1, "%d", iteration);
+    SDL_memset(iterationString, 0, sizeof(iterationString));
+    (void)SDL_snprintf(iterationString, sizeof(iterationString) - 1, "%d", iteration);
 
     /* Combine the parameters into single string */
     runSeedLength = SDL_strlen(runSeed);
@@ -334,7 +334,7 @@ static void SDLTest_LogTestSuiteSummary(SDLTest_TestSuiteReference *testSuites)
 #endif
 
 /* Gets a timer value in seconds */
-static float GetClock()
+static float GetClock(void)
 {
     float currentClock = SDL_GetPerformanceCounter() / (float)SDL_GetPerformanceFrequency();
     return currentClock;

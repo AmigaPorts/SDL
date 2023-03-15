@@ -29,7 +29,7 @@ static const char *GetSensorTypeString(SDL_SensorType type)
     case SDL_SENSOR_GYRO:
         return "SDL_SENSOR_GYRO";
     default:
-        (void)SDL_snprintf(unknown_type, sizeof unknown_type, "UNKNOWN (%d)", type);
+        (void)SDL_snprintf(unknown_type, sizeof(unknown_type), "UNKNOWN (%d)", type);
         return unknown_type;
     }
 }
@@ -95,7 +95,7 @@ int main(int argc, char **argv)
         SDL_bool done = SDL_FALSE;
         SDL_Event event;
 
-        SDL_CreateWindow("Sensor Test", 0, 0, 0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP);
+        SDL_CreateWindow("Sensor Test", 0, 0, SDL_WINDOW_FULLSCREEN);
         while (!done) {
             /* Update to get the current event state */
             SDL_PumpEvents();
@@ -106,7 +106,7 @@ int main(int argc, char **argv)
                 case SDL_EVENT_SENSOR_UPDATE:
                     HandleSensorEvent(&event.sensor);
                     break;
-                case SDL_EVENT_MOUSE_BUTTONUP:
+                case SDL_EVENT_MOUSE_BUTTON_UP:
                 case SDL_EVENT_KEY_UP:
                 case SDL_EVENT_QUIT:
                     done = SDL_TRUE;

@@ -349,11 +349,7 @@ int main(int argc, char **argv)
     now = SDL_GetTicks();
     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "%" SDL_PRIu32 " iterations in %" SDL_PRIu64 " ms, %.2fms each\n", iterations, (now - then), (float)(now - then) / iterations);
 
-    window = SDL_CreateWindow("YUV test",
-                              SDL_WINDOWPOS_UNDEFINED,
-                              SDL_WINDOWPOS_UNDEFINED,
-                              original->w, original->h,
-                              0);
+    window = SDL_CreateWindow("YUV test", original->w, original->h, 0);
     if (window == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create window: %s\n", SDL_GetError());
         return 4;
@@ -411,7 +407,7 @@ int main(int argc, char **argv)
                         ++current;
                     }
                 }
-                if (event.type == SDL_EVENT_MOUSE_BUTTONDOWN) {
+                if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
                     if (event.button.x < (original->w / 2)) {
                         --current;
                     } else {
@@ -434,7 +430,7 @@ int main(int argc, char **argv)
             if (current == 0) {
                 SDLTest_DrawString(renderer, 4, 4, titles[current]);
             } else {
-                (void)SDL_snprintf(title, sizeof title, "%s %s %s", titles[current], yuv_name, yuv_mode);
+                (void)SDL_snprintf(title, sizeof(title), "%s %s %s", titles[current], yuv_name, yuv_mode);
                 SDLTest_DrawString(renderer, 4, 4, title);
             }
             SDL_RenderPresent(renderer);

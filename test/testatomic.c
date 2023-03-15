@@ -9,6 +9,7 @@
   including commercial applications, and to alter it and redistribute it
   freely.
 */
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
@@ -30,12 +31,12 @@ tf(SDL_bool _tf)
     return f;
 }
 
-static void RunBasicTest()
+static void RunBasicTest(void)
 {
     int value;
     SDL_SpinLock lock = 0;
 
-    SDL_atomic_t v;
+    SDL_AtomicInt v;
     SDL_bool tfret = SDL_FALSE;
 
     SDL_Log("\nspin lock---------------------------------------\n\n");
@@ -105,12 +106,9 @@ enum
 };
 SDL_COMPILE_TIME_ASSERT(size, CountTo_GreaterThanZero); /* check for rollover */
 
-static SDL_atomic_t good = { 42 };
-
+static SDL_AtomicInt good = { 42 };
 static atomicValue bad = 42;
-
-static SDL_atomic_t threadsRunning;
-
+static SDL_AtomicInt threadsRunning;
 static SDL_sem *threadDone;
 
 static int SDLCALL adder(void *junk)
@@ -152,7 +150,7 @@ static void runAdder(void)
     SDL_Log("Finished in %f sec\n", (end - start) / 1000000000.0);
 }
 
-static void RunEpicTest()
+static void RunEpicTest(void)
 {
     int b;
     atomicValue v;
@@ -257,7 +255,7 @@ static void RunEpicTest()
 
 typedef struct
 {
-    SDL_atomic_t sequence;
+    SDL_AtomicInt sequence;
     SDL_Event event;
 } SDL_EventQueueEntry;
 
@@ -267,23 +265,23 @@ typedef struct
 
     char cache_pad1[SDL_CACHELINE_SIZE - ((sizeof(SDL_EventQueueEntry) * MAX_ENTRIES) % SDL_CACHELINE_SIZE)];
 
-    SDL_atomic_t enqueue_pos;
+    SDL_AtomicInt enqueue_pos;
 
-    char cache_pad2[SDL_CACHELINE_SIZE - sizeof(SDL_atomic_t)];
+    char cache_pad2[SDL_CACHELINE_SIZE - sizeof(SDL_AtomicInt)];
 
-    SDL_atomic_t dequeue_pos;
+    SDL_AtomicInt dequeue_pos;
 
-    char cache_pad3[SDL_CACHELINE_SIZE - sizeof(SDL_atomic_t)];
+    char cache_pad3[SDL_CACHELINE_SIZE - sizeof(SDL_AtomicInt)];
 
 #ifdef TEST_SPINLOCK_FIFO
     SDL_SpinLock lock;
-    SDL_atomic_t rwcount;
-    SDL_atomic_t watcher;
+    SDL_AtomicInt rwcount;
+    SDL_AtomicInt watcher;
 
-    char cache_pad4[SDL_CACHELINE_SIZE - sizeof(SDL_SpinLock) - 2 * sizeof(SDL_atomic_t)];
+    char cache_pad4[SDL_CACHELINE_SIZE - sizeof(SDL_SpinLock) - 2 * sizeof(SDL_AtomicInt)];
 #endif
 
-    SDL_atomic_t active;
+    SDL_AtomicInt active;
 
     /* Only needed for the mutex test */
     SDL_mutex *mutex;
@@ -616,7 +614,7 @@ static void RunFIFOTest(SDL_bool lock_free)
     SDL_zeroa(readerData);
     for (i = 0; i < NUM_READERS; ++i) {
         char name[64];
-        (void)SDL_snprintf(name, sizeof name, "FIFOReader%d", i);
+        (void)SDL_snprintf(name, sizeof(name), "FIFOReader%d", i);
         readerData[i].queue = &queue;
         readerData[i].lock_free = lock_free;
         readerData[i].thread = SDL_CreateThread(FIFO_Reader, name, &readerData[i]);
@@ -627,7 +625,7 @@ static void RunFIFOTest(SDL_bool lock_free)
     SDL_zeroa(writerData);
     for (i = 0; i < NUM_WRITERS; ++i) {
         char name[64];
-        (void)SDL_snprintf(name, sizeof name, "FIFOWriter%d", i);
+        (void)SDL_snprintf(name, sizeof(name), "FIFOWriter%d", i);
         writerData[i].queue = &queue;
         writerData[i].index = i;
         writerData[i].lock_free = lock_free;
@@ -676,17 +674,17 @@ static void RunFIFOTest(SDL_bool lock_free)
         }
         grand_total += total;
         SDL_Log("Reader %d read %d events, had %d waits\n", i, total, readerData[i].waits);
-        (void)SDL_snprintf(textBuffer, sizeof textBuffer, "  { ");
+        (void)SDL_snprintf(textBuffer, sizeof(textBuffer), "  { ");
         for (j = 0; j < NUM_WRITERS; ++j) {
             if (j > 0) {
                 len = SDL_strlen(textBuffer);
-                (void)SDL_snprintf(textBuffer + len, sizeof textBuffer - len, ", ");
+                (void)SDL_snprintf(textBuffer + len, sizeof(textBuffer) - len, ", ");
             }
             len = SDL_strlen(textBuffer);
-            (void)SDL_snprintf(textBuffer + len, sizeof textBuffer - len, "%d", readerData[i].counters[j]);
+            (void)SDL_snprintf(textBuffer + len, sizeof(textBuffer) - len, "%d", readerData[i].counters[j]);
         }
         len = SDL_strlen(textBuffer);
-        (void)SDL_snprintf(textBuffer + len, sizeof textBuffer - len, " }\n");
+        (void)SDL_snprintf(textBuffer + len, sizeof(textBuffer) - len, " }\n");
         SDL_Log("%s", textBuffer);
     }
     SDL_Log("Readers read %d total events\n", grand_total);

@@ -13,11 +13,6 @@ include(CMakePushCheckState)
 include(GNUInstallDirs)
 
 set(SDL_TESTS_LINK_SHARED_DEFAULT ON)
-if(WINDOWS)
-    # Avoid missing dll error by linking to static SDL library,
-    # alternatively, copy dll to build directory in a post build event.
-    set(SDL_TESTS_LINK_SHARED_DEFAULT OFF)
-endif()
 if(EMSCRIPTEN OR N3DS OR PS2 OR PSP OR RISCOS OR VITA)
     set(SDL_TESTS_LINK_SHARED_DEFAULT OFF)
 endif()
@@ -26,13 +21,13 @@ option(SDL_TESTS_LINK_SHARED "link tests to shared SDL library" ${SDL_TESTS_LINK
 set(SDL_TESTS_TIMEOUT_MULTIPLIER "1" CACHE STRING "Timeout multiplier to account for really slow machines")
 
 if(SDL_TESTS_LINK_SHARED)
-    set(sdl_name_component SDL3)
+    set(sdl_name_component SDL3-shared)
 else()
     set(sdl_name_component SDL3-static)
 endif()
 
 if(NOT TARGET SDL3::${sdl_name_component})
-    find_package(SDL3 3.0.0 REQUIRED COMPONENTS ${sdl_name_component} SDL3_test)
+    find_package(SDL3 3.0.0 REQUIRED CONFIG COMPONENTS ${sdl_name_component} SDL3_test)
 endif()
 
 # CMake incorrectly detects opengl32.lib being present on MSVC ARM64
@@ -45,7 +40,8 @@ endif()
 set(SDL_TEST_EXECUTABLES)
 set(SDL_TESTS_NONINTERACTIVE)
 
-add_library(sdltests_utils OBJECT
+# FIXME: can be OBJECT library for CMake 3.16
+add_library(sdltests_utils STATIC
     testutils.c
 )
 target_link_libraries(sdltests_utils PRIVATE SDL3::${sdl_name_component})
@@ -55,14 +51,14 @@ file(GLOB RESOURCE_FILES *.bmp *.wav *.hex moose.dat utf8.txt)
 macro(add_sdl_test_executable TARGET)
     cmake_parse_arguments(AST "NONINTERACTIVE;NEEDS_RESOURCES;TESTUTILS" "" "" ${ARGN})
     set(SOURCES ${AST_UNPARSED_ARGUMENTS})
-    if(AST_TESTUTILS)
-        list(APPEND SOURCES $<TARGET_OBJECTS:sdltests_utils>)
-    endif()
     if(AST_NEEDS_RESOURCES)
         list(APPEND SOURCES ${RESOURCE_FILES})
     endif()
     add_executable(${TARGET} ${SOURCES})
     target_link_libraries(${TARGET} PRIVATE SDL3::SDL3_test SDL3::${sdl_name_component})
+    if(AST_TESTUTILS)
+        target_link_libraries(${TARGET} PRIVATE sdltests_utils)
+    endif()
 
     list(APPEND SDL_TEST_EXECUTABLES ${TARGET})
     if(AST_NONINTERACTIVE)
@@ -208,6 +204,7 @@ add_sdl_test_executable(testcustomcursor testcustomcursor.c)
 add_sdl_test_executable(gamepadmap NEEDS_RESOURCES TESTUTILS gamepadmap.c)
 add_sdl_test_executable(testvulkan testvulkan.c)
 add_sdl_test_executable(testoffscreen testoffscreen.c)
+add_sdl_test_executable(testpopup testpopup.c)
 
 check_c_compiler_flag(-Wformat-overflow HAVE_WFORMAT_OVERFLOW)
 if(HAVE_WFORMAT_OVERFLOW)
@@ -351,8 +348,8 @@ if(APPLE)
         foreach(CURRENT_TARGET ${SDL_TEST_EXECUTABLES})
             set_target_properties("${CURRENT_TARGET}" PROPERTIES
                 MACOSX_BUNDLE_GUI_IDENTIFIER "org.libsdl.${CURRENT_TARGET}"
-                MACOSX_BUNDLE_BUNDLE_VERSION "${SDL_VERSION}"
-                MACOSX_BUNDLE_SHORT_VERSION_STRING "${SDL_VERSION}"
+                MACOSX_BUNDLE_BUNDLE_VERSION "${SDL3_VERSION}"
+                MACOSX_BUNDLE_SHORT_VERSION_STRING "${SDL3_VERSION}"
             )
         endforeach()
     endif()
@@ -361,6 +358,7 @@ endif()
 set(TESTS_ENVIRONMENT
     SDL_AUDIO_DRIVER=dummy
     SDL_VIDEO_DRIVER=dummy
+    PATH=$<TARGET_FILE_DIR:SDL3::${sdl_name_component}>
 )
 
 function(sdl_set_test_timeout TEST TIMEOUT)

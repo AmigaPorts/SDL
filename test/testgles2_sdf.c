@@ -35,9 +35,9 @@ typedef struct GLES2_Context
 } GLES2_Context;
 
 static SDL_Surface *g_surf_sdf = NULL;
-GLenum g_texture;
-GLenum g_texture_type = GL_TEXTURE_2D;
-GLfloat g_verts[24];
+static GLenum g_texture;
+static GLenum g_texture_type = GL_TEXTURE_2D;
+static GLfloat g_verts[24];
 typedef enum
 {
     GLES2_ATTRIBUTE_POSITION = 0,
@@ -53,7 +53,7 @@ typedef enum
     GLES2_UNIFORM_COLOR,
 } GLES2_Uniform;
 
-GLint g_uniform_locations[16];
+static GLint g_uniform_locations[16];
 
 static SDLTest_CommonState *state;
 static SDL_GLContext *context = NULL;
@@ -115,14 +115,14 @@ quit(int rc)
         }                                                                                   \
     }
 
-/*
+/**
  * Create shader, load in source, compile, dump debug as necessary.
  *
  * shader: Pointer to return created shader ID.
  * source: Passed-in shader source code.
  * shader_type: Passed to GL, e.g. GL_VERTEX_SHADER.
  */
-void process_shader(GLenum *shader, const char *source, GLenum shader_type)
+static void process_shader(GLenum *shader, const char *source, GLenum shader_type)
 {
     GLint status = GL_FALSE;
     const char *shaders[1] = { NULL };
@@ -266,7 +266,7 @@ Render(int width, int height, shader_data *data)
     GL_CHECK(ctx.myglDrawArrays(GL_TRIANGLE_STRIP, 0, 4));
 }
 
-void renderCopy_angle(float degree_angle)
+static void renderCopy_angle(float degree_angle)
 {
     const float radian_angle = (float)(3.141592 * degree_angle) / 180.0f;
     const GLfloat s = (GLfloat)SDL_sin(radian_angle);
@@ -282,7 +282,7 @@ void renderCopy_angle(float degree_angle)
     *(verts++) = c;
 }
 
-void renderCopy_position(SDL_Rect *srcrect, SDL_Rect *dstrect)
+static void renderCopy_position(SDL_Rect *srcrect, SDL_Rect *dstrect)
 {
     GLfloat minx, miny, maxx, maxy;
     GLfloat minu, maxu, minv, maxv;
@@ -317,11 +317,11 @@ void renderCopy_position(SDL_Rect *srcrect, SDL_Rect *dstrect)
     *(verts++) = maxv;
 }
 
-int done;
-Uint32 frames;
-shader_data *datas;
+static int done;
+static Uint32 frames;
+static shader_data *datas;
 
-void loop()
+static void loop(void)
 {
     SDL_Event event;
     int i;
@@ -365,7 +365,7 @@ void loop()
                         break;
                     }
                     /* Change view port to the new window dimensions */
-                    SDL_GL_GetDrawableSize(state->windows[i], &w, &h);
+                    SDL_GetWindowSizeInPixels(state->windows[i], &w, &h);
                     ctx.myglViewport(0, 0, w, h);
                     state->window_w = event.window.data1;
                     state->window_h = event.window.data2;
@@ -396,7 +396,7 @@ void loop()
         int w, h;
         SDL_Rect rs, rd;
 
-        SDL_GL_GetDrawableSize(state->windows[0], &w, &h);
+        SDL_GetWindowSizeInPixels(state->windows[0], &w, &h);
 
         rs.x = 0;
         rs.y = 0;
@@ -434,7 +434,7 @@ int main(int argc, char *argv[])
     int fsaa, accel;
     int value;
     int i;
-    SDL_DisplayMode mode;
+    const SDL_DisplayMode *mode;
     Uint64 then, now;
     int status;
     shader_data *data;
@@ -602,9 +602,11 @@ int main(int argc, char *argv[])
         SDL_GL_SetSwapInterval(0);
     }
 
-    SDL_GetCurrentDisplayMode(0, &mode);
-    SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode.format));
-    SDL_Log("\n");
+    mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
+    if (mode) {
+        SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode->format));
+        SDL_Log("\n");
+    }
     SDL_Log("Vendor     : %s\n", ctx.myglGetString(GL_VENDOR));
     SDL_Log("Renderer   : %s\n", ctx.myglGetString(GL_RENDERER));
     SDL_Log("Version    : %s\n", ctx.myglGetString(GL_VERSION));
@@ -700,7 +702,7 @@ int main(int argc, char *argv[])
             GL_CHECK(ctx.myglTexSubImage2D(g_texture_type, 0, 0 /* xoffset */, 0 /* yoffset */, g_surf_sdf->w, g_surf_sdf->h, format, type, g_surf_sdf->pixels));
         }
 
-        SDL_GL_GetDrawableSize(state->windows[i], &w, &h);
+        SDL_GetWindowSizeInPixels(state->windows[i], &w, &h);
         ctx.myglViewport(0, 0, w, h);
 
         data = &datas[i];

@@ -20,7 +20,7 @@
 
 #define NUMTHREADS 10
 
-static SDL_atomic_t time_for_threads_to_die[NUMTHREADS];
+static SDL_AtomicInt time_for_threads_to_die[NUMTHREADS];
 
 /* Call this instead of exit(), so we can clean up SDL: atexit() is evil. */
 static void
@@ -30,7 +30,7 @@ quit(int rc)
     exit(rc);
 }
 
-int SDLCALL
+static int SDLCALL
 SubThreadFunc(void *data)
 {
     while (!*(int volatile *)data) {
@@ -39,7 +39,7 @@ SubThreadFunc(void *data)
     return 0;
 }
 
-int SDLCALL
+static int SDLCALL
 ThreadFunc(void *data)
 {
     SDL_Thread *sub_threads[NUMTHREADS];
@@ -51,7 +51,7 @@ ThreadFunc(void *data)
 
     for (i = 0; i < NUMTHREADS; i++) {
         char name[64];
-        (void)SDL_snprintf(name, sizeof name, "Child%d_%d", tid, i);
+        (void)SDL_snprintf(name, sizeof(name), "Child%d_%d", tid, i);
         flags[i] = 0;
         sub_threads[i] = SDL_CreateThread(SubThreadFunc, name, &flags[i]);
     }
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
     (void)signal(SIGSEGV, SIG_DFL);
     for (i = 0; i < NUMTHREADS; i++) {
         char name[64];
-        (void)SDL_snprintf(name, sizeof name, "Parent%d", i);
+        (void)SDL_snprintf(name, sizeof(name), "Parent%d", i);
         SDL_AtomicSet(&time_for_threads_to_die[i], 0);
         threads[i] = SDL_CreateThread(ThreadFunc, name, (void *)(uintptr_t)i);
 

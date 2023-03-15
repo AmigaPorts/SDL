@@ -3,6 +3,7 @@
  */
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_test.h>
+#include "testautomation_suites.h"
 
 /* ================= Test Case Implementation ================== */
 
@@ -11,10 +12,9 @@
 /**
  * \brief Check call to SDL_HasClipboardText
  *
- * \sa
- * http://wiki.libsdl.org/SDL_HasClipboardText
+ * \sa SDL_HasClipboardText
  */
-int clipboard_testHasClipboardText(void *arg)
+static int clipboard_testHasClipboardText(void *arg)
 {
     SDL_HasClipboardText();
     SDLTest_AssertPass("Call to SDL_HasClipboardText succeeded");
@@ -25,10 +25,9 @@ int clipboard_testHasClipboardText(void *arg)
 /**
  * \brief Check call to SDL_HasPrimarySelectionText
  *
- * \sa
- * http://wiki.libsdl.org/SDL_HasPrimarySelectionText
+ * \sa SDL_HasPrimarySelectionText
  */
-int clipboard_testHasPrimarySelectionText(void *arg)
+static int clipboard_testHasPrimarySelectionText(void *arg)
 {
     SDL_HasPrimarySelectionText();
     SDLTest_AssertPass("Call to SDL_HasPrimarySelectionText succeeded");
@@ -39,10 +38,9 @@ int clipboard_testHasPrimarySelectionText(void *arg)
 /**
  * \brief Check call to SDL_GetClipboardText
  *
- * \sa
- * http://wiki.libsdl.org/SDL_GetClipboardText
+ * \sa SDL_GetClipboardText
  */
-int clipboard_testGetClipboardText(void *arg)
+static int clipboard_testGetClipboardText(void *arg)
 {
     char *charResult;
     charResult = SDL_GetClipboardText();
@@ -56,10 +54,9 @@ int clipboard_testGetClipboardText(void *arg)
 /**
  * \brief Check call to SDL_GetPrimarySelectionText
  *
- * \sa
- * http://wiki.libsdl.org/SDL_GetPrimarySelectionText
+ * \sa SDL_GetPrimarySelectionText
  */
-int clipboard_testGetPrimarySelectionText(void *arg)
+static int clipboard_testGetPrimarySelectionText(void *arg)
 {
     char *charResult;
     charResult = SDL_GetPrimarySelectionText();
@@ -72,10 +69,9 @@ int clipboard_testGetPrimarySelectionText(void *arg)
 
 /**
  * \brief Check call to SDL_SetClipboardText
- * \sa
- * http://wiki.libsdl.org/SDL_SetClipboardText
+ * \sa SDL_SetClipboardText
  */
-int clipboard_testSetClipboardText(void *arg)
+static int clipboard_testSetClipboardText(void *arg)
 {
     char *textRef = SDLTest_RandomAsciiString();
     char *text = SDL_strdup(textRef);
@@ -100,10 +96,9 @@ int clipboard_testSetClipboardText(void *arg)
 
 /**
  * \brief Check call to SDL_SetPrimarySelectionText
- * \sa
- * http://wiki.libsdl.org/SDL_SetPrimarySelectionText
+ * \sa SDL_SetPrimarySelectionText
  */
-int clipboard_testSetPrimarySelectionText(void *arg)
+static int clipboard_testSetPrimarySelectionText(void *arg)
 {
     char *textRef = SDLTest_RandomAsciiString();
     char *text = SDL_strdup(textRef);
@@ -128,12 +123,11 @@ int clipboard_testSetPrimarySelectionText(void *arg)
 
 /**
  * \brief End-to-end test of SDL_xyzClipboardText functions
- * \sa
- * http://wiki.libsdl.org/SDL_HasClipboardText
- * http://wiki.libsdl.org/SDL_GetClipboardText
- * http://wiki.libsdl.org/SDL_SetClipboardText
+ * \sa SDL_HasClipboardText
+ * \sa SDL_GetClipboardText
+ * \sa SDL_SetClipboardText
  */
-int clipboard_testClipboardTextFunctions(void *arg)
+static int clipboard_testClipboardTextFunctions(void *arg)
 {
     char *textRef = SDLTest_RandomAsciiString();
     char *text = SDL_strdup(textRef);
@@ -206,12 +200,11 @@ int clipboard_testClipboardTextFunctions(void *arg)
 
 /**
  * \brief End-to-end test of SDL_xyzPrimarySelectionText functions
- * \sa
- * http://wiki.libsdl.org/SDL_HasPrimarySelectionText
- * http://wiki.libsdl.org/SDL_GetPrimarySelectionText
- * http://wiki.libsdl.org/SDL_SetPrimarySelectionText
+ * \sa SDL_HasPrimarySelectionText
+ * \sa SDL_GetPrimarySelectionText
+ * \sa SDL_SetPrimarySelectionText
  */
-int clipboard_testPrimarySelectionTextFunctions(void *arg)
+static int clipboard_testPrimarySelectionTextFunctions(void *arg)
 {
     char *textRef = SDLTest_RandomAsciiString();
     char *text = SDL_strdup(textRef);

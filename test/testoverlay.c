@@ -38,7 +38,7 @@ static  const char STACK_COOKIE[] __attribute__((used)) = "$STACK:200000";
 #endif
 
 /* *INDENT-OFF* */ /* clang-format off */
-SDL_Color MooseColors[84] = {
+static SDL_Color MooseColors[84] = {
     {49, 49, 49, SDL_ALPHA_OPAQUE}
     , {66, 24, 0, SDL_ALPHA_OPAQUE}
     , {66, 33, 0, SDL_ALPHA_OPAQUE}
@@ -151,16 +151,16 @@ static Uint64 next_fps_check;
 static Uint32 frames;
 static const Uint32 fps_check_delay = 5000;
 
-SDL_Surface *MooseYUVSurfaces[MOOSEFRAMES_COUNT];
-SDL_Texture *MooseTexture = NULL;
-SDL_FRect displayrect;
-int window_w;
-int window_h;
-int paused = 0;
-int done = 0;
+static SDL_Surface *MooseYUVSurfaces[MOOSEFRAMES_COUNT];
+static SDL_Texture *MooseTexture = NULL;
+static SDL_FRect displayrect;
+static int window_w;
+static int window_h;
+static int paused = 0;
+static int done = 0;
 static int fpsdelay;
-SDL_bool streaming = SDL_TRUE;
-Uint8 *RawMooseData = NULL;
+static SDL_bool streaming = SDL_TRUE;
+static Uint8 *RawMooseData = NULL;
 
 /* Call this instead of exit(), so we can clean up SDL: atexit() is evil. */
 static void
@@ -171,7 +171,7 @@ quit(int rc)
     /* If rc is 0, just let main return normally rather than calling exit.
      * This allows testing of platforms where SDL_main is required and does meaningful cleanup.
      */
-        
+
     SDL_free(RawMooseData);
 
     for (i = 0; i < MOOSEFRAMES_COUNT; i++) {
@@ -186,7 +186,7 @@ quit(int rc)
     }
 }
 
-void MoveSprites(SDL_Renderer *renderer)
+static void MoveSprites(SDL_Renderer *renderer)
 {
     static int i = 0;
 
@@ -220,12 +220,12 @@ void MoveSprites(SDL_Renderer *renderer)
 }
 
 
-void loop()
+static void loop(void)
 {
     Uint64 now;
     int i;
     SDL_Event event;
-        
+
     SDL_Renderer *renderer = state->renderers[0]; /* only 1 window */
 
     /* Check for events */
@@ -240,7 +240,7 @@ void loop()
             displayrect.w = (float)window_w;
             displayrect.h = (float)window_h;
             break;
-        case SDL_EVENT_MOUSE_BUTTONDOWN:
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
             displayrect.x = event.button.x - window_w / 2;
             displayrect.y = event.button.y - window_h / 2;
             break;
@@ -306,12 +306,12 @@ int main(int argc, char **argv)
     if (state == NULL) {
         return 1;
     }
-    
+
     SDL_zeroa(MooseYUVSurfaces);
 
     for (i = 1; i < argc;) {
         int consumed;
-        
+
         consumed = SDLTest_CommonArg(state, i);
         if (consumed == 0) {
             consumed = -1;
@@ -387,7 +387,7 @@ int main(int argc, char **argv)
             static const char *options[] = {
                 "[--fps <frames per second>]",
                 "[--nodelay]",
-                "[--yuvformat <fmt>] (one of the: YV12 (default), IYUV, YUY2, UYVY, YVYU, NV12, NV21)", 
+                "[--yuvformat <fmt>] (one of the: YV12 (default), IYUV, YUY2, UYVY, YVYU, NV12, NV21)",
                 "[--scale <scale factor>] (initial scale of the overlay)",
                 "[--nostreaming] path that use SDL_CreateTextureFromSurface() not STREAMING texture",
                 NULL

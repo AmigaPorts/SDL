@@ -25,8 +25,7 @@ static SDL_AudioSpec spec;
 static SDL_AudioDeviceID devid_in = 0;
 static SDL_AudioDeviceID devid_out = 0;
 
-static void
-loop()
+static void loop(void)
 {
     SDL_bool please_quit = SDL_FALSE;
     SDL_Event e;
@@ -38,12 +37,12 @@ loop()
             if (e.key.keysym.sym == SDLK_ESCAPE) {
                 please_quit = SDL_TRUE;
             }
-        } else if (e.type == SDL_EVENT_MOUSE_BUTTONDOWN) {
+        } else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
             if (e.button.button == 1) {
                 SDL_PauseAudioDevice(devid_out);
                 SDL_PlayAudioDevice(devid_in);
             }
-        } else if (e.type == SDL_EVENT_MOUSE_BUTTONUP) {
+        } else if (e.type == SDL_EVENT_MOUSE_BUTTON_UP) {
             if (e.button.button == 1) {
                 SDL_PauseAudioDevice(devid_in);
                 SDL_PlayAudioDevice(devid_out);
@@ -105,7 +104,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    window = SDL_CreateWindow("testaudiocapture", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 320, 240, 0);
+    window = SDL_CreateWindow("testaudiocapture", 320, 240, 0);
     renderer = SDL_CreateRenderer(window, NULL, 0);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
@@ -164,5 +163,5 @@ int main(int argc, char **argv)
     }
 #endif
 
-    return 0;
+    /* return 0; */
 }

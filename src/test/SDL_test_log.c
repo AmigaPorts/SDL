@@ -46,7 +46,7 @@ strftime_gcc2_workaround(char *s, size_t max, const char *fmt, const struct tm *
 #define strftime strftime_gcc2_workaround
 #endif
 
-/* !
+/**
  * Converts unix timestamp to its ascii representation in localtime
  *
  * Note: Uses a static buffer internally, so the return value
@@ -68,7 +68,7 @@ SDLTest_TimestampToString(const time_t timestamp)
     SDL_memset(buffer, 0, sizeof(buffer));
     copy = timestamp;
     local = localtime(&copy);
-    result = strftime(buffer, sizeof buffer, "%x %X", local);
+    result = strftime(buffer, sizeof(buffer), "%x %X", local);
     if (result == 0) {
         return "";
     }

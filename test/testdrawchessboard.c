@@ -9,7 +9,7 @@
    including commercial applications, and to alter it and redistribute it
    freely.
 
-   This file is created by : Nitin Jain (nitin.j4@samsung.com)
+   This file is created by : Nitin Jain (nitin.j4\samsung.com)
 */
 
 /* Sample program:  Draw a Chess Board  by using SDL_CreateSoftwareRenderer API */
@@ -21,12 +21,13 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
-SDL_Window *window;
-SDL_Renderer *renderer;
-SDL_Surface *surface;
-int done;
+static SDL_Window *window;
+static SDL_Renderer *renderer;
+static SDL_Surface *surface;
+static int done;
 
-void DrawChessBoard()
+
+static void DrawChessBoard(void)
 {
     int row = 0, column = 0, x = 0;
     SDL_FRect rect;
@@ -57,13 +58,13 @@ void DrawChessBoard()
     }
 }
 
-void loop()
+static void loop(void)
 {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
 
-        /* Re-create when window has been resized */
-        if (e.type == SDL_EVENT_WINDOW_SIZE_CHANGED) {
+        /* Re-create when window surface has been resized */
+        if (e.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
 
             SDL_DestroyRenderer(renderer);
 
@@ -110,7 +111,7 @@ int main(int argc, char *argv[])
     }
 
     /* Create window and renderer for given surface */
-    window = SDL_CreateWindow("Chess Board", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_RESIZABLE);
+    window = SDL_CreateWindow("Chess Board", 640, 480, SDL_WINDOW_RESIZABLE);
     if (window == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Window creation fail : %s\n", SDL_GetError());
         return 1;

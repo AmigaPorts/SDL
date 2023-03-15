@@ -3,12 +3,12 @@
  */
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_test.h>
+#include "testautomation_suites.h"
 
 /* Test case functions */
 
 /* Definition of all RGB formats used to test pixel conversions */
-const int g_numAllFormats = 38;
-Uint32 g_AllFormats[] = {
+static const Uint32 g_AllFormats[] = {
     SDL_PIXELFORMAT_INDEX1LSB,
     SDL_PIXELFORMAT_INDEX1MSB,
     SDL_PIXELFORMAT_INDEX4LSB,
@@ -48,8 +48,9 @@ Uint32 g_AllFormats[] = {
     SDL_PIXELFORMAT_NV12,
     SDL_PIXELFORMAT_NV21
 };
+static const int g_numAllFormats = SDL_arraysize(g_AllFormats);
 
-const char *g_AllFormatsVerbose[] = {
+static const char *g_AllFormatsVerbose[] = {
     "SDL_PIXELFORMAT_INDEX1LSB",
     "SDL_PIXELFORMAT_INDEX1MSB",
     "SDL_PIXELFORMAT_INDEX4LSB",
@@ -91,12 +92,12 @@ const char *g_AllFormatsVerbose[] = {
 };
 
 /* Definition of some invalid formats for negative tests */
-const int g_numInvalidPixelFormats = 2;
 static Uint32 g_invalidPixelFormats[] = {
     SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED32, SDL_PACKEDORDER_ABGR, SDL_PACKEDLAYOUT_1010102 + 1, 32, 4),
     SDL_DEFINE_PIXELFORMAT(SDL_PIXELTYPE_PACKED32, SDL_PACKEDORDER_ABGR, SDL_PACKEDLAYOUT_1010102 + 2, 32, 4)
 };
-const char *g_invalidPixelFormatsVerbose[] = {
+static const int g_numInvalidPixelFormats = SDL_arraysize(g_invalidPixelFormats);
+static const char *g_invalidPixelFormatsVerbose[] = {
     "SDL_PIXELFORMAT_UNKNOWN",
     "SDL_PIXELFORMAT_UNKNOWN"
 };
@@ -104,12 +105,12 @@ const char *g_invalidPixelFormatsVerbose[] = {
 /* Test case functions */
 
 /**
- * @brief Call to SDL_CreatePixelFormat and SDL_DestroyPixelFormat
+ * \brief Call to SDL_CreatePixelFormat and SDL_DestroyPixelFormat
  *
- * @sa http://wiki.libsdl.org/SDL_CreatePixelFormat
- * @sa http://wiki.libsdl.org/SDL_DestroyPixelFormat
+ * \sa SDL_CreatePixelFormat
+ * \sa SDL_DestroyPixelFormat
  */
-int pixels_allocFreeFormat(void *arg)
+static int pixels_allocFreeFormat(void *arg)
 {
     const char *unknownFormat = "SDL_PIXELFORMAT_UNKNOWN";
     const char *expectedError = "Parameter 'format' is invalid";
@@ -200,11 +201,11 @@ int pixels_allocFreeFormat(void *arg)
 }
 
 /**
- * @brief Call to SDL_GetPixelFormatName
+ * \brief Call to SDL_GetPixelFormatName
  *
- * @sa http://wiki.libsdl.org/SDL_GetPixelFormatName
+ * \sa SDL_GetPixelFormatName
  */
-int pixels_getPixelFormatName(void *arg)
+static int pixels_getPixelFormatName(void *arg)
 {
     const char *unknownFormat = "SDL_PIXELFORMAT_UNKNOWN";
     const char *error;
@@ -267,12 +268,12 @@ int pixels_getPixelFormatName(void *arg)
 }
 
 /**
- * @brief Call to SDL_CreatePalette and SDL_DestroyPalette
+ * \brief Call to SDL_CreatePalette and SDL_DestroyPalette
  *
- * @sa http://wiki.libsdl.org/SDL_CreatePalette
- * @sa http://wiki.libsdl.org/SDL_DestroyPalette
+ * \sa SDL_CreatePalette
+ * \sa SDL_DestroyPalette
  */
-int pixels_allocFreePalette(void *arg)
+static int pixels_allocFreePalette(void *arg)
 {
     const char *expectedError1 = "Parameter 'ncolors' is invalid";
     const char *expectedError2 = "Parameter 'palette' is invalid";

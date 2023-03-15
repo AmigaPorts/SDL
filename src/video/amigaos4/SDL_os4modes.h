@@ -23,21 +23,21 @@
 #ifndef _SDL_os4modes_h
 #define _SDL_os4modes_h
 
-typedef struct
+struct SDL_DisplayData
 {
     struct Screen *			screen;
-} SDL_DisplayData;
+};
 
-typedef struct
+struct SDL_DisplayModeData
 {
     ULONG					modeid;
     LONG					x;
     LONG					y;
-} SDL_DisplayModeData;
+};
 
 extern int OS4_InitModes(_THIS);
 extern int OS4_GetDisplayBounds(_THIS, SDL_VideoDisplay * display, SDL_Rect * rect);
-extern void OS4_GetDisplayModes(_THIS, SDL_VideoDisplay * display);
+extern int OS4_GetDisplayModes(_THIS, SDL_VideoDisplay * display);
 extern int OS4_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode);
 extern void OS4_QuitModes(_THIS);
 

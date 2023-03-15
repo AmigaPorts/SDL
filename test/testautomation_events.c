@@ -3,6 +3,7 @@
  */
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_test.h>
+#include "testautomation_suites.h"
 
 /* ================= Test Case Implementation ================== */
 
@@ -37,12 +38,12 @@ static int SDLCALL events_sampleNullEventFilter(void *userdata, SDL_Event *event
 }
 
 /**
- * @brief Test pumping and peeking events.
+ * \brief Test pumping and peeking events.
  *
- * @sa http://wiki.libsdl.org/SDL_PumpEvents
- * @sa http://wiki.libsdl.org/SDL_PollEvent
+ * \sa SDL_PumpEvents
+ * \sa SDL_PollEvent
  */
-int events_pushPumpAndPollUserevent(void *arg)
+static int events_pushPumpAndPollUserevent(void *arg)
 {
     SDL_Event event1;
     SDL_Event event2;
@@ -69,13 +70,13 @@ int events_pushPumpAndPollUserevent(void *arg)
 }
 
 /**
- * @brief Adds and deletes an event watch function with NULL userdata
+ * \brief Adds and deletes an event watch function with NULL userdata
  *
- * @sa http://wiki.libsdl.org/SDL_AddEventWatch
- * @sa http://wiki.libsdl.org/SDL_DelEventWatch
+ * \sa SDL_AddEventWatch
+ * \sa SDL_DelEventWatch
  *
  */
-int events_addDelEventWatch(void *arg)
+static int events_addDelEventWatch(void *arg)
 {
     SDL_Event event;
 
@@ -118,13 +119,13 @@ int events_addDelEventWatch(void *arg)
 }
 
 /**
- * @brief Adds and deletes an event watch function with userdata
+ * \brief Adds and deletes an event watch function with userdata
  *
- * @sa http://wiki.libsdl.org/SDL_AddEventWatch
- * @sa http://wiki.libsdl.org/SDL_DelEventWatch
+ * \sa SDL_AddEventWatch
+ * \sa SDL_DelEventWatch
  *
  */
-int events_addDelEventWatchWithUserdata(void *arg)
+static int events_addDelEventWatchWithUserdata(void *arg)
 {
     SDL_Event event;
 

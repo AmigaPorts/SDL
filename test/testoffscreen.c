@@ -31,7 +31,7 @@ static int width = 640;
 static int height = 480;
 static unsigned int max_frames = 200;
 
-void draw()
+static void draw(void)
 {
     SDL_FRect rect;
 
@@ -49,7 +49,7 @@ void draw()
     SDL_RenderPresent(renderer);
 }
 
-void save_surface_to_bmp()
+static void save_surface_to_bmp(void)
 {
     SDL_Surface* surface;
     Uint32 pixel_format;
@@ -61,14 +61,14 @@ void save_surface_to_bmp()
 
     SDL_RenderReadPixels(renderer, NULL, pixel_format, surface->pixels, surface->pitch);
 
-    (void)SDL_snprintf(file, sizeof file, "SDL_window%" SDL_PRIs32 "-%8.8d.bmp",
+    (void)SDL_snprintf(file, sizeof(file), "SDL_window%" SDL_PRIs32 "-%8.8d.bmp",
                        SDL_GetWindowID(window), ++frame_number);
 
     SDL_SaveBMP(surface, file);
     SDL_DestroySurface(surface);
 }
 
-void loop()
+static void loop(void)
 {
     SDL_Event event;
 
@@ -111,13 +111,10 @@ int main(int argc, char *argv[])
     }
 
     /* If OPENGL fails to init it will fallback to using a framebuffer for rendering */
-    window = SDL_CreateWindow("Offscreen Test",
-                              SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                              width, height, 0);
+    window = SDL_CreateWindow("Offscreen Test", width, height, 0);
 
     if (window == NULL) {
-        SDL_Log("Couldn't create window: %s\n",
-                SDL_GetError());
+        SDL_Log("Couldn't create window: %s\n", SDL_GetError());
         return SDL_FALSE;
     }
 

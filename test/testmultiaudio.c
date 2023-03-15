@@ -28,12 +28,12 @@ typedef struct
 {
     SDL_AudioDeviceID dev;
     int soundpos;
-    SDL_atomic_t done;
+    SDL_AtomicInt done;
 } callback_data;
 
-callback_data cbd[64];
+static callback_data cbd[64];
 
-void SDLCALL
+static void SDLCALL
 play_through_once(void *arg, Uint8 *stream, int len)
 {
     callback_data *cbdata = (callback_data *)arg;
@@ -54,18 +54,18 @@ play_through_once(void *arg, Uint8 *stream, int len)
     }
 }
 
-void loop()
+#ifdef __EMSCRIPTEN__
+static void loop(void)
 {
     if (SDL_AtomicGet(&cbd[0].done)) {
-#ifdef __EMSCRIPTEN__
         emscripten_cancel_main_loop();
-#endif
         SDL_PauseAudioDevice(cbd[0].dev);
         SDL_CloseAudioDevice(cbd[0].dev);
         SDL_free(sound);
         SDL_Quit();
     }
 }
+#endif
 
 static void
 test_multi_audio(int devcount)
@@ -77,7 +77,7 @@ test_multi_audio(int devcount)
     SDL_Event event;
 
     /* Create a Window to get fully initialized event processing for testing pause on Android. */
-    SDL_CreateWindow("testmultiaudio", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 320, 240, 0);
+    SDL_CreateWindow("testmultiaudio", 320, 240, 0);
 #endif
 
     if (devcount > 64) {

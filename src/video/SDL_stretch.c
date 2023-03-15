@@ -29,13 +29,13 @@ static int SDL_UpperSoftStretch(SDL_Surface *src, const SDL_Rect *srcrect, SDL_S
 int SDL_SoftStretch(SDL_Surface *src, const SDL_Rect *srcrect,
                     SDL_Surface *dst, const SDL_Rect *dstrect)
 {
-    return SDL_UpperSoftStretch(src, srcrect, dst, dstrect, SDL_ScaleModeNearest);
+    return SDL_UpperSoftStretch(src, srcrect, dst, dstrect, SDL_SCALEMODE_NEAREST);
 }
 
 int SDL_SoftStretchLinear(SDL_Surface *src, const SDL_Rect *srcrect,
                           SDL_Surface *dst, const SDL_Rect *dstrect)
 {
-    return SDL_UpperSoftStretch(src, srcrect, dst, dstrect, SDL_ScaleModeLinear);
+    return SDL_UpperSoftStretch(src, srcrect, dst, dstrect, SDL_SCALEMODE_LINEAR);
 }
 
 static int SDL_UpperSoftStretch(SDL_Surface *src, const SDL_Rect *srcrect,
@@ -51,7 +51,7 @@ static int SDL_UpperSoftStretch(SDL_Surface *src, const SDL_Rect *srcrect,
         return SDL_SetError("Only works with same format surfaces");
     }
 
-    if (scaleMode != SDL_ScaleModeNearest) {
+    if (scaleMode != SDL_SCALEMODE_NEAREST) {
         if (src->format->BytesPerPixel != 4 || src->format->format == SDL_PIXELFORMAT_ARGB2101010) {
             return SDL_SetError("Wrong format");
         }
@@ -114,7 +114,7 @@ static int SDL_UpperSoftStretch(SDL_Surface *src, const SDL_Rect *srcrect,
         src_locked = 1;
     }
 
-    if (scaleMode == SDL_ScaleModeNearest) {
+    if (scaleMode == SDL_SCALEMODE_NEAREST) {
         ret = SDL_LowerSoftStretchNearest(src, srcrect, dst, dstrect);
     } else {
         ret = SDL_LowerSoftStretchLinear(src, srcrect, dst, dstrect);
@@ -362,7 +362,7 @@ static void printf_128(const char *str, __m128i var)
 }
 #endif
 
-static SDL_INLINE int hasSSE2()
+static SDL_INLINE int hasSSE2(void)
 {
     static int val = -1;
     if (val != -1) {
@@ -531,7 +531,7 @@ static int scale_mat_SSE(const Uint32 *src, int src_w, int src_h, int src_pitch,
 
 #if defined(HAVE_NEON_INTRINSICS)
 
-static SDL_INLINE int hasNEON()
+static SDL_INLINE int hasNEON(void)
 {
     static int val = -1;
     if (val != -1) {

@@ -606,7 +606,7 @@ OS4_HandleTicks(_THIS, struct MyIntuiMessage * imsg)
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
     if (sdlwin) {
-        if ((sdlwin->flags & SDL_WINDOW_INPUT_GRABBED) && !(sdlwin->flags & SDL_WINDOW_FULLSCREEN) &&
+        if ((sdlwin->flags & SDL_WINDOW_MOUSE_GRABBED) && !(sdlwin->flags & SDL_WINDOW_FULLSCREEN) &&
             (SDL_GetKeyboardFocus() == sdlwin)) {
 
             SDL_WindowData *data = sdlwin->driverdata;

@@ -3131,7 +3131,7 @@ int SDLTest_DrawCharacter(SDL_Renderer *renderer, float x, float y, Uint32 c)
     const Uint32 charWidth = FONT_CHARACTER_SIZE;
     const Uint32 charHeight = FONT_CHARACTER_SIZE;
     const Uint32 charSize = FONT_CHARACTER_SIZE;
-    SDL_Rect srect;
+    SDL_FRect srect;
     SDL_FRect drect;
     int result;
     Uint32 ix, iy;
@@ -3147,10 +3147,10 @@ int SDLTest_DrawCharacter(SDL_Renderer *renderer, float x, float y, Uint32 c)
     /*
      * Setup source rectangle
      */
-    srect.x = 0;
-    srect.y = 0;
-    srect.w = charWidth;
-    srect.h = charHeight;
+    srect.x = 0.0f;
+    srect.y = 0.0f;
+    srect.w = (float)charWidth;
+    srect.h = (float)charHeight;
 
     /*
      * Setup destination rectangle
@@ -3295,7 +3295,7 @@ static Uint32 UTF8_getch(const char *src, size_t srclen, int *inc)
             left = 1;
         }
     } else {
-        if ((p[0] & 0x80) == 0x00) {
+        if (!(p[0] & 0x80)) {
             ch = (Uint32)p[0];
         }
     }
@@ -3390,7 +3390,7 @@ void SDLTest_TextWindowAddText(SDLTest_TextWindow *textwin, const char *fmt, ...
     va_list ap;
 
     va_start(ap, fmt);
-    (void)SDL_vsnprintf(text, sizeof text, fmt, ap);
+    (void)SDL_vsnprintf(text, sizeof(text), fmt, ap);
     va_end(ap);
 
     SDLTest_TextWindowAddTextWithLength(textwin, text, SDL_strlen(text));

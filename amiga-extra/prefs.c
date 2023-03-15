@@ -71,7 +71,7 @@ enum EGadgetID
     GID_VsyncList,
     GID_BatchingList,
     GID_ScaleQualityList,
-    GID_LogicalSizeModeList,
+    //GID_LogicalSizeModeList,
     GID_ScreenSaverList,
     GID_SaveButton,
     GID_ResetButton,
@@ -128,6 +128,7 @@ static const struct OptionName scaleQualityNames[] =
     { NULL, NULL, NULL }
 };
 
+/*
 static const struct OptionName logicalSizeModeNames[] =
 {
     { "default", NULL, NULL },
@@ -135,6 +136,7 @@ static const struct OptionName logicalSizeModeNames[] =
     { "overscan", "1", "overscan" },
     { NULL, NULL, NULL }
 };
+*/
 
 static const struct OptionName screenSaverNames[] =
 {
@@ -159,7 +161,7 @@ static struct Variable driverVar = { GID_DriverList, 0, SDL_HINT_RENDER_DRIVER, 
 static struct Variable vsyncVar = { GID_VsyncList, 0, SDL_HINT_RENDER_VSYNC, "", NULL, NULL, vsyncNames };
 static struct Variable batchingVar = { GID_BatchingList, 0, SDL_HINT_RENDER_BATCHING, "", NULL, NULL, batchingNames };
 static struct Variable scaleQualityVar = { GID_ScaleQualityList, 0, SDL_HINT_RENDER_SCALE_QUALITY, "", NULL, NULL, scaleQualityNames };
-static struct Variable logicalSizeModeVar = { GID_LogicalSizeModeList, 0, SDL_HINT_RENDER_LOGICAL_SIZE_MODE, "", NULL, NULL, logicalSizeModeNames };
+//static struct Variable logicalSizeModeVar = { GID_LogicalSizeModeList, 0, SDL_HINT_RENDER_LOGICAL_SIZE_MODE, "", NULL, NULL, logicalSizeModeNames };
 static struct Variable screenSaverVar = { GID_ScreenSaverList, 0, SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "", NULL, NULL, screenSaverNames };
 
 static char*
@@ -236,7 +238,7 @@ LoadVariables()
     LoadVariable(&vsyncVar);
     LoadVariable(&batchingVar);
     LoadVariable(&scaleQualityVar);
-    LoadVariable(&logicalSizeModeVar);
+    //LoadVariable(&logicalSizeModeVar);
     LoadVariable(&screenSaverVar);
 }
 
@@ -257,7 +259,7 @@ SaveVariables()
     SaveOrDeleteVariable(&vsyncVar);
     SaveOrDeleteVariable(&batchingVar);
     SaveOrDeleteVariable(&scaleQualityVar);
-    SaveOrDeleteVariable(&logicalSizeModeVar);
+    //SaveOrDeleteVariable(&logicalSizeModeVar);
     SaveOrDeleteVariable(&screenSaverVar);
 }
 
@@ -435,12 +437,14 @@ CreateScaleQualityButtons()
         "Nearest pixel sampling or linear filtering");
 }
 
+/*
 static Object*
 CreateLogicalSizeModeButtons()
 {
     return CreateChooserButtons(&logicalSizeModeVar, "logical size mode",
         "Scaling policy for SDL_RenderSetLogicalSize");
 }
+*/
 
 static Object*
 CreateScreenSaverButtons()
@@ -519,8 +523,8 @@ CreateRendererLayout()
                 CHILD_Label, CreateLabel("_Batching Mode"),
                 LAYOUT_AddChild, CreateScaleQualityButtons(),
                 CHILD_Label, CreateLabel("Scale _Quality"),
-                LAYOUT_AddChild, CreateLogicalSizeModeButtons(),
-                CHILD_Label, CreateLabel("_Logical Size Mode"),
+                //LAYOUT_AddChild, CreateLogicalSizeModeButtons(),
+                //CHILD_Label, CreateLabel("_Logical Size Mode"),
                 TAG_DONE), // vertical layout
                 CHILD_WeightedWidth, 0,
             TAG_DONE),
@@ -816,9 +820,9 @@ HandleGadgets(enum EGadgetID gid)
         case GID_ScaleQualityList:
             ReadSelection(&scaleQualityVar);
             break;
-        case GID_LogicalSizeModeList:
-            ReadSelection(&logicalSizeModeVar);
-            break;
+        //case GID_LogicalSizeModeList:
+            //ReadSelection(&logicalSizeModeVar);
+            //break;
         case GID_ScreenSaverList:
             ReadSelection(&screenSaverVar);
             break;
@@ -831,7 +835,7 @@ HandleGadgets(enum EGadgetID gid)
             ResetSelection(&vsyncVar);
             ResetSelection(&batchingVar);
             ResetSelection(&scaleQualityVar);
-            ResetSelection(&logicalSizeModeVar);
+            //ResetSelection(&logicalSizeModeVar);
             ResetSelection(&screenSaverVar);
             break;
         case GID_CancelButton:
@@ -934,7 +938,7 @@ main(int argc, char** argv)
         PurgeChooserList(vsyncVar.list);
         PurgeChooserList(batchingVar.list);
         PurgeChooserList(scaleQualityVar.list);
-        PurgeChooserList(logicalSizeModeVar.list);
+        //PurgeChooserList(logicalSizeModeVar.list);
         PurgeChooserList(screenSaverVar.list);
     }
 
