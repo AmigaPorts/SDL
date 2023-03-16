@@ -70,8 +70,7 @@ OS4_GetDisplayMode(_THIS, ULONG id, SDL_DisplayMode * mode)
 
     // We are only interested in RTG modes
     if (dispinfo.PropertyFlags & DIPF_IS_RTG) {
-
-        dprintf("RTG mode %d: w=%d, h=%d, bits=%d\n", id, mode->w, mode->h, diminfo.MaxDepth);
+        dprintf("RTG mode %d: w=%d, h=%d, bits=%d\n", id, mode->screen_w, mode->screen_h, diminfo.MaxDepth);
 
         switch (diminfo.MaxDepth) {
         case 32:
@@ -262,7 +261,7 @@ OS4_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
         TAG_DONE);
 
     dprintf("Opened screen id %d: %d*%d*%d (address %p)\n",
-        data->modeid, mode->w, mode->h, bpp, displaydata->screen);
+        data->modeid, mode->screen_w, mode->screen_h, bpp, displaydata->screen);
 
     if (!displaydata->screen) {
         switch (openError) {

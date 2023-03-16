@@ -140,7 +140,7 @@ OS4_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
 {
     OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
 
-    dprintf("Called with event %d\n", event->event);
+    dprintf("Called with event %d\n", event->type);
 
     if (event->type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
 
@@ -1045,8 +1045,8 @@ OS4_CreateRenderer(SDL_Window * window, Uint32 flags)
     renderer->DestroyTexture = OS4_DestroyTexture;
     renderer->DestroyRenderer = OS4_DestroyRenderer;
     renderer->SetVSync = OS4_SetVSync;
+    renderer->SetTextureScaleMode = OS4_SetTextureScaleMode;
     renderer->info = OS4_RenderDriver.info;
-
     renderer->driverdata = data;
 
     IGraphics->InitRastPort(&data->rastport);
