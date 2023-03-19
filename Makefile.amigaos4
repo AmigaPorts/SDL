@@ -5,10 +5,12 @@ RANLIB = ppc-amigaos-ranlib
 CC = ppc-amigaos-gcc
 CXX = ppc-amigaos-g++
 STRIP = ppc-amigaos-strip
+CRT ?= newlib
+INSTALL_PATH ?=
 
 AMIGADATE = $(shell date +"%-d.%-m.%Y")
 
-CFLAGS  = -gstabs -O2 -Wall -fPIC -fcommon -I./include -I./include/SDL3 -I./src -D__AMIGADATE__=\"$(AMIGADATE)\"
+CFLAGS  = -mcrt=$(CRT) -gstabs -O2 -Wall -fPIC -fcommon -I./include -I./include/SDL3 -I./src -D__AMIGADATE__=\"$(AMIGADATE)\"
 
 TARGET_STATIC  = libSDL3.a
 TARGET_SHARED  = libSDL3-3.0.so
@@ -88,11 +90,11 @@ clean:
 	rm -f $(TARGET_STATIC) $(TARGET_SHARED)* $(TESTLIB_STATIC) $(ALL_OBJECTS) $(PREFS_PROGRAM)
 
 install:
-	mkdir -p /SDK/local/newlib/lib
-	mkdir -p /SDK/local/newlib/include/SDL3
-	cp -f $(TARGET_STATIC) /SDK/local/newlib/lib
-	cp -f $(TARGET_SHARED) /SDK/local/newlib/lib
-	cp -f $(TESTLIB_STATIC) /SDK/local/newlib/lib
-	cp -f include/SDL3/*.h /SDK/local/newlib/include/SDL3/
+	mkdir -p $(INSTALL_PATH)/SDK/local/$(CRT)/lib
+	mkdir -p $(INSTALL_PATH)/SDK/local/$(CRT)/include/SDL3
+	cp -f $(TARGET_STATIC) $(INSTALL_PATH)/SDK/local/$(CRT)/lib
+	cp -f $(TARGET_SHARED) $(INSTALL_PATH)/SDK/local/$(CRT)/lib
+	cp -f $(TESTLIB_STATIC) $(INSTALL_PATH)/SDK/local/$(CRT)/lib
+	cp -f include/SDL3/*.h $(INSTALL_PATH)/SDK/local/$(CRT)/include/SDL3/
 	cp -f $(PREFS_PROGRAM) /SYS/Prefs/
 
