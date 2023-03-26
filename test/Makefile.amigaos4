@@ -1,7 +1,7 @@
 # Makefile to build the AmigaOS4 SDL tests
 
 CC     = ppc-amigaos-gcc
-CFLAGS = -gstabs -O2 -Wall -g -I../include -DHAVE_OPENGL
+CFLAGS = -gstabs -O2 -Wall -g -I../include -I../src -DHAVE_OPENGL
 LIBS   = -L.. -use-dynld -lSDL3_test -lSDL3 -athread=native
 
 TARGETS = \
@@ -105,6 +105,7 @@ testautomation: testautomation.o \
 		      testautomation_guid.o \
 		      testautomation_hints.o \
 		      testautomation_images.o \
+		      testautomation_intrinsics.o \
 		      testautomation_joystick.o \
 		      testautomation_keyboard.o \
 		      testautomation_main.o \
@@ -243,7 +244,7 @@ testsem: testsem.o
 testsensor: testsensor.o
 	$(CC) -o $@ $^ $(LIBS)
 
-testshader: testshader.o
+testshader: testshader.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testshape: testshape.o
@@ -273,7 +274,7 @@ testviewport: testviewport.o testutils.o
 testwm: testwm.o
 	$(CC) -o $@ $^ $(LIBS)
 
-testyuv: testyuv.o testyuv_cvt.o
+testyuv: testyuv.o testyuv_cvt.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 torturethread: torturethread.o

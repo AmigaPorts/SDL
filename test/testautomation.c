@@ -27,6 +27,7 @@ static SDLTest_TestSuiteReference *testSuites[] = {
     &eventsTestSuite,
     &guidTestSuite,
     &hintsTestSuite,
+    &intrinsicsTestSuite,
     &joystickTestSuite,
     &keyboardTestSuite,
     &mainTestSuite,
@@ -70,6 +71,9 @@ int main(int argc, char *argv[])
     if (state == NULL) {
         return 1;
     }
+
+    /* No need of windows (or update testautomation_mouse.c:mouse_getMouseFocus() */
+    state->num_windows = 0;
 
     /* Parse commandline */
     for (i = 1; i < argc;) {

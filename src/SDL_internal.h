@@ -185,6 +185,7 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_intrin.h>
+
 #define SDL_MAIN_NOIMPL /* don't drag in header-only implementation of SDL_main */
 #include <SDL3/SDL_main.h>
 

@@ -26,7 +26,7 @@
 /* This is a set of defines to configure the SDL features */
 
 /* General platform specific identifiers */
-#include "SDL_platform.h"
+#include "SDL3/SDL_platform_defines.h"
 
 /* C datatypes */
 #ifdef __LP64__

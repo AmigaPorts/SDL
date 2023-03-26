@@ -19,7 +19,7 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #if defined(SDL_TIMER_AMIGAOS4) || defined(SDL_TIMERS_DISABLED)
 
