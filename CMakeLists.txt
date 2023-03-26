@@ -360,18 +360,23 @@ endforeach()
 
 # Allow some projects to be built conditionally.
 set_option(SDL_DISABLE_INSTALL    "Disable installation of SDL3" ${SDL3_SUBPROJECT})
-cmake_dependent_option(SDL_DISABLE_INSTALL_CPACK "Create binary SDL3 archive using CPack" ${SDL3_SUBPROJECT} "NOT SDL_DISABLE_INSTALL" OFF)
+cmake_dependent_option(SDL_DISABLE_INSTALL_CPACK "Create binary SDL3 archive using CPack" ${SDL3_SUBPROJECT} "NOT SDL_DISABLE_INSTALL" ON)
+cmake_dependent_option(SDL_DISABLE_INSTALL_MAN "Install man pages for SDL3" ${SDL3_SUBPROJECT} "NOT SDL_DISABLE_INSTALL;NOT SDL_FRAMEWORK" ON)
 set_option(SDL_DISABLE_UNINSTALL  "Disable uninstallation of SDL3" OFF)
 
 option_string(SDL_ASSERTIONS "Enable internal sanity checks (auto/disabled/release/enabled/paranoid)" "auto")
 #set_option(SDL_DEPENDENCY_TRACKING "Use gcc -MMD -MT dependency tracking" ON)
 set_option(SDL_ASSEMBLY            "Enable assembly routines" ${SDL_ASSEMBLY_DEFAULT})
-dep_option(SDL_SSEMATH             "Allow GCC to use SSE floating point math" ON "SDL_ASSEMBLY;SDL_CPU_X86 OR SDL_CPU_X64" OFF)
+dep_option(SDL_AVX                 "Use AVX assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_X86 OR SDL_CPU_X64" OFF)
+dep_option(SDL_AVX2                "Use AVX2 assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_X86 OR SDL_CPU_X64" OFF)
+dep_option(SDL_AVX512              "Use AVX512 assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_X86 OR SDL_CPU_X64" OFF)
 dep_option(SDL_SSE                 "Use SSE assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_X86 OR SDL_CPU_X64" OFF)
 dep_option(SDL_SSE2                "Use SSE2 assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_X86 OR SDL_CPU_X64" OFF)
 dep_option(SDL_SSE3                "Use SSE3 assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_X86 OR SDL_CPU_X64" OFF)
+dep_option(SDL_SSE4_1              "Use SSE4.1 assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_X86 OR SDL_CPU_X64" OFF)
+dep_option(SDL_SSE4_2              "Use SSE4.2 assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_X86 OR SDL_CPU_X64" OFF)
 dep_option(SDL_MMX                 "Use MMX assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_X86 OR SDL_CPU_X64" OFF)
-dep_option(SDL_ALTIVEC             "Use Altivec assembly routines" ON "SDL_ASSEMBLY" OFF)
+dep_option(SDL_ALTIVEC             "Use Altivec assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_POWERPC32 OR SDL_CPU_POWERPC64" OFF)
 dep_option(SDL_ARMSIMD             "Use SIMD assembly blitters on ARM" OFF "SDL_ASSEMBLY;SDL_CPU_ARM32" OFF)
 dep_option(SDL_ARMNEON             "Use NEON assembly blitters on ARM" OFF "SDL_ASSEMBLY;SDL_CPU_ARM32" OFF)
 dep_option(SDL_LSX                 "Use LSX assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_LOONGARCH64" OFF)
@@ -707,123 +712,203 @@ if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 if(SDL_ASSEMBLY)
+  set(HAVE_ASSEMBLY TRUE)
+
+  if(SDL_MMX)
+    cmake_push_check_state()
+    if(USE_GCC OR USE_CLANG)
+      set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -mmmx")
+    endif()
+    check_c_source_compiles("
+      #include <mmintrin.h>
+      void ints_add(int *dest, int *a, int *b, unsigned size) {
+        for (; size >= 2; size -= 2, dest += 2, a += 2, b += 2) {
+          *(__m64*)dest = _mm_add_pi32(*(__m64*)a, *(__m64*)b);
+        }
+      }
+      int main(int argc, char *argv[]) {
+        ints_add((int*)0, (int*)0, (int*)0, 0);
+        return 0;
+      }" COMPILER_SUPPORTS_MMX)
+    cmake_pop_check_state()
+    if(COMPILER_SUPPORTS_MMX)
+      set(HAVE_MMX TRUE)
+    endif()
+  endif()
+  if(SDL_SSE)
+    cmake_push_check_state()
+    if(USE_GCC OR USE_CLANG)
+      set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -msse")
+    endif()
+    check_c_source_compiles("
+      #include <xmmintrin.h>
+      void floats_add(float *dest, float *a, float *b, unsigned size) {
+        for (; size >= 4; size -= 4, dest += 4, a += 4, b += 4) {
+          _mm_storeu_ps(dest, _mm_add_ps(_mm_loadu_ps(a), _mm_loadu_ps (b)));
+        }
+      }
+      int main(int argc, char **argv) {
+        floats_add((float*)0, (float*)0, (float*)0, 0);
+        return 0;
+      }" COMPILER_SUPPORTS_SSE)
+    cmake_pop_check_state()
+    if(COMPILER_SUPPORTS_SSE)
+      set(HAVE_SSE TRUE)
+    endif()
+  endif()
+  if(SDL_SSE2)
+    cmake_push_check_state()
+    if(USE_GCC OR USE_CLANG)
+      set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -msse2")
+    endif()
+    check_c_source_compiles("
+      #include <emmintrin.h>
+      void doubles_add(double *dest, double *a, double *b, unsigned size) {
+        for (; size >= 4; size -= 4, dest += 4, a += 4, b += 4) {
+          _mm_store_pd(dest, _mm_add_pd(_mm_loadu_pd(a), _mm_loadu_pd(b)));
+        }
+      }
+      int main(int argc, char **argv) {
+        doubles_add((double*)0, (double*)0, (double*)0, 0);
+        return 0;
+      }" COMPILER_SUPPORTS_SSE2)
+    cmake_pop_check_state()
+    if(COMPILER_SUPPORTS_SSE2)
+      set(HAVE_SSE2 TRUE)
+    endif()
+  endif()
+  if(SDL_SSE3)
+    cmake_push_check_state()
+    if(USE_GCC OR USE_CLANG)
+      set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -msse3")
+    endif()
+    check_c_source_compiles("
+      #include <pmmintrin.h>
+      void ints_add(int *dest, int *a, int *b, unsigned size) {
+        for (; size >= 4; size -= 4, dest += 4, a += 4, b += 4) {
+          _mm_storeu_si128((__m128i*)dest, _mm_add_epi32(_mm_lddqu_si128((__m128i*)a), _mm_lddqu_si128((__m128i*)b)));
+        }
+      }
+      int main(int argc, char **argv) {
+        ints_add((int*)0, (int*)0, (int*)0, 0);
+        return 0;
+      }" COMPILER_SUPPORTS_SSE3)
+    cmake_pop_check_state()
+    if(COMPILER_SUPPORTS_SSE3)
+      set(HAVE_SSE3 TRUE)
+    endif()
+  endif()
+  if(SDL_SSE4_1)
+    cmake_push_check_state()
+    if(USE_GCC OR USE_CLANG)
+      set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -msse4.1")
+    endif()
+    check_c_source_compiles("
+      #include <smmintrin.h>
+      void ints_mul(int *dest, int *a, int *b, unsigned size) {
+        for (; size >= 4; size -= 4, dest += 4, a += 4, b += 4) {
+          _mm_storeu_si128((__m128i*)dest, _mm_mullo_epi32(_mm_lddqu_si128((__m128i*)a), _mm_lddqu_si128((__m128i*)b)));
+        }
+      }
+      int main(int argc, char **argv) {
+        ints_mul((int*)0, (int*)0, (int*)0, 0);
+        return 0;
+      }" COMPILER_SUPPORTS_SSE4_1)
+    cmake_pop_check_state()
+    if(COMPILER_SUPPORTS_SSE4_1)
+      set(HAVE_SSE4_1 TRUE)
+    endif()
+  endif()
+  if(SDL_SSE4_2)
+    cmake_push_check_state()
+    if(USE_GCC OR USE_CLANG)
+      set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -msse4.2")
+    endif()
+    check_c_source_compiles("
+      #include <nmmintrin.h>
+      unsigned calc_crc32c(const char *text, unsigned len) {
+          unsigned crc32c = ~0;
+          for (; len >= 4; len -= 4, text += 4) {
+            crc32c = (unsigned)_mm_crc32_u32(crc32c, *(unsigned*)text);
+          }
+          return crc32c;
+      }
+      int main(int argc, char **argv) {
+        calc_crc32c(\"SDL_SSE4\",8);
+        return 0;
+      }" COMPILER_SUPPORTS_SSE4_2)
+    cmake_pop_check_state()
+    if(COMPILER_SUPPORTS_SSE4_2)
+      set(HAVE_SSE4_2 TRUE)
+    endif()
+  endif()
+  if(SDL_AVX)
+    cmake_push_check_state()
+    if(USE_GCC OR USE_CLANG)
+      set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -mavx")
+    endif()
+    check_c_source_compiles("
+      #include <immintrin.h>
+      void floats_add(float *dest, float *a, float *b, unsigned size) {
+        for (; size >= 8; size -= 8, dest += 8, a += 8, b += 8) {
+          _mm256_storeu_ps(dest, _mm256_add_ps(_mm256_loadu_ps(a), _mm256_loadu_ps(b)));
+        }
+      }
+      int main(int argc, char **argv) {
+        floats_add((float*)0, (float*)0, (float*)0, 0);
+        return 0;
+      }" COMPILER_SUPPORTS_AVX)
+    cmake_pop_check_state()
+    if(COMPILER_SUPPORTS_AVX)
+      set(HAVE_AVX TRUE)
+    endif()
+  endif()
+  if(SDL_AVX2)
+    cmake_push_check_state()
+    if(USE_GCC OR USE_CLANG)
+      set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -mavx2")
+    endif()
+    check_c_source_compiles("
+      #include <immintrin.h>
+      void ints_add(int *dest, int *a, int *b, unsigned size) {
+        for (; size >= 8; size -= 8, dest += 8, a += 8, b += 8) {
+          _mm256_storeu_si256((__m256i*)dest, _mm256_add_epi32(_mm256_loadu_si256((__m256i*)a), _mm256_loadu_si256((__m256i*)b)));
+        }
+      }
+      int main(int argc, char **argv) {
+        ints_add((int*)0, (int*)0, (int*)0, 0);
+        return 0;
+      }" COMPILER_SUPPORTS_AVX2)
+    cmake_pop_check_state()
+    if(COMPILER_SUPPORTS_AVX2)
+      set(HAVE_AVX2 TRUE)
+    endif()
+  endif()
+  if(SDL_AVX512)
+    cmake_push_check_state()
+    if(USE_GCC OR USE_CLANG)
+      set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -mavx512f")
+    endif()
+    check_c_source_compiles("
+      #include <immintrin.h>
+      void floats_add(float *dest, float *a, float *b, unsigned size) {
+        for (; size >= 16; size -= 16, dest += 16, a += 16, b += 16) {
+          _mm512_storeu_ps(dest, _mm512_add_ps(_mm512_loadu_ps(a), _mm512_loadu_ps(b)));
+        }
+      }
+      int main(int argc, char **argv) {
+        floats_add((float*)0, (float*)0, (float*)0, 0);
+        return 0;
+      }" COMPILER_SUPPORTS_AVX512F)
+    cmake_pop_check_state()
+    if(COMPILER_SUPPORTS_AVX512F)
+      set(HAVE_AVX512F TRUE)
+    endif()
+  endif()
+
   if(USE_GCC OR USE_CLANG)
     # TODO: Those all seem to be quite GCC specific - needs to be
     # reworked for better compiler support
-    set(HAVE_ASSEMBLY TRUE)
-    if(SDL_MMX)
-      cmake_push_check_state()
-      set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -mmmx")
-      check_c_source_compiles("
-          #ifdef __MINGW32__
-          #include <_mingw.h>
-          #ifdef __MINGW64_VERSION_MAJOR
-          #include <intrin.h>
-          #else
-          #include <mmintrin.h>
-          #endif
-          #else
-          #include <mmintrin.h>
-          #endif
-          #ifndef __MMX__
-          #error Assembler CPP flag not enabled
-          #endif
-          int main(int argc, char **argv) { return 0; }" HAVE_MMX)
-      cmake_pop_check_state()
-      if(HAVE_MMX)
-        target_compile_options(sdl-build-options INTERFACE "-mmmx")
-      endif()
-    endif()
-
-    if(SDL_SSE)
-      cmake_push_check_state()
-      set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -msse")
-      check_c_source_compiles("
-          #ifdef __MINGW32__
-          #include <_mingw.h>
-          #ifdef __MINGW64_VERSION_MAJOR
-          #include <intrin.h>
-          #else
-          #include <xmmintrin.h>
-          #endif
-          #else
-          #include <xmmintrin.h>
-          #endif
-          #ifndef __SSE__
-          #error Assembler CPP flag not enabled
-          #endif
-          int main(int argc, char **argv) { return 0; }" CPU_SUPPORTS_SSE)
-      cmake_pop_check_state()
-      if(CPU_SUPPORTS_SSE)
-        set(HAVE_SSE ON)
-        target_compile_options(sdl-build-options INTERFACE "-msse")
-      endif()
-    endif()
-
-    if(SDL_SSE2)
-      cmake_push_check_state()
-      set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -msse2")
-      check_c_source_compiles("
-          #ifdef __MINGW32__
-          #include <_mingw.h>
-          #ifdef __MINGW64_VERSION_MAJOR
-          #include <intrin.h>
-          #else
-          #include <emmintrin.h>
-          #endif
-          #else
-          #include <emmintrin.h>
-          #endif
-          #ifndef __SSE2__
-          #error Assembler CPP flag not enabled
-          #endif
-          int main(int argc, char **argv) { return 0; }" CPU_SUPPORTS_SSE2)
-      cmake_pop_check_state()
-      if(CPU_SUPPORTS_SSE2)
-        set(HAVE_SSE2 TRUE)
-        target_compile_options(sdl-build-options INTERFACE "-msse2")
-      endif()
-    endif()
-
-    if(SDL_SSE3)
-      cmake_push_check_state()
-      set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -msse3")
-      check_c_source_compiles("
-          #ifdef __MINGW32__
-          #include <_mingw.h>
-          #ifdef __MINGW64_VERSION_MAJOR
-          #include <intrin.h>
-          #else
-          #include <pmmintrin.h>
-          #endif
-          #else
-          #include <pmmintrin.h>
-          #endif
-          #ifndef __SSE3__
-          #error Assembler CPP flag not enabled
-          #endif
-          int main(int argc, char **argv) { return 0; }" CPU_SUPPORTS_SSE3)
-      cmake_pop_check_state()
-      if(CPU_SUPPORTS_SSE3)
-        set(HAVE_SSE3 TRUE)
-        target_compile_options(sdl-build-options INTERFACE "-msse3")
-      endif()
-    endif()
-
-    if(NOT SDL_SSEMATH)
-      if(SDL_SSE OR SDL_SSE2 OR SDL_SSE3)
-        if(USE_GCC)
-          check_c_compiler_flag(-mfpmath=387 HAVE_FP_387)
-          if(HAVE_FP_387)
-            target_compile_options(sdl-build-options INTERFACE "-mfpmath=387")
-          endif()
-        endif()
-      endif()
-    else()
-      set(HAVE_SSEMATH TRUE)
-    endif()
-
-    check_include_file("immintrin.h" HAVE_IMMINTRIN_H)
 
     if(SDL_ALTIVEC)
       cmake_push_check_state()
@@ -833,20 +918,14 @@ if(SDL_ASSEMBLY)
           vector unsigned int vzero() {
               return vec_splat_u32(0);
           }
-          int main(int argc, char **argv) { return 0; }" HAVE_ALTIVEC_H_HDR)
-      check_c_source_compiles("
-          vector unsigned int vzero() {
-              return vec_splat_u32(0);
-          }
-          int main(int argc, char **argv) { return 0; }" CPU_SUPPORTS_ALTIVEC)
+          int main(int argc, char **argv) { return 0; }" COMPILER_SUPPORTS_ALTIVEC)
       cmake_pop_check_state()
-      if(CPU_SUPPORTS_ALTIVEC OR HAVE_ALTIVEC_H_HDR)
-        set(HAVE_ALTIVEC TRUE) # if only HAVE_ALTIVEC_H_HDR is set
-        target_compile_options(sdl-build-options INTERFACE "-maltivec")
+      if(COMPILER_SUPPORTS_ALTIVEC)
+        set(HAVE_ALTIVEC TRUE)
         set(SDL_ALTIVEC_BLITTERS 1)
-        if(HAVE_ALTIVEC_H_HDR)
-          set(HAVE_ALTIVEC_H 1)
-        endif()
+        target_compile_options(sdl-build-options INTERFACE "-maltivec")
+        set_property(SOURCE "${SDL3_SOURCE_DIR}/src/video/SDL_blit_N.c" APPEND PROPERTY COMPILE_DEFINITIONS "SDL_ENABLE_ALTIVEC")
+        set_property(SOURCE "${SDL3_SOURCE_DIR}/src/video/SDL_blit_N.c" APPEND PROPERTY SKIP_PRECOMPILE_HEADERS 1)
       endif()
     endif()
 
@@ -857,11 +936,11 @@ if(SDL_ASSEMBLY)
           #ifndef __loongarch_sx
           #error Assembler CPP flag not enabled
           #endif
-          int main(int argc, char **argv) { return 0; }" CPU_SUPPORTS_LSX)
+          int main(int argc, char **argv) { return 0; }" COMPILER_SUPPORTS_LSX)
       check_include_file("lsxintrin.h" HAVE_LSXINTRIN_H)
       cmake_pop_check_state()
 
-      if(CPU_SUPPORTS_LSX AND HAVE_LSXINTRIN_H)
+      if(COMPILER_SUPPORTS_LSX AND HAVE_LSXINTRIN_H)
         target_compile_options(sdl-build-options INTERFACE "-mlsx")
         set(HAVE_LSX TRUE)
       endif()
@@ -874,10 +953,10 @@ if(SDL_ASSEMBLY)
           #ifndef __loongarch_asx
           #error Assembler CPP flag not enabled
           #endif
-          int main(int argc, char **argv) { return 0; }" CPU_SUPPORTS_LASX)
+          int main(int argc, char **argv) { return 0; }" COMPILER_SUPPORTS_LASX)
       check_include_file("lasxintrin.h" HAVE_LASXINTRIN_H)
       cmake_pop_check_state()
-      if(CPU_SUPPORTS_LASX AND HAVE_LASXINTRIN_H)
+      if(COMPILER_SUPPORTS_LASX AND HAVE_LASXINTRIN_H)
         target_compile_options(sdl-build-options INTERFACE "-mlasx")
         set(HAVE_LASX TRUE)
       endif()
@@ -886,6 +965,7 @@ if(SDL_ASSEMBLY)
     if(SDL_ARMSIMD)
       cmake_push_check_state()
       set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -x assembler-with-cpp")
+      list(APPEND CMAKE_REQUIRED_LINK_OPTIONS -x none)
       check_c_source_compiles("
         .text
         .arch armv6
@@ -895,6 +975,8 @@ if(SDL_ASSEMBLY)
         #ifndef __ARM_EABI__
         #error EABI is required (to be sure that calling conventions are compatible)
         #endif
+        main:
+        .global main
         pld [r0]
         uqadd8 r0, r0, r0
       " ARMSIMD_FOUND)
@@ -903,8 +985,10 @@ if(SDL_ASSEMBLY)
       if(ARMSIMD_FOUND)
         set(HAVE_ARMSIMD TRUE)
         set(SDL_ARM_SIMD_BLITTERS 1)
+        enable_language(ASM)
         file(GLOB ARMSIMD_SOURCES ${SDL3_SOURCE_DIR}/src/video/arm/pixman-arm-simd*.S)
         list(APPEND SOURCE_FILES ${ARMSIMD_SOURCES})
+        set_property(SOURCE ${ARMSIMD_SOURCES} APPEND PROPERTY COMPILE_OPTIONS -x assembler-with-cpp)
         set(WARN_ABOUT_ARM_SIMD_ASM_MIT TRUE)
       endif()
     endif()
@@ -912,6 +996,7 @@ if(SDL_ASSEMBLY)
     if(SDL_ARMNEON)
       cmake_push_check_state()
       set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -x assembler-with-cpp")
+      list(APPEND CMAKE_REQUIRED_LINK_OPTIONS -x none)
       check_c_source_compiles("
         .text
         .fpu neon
@@ -923,6 +1008,8 @@ if(SDL_ASSEMBLY)
         #ifndef __ARM_EABI__
         #error EABI is required (to be sure that calling conventions are compatible)
         #endif
+        main:
+        .global main
         pld [r0]
         vmovn.u16 d0, q0
       " ARMNEON_FOUND)
@@ -931,31 +1018,62 @@ if(SDL_ASSEMBLY)
       if(ARMNEON_FOUND)
         set(HAVE_ARMNEON TRUE)
         set(SDL_ARM_NEON_BLITTERS 1)
+        enable_language(ASM)
         file(GLOB ARMNEON_SOURCES ${SDL3_SOURCE_DIR}/src/video/arm/pixman-arm-neon*.S)
         list(APPEND SOURCE_FILES ${ARMNEON_SOURCES})
+        set_property(SOURCE ${ARMNEON_SOURCES} APPEND PROPERTY COMPILE_OPTIONS -x assembler-with-cpp)
         set(WARN_ABOUT_ARM_NEON_ASM_MIT TRUE)
       endif()
     endif()
-
-  elseif(MSVC_VERSION GREATER 1500)
-    # TODO: SDL_cpuinfo.h needs to support the user's configuration wish
-    # for MSVC - right now it is always activated
-    if(SDL_CPU_X86)
-      if(SDL_MMX)
-        set(HAVE_MMX TRUE)
-      endif()
-    endif()
-    if(SDL_SSE)
-      set(HAVE_SSE TRUE)
-    endif()
-    if(SDL_SSE2)
-      set(HAVE_SSE2 TRUE)
-    endif()
-    if(SDL_SSE3)
-      set(HAVE_SSE3 TRUE)
-    endif()
-    check_include_file("immintrin.h" HAVE_IMMINTRIN_H)
   endif()
+endif()
+
+if(NOT HAVE_MMX)
+  set(SDL_DISABLE_MMX 1)
+endif()
+
+if(NOT HAVE_SSE)
+  set(SDL_DISABLE_SSE 1)
+endif()
+
+if(NOT HAVE_SSE2)
+  set(SDL_DISABLE_SSE2 1)
+endif()
+
+if(NOT HAVE_SSE3)
+  set(SDL_DISABLE_SSE3 1)
+endif()
+
+if(NOT HAVE_SSE4_1)
+  set(SDL_DISABLE_SSE4_1 1)
+endif()
+
+if(NOT HAVE_SSE4_2)
+  set(SDL_DISABLE_SSE4_2 1)
+endif()
+
+if(NOT HAVE_AVX)
+  set(SDL_DISABLE_AVX 1)
+endif()
+
+if(NOT HAVE_AVX2)
+  set(SDL_DISABLE_AVX2 1)
+endif()
+
+if(NOT HAVE_AVX512F)
+  set(SDL_DISABLE_AVX512F 1)
+endif()
+
+if(NOT HAVE_LSX)
+  set(SDL_DISABLE_LSX 1)
+endif()
+
+if(NOT HAVE_LASX)
+  set(SDL_DISABLE_LASX 1)
+endif()
+
+if(NOT HAVE_ARMNEON)
+  set(SDL_DISABLE_NEON 1)
 endif()
 
 # TODO: Can't deactivate on FreeBSD? w/o LIBC, SDL_stdinc.h can't define
@@ -2524,22 +2642,7 @@ elseif(VITA)
     )
   endif()
 
-  set(HAVE_ARMSIMD TRUE)
-#  set(SDL_ARM_SIMD_BLITTERS 1)
-#  file(GLOB ARMSIMD_SOURCES ${SDL3_SOURCE_DIR}/src/video/arm/pixman-arm-simd*.S)
-#  list(APPEND SOURCE_FILES ${ARMSIMD_SOURCES})
-
-  set(HAVE_ARMNEON TRUE)
-#  set(SDL_ARM_NEON_BLITTERS 1)
-#  file(GLOB ARMNEON_SOURCES ${SDL3_SOURCE_DIR}/src/video/arm/pixman-arm-neon*.S)
-#  list(APPEND SOURCE_FILES ${ARMNEON_SOURCES})
-
-#  set_property(SOURCE ${SDL3_SOURCE_DIR}/src/video/arm/pixman-arm-simd-asm.S PROPERTY LANGUAGE C)
-#  set_property(SOURCE ${SDL3_SOURCE_DIR}/src/video/arm/pixman-arm-neon-asm.S PROPERTY LANGUAGE C)
-
   target_compile_definitions(sdl-build-options INTERFACE "__VITA__")
-
-#  CheckPTHREAD()
 
 elseif(PSP)
   file(GLOB PSP_CORE_SOURCES ${SDL3_SOURCE_DIR}/src/core/psp/*.c)
@@ -3091,21 +3194,21 @@ if(UNIX)
 endif()
 
 if(WARN_ABOUT_ARM_SIMD_ASM_MIT)
-  message(STATUS "")
   message(STATUS "SDL is being built with ARM SIMD optimizations, which")
   message(STATUS "uses code licensed under the MIT license. If this is a")
   message(STATUS "problem, please disable that code by rerunning CMake with:")
   message(STATUS "")
   message(STATUS "    -DSDL_ARMSIMD=OFF")
+  message(STATUS "")
 endif()
 
 if(WARN_ABOUT_ARM_NEON_ASM_MIT)
-  message(STATUS "")
   message(STATUS "SDL is being built with ARM NEON optimizations, which")
   message(STATUS "uses code licensed under the MIT license. If this is a")
   message(STATUS "problem, please disable that code by rerunning CMake with:")
   message(STATUS "")
   message(STATUS "    -DSDL_ARMNEON=OFF")
+  message(STATUS "")
 endif()
 
 if(ANDROID)
@@ -3123,8 +3226,11 @@ endif()
 if(APPLE)
   foreach(SOURCE_FILE ${SOURCE_FILES})
     get_filename_component(FILE_EXTENSION ${SOURCE_FILE} EXT)
-    if(FILE_EXTENSION STREQUAL "m")
+    if(FILE_EXTENSION STREQUAL ".m")
       set_property(SOURCE ${SOURCE_FILE} APPEND_STRING PROPERTY COMPILE_FLAGS " -x objective-c")
+    endif()
+    if(NOT FILE_EXTENSION STREQUAL ".c" AND NOT FILE_EXTENSION STREQUAL ".cpp")
+      set_property(SOURCE ${SOURCE_FILE} PROPERTY SKIP_PRECOMPILE_HEADERS 1)
     endif()
   endforeach()
 endif()
@@ -3254,7 +3360,7 @@ if(SDL_SHARED)
   set_property(TARGET SDL3-shared APPEND PROPERTY COMPATIBLE_INTERFACE_STRING "SDL_VERSION")
   set_property(TARGET SDL3-shared PROPERTY INTERFACE_SDL_VERSION "SDL${SDL3_VERSION_MAJOR}")
   if(NOT CMAKE_VERSION VERSION_LESS "3.16")
-    target_precompile_headers(SDL3-shared PRIVATE "${PROJECT_SOURCE_DIR}/src/SDL_internal.h")
+    target_precompile_headers(SDL3-shared PRIVATE "$<$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:CXX>>:${PROJECT_SOURCE_DIR}/src/SDL_internal.h>")
   endif()
 endif()
 
@@ -3296,7 +3402,7 @@ if(SDL_STATIC)
   set_property(TARGET SDL3-static APPEND PROPERTY COMPATIBLE_INTERFACE_STRING "SDL_VERSION")
   set_property(TARGET SDL3-static PROPERTY INTERFACE_SDL_VERSION "SDL${SDL3_VERSION_MAJOR}")
   if(NOT CMAKE_VERSION VERSION_LESS "3.16")
-    target_precompile_headers(SDL3-static PRIVATE "${PROJECT_SOURCE_DIR}/src/SDL_internal.h")
+    target_precompile_headers(SDL3-static PRIVATE "$<$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:CXX>>:${PROJECT_SOURCE_DIR}/src/SDL_internal.h>")
   endif()
 endif()
 
@@ -3562,6 +3668,31 @@ if(NOT SDL_DISABLE_INSTALL)
     set(CPACK_SOURCE_PACKAGE_FILE_NAME "SDL${PROJECT_VERSION_MAJOR}-${PROJECT_VERSION}-src")
     set(CPACK_PACKAGE_DIRECTORY "${CMAKE_BINARY_DIR}/dist")
     include(CPack)
+  endif()
+
+  if(NOT SDL_DISABLE_INSTALL_MAN)
+    find_package(Perl)
+    if(PERL_FOUND)
+      file(GLOB SDL3_MAN_INCLUDE_FILES "${SDL3_SOURCE_DIR}/include/SDL3/*.h")
+      set(SDL3_BINARY_DOCDIR "${SDL3_BINARY_DIR}/docs")
+      set(SDL3_BINARY_DOC_WIKIDIR "${SDL3_BINARY_DOCDIR}/wiki")
+      set(SDL3_BINARY_DOC_MANDIR "${SDL3_BINARY_DOCDIR}/man")
+      execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${SDL3_BINARY_DOC_WIKIDIR}")
+      add_custom_command(
+        OUTPUT "${SDL3_BINARY_DOC_WIKIDIR}/SDL_Init.md"
+        COMMAND "${PERL_EXECUTABLE}" "${SDL3_SOURCE_DIR}/build-scripts/wikiheaders.pl" "${SDL3_SOURCE_DIR}" "${SDL3_BINARY_DOC_WIKIDIR}" "--options=${SDL3_SOURCE_DIR}/.wikiheaders-options" --copy-to-wiki
+        DEPENDS ${SDL3_MAN_INCLUDE_FILES} "${SDL3_SOURCE_DIR}/build-scripts/wikiheaders.pl" "${SDL3_SOURCE_DIR}/.wikiheaders-options"
+        COMMENT "Generating SDL3 wiki markdown files"
+      )
+      add_custom_command(
+        OUTPUT "${SDL3_BINARY_DOC_MANDIR}/man3/SDL_Init.3"
+        COMMAND "${PERL_EXECUTABLE}" "${SDL3_SOURCE_DIR}/build-scripts/wikiheaders.pl" "${SDL3_SOURCE_DIR}" "${SDL3_BINARY_DOC_WIKIDIR}" "--options=${SDL3_SOURCE_DIR}/.wikiheaders-options" --"manpath=${SDL3_BINARY_DOC_MANDIR}" --copy-to-manpages
+        DEPENDS "${SDL3_BINARY_DOC_WIKIDIR}/SDL_Init.md" "${SDL3_SOURCE_DIR}/build-scripts/wikiheaders.pl" "${SDL3_SOURCE_DIR}/.wikiheaders-options"
+        COMMENT "Generating SDL3 man pages"
+      )
+      add_custom_target(SDL3_docs ALL DEPENDS "${SDL3_BINARY_DOC_MANDIR}/man3/SDL_Init.3")
+      install(DIRECTORY "${SDL3_BINARY_DOCDIR}/man/" DESTINATION "${CMAKE_INSTALL_MANDIR}")
+    endif()
   endif()
 endif()
 
