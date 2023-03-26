@@ -31,7 +31,7 @@
 #include "SDL_os4video.h"
 #include "SDL_os4window.h"
 #include "SDL_os4opengl.h"
-#include "SDL_os4opengles.h"
+#include "SDL_os4opengles2.h"
 #include "SDL_os4library.h"
 
 #include "../../main/amigaos4/SDL_os4debug.h"

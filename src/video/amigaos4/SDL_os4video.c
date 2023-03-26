@@ -45,7 +45,7 @@
 #include "SDL_os4framebuffer.h"
 #include "SDL_os4mouse.h"
 #include "SDL_os4opengl.h"
-#include "SDL_os4opengles.h"
+#include "SDL_os4opengles2.h"
 #include "SDL_os4shape.h"
 #include "SDL_os4messagebox.h"
 #include "SDL_os4modes.h"
