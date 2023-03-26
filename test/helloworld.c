@@ -18,7 +18,7 @@ for doing ad-hoc testing related to AmigaOS 4 port.
 
 static void ToggleFullscreen(SDL_Window* w)
 {
-    static int t = 1;
+    static int t = 0;
     static Uint32 counter = 0;
 
     printf("Toggle fullscreen %d (counter %u)\n", t, counter++);
@@ -275,17 +275,17 @@ static void testFullscreen()
         //SDL_SetWindowFullscreen(w, 0);
         //SDL_SetWindowFullscreen(w, 0);
 
-        SDL_Delay(3000);
+        //SDL_Delay(3000);
 
 #if 0
         SDL_DisplayMode dm;
         dm.format = SDL_PIXELFORMAT_ARGB8888;
-        dm.w = 1280;
-        dm.h = 960;
+        dm.screen_w = 1280;
+        dm.screen_h = 960;
         dm.refresh_rate = 0;
         dm.driverdata = NULL;
 
-        SDL_SetWindowDisplayMode(w, &dm);
+        SDL_SetWindowFullscreenMode(w, &dm);
         SDL_SetWindowFullscreen(w, SDL_WINDOW_FULLSCREEN);
 #endif
         eventLoop();
@@ -293,21 +293,6 @@ static void testFullscreen()
         SDL_DestroyWindow(w);
     }
 }
-
-/*
-static void testFullscreenDesktop()
-{
-    SDL_Window * w = SDL_CreateWindow("Desktop mode",
-        640, 400,
-        SDL_WINDOW_FULLSCREEN_DESKTOP);
-
-    if (w) {
-        eventLoop();
-
-        SDL_DestroyWindow(w);
-    }
-}
-*/
 
 // TODO: should load GL functions
 // NOTE: will not work on OGLES2 (try testgles2.c instead of)
@@ -887,11 +872,11 @@ int main(void)
 {
     if (0) testInitEverything();
 
-    if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) == 0) {
+    if (SDL_Init(SDL_INIT_VIDEO/*|SDL_INIT_TIMER*/) == 0) {
         if (0) testPath();
-        if (1) testWindow();
+        if (0) testWindow();
         if (0) testManyWindows();
-        if (0) testFullscreen();
+        if (1) testFullscreen();
         if (0) testFullscreenOpenGL();
         if (0) testDeleteContext();
         if (0) testOpenGL();
@@ -903,7 +888,6 @@ int main(void)
         if (0) testMessageBox();
         if (0) testBmp();
         if (0) testAltivec();
-        //if (0) testFullscreenDesktop();
         if (0) testRenderVsync();
         if (0) testPC();
         if (0) testPC();

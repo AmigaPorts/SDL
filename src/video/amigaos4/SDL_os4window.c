@@ -301,14 +301,22 @@ OS4_CenterWindow(struct Screen * screen, SDL_Window * window)
 static void
 OS4_DefineWindowBox(SDL_Window * window, struct Screen * screen, SDL_bool fullscreen, SDL_Rect * box)
 {
-    if (fullscreen) {
-        box->x = 0;
-        box->y = 0;
-        box->w = screen->Width;
-        box->h = screen->Height;
-    } else {
-        OS4_CenterWindow(screen, window);
+    if (screen) {
+        if (fullscreen) {
+            box->x = 0;
+            box->y = 0;
+            box->w = screen->Width;
+            box->h = screen->Height;
+        } else {
+            OS4_CenterWindow(screen, window);
 
+            box->x = window->windowed.x;
+            box->y = window->windowed.y;
+            box->w = window->windowed.w;
+            box->h = window->windowed.h;
+        }
+    } else {
+        dprintf("Screen is NULL\n");
         box->x = window->windowed.x;
         box->y = window->windowed.y;
         box->w = window->windowed.w;

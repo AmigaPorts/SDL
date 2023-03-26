@@ -65,7 +65,7 @@ OS4_GetDisplayMode(_THIS, ULONG id, SDL_DisplayMode * mode)
     mode->pixel_w = mode->screen_w = diminfo.Nominal.MaxX - diminfo.Nominal.MinX + 1;
     mode->pixel_h = mode->screen_h = diminfo.Nominal.MaxY - diminfo.Nominal.MinY + 1;
     mode->display_scale = 1.0f;
-    mode->refresh_rate = 60; // grab DTAG_MNTR?
+    mode->refresh_rate = 60.0f; // grab DTAG_MNTR?
     mode->format = SDL_PIXELFORMAT_UNKNOWN;
 
     // We are only interested in RTG modes
@@ -201,7 +201,7 @@ OS4_GetDisplayModes(_THIS, SDL_VideoDisplay * display)
             }
         } else {
             dprintf("Failed to get display mode for %d\n", id);
-	    return -1;
+            return -1;
         }
     }
     return 0;

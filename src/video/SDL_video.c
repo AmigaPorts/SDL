@@ -1418,6 +1418,27 @@ static int SDL_UpdateFullscreenMode(SDL_Window *window, SDL_bool fullscreen)
 
     if (fullscreen) {
         mode = (SDL_DisplayMode *)SDL_GetWindowFullscreenMode(window);
+
+#if defined(__AMIGAOS4__)
+        /* HACK: in order to open an exclusive fullscreen before window,
+           copy necessary mode data into window struct */
+        if (mode == NULL) {
+            SDL_DisplayMode fullscreen_mode;
+            fullscreen_mode.displayID = 0;
+            fullscreen_mode.format = SDL_PIXELFORMAT_RGB888;
+            fullscreen_mode.pixel_w = fullscreen_mode.screen_w = window->w;
+            fullscreen_mode.pixel_h = fullscreen_mode.screen_h = window->h;
+            fullscreen_mode.display_scale = 1.0f;
+            fullscreen_mode.refresh_rate = 60.0f;
+            fullscreen_mode.driverdata = NULL;
+
+            SDL_memcpy(&window->requested_fullscreen_mode, &fullscreen_mode, sizeof(window->requested_fullscreen_mode));
+            SDL_memcpy(&window->current_fullscreen_mode, &fullscreen_mode, sizeof(window->requested_fullscreen_mode));
+
+            mode = (SDL_DisplayMode *)SDL_GetWindowFullscreenMode(window);
+    }
+#endif
+
         if (mode != NULL) {
             window->fullscreen_exclusive = SDL_TRUE;
         } else {
@@ -1649,7 +1670,7 @@ Uint32 SDL_GetWindowPixelFormat(SDL_Window *window)
     }
 }
 
-#ifdef __AMIGAOS4__
+#if defined(__AMIGAOS4__)
     /* Without this hack, SDL would trigger us to open a window before screen which causes unnecessary
     work, because then we would have to close the window first and re-open it on the custom screen */
     #define CREATE_FLAGS \
