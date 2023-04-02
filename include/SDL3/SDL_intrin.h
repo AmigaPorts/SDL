@@ -60,13 +60,13 @@ _m_prefetch(void *__P)
 #define SDL_ALTIVEC_INTRINSICS 1
 #include <altivec.h>
 #endif
-#if !defined(SDL_DISABLE_NEON)
-#  if defined(__ARM_NEON)
+#ifndef SDL_DISABLE_NEON
+#  ifdef __ARM_NEON
 #    define SDL_NEON_INTRINSICS 1
 #    include <arm_neon.h>
 #  elif defined(__WINDOWS__) || defined(__WINRT__) || defined(__GDK__)
 /* Visual Studio doesn't define __ARM_ARCH, but _M_ARM (if set, always 7), and _M_ARM64 (if set, always 1). */
-#    if defined(_M_ARM)
+#    ifdef _M_ARM
 #      define SDL_NEON_INTRINSICS 1
 #      include <armintr.h>
 #      include <arm_neon.h>
@@ -89,6 +89,8 @@ _m_prefetch(void *__P)
 # endif
 #elif defined(__GNUC__) && (__GNUC__ + (__GNUC_MINOR__ >= 9) > 4) /* gcc >= 4.9 */
 # define SDL_HAS_TARGET_ATTRIBS
+#elif defined(__ICC) && __ICC >= 1600
+# define SDL_HAS_TARGET_ATTRIBS
 #endif
 
 #ifdef SDL_HAS_TARGET_ATTRIBS
@@ -97,25 +99,18 @@ _m_prefetch(void *__P)
 # define SDL_TARGETING(x)
 #endif
 
-#if defined(__loongarch_sx) && !defined(SDL_DISABLE_LSX)
-# define SDL_LSX_INTRINSICS 1
-# include <lsxintrin.h>
-#endif
-
-#if defined(__loongarch_asx) && !defined(SDL_DISABLE_LASX)
-# define SDL_LASX_INTRINSICS 1
-# include <lasxintrin.h>
+#ifdef __loongarch64
+# ifndef SDL_DISABLE_LSX
+#  define SDL_LSX_INTRINSICS 1
+#  include <lsxintrin.h>
+# endif
+# ifndef SDL_DISABLE_LASX
+#  define SDL_LASX_INTRINSICS 1
+#  include <lasxintrin.h>
+# endif
 #endif
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
-# if ((defined(__GNUC__) && (__GNUC__ >= 10)) || (defined(__clang__) && __clang_major__ >= 4) || defined(_MSC_VER)) && !defined(SDL_DISABLE_RDTSC)
-#  define SDL_RDTSC_INTRINSICS 1
-#  if defined(_MSC_VER)
-#   include <intrin.h>
-#  else
-#   include <immintrin.h>
-#  endif
-# endif
 # if ((defined(_MSC_VER) && !defined(_M_X64)) || defined(__MMX__) || defined(SDL_HAS_TARGET_ATTRIBS)) && !defined(SDL_DISABLE_MMX)
 #  define SDL_MMX_INTRINSICS 1
 #  include <mmintrin.h>

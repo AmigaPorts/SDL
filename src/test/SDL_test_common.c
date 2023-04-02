@@ -47,7 +47,7 @@ static const char *video_usage[] = {
 
 /* !!! FIXME: Float32? Sint32? */
 static const char *audio_usage[] = {
-    "[--rate N]", "[--format U8|S8|S16|S16LE|S16BE]",
+    "[--audio driver]", "[--rate N]", "[--format U8|S8|S16|S16LE|S16BE]",
     "[--channels N]", "[--samples N]"
 };
 
@@ -192,6 +192,7 @@ int SDLTest_CommonArg(SDLTest_CommonState *state, int index)
                 return -1;
             }
             state->videodriver = argv[index];
+            SDL_SetHint(SDL_HINT_VIDEO_DRIVER, state->videodriver);
             return 2;
         }
         if (SDL_strcasecmp(argv[index], "--renderer") == 0) {
@@ -200,6 +201,8 @@ int SDLTest_CommonArg(SDLTest_CommonState *state, int index)
                 return -1;
             }
             state->renderdriver = argv[index];
+            SDL_SetHint(SDL_HINT_RENDER_DRIVER, state->renderdriver);
+            SDL_SetHint(SDL_HINT_RENDER_BATCHING, "1");
             return 2;
         }
         if (SDL_strcasecmp(argv[index], "--gldebug") == 0) {
@@ -558,6 +561,15 @@ int SDLTest_CommonArg(SDLTest_CommonState *state, int index)
     }
 
     if (state->flags & SDL_INIT_AUDIO) {
+        if (SDL_strcasecmp(argv[index], "--audio") == 0) {
+            ++index;
+            if (!argv[index]) {
+                return -1;
+            }
+            state->audiodriver = argv[index];
+            SDL_SetHint(SDL_HINT_AUDIO_DRIVER, state->audiodriver);
+            return 2;
+        }
         if (SDL_strcasecmp(argv[index], "--rate") == 0) {
             ++index;
             if (!argv[index]) {
@@ -1112,7 +1124,6 @@ SDLTest_CommonInit(SDLTest_CommonState *state)
                 SDL_Log("%s\n", text);
             }
         }
-        SDL_SetHint(SDL_HINT_VIDEO_DRIVER, state->videodriver);
         if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
             SDL_Log("Couldn't initialize video driver: %s\n",
                     SDL_GetError());
@@ -1162,7 +1173,7 @@ SDLTest_CommonInit(SDLTest_CommonState *state)
             const SDL_DisplayMode *mode;
             int bpp;
             Uint32 Rmask, Gmask, Bmask, Amask;
-#if SDL_VIDEO_DRIVER_WINDOWS
+#ifdef SDL_VIDEO_DRIVER_WINDOWS
             int adapterIndex = 0;
             int outputIndex = 0;
 #endif
@@ -1224,7 +1235,7 @@ SDLTest_CommonInit(SDLTest_CommonState *state)
                 }
                 SDL_free((void *)modes);
 
-#if SDL_VIDEO_DRIVER_WINDOWS && !defined(__XBOXONE__) && !defined(__XBOXSERIES__)
+#if defined(SDL_VIDEO_DRIVER_WINDOWS) && !defined(__XBOXONE__) && !defined(__XBOXSERIES__)
                 /* Print the D3D9 adapter index */
                 adapterIndex = SDL_Direct3D9GetAdapterIndex(displayID);
                 SDL_Log("D3D9 Adapter Index: %d", adapterIndex);
@@ -1301,14 +1312,11 @@ SDLTest_CommonInit(SDLTest_CommonState *state)
             } else {
                 SDL_strlcpy(title, state->window_title, SDL_arraysize(title));
             }
-            state->windows[i] = SDL_CreateWindow(title, r.w, r.h, state->window_flags);
+            state->windows[i] = SDL_CreateWindowWithPosition(title, r.x, r.y, r.w, r.h, state->window_flags);
             if (!state->windows[i]) {
                 SDL_Log("Couldn't create window: %s\n",
                         SDL_GetError());
                 return SDL_FALSE;
-            }
-            if (r.x != SDL_WINDOWPOS_UNDEFINED || r.y != SDL_WINDOWPOS_UNDEFINED) {
-                SDL_SetWindowPosition(state->windows[i], r.x, r.y);
             }
             if (state->window_minW || state->window_minH) {
                 SDL_SetWindowMinimumSize(state->windows[i], state->window_minW, state->window_minH);
@@ -1396,7 +1404,6 @@ SDLTest_CommonInit(SDLTest_CommonState *state)
                 SDL_Log("%s\n", text);
             }
         }
-        SDL_SetHint(SDL_HINT_AUDIO_DRIVER, state->audiodriver);
         if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
             SDL_Log("Couldn't initialize audio driver: %s\n",
                     SDL_GetError());
