@@ -1,0 +1,208 @@
+## version $VER: sdl2prefs.catalog 1.5 (17.04.2023)
+## codeset 4
+## language finnish
+;
+MSG_APPLICATION_NAME
+SDL2-asetukset
+; SDL2 Prefs
+;
+MSG_OK
+_Ok
+; _OK
+;
+MSG_RENDERER_OPTIONS_GROUP
+2D-Piirtovalinnat
+; 2D Renderer Options
+;
+MSG_DRIVER_GAD
+_Ajuri
+; _Driver
+;
+MSG_DRIVER_DEFAULT
+oletus
+; default
+;
+MSG_DRIVER_COMPOSITING
+compositing
+; compositing
+;
+MSG_DRIVER_OPENGL
+opengl
+; opengl
+;
+MSG_DRIVER_OPENGLES2
+opengles2
+; opengles2
+;
+MSG_DRIVER_SOFTWARE
+ohjelmallinen
+; software
+;
+MSG_VERTICAL_SYNC_GAD
+_Pystysynkronointi
+; _Vertical Sync
+;
+MSG_VERTICAL_SYNC_DEFAULT
+oletus
+; default
+;
+MSG_VERTICAL_SYNC_ENABLED
+p‰‰ll‰
+; enabled
+;
+MSG_VERTICAL_SYNC_DISABLED
+pois p‰‰lt‰
+; disabled
+;
+MSG_BATCHING_MODE_GAD
+_Yhdistelytila
+; _Batching Mode
+;
+MSG_BATCHING_MODE_DEFAULT
+oletus
+; default
+;
+MSG_BATCHING_MODE_ENABLED
+p‰‰ll‰
+; enabled
+;
+MSG_BATCHING_MODE_DISABLED
+pois p‰‰lt‰
+; disabled
+;
+MSG_SCALE_QUALITY_GAD
+_Skaalauksen laatu
+; Scale _Quality
+;
+MSG_SCALE_QUALITY_DEFAULT
+oletus
+; default
+;
+MSG_SCALE_QUALITY_NEAREST
+l‰hin kuvapiste
+; nearest
+;
+MSG_SCALE_QUALITY_LINEAR
+lineaarinen
+; linear
+;
+MSG_LOGICAL_SIZE_MODE_GAD
+_Looginen koko
+; _Logical Size Mode
+;
+MSG_LOGICAL_SIZE_MODE_DEFAULT
+oletus
+; default
+;
+MSG_LOGICAL_SIZE_MODE_LETTERBOX_OR_SIDEBARS
+kirjelaatikko / sivupalkit
+; letterbox / sidebars
+;
+MSG_LOGICAL_SIZE_MODE_OVERSCAN
+yliskannaus
+; overscan
+;
+MSG_VIDEO_OPTIONS_GROUP
+Videovalinnat
+; Video Options
+;
+MSG_SCREEN_SAVER_GAD
+Salli _ruuduns‰‰st‰j‰
+; _Allow Screen Saver
+;
+MSG_SCREEN_SAVER_DEFAULT
+oletus
+; default
+;
+MSG_SCREEN_SAVER_ENABLED
+p‰‰ll‰
+; enabled
+;
+MSG_SCREEN_SAVER_DISABLED
+pois p‰‰lt‰
+; disabled
+;
+MSG_SETTINGS_GROUP
+Asetukset
+; Settings
+;
+MSG_SAVE_GAD
+_Tallenna
+; _Save
+;
+MSG_RESET_GAD
+_Nollaa
+; _Reset
+;
+MSG_CANCEL_GAD
+_Peru
+; _Cancel
+;
+MSG_MAIN_MENU
+P‰‰valikko
+; Main
+;
+MSG_MAIN_ICONIFY
+I|Ikoniksi
+; I\0Iconify
+;
+MSG_MAIN_ABOUT
+?|Lis‰tietoja...
+; ?\0About...
+;
+MSG_MAIN_QUIT
+Q|Lopeta
+; Q\0Quit
+;
+MSG_ABOUT_WINDOW
+Lis‰tietoja SDL2-asetuksista
+; About SDL2 Prefs
+;
+MSG_ABOUT_AUTHOR
+Tekij‰ Juha Niemim‰ki
+; Written by Juha Niemimaki
+;
+MSG_ABOUT_TRANSLATOR
+Suomennos Juha Niemim‰ki
+; (using built-in strings)
+;
+MSG_DRIVER_HELP
+Valitse ajuritoteutus:\n \
+\033bcompositing \033nei tue kaikkia sekoitustiloja\n \
+\033bbopengl \033n(MiniGL) ei tue tekstuuriin piirtoa eik‰ kaikki sekoitustiloja\n \
+\033bopengles2 \033ntukee useimpia ominaisuuksia\n \
+\033bohjelmallinen \033ntukee useimpia ominaisuuksia mutta ei ole kiihdytetty
+; Select driver implementation:\n \033bcompositing \033ndoesn't support some blend modes\n \033bopengl \033n(MiniGL) doesn't support render targets and some blend modes\n \033bopengles2 \033nsupports most features\n \033bsoftware \033nsupports most features but is not accelerated
+;
+MSG_VERTICAL_SYNC_HELP
+Synkronoi n‰ytˆn p‰ivitys monitorin virkistystaajuuteen
+; Synchronize display update to monitor refresh rate
+;
+MSG_BATCHING_MODE_HELP
+Yhdistely voi nopeuttaa piirt‰mist‰ jos sovelluksen tekem‰t toiminnot voidaan yhdist‰‰
+; Batching may improve drawing speed if application does many operations per frame and SDL2 is able to combine those
+;
+MSG_SCALE_QUALITY_HELP
+Ota l‰himm‰inen kuvapiste tai suodata lineaarisesti
+; Nearest pixel sampling or linear filtering
+;
+MSG_LOGICAL_SIZE_MODE_HELP
+Skaalausvalinta SDL_RenderSetLogicalSize-funktiolle
+; Scaling policy for SDL_RenderSetLogicalSize
+;
+MSG_SCREEN_SAVER_HELP
+Salli ruuduns‰‰st‰j‰ (oletuksena pois p‰‰lt‰)
+; Allow screen saver (disabled by default)
+;
+MSG_SAVE_HELP
+Tallenna asetukset paikkaan ENVARC: ja lopeta
+; Store settings to ENVARC: and exit
+;
+MSG_RESET_HELP
+Nollaa k‰yttˆliittym‰ oletusarvoihin
+; Reset GUI to default values
+;
+MSG_CANCEL_HELP
+Lopeta ohjelma
+; Exit program
+;

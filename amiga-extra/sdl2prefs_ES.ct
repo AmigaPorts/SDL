@@ -1,0 +1,215 @@
+## version $VER: sdl2prefs.catalog 1.5 (17.04.2023)
+## codeset 4
+## language spanish
+;
+MSG_APPLICATION_NAME
+SDL2 Prefs
+; SDL2 Prefs
+;
+MSG_OK
+_Aceptar
+; _OK
+;
+MSG_RENDERER_OPTIONS_GROUP
+Opciones Render 2D
+; 2D Renderer Options
+;
+MSG_DRIVER_GAD
+Controla_dor
+; _Driver
+;
+MSG_DRIVER_DEFAULT
+por defecto
+; default
+;
+MSG_DRIVER_COMPOSITING
+composición
+; compositing
+;
+MSG_DRIVER_OPENGL
+opengl
+; opengl
+;
+MSG_DRIVER_OPENGLES2
+opengles2
+; opengles2
+;
+MSG_DRIVER_SOFTWARE
+software
+; software
+;
+MSG_VERTICAL_SYNC_GAD
+Sincronización _Vertical
+; _Vertical Sync
+;
+MSG_VERTICAL_SYNC_DEFAULT
+por defecto
+; default
+;
+MSG_VERTICAL_SYNC_ENABLED
+activada
+; enabled
+;
+MSG_VERTICAL_SYNC_DISABLED
+desactivada
+; disabled
+;
+MSG_BATCHING_MODE_GAD
+Modo \"_Batching\"
+; _Batching Mode
+;
+MSG_BATCHING_MODE_DEFAULT
+por defecto
+; default
+;
+MSG_BATCHING_MODE_ENABLED
+activado
+; enabled
+;
+MSG_BATCHING_MODE_DISABLED
+desactivado
+; disabled
+;
+MSG_SCALE_QUALITY_GAD
+Calidad _Escalado
+; Scale _Quality
+;
+MSG_SCALE_QUALITY_DEFAULT
+por defecto
+; default
+;
+MSG_SCALE_QUALITY_NEAREST
+\"nearest\"
+; nearest
+;
+MSG_SCALE_QUALITY_LINEAR
+lineal
+; linear
+;
+MSG_LOGICAL_SIZE_MODE_GAD
+Modo Tamaño _Lógico
+; _Logical Size Mode
+;
+MSG_LOGICAL_SIZE_MODE_DEFAULT
+por defecto
+; default
+;
+MSG_LOGICAL_SIZE_MODE_LETTERBOX_OR_SIDEBARS
+letterbox / sidebars
+; letterbox / sidebars
+;
+MSG_LOGICAL_SIZE_MODE_OVERSCAN
+overscan
+; overscan
+;
+MSG_VIDEO_OPTIONS_GROUP
+Opciones De Video
+; Video Options
+;
+MSG_SCREEN_SAVER_GAD
+_Permitir Salvapantallas
+; _Allow Screen Saver
+;
+MSG_SCREEN_SAVER_DEFAULT
+por defecto
+; default
+;
+MSG_SCREEN_SAVER_ENABLED
+Sí
+; enabled
+;
+MSG_SCREEN_SAVER_DISABLED
+No
+; disabled
+;
+MSG_SETTINGS_GROUP
+Ajustes
+; Settings
+;
+MSG_SAVE_GAD
+_Guardar
+; _Save
+;
+MSG_RESET_GAD
+_Restaurar
+; _Reset
+;
+MSG_CANCEL_GAD
+_Cancelar
+; _Cancel
+;
+MSG_MAIN_MENU
+Proyecto
+; Main
+;
+MSG_MAIN_ICONIFY
+I\0Iconificar
+; I\0Iconify
+;
+MSG_MAIN_ABOUT
+?\0Acerca de...
+; ?\0About...
+;
+MSG_MAIN_QUIT
+Q\0Salir
+; Q\0Quit
+;
+MSG_ABOUT_WINDOW
+Acerca de SDL2 Prefs
+; About SDL2 Prefs
+;
+MSG_ABOUT_AUTHOR
+por Juha Niemimaki
+; Written by Juha Niemimaki
+;
+MSG_ABOUT_TRANSLATOR
+(traducción: Javier de las Rivas)
+; (using built-in strings)
+;
+MSG_DRIVER_HELP
+Controlador a usar por SDL2:\n\
+ \033bcomposición \033nsoporta pocos modos de mezclado (\"blend\")\n\
+ \033bopengl \033n(MiniGL) sin destinos de render y algunos modos de mezclado\n\
+ \033bopengles2 \033nsoporta la mayoría de opciones\n\
+ \033bsoftware \033ncomo \"opengles2\" pero sin aceleración por hw
+; Select driver implementation:\n\
+;  \033bcompositing \033ndoesn't support some blend modes\n\
+;  \033bopengl \033n(MiniGL) doesn't support render targets and some blend modes\n\
+;  \033bopengles2 \033nsupports most features\n\
+;  \033bsoftware \033nsupports most features but is not accelerated
+;
+MSG_VERTICAL_SYNC_HELP
+Sincronizar imágenes según el refresco del monitor
+; Synchronize display update to monitor refresh rate
+;
+MSG_BATCHING_MODE_HELP
+\"Batching\" (por lotes) puede mejorar la velocidad de dibujado \
+si la aplicación realiza muchas operaciones por fotograma y (si) \
+SDL2 es capaz de combinarlas.
+; Batching may improve drawing speed if application does many \
+; operations per frame and SDL2 is able to combine those
+;
+MSG_SCALE_QUALITY_HELP
+Filtrado de escalado por pixel cercano (\"nearest\") o lineal
+; Nearest pixel sampling or linear filtering
+;
+MSG_LOGICAL_SIZE_MODE_HELP
+Modo de escalado para 'SDL_RenderSetLogicalSize()'
+; Scaling policy for SDL_RenderSetLogicalSize
+;
+MSG_SCREEN_SAVER_HELP
+Permitir salvapantallas (por defecto: No)
+; Allow screensaver (disabled by default)
+;
+MSG_SAVE_HELP
+Guardar ajustes y salir
+; Store settings to ENVARC: and exit
+;
+MSG_RESET_HELP
+Establecer GUI o sus valores por defecto
+; Reset GUI to default values
+;
+MSG_CANCEL_HELP
+Salir del programa
+; Exit program
+;

@@ -1,0 +1,235 @@
+## version $VER: sdl2prefs.catalog 1.5 (17.04.2023)
+## codeset 4
+## language italiano
+;
+; ATO Italia
+; Italian translation by Samir 'samo79' Hawamdeh
+; Contact: s.hawamdeh@gmail.com
+;
+; Compiled with FlexCat 2.18 PPC (AmigaOS 4.x)
+; flexcat sdl2prefs.cd sdl2prefs_IT.ct catalog=sdl2prefs.catalog
+;
+; ------------------ General ------------------
+;
+MSG_APPLICATION_NAME
+Preferenze di SDL2
+; SDL2 Prefs
+;
+MSG_OK
+_OK
+; _OK
+;
+; ------------------ GUI ------------------
+;
+MSG_RENDERER_OPTIONS_GROUP
+Opzioni Render 2D
+; 2D Renderer Options
+;
+MSG_DRIVER_GAD
+_Driver
+; _Driver
+;
+MSG_DRIVER_DEFAULT
+predefinito
+; default
+;
+MSG_DRIVER_COMPOSITING
+compositing
+; compositing
+;
+MSG_DRIVER_OPENGL
+opengl (minigl)
+; opengl
+;
+MSG_DRIVER_OPENGLES2
+opengles2
+; opengles2
+;
+MSG_DRIVER_SOFTWARE
+software
+; software
+;
+MSG_VERTICAL_SYNC_GAD
+Sinc. _Verticale
+; _Vertical Sync
+;
+MSG_VERTICAL_SYNC_DEFAULT
+predefinito
+; default
+;
+MSG_VERTICAL_SYNC_ENABLED
+attivato
+; enabled
+;
+MSG_VERTICAL_SYNC_DISABLED
+disattivato
+; disabled
+;
+MSG_BATCHING_MODE_GAD
+Modo _Batching
+; _Batching Mode
+;
+MSG_BATCHING_MODE_DEFAULT
+predefinito
+; default
+;
+MSG_BATCHING_MODE_ENABLED
+attivato
+; enabled
+;
+MSG_BATCHING_MODE_DISABLED
+disattivato
+; disabled
+;
+MSG_SCALE_QUALITY_GAD
+_Qualità Ridim.
+; Scale _Quality
+;
+MSG_SCALE_QUALITY_DEFAULT
+predefinita
+; default
+;
+MSG_SCALE_QUALITY_NEAREST
+più vicina (nearest)
+; nearest
+;
+MSG_SCALE_QUALITY_LINEAR
+lineare
+; linear
+;
+MSG_LOGICAL_SIZE_MODE_GAD
+Modo Ridim. _Logico
+; _Logical Size Mode
+;
+MSG_LOGICAL_SIZE_MODE_DEFAULT
+predefinito
+; default
+;
+MSG_LOGICAL_SIZE_MODE_LETTERBOX_OR_SIDEBARS
+letterbox / sidebars
+; letterbox / sidebars
+;
+MSG_LOGICAL_SIZE_MODE_OVERSCAN
+overscan
+; overscan
+;
+MSG_VIDEO_OPTIONS_GROUP
+Opzioni Video
+; Video Options
+;
+MSG_SCREEN_SAVER_GAD
+_Permetti Screen Saver
+; _Allow Screen Saver
+;
+MSG_SCREEN_SAVER_DEFAULT
+predefinito
+; default
+;
+MSG_SCREEN_SAVER_ENABLED
+attivato
+; enabled
+;
+MSG_SCREEN_SAVER_DISABLED
+disattivato
+; disabled
+;
+MSG_SETTINGS_GROUP
+Impostazioni
+; Settings
+;
+MSG_SAVE_GAD
+_Salva
+; _Save
+;
+MSG_RESET_GAD
+_Ripristina
+; _Reset
+;
+MSG_CANCEL_GAD
+_Annulla
+; _Cancel
+;
+; ------------------ Menu ------------------
+;
+MSG_MAIN_MENU
+Progetto
+; Main
+;
+MSG_MAIN_ICONIFY
+I\0Iconifica
+; I\0Iconify
+;
+MSG_MAIN_ABOUT
+?\0Informazioni...
+; ?\0About...
+;
+MSG_MAIN_QUIT
+Q\0Esci
+; Q\0Quit
+;
+; ------------------ About ------------------
+;
+MSG_ABOUT_WINDOW
+Informazioni su SDL2 Prefs
+; About SDL2 Prefs
+;
+MSG_ABOUT_AUTHOR
+GUI realizzata da Juha Niemimaki
+; Written by Juha Niemimaki
+;
+MSG_ABOUT_TRANSLATOR
+Traduzione a cura di Samir Hawamdeh
+; (using built-in strings)
+;
+; ------------------ Help ------------------
+;
+MSG_DRIVER_HELP
+Seleziona un driver da utilizzare con SDL2:\n\
+ \033bcompositing: \033nnon supporta determinati modi blend\n\
+ \033bopengl: \033n(MiniGL) non supporta le render target e determinati modi blend\n\
+ \033bopengles2: \033nsupporta la maggior parte delle funzionalità\n\
+ \033bsoftware: \033ncome \"opengles2\" ma senza accelerazione hardware
+; Select driver implementation:\n\
+;  \033bcompositing \033ndoesn't support some blend modes\n\
+;  \033bopengl \033n(MiniGL) doesn't support render targets and some blend modes\n\
+;  \033bopengles2 \033nsupports most features\n\
+;  \033bsoftware \033nsupports most features but is not accelerated
+;
+MSG_VERTICAL_SYNC_HELP
+Sincronizza aggiornamento del display alla frequenza\n\
+di aggiornamento del monitor
+; Synchronize display update to monitor refresh rate
+;
+MSG_BATCHING_MODE_HELP
+Il modo Batching può migliorare la velocità di disegno nel caso\n\
+l'applicazione esegua molte operazioni per frame e SDL2 sia in\n\
+grado di combinarle
+; Batching may improve drawing speed if application does many \
+; operations per frame and SDL2 is able to combine those
+;
+MSG_SCALE_QUALITY_HELP
+Filtro di ridimensionamento per il pixel più vicino\n\
+(\"nearest\") o lineare
+; Nearest pixel sampling or linear filtering
+;
+MSG_LOGICAL_SIZE_MODE_HELP
+Modalità di ridimensionamento per 'SDL_RenderSetLogicalSize()'
+; Scaling policy for SDL_RenderSetLogicalSize
+;
+MSG_SCREEN_SAVER_HELP
+Permette lo screensaver (disattivato come predefinito)
+; Allow screensaver (disabled by default)
+;
+MSG_SAVE_HELP
+Salva le impostazioni su ENVARC: e chiude
+; Store settings to ENVARC: and exit
+;
+MSG_RESET_HELP
+Ripristina le impostazioni delle preferenze\n\
+di SDL2 ai suoi valori predefiniti
+; Reset GUI to default values
+;
+MSG_CANCEL_HELP
+Chiude il programma delle preferenze
+; Exit program
+;

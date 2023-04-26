@@ -22,6 +22,8 @@
 
 #include "SDL_test.h"
 
+extern SDL_Surface* SDLTest_ConvertToRGBA(SDL_Surface * surface);
+
 /* GIMP RGB C-Source image dump (alpha.c) */
 
 static const SDLTest_SurfaceImage_t SDLTest_imagePrimitivesBlend = {
@@ -679,10 +681,10 @@ SDL_Surface *SDLTest_ImagePrimitivesBlend()
         SDLTest_imagePrimitivesBlend.bytes_per_pixel * 8,
         SDLTest_imagePrimitivesBlend.width * SDLTest_imagePrimitivesBlend.bytes_per_pixel,
 #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
-         0xff000000, /* Red bit mask. */
-         0x00ff0000, /* Green bit mask. */
-         0x0000ff00, /* Blue bit mask. */
-         0x000000ff  /* Alpha bit mask. */
+         0x00ff0000, /* Red bit mask. */
+         0x0000ff00, /* Green bit mask. */
+         0x000000ff, /* Blue bit mask. */
+         0xff000000  /* Alpha bit mask. */
 #else
          0x000000ff, /* Red bit mask. */
          0x0000ff00, /* Green bit mask. */
@@ -690,7 +692,7 @@ SDL_Surface *SDLTest_ImagePrimitivesBlend()
          0xff000000  /* Alpha bit mask. */
 #endif
          );
-   return surface;
+   return SDLTest_ConvertToRGBA(surface);
 }
 
 /* vi: set ts=4 sw=4 expandtab: */
