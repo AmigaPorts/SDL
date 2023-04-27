@@ -12,7 +12,7 @@ AMIGADATE = $(shell date +"%-d.%m.%Y")
 CFLAGS  = -gstabs -O2 -Wall -fPIC -fcommon -I./include -D__AMIGADATE__=\"$(AMIGADATE)\"
 
 TARGET_STATIC  = libSDL2.a
-TARGET_SHARED  = libSDL2-2.27.so
+TARGET_SHARED  = libSDL2-2.26.so
 TESTLIB_STATIC = libSDL2_test.a
 PREFS_PROGRAM = SDL2
 
