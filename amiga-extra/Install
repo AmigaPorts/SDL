@@ -4,8 +4,20 @@ echo Copying shared object ...
 copy SDK/local/newlib/lib/libSDL2-2.26.so SObjs:
 copy SDK/local/newlib/lib/libSDL2-2.26_debug.so SObjs:
 
+echo Copying documentation ...
+copy README-amigaos4.md SYS:Documentation/SDL2.txt
+
 echo Copying prefs program ...
 copy SDL2 SDL2.info SYS:Prefs/
+
+set option `RequestChoice "Localization" "Would you like to install translations?" "Yes, please" "No, thanks"`
+
+If $option eq 1
+  echo Copying translations ...
+  copy Catalogs/#? Locale:Catalogs/ all
+Else
+  echo Skipped translation installation ...
+Endif
 
 set option `RequestChoice "One more question..." "Would you like to install the SDK?" "Yes, please" "No, thanks"`
 
