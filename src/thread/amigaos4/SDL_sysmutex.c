@@ -30,18 +30,18 @@
 
 #include <proto/exec.h>
 
-struct SDL_mutex
+struct SDL_Mutex
 {
     APTR mtx;
 };
 
-SDL_mutex *
+SDL_Mutex *
 SDL_CreateMutex(void)
 {
-    SDL_mutex* mutex;
+    SDL_Mutex* mutex;
 
     /* Allocate mutex memory */
-    mutex = (SDL_mutex *) SDL_malloc(sizeof(*mutex));
+    mutex = (SDL_Mutex *) SDL_malloc(sizeof(*mutex));
 
     if (mutex) {
         mutex->mtx = IExec->AllocSysObjectTags(ASOT_MUTEX,
@@ -64,7 +64,7 @@ SDL_CreateMutex(void)
 }
 
 void
-SDL_DestroyMutex(SDL_mutex * mutex)
+SDL_DestroyMutex(SDL_Mutex * mutex)
 {
     if (mutex) {
         dprintf("Destroying mutex %p\n", mutex->mtx);
@@ -75,7 +75,7 @@ SDL_DestroyMutex(SDL_mutex * mutex)
 }
 
 int
-SDL_LockMutex(SDL_mutex * mutex)
+SDL_LockMutex(SDL_Mutex * mutex)
 {
     if (mutex == NULL) {
         return SDL_SetError("Passed a NULL mutex");
@@ -91,7 +91,7 @@ SDL_LockMutex(SDL_mutex * mutex)
 }
 
 int
-SDL_TryLockMutex(SDL_mutex * mutex)
+SDL_TryLockMutex(SDL_Mutex * mutex)
 {
     int retval = 0;
     if (mutex == NULL) {
@@ -108,7 +108,7 @@ SDL_TryLockMutex(SDL_mutex * mutex)
 
 /* Unlock the mutex */
 int
-SDL_UnlockMutex(SDL_mutex * mutex)
+SDL_UnlockMutex(SDL_Mutex * mutex)
 {
     if (mutex == NULL) {
         return SDL_SetError("Passed a NULL mutex");

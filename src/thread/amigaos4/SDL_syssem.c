@@ -34,7 +34,7 @@
 #define MUTEX_SIGNAL SIGBREAKF_CTRL_F
 #define BREAK_SIGNAL SIGBREAKF_CTRL_C
 
-struct SDL_semaphore
+struct SDL_Semaphore
 {
     APTR mutex; // Protects the control block
     Uint32 count; // Current value
@@ -47,10 +47,10 @@ typedef struct OS4_WaiterNode
     struct Task* task;
 } OS4_WaiterNode;
 
-SDL_sem *
+SDL_Semaphore *
 SDL_CreateSemaphore(Uint32 initial_value)
 {
-    SDL_sem* sem = (SDL_sem *) SDL_malloc(sizeof(*sem));
+    SDL_Semaphore* sem = (SDL_Semaphore *) SDL_malloc(sizeof(*sem));
     if (sem) {
         sem->mutex = IExec->AllocSysObjectTags(ASOT_MUTEX,
             ASOMUTEX_Recursive, TRUE,
@@ -75,7 +75,7 @@ SDL_CreateSemaphore(Uint32 initial_value)
 }
 
 void
-SDL_DestroySemaphore(SDL_sem * sem)
+SDL_DestroySemaphore(SDL_Semaphore * sem)
 {
     if (sem) {
         dprintf("Destroying semaphore %p\n", sem);
@@ -109,7 +109,7 @@ SDL_DestroySemaphore(SDL_sem * sem)
 }
 
 int
-SDL_SemWaitTimeoutNS(SDL_sem * sem, Sint64 timeout)
+SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore * sem, Sint64 timeout)
 {
     if (!sem) {
         return SDL_SetError("Passed a NULL sem");
@@ -182,7 +182,7 @@ SDL_SemWaitTimeoutNS(SDL_sem * sem, Sint64 timeout)
 
 /* Returns the current count of the semaphore */
 Uint32
-SDL_SemValue(SDL_sem * sem)
+SDL_GetSemaphoreValue(SDL_Semaphore * sem)
 {
     if (!sem) {
         SDL_SetError("Passed a NULL sem");
@@ -192,7 +192,7 @@ SDL_SemValue(SDL_sem * sem)
 }
 
 int
-SDL_SemPost(SDL_sem * sem)
+SDL_PostSemaphore(SDL_Semaphore * sem)
 {
     if (!sem) {
         return SDL_SetError("Passed a NULL sem");
