@@ -122,7 +122,9 @@ SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore * sem, Sint64 timeout)
     ULONG alarmSignal = 0;
 
     if (timeout > 0) {
-        alarmSignal = OS4_TimerSetAlarm(OS4_ThreadGetTimer(), timeout / 1000 /* TODO */);
+        /* OS4_TimerSetAlarm uses milliseconds (TODO: check
+           if it could be changed to use 64-bit parameter?) */
+        alarmSignal = OS4_TimerSetAlarm(OS4_ThreadGetTimer(), timeout / 1000000);
     }
 
     while (wait) {
