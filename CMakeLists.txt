@@ -411,8 +411,6 @@ set_option(SDL_PULSEAUDIO          "Use PulseAudio" ${UNIX_SYS})
 dep_option(SDL_PULSEAUDIO_SHARED   "Dynamically load PulseAudio support" ON "SDL_PULSEAUDIO" OFF)
 set_option(SDL_SNDIO               "Support the sndio audio API" ${UNIX_SYS})
 dep_option(SDL_SNDIO_SHARED        "Dynamically load the sndio audio API" ON "SDL_SNDIO" OFF)
-set_option(SDL_LIBSAMPLERATE       "Use libsamplerate for audio rate conversion" ${UNIX_SYS})
-dep_option(SDL_LIBSAMPLERATE_SHARED "Dynamically load libsamplerate" ON "SDL_LIBSAMPLERATE" OFF)
 set_option(SDL_RPATH               "Use an rpath when linking SDL" ${UNIX_SYS})
 set_option(SDL_CLOCK_GETTIME       "Use clock_gettime() instead of gettimeofday()" ${SDL_CLOCK_GETTIME_ENABLED_BY_DEFAULT})
 set_option(SDL_X11                 "Use X11 video driver" ${UNIX_SYS})
@@ -2010,11 +2008,14 @@ elseif(WINDOWS)
 
   if(SDL_THREADS)
     set(SDL_THREAD_GENERIC_COND_SUFFIX 1)
+    set(SDL_THREAD_GENERIC_RWLOCK_SUFFIX 1)
     set(SDL_THREAD_WINDOWS 1)
     list(APPEND SOURCE_FILES
       ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_syscond.c
+      ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_sysrwlock.c
       ${SDL3_SOURCE_DIR}/src/thread/windows/SDL_syscond_cv.c
       ${SDL3_SOURCE_DIR}/src/thread/windows/SDL_sysmutex.c
+      ${SDL3_SOURCE_DIR}/src/thread/windows/SDL_sysrwlock_srw.c
       ${SDL3_SOURCE_DIR}/src/thread/windows/SDL_syssem.c
       ${SDL3_SOURCE_DIR}/src/thread/windows/SDL_systhread.c
       ${SDL3_SOURCE_DIR}/src/thread/windows/SDL_systls.c)
@@ -2599,6 +2600,7 @@ elseif(VITA)
       ${SDL3_SOURCE_DIR}/src/thread/vita/SDL_syssem.c
       ${SDL3_SOURCE_DIR}/src/thread/vita/SDL_systhread.c
       ${SDL3_SOURCE_DIR}/src/thread/vita/SDL_syscond.c
+      ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_sysrwlock.c
       ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_systls.c)
     set(HAVE_SDL_THREADS TRUE)
   endif()
@@ -2734,7 +2736,7 @@ elseif(PSP)
   endif()
   if(SDL_THREADS)
     set(SDL_THREAD_PSP 1)
-    file(GLOB PSP_THREAD_SOURCES ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_systls.c ${SDL3_SOURCE_DIR}/src/thread/psp/*.c)
+    file(GLOB PSP_THREAD_SOURCES ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_systls.c ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_sysrwlock.c ${SDL3_SOURCE_DIR}/src/thread/psp/*.c)
     list(APPEND SOURCE_FILES ${PSP_THREAD_SOURCES})
     set(HAVE_SDL_THREADS TRUE)
   endif()
@@ -2793,7 +2795,7 @@ elseif(PS2)
   endif()
   if(SDL_THREADS)
     set(SDL_THREAD_PS2 1)
-    file(GLOB PS2_THREAD_SOURCES ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_syscond.c ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_sysmutex.c ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_systls.c ${SDL3_SOURCE_DIR}/src/thread/ps2/*.c)
+    file(GLOB PS2_THREAD_SOURCES ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_syscond.c ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_sysmutex.c ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_sysrwlock.c ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_systls.c ${SDL3_SOURCE_DIR}/src/thread/ps2/*.c)
     list(APPEND SOURCE_FILES ${PS2_THREAD_SOURCES})
     set(HAVE_SDL_THREADS TRUE)
   endif()
@@ -2854,7 +2856,7 @@ elseif(N3DS)
   if(SDL_THREADS)
     set(SDL_THREAD_N3DS 1)
     file(GLOB N3DS_THREAD_SOURCES ${SDL3_SOURCE_DIR}/src/thread/n3ds/*.c)
-    list(APPEND SOURCE_FILES ${N3DS_THREAD_SOURCES} ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_systls.c)
+    list(APPEND SOURCE_FILES ${N3DS_THREAD_SOURCES} ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_systls.c ${SDL3_SOURCE_DIR}/src/thread/generic/SDL_sysrwlock.c)
     set(HAVE_SDL_THREADS TRUE)
   endif()
 
@@ -2909,7 +2911,6 @@ if(HAVE_VULKAN AND NOT SDL_LOADSO)
 endif()
 
 # Platform-independent options
-CheckLibSampleRate()
 
 if(SDL_VIDEO)
   if(SDL_OFFSCREEN AND SDL_VIDEO_OPENGL_EGL)

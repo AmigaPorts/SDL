@@ -103,6 +103,9 @@ If you need to convert U16 audio data to a still-supported format at runtime, th
     }
 ```
 
+In SDL2, SDL_AudioStream would convert/resample audio data during input (via SDL_AudioStreamPut). In SDL3, it does this work when requesting audio (via SDL_GetAudioStreamData, which would have been SDL_AudioStreamPut in SDL2. The way you use an AudioStream is roughly the same, just be aware that the workload moved to a different phase.
+In SDL2, SDL_AudioStreamAvailable() returns 0 if passed a NULL stream. In SDL3, the equivalent SDL_GetAudioStreamAvailable() call returns -1 and sets an error string, which matches other audiostream APIs' behavior.
+
 
 The following functions have been renamed:
 * SDL_AudioStreamAvailable() => SDL_GetAudioStreamAvailable()
@@ -473,8 +476,12 @@ The following functions have been removed:
 * SDL_JoystickGetDeviceType() - replaced with SDL_GetJoystickInstanceType()
 * SDL_JoystickGetDeviceVendor() - replaced with SDL_GetJoystickInstanceVendor()
 * SDL_JoystickNameForIndex() - replaced with SDL_GetJoystickInstanceName()
+* SDL_JoystickNumBalls() - API has been removed, see https://github.com/libsdl-org/SDL/issues/6766
 * SDL_JoystickPathForIndex() - replaced with SDL_GetJoystickInstancePath()
 * SDL_NumJoysticks() - replaced with SDL_GetJoysticks()
+
+The following symbols have been removed:
+* SDL_JOYBALLMOTION
 
 ## SDL_keyboard.h
 
@@ -550,6 +557,26 @@ SDL_GetMouseState(), SDL_GetGlobalMouseState(), SDL_GetRelativeMouseState(), SDL
 
 The following functions have been renamed:
 * SDL_FreeCursor() => SDL_DestroyCursor()
+
+## SDL_mutex.h
+
+The following functions have been renamed:
+* SDL_CondBroadcast() => SDL_BroadcastCondition()
+* SDL_CondSignal() => SDL_SignalCondition()
+* SDL_CondWait() => SDL_WaitCondition()
+* SDL_CondWaitTimeout() => SDL_WaitConditionTimeout()
+* SDL_CreateCond() => SDL_CreateCondition()
+* SDL_DestroyCond() => SDL_DestroyCondition()
+* SDL_SemPost() => SDL_PostSemaphore()
+* SDL_SemTryWait() => SDL_TryWaitSemaphore()
+* SDL_SemValue() => SDL_GetSemaphoreValue()
+* SDL_SemWait() => SDL_WaitSemaphore()
+* SDL_SemWaitTimeout() => SDL_WaitSemaphoreTimeout()
+
+The following symbols have been renamed:
+* SDL_cond => SDL_Condition
+* SDL_mutex => SDL_Mutex
+* SDL_sem => SDL_Semaphore
 
 ## SDL_pixels.h
 

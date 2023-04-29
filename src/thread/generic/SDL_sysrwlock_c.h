@@ -20,25 +20,19 @@
 */
 #include "SDL_internal.h"
 
-#ifndef SDL_openslesaudio_h
-#define SDL_openslesaudio_h
+#ifndef SDL_sysrwlock_c_h_
+#define SDL_sysrwlock_c_h_
 
-#include "../SDL_sysaudio.h"
+#ifdef SDL_THREAD_GENERIC_RWLOCK_SUFFIX
 
-/* Hidden "this" pointer for the audio functions */
-#define _THIS SDL_AudioDevice *this
+SDL_RWLock *SDL_CreateRWLock_generic(void);
+void SDL_DestroyRWLock_generic(SDL_RWLock *rwlock);
+int SDL_LockRWLockForReading_generic(SDL_RWLock *rwlock);
+int SDL_LockRWLockForWriting_generic(SDL_RWLock *rwlock);
+int SDL_TryLockRWLockForReading_generic(SDL_RWLock *rwlock);
+int SDL_TryLockRWLockForWriting_generic(SDL_RWLock *rwlock);
+int SDL_UnlockRWLock_generic(SDL_RWLock *rwlock);
 
-#define NUM_BUFFERS 2 /* -- Don't lower this! */
+#endif /* SDL_THREAD_GENERIC_RWLOCK_SUFFIX */
 
-struct SDL_PrivateAudioData
-{
-    Uint8 *mixbuff;
-    int next_buffer;
-    Uint8 *pmixbuff[NUM_BUFFERS];
-    SDL_Semaphore *playsem;
-};
-
-void openslES_ResumeDevices(void);
-void openslES_PauseDevices(void);
-
-#endif /* SDL_openslesaudio_h */
+#endif /* SDL_sysrwlock_c_h_ */

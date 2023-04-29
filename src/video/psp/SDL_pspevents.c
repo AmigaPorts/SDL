@@ -45,7 +45,7 @@ static SDL_Keycode keymap[256];
 #endif
 
 static enum PspHprmKeys hprm = 0;
-static SDL_sem *event_sem = NULL;
+static SDL_Semaphore *event_sem = NULL;
 static SDL_Thread *thread = NULL;
 static int running = 0;
 static struct
@@ -64,9 +64,9 @@ static struct
 int EventUpdate(void *data)
 {
     while (running) {
-        SDL_SemWait(event_sem);
+        SDL_WaitSemaphore(event_sem);
         sceHprmPeekCurrentKey((u32 *)&hprm);
-        SDL_SemPost(event_sem);
+        SDL_PostSemaphore(event_sem);
         /* Delay 1/60th of a second */
         sceKernelDelayThread(1000000 / 60);
     }
@@ -80,9 +80,9 @@ void PSP_PumpEvents(_THIS)
     enum PspHprmKeys changed;
     static enum PspHprmKeys old_keys = 0;
 
-    SDL_SemWait(event_sem);
+    SDL_WaitSemaphore(event_sem);
     keys = hprm;
-    SDL_SemPost(event_sem);
+    SDL_PostSemaphore(event_sem);
 
     /* HPRM Keyboard */
     changed = old_keys ^ keys;
