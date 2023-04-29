@@ -81,7 +81,7 @@ $(TARGET_STATIC): $(OBJECTS)
 	$(RANLIB) $@
 
 $(TARGET_SHARED): $(OBJECTS) $(VERSION_OBJECT)
-	$(CC) -shared -Wl,-soname,$(TARGET_SHARED) -o $(TARGET_SHARED) $(OBJECTS) $(VERSION_OBJECT)
+	$(CC) -mcrt=$(CRT) -shared -Wl,-soname,$(TARGET_SHARED) -o $(TARGET_SHARED) $(OBJECTS) $(VERSION_OBJECT)
 
 $(PREFS_PROGRAM): $(PREFS_OBJECT)
 	$(CC) -o $@ $^ -lauto
