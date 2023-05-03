@@ -31,29 +31,6 @@
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
-static Uint32
-OS4_PixfToSdlPixelFormat(PIX_FMT from)
-{
-    switch (from) {
-        // 32-bit
-        case PIXF_A8R8G8B8: return SDL_PIXELFORMAT_ARGB8888;
-        case PIXF_B8G8R8A8: return SDL_PIXELFORMAT_BGRA8888;
-        case PIXF_A8B8G8R8: return SDL_PIXELFORMAT_ABGR8888;
-        case PIXF_R8G8B8A8: return SDL_PIXELFORMAT_RGBA8888;
-        // 24-bit (WinUAE Picasso-IV may use one)
-        case PIXF_R8G8B8: return SDL_PIXELFORMAT_RGB888;
-        case PIXF_B8G8R8: return SDL_PIXELFORMAT_BGR888;
-        // 16-bit
-        case PIXF_R5G6B5: return SDL_PIXELFORMAT_RGB565;
-        // 8-bit
-        case PIXF_CLUT: return SDL_PIXELFORMAT_INDEX8;
-        // What else we have...
-        default:
-            dprintf("Unknown native pixel format %d\n", from);
-            return SDL_PIXELFORMAT_UNKNOWN;
-    }
-}
-
 int
 OS4_CreateWindowFramebuffer(_THIS, SDL_Window * window, Uint32 * format, void ** pixels, int * pitch)
 {
@@ -75,10 +52,12 @@ OS4_CreateWindowFramebuffer(_THIS, SDL_Window * window, Uint32 * format, void **
         return SDL_SetError("No system window");
     }
 
-    pixf = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_PIXELFORMAT);
-    depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
+    // Hardcode pixel format. It seems that SDL2 doesn't support all pixel formats
+    // AmigaOS may use (for example PIXF_R5G6B5PC)
+    pixf = PIXF_A8R8G8B8;
+    depth = 32;
 
-    *format = OS4_PixfToSdlPixelFormat(pixf);
+    *format = SDL_PIXELFORMAT_ARGB8888;
 
     dprintf("Native format %d, SDL format %d (%s)\n", pixf, *format, SDL_GetPixelFormatName(*format));
     dprintf("Allocating %d*%d*%d bitmap)\n", window->w, window->h, depth);
