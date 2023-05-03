@@ -538,11 +538,22 @@ OS4_VideoInit(_THIS)
     OS4_InitKeyboard(_this);
     OS4_InitMouse(_this);
 
+    dprintf("Disable SDL_VIDEO_MINIMIZE_ON_FOCUS_LOSS\n");
+
     // We don't want SDL to change  window setup in SDL_OnWindowFocusLost()
     SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0");
 
+    dprintf("Disable SDL_POLL_SENTINEL\n");
+
     // Poll sentinels added after SDL 2.0.14 cause increasing CPU load (TODO: fix)
     SDL_SetHint(SDL_HINT_POLL_SENTINEL, "0");
+
+    dprintf("Disable SDL_FRAMEBUFFER_ACCELERATION\n");
+
+    // Avoid creation of accelerated ("compositing") surfaces when using "software" driver.
+    // Compositing requires PatchCompositeTags on WinUAE, for example.
+    // TODO: consider reading the hint before disabling, in case user wants to force it?
+    SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "0");
 
     return 0;
 }
