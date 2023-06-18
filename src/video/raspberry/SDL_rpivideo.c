@@ -160,8 +160,8 @@ static void AddDispManXDisplay(const int display_id)
 
     /* RPI_GetRefreshRate() doesn't distinguish between displays. I'm not sure the hardware distinguishes either */
     SDL_zero(mode);
-    mode.pixel_w = modeinfo.width;
-    mode.pixel_h = modeinfo.height;
+    mode.w = modeinfo.width;
+    mode.h = modeinfo.height;
     mode.refresh_rate = RPI_GetRefreshRate();
 
     /* 32 bpp for default */
@@ -184,7 +184,7 @@ static void AddDispManXDisplay(const int display_id)
     SDL_AddVideoDisplay(&display, SDL_FALSE);
 }
 
-int RPI_VideoInit(_THIS)
+int RPI_VideoInit(SDL_VideoDevice *_this)
 {
     /* Initialize BCM Host */
     bcm_host_init();
@@ -203,7 +203,7 @@ int RPI_VideoInit(_THIS)
     return 1;
 }
 
-void RPI_VideoQuit(_THIS)
+void RPI_VideoQuit(SDL_VideoDevice *_this)
 {
 #ifdef SDL_INPUT_LINUXEV
     SDL_EVDEV_Quit();
@@ -219,7 +219,7 @@ static void RPI_vsync_callback(DISPMANX_UPDATE_HANDLE_T u, void *data)
     SDL_UnlockMutex(wdata->vsync_cond_mutex);
 }
 
-int RPI_CreateWindow(_THIS, SDL_Window *window)
+int RPI_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
     SDL_WindowData *wdata;
     SDL_VideoDisplay *display;
@@ -245,8 +245,8 @@ int RPI_CreateWindow(_THIS, SDL_Window *window)
     displaydata = display->driverdata;
 
     /* Windows have one size for now */
-    window->w = display->desktop_mode.screen_w;
-    window->h = display->desktop_mode.screen_h;
+    window->w = display->desktop_mode.w;
+    window->h = display->desktop_mode.h;
 
     /* OpenGL ES is the law here, buddy */
     window->flags |= SDL_WINDOW_OPENGL;
@@ -313,7 +313,7 @@ int RPI_CreateWindow(_THIS, SDL_Window *window)
     return 0;
 }
 
-void RPI_DestroyWindow(_THIS, SDL_Window *window)
+void RPI_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
     SDL_WindowData *data = window->driverdata;
     SDL_DisplayData *displaydata = SDL_GetDisplayDriverDataForWindow(window);
@@ -341,36 +341,37 @@ void RPI_DestroyWindow(_THIS, SDL_Window *window)
     }
 }
 
-int RPI_CreateWindowFrom(_THIS, SDL_Window *window, const void *data)
+int RPI_CreateWindowFrom(SDL_VideoDevice *_this, SDL_Window *window, const void *data)
 {
     return -1;
 }
 
-void RPI_SetWindowTitle(_THIS, SDL_Window *window)
+void RPI_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
-void RPI_SetWindowPosition(_THIS, SDL_Window *window)
+int RPI_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window *window)
+{
+    return SDL_Unsupported();
+}
+void RPI_SetWindowSize(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
-void RPI_SetWindowSize(_THIS, SDL_Window *window)
+void RPI_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
-void RPI_ShowWindow(_THIS, SDL_Window *window)
+void RPI_HideWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
-void RPI_HideWindow(_THIS, SDL_Window *window)
+void RPI_RaiseWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
-void RPI_RaiseWindow(_THIS, SDL_Window *window)
+void RPI_MaximizeWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
-void RPI_MaximizeWindow(_THIS, SDL_Window *window)
+void RPI_MinimizeWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
-void RPI_MinimizeWindow(_THIS, SDL_Window *window)
-{
-}
-void RPI_RestoreWindow(_THIS, SDL_Window *window)
+void RPI_RestoreWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
 

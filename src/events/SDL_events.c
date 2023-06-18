@@ -225,7 +225,7 @@ static void SDL_LogEvent(const SDL_Event *event)
         SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_CONNECTED);
         SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_DISCONNECTED);
         SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_MOVED);
-        SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_SCALE_CHANGED);
+        SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_CONTENT_SCALE_CHANGED);
 #undef SDL_DISPLAYEVENT_CASE
 
 #define SDL_WINDOWEVENT_CASE(x)                \
@@ -239,6 +239,7 @@ static void SDL_LogEvent(const SDL_Event *event)
         SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_EXPOSED);
         SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_MOVED);
         SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_RESIZED);
+        SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED);
         SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_MINIMIZED);
         SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_MAXIMIZED);
         SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_RESTORED);
@@ -251,7 +252,8 @@ static void SDL_LogEvent(const SDL_Event *event)
         SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_HIT_TEST);
         SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_ICCPROF_CHANGED);
         SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_DISPLAY_CHANGED);
-        SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED);
+        SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED);
+        SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_DESTROYED);
 #undef SDL_WINDOWEVENT_CASE
 
         SDL_EVENT_CASE(SDL_EVENT_SYSWM)
@@ -871,6 +873,11 @@ static void SDL_PumpEventsInternal(SDL_bool push_sentinel)
     if (push_sentinel && SDL_EventEnabled(SDL_EVENT_POLL_SENTINEL)) {
         SDL_Event sentinel;
 
+        /* Make sure we don't already have a sentinel in the queue, and add one to the end */
+        if (SDL_AtomicGet(&SDL_sentinel_pending) > 0) {
+            SDL_PeepEventsInternal(&sentinel, 1, SDL_GETEVENT, SDL_EVENT_POLL_SENTINEL, SDL_EVENT_POLL_SENTINEL, SDL_TRUE);
+        }
+
         sentinel.type = SDL_EVENT_POLL_SENTINEL;
         sentinel.common.timestamp = 0;
         SDL_PushEvent(&sentinel);
@@ -900,7 +907,7 @@ static SDL_bool SDL_events_need_periodic_poll(void)
     return need_periodic_poll;
 }
 
-static int SDL_WaitEventTimeout_Device(_THIS, SDL_Window *wakeup_window, SDL_Event *event, Uint64 start, Sint64 timeoutNS)
+static int SDL_WaitEventTimeout_Device(SDL_VideoDevice *_this, SDL_Window *wakeup_window, SDL_Event *event, Uint64 start, Sint64 timeoutNS)
 {
     Sint64 loop_timeoutNS = timeoutNS;
     SDL_bool need_periodic_poll = SDL_events_need_periodic_poll();
@@ -913,11 +920,7 @@ static int SDL_WaitEventTimeout_Device(_THIS, SDL_Window *wakeup_window, SDL_Eve
            c) Periodic processing that takes place in some platform PumpEvents() functions happens
            d) Signals received in WaitEventTimeout() are turned into SDL events
         */
-        /* We only want a single sentinel in the queue. We could get more than one if event is NULL,
-         * since the SDL_PeepEvents() call below won't remove it in that case.
-         */
-        SDL_bool add_sentinel = (SDL_AtomicGet(&SDL_sentinel_pending) == 0) ? SDL_TRUE : SDL_FALSE;
-        SDL_PumpEventsInternal(add_sentinel);
+        SDL_PumpEventsInternal(SDL_TRUE);
 
         SDL_LockMutex(_this->wakeup_lock);
         {
@@ -1092,7 +1095,7 @@ int SDL_WaitEventTimeoutNS(SDL_Event *event, Sint64 timeoutNS)
         case -1:
             return 0;
         case 0:
-            if (timeoutNS > 0 && SDL_GetTicks() >= expiration) {
+            if (timeoutNS > 0 && SDL_GetTicksNS() >= expiration) {
                 /* Timeout expired and no events */
                 return 0;
             }

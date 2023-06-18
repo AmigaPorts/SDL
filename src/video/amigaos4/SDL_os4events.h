@@ -23,7 +23,7 @@
 #ifndef _SDL_os4events_h
 #define _SDL_os4events_h
 
-extern void OS4_PumpEvents(_THIS);
+extern void OS4_PumpEvents(SDL_VideoDevice *this);
 extern void OS4_ResetNormalKeys(void);
 
 #endif /* _SDL_os4events_h */

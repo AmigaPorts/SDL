@@ -25,22 +25,22 @@
 
 #include "SDL_os4window.h"
 
-extern int OS4_GL_LoadLibrary(_THIS, const char *path);
-extern SDL_FunctionPointer OS4_GL_GetProcAddress(_THIS, const char *proc);
-extern void OS4_GL_UnloadLibrary(_THIS);
-extern SDL_GLContext OS4_GL_CreateContext(_THIS, SDL_Window * window);
-extern int OS4_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context);
-extern void OS4_GL_GetDrawableSize(_THIS, SDL_Window * window, int *w, int *h);
-extern int OS4_GL_SetSwapInterval(_THIS, int interval);
-extern int OS4_GL_GetSwapInterval(_THIS, int* interval);
-extern int OS4_GL_SwapWindow(_THIS, SDL_Window * window);
-extern int OS4_GL_DeleteContext(_THIS, SDL_GLContext context);
+extern int OS4_GL_LoadLibrary(SDL_VideoDevice *_this, const char *path);
+extern SDL_FunctionPointer OS4_GL_GetProcAddress(SDL_VideoDevice *_this, const char *proc);
+extern void OS4_GL_UnloadLibrary(SDL_VideoDevice *_this);
+extern SDL_GLContext OS4_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window * window);
+extern int OS4_GL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext context);
+extern void OS4_GL_GetDrawableSize(SDL_VideoDevice *_this, SDL_Window * window, int *w, int *h);
+extern int OS4_GL_SetSwapInterval(SDL_VideoDevice *_this, int interval);
+extern int OS4_GL_GetSwapInterval(SDL_VideoDevice *_this, int* interval);
+extern int OS4_GL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window);
+extern int OS4_GL_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context);
 
 /* Non-SDL functions */
-extern SDL_bool OS4_GL_AllocateBuffers(_THIS, int width, int height, int depth, SDL_WindowData * data);
-extern void OS4_GL_FreeBuffers(_THIS, SDL_WindowData * data);
-extern SDL_bool OS4_GL_ResizeContext(_THIS, SDL_Window * window);
-extern void OS4_GL_UpdateWindowPointer(_THIS, SDL_Window * window);
+extern SDL_bool OS4_GL_AllocateBuffers(SDL_VideoDevice *_this, int width, int height, int depth, SDL_WindowData * data);
+extern void OS4_GL_FreeBuffers(SDL_VideoDevice *_this, SDL_WindowData * data);
+extern SDL_bool OS4_GL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window);
+extern void OS4_GL_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window);
 
 #endif /* _SDL_os4opengl_h */
 

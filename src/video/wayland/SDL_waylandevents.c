@@ -84,105 +84,67 @@
 struct SDL_WaylandTouchPoint
 {
     SDL_TouchID id;
-    float x;
-    float y;
+    wl_fixed_t fx;
+    wl_fixed_t fy;
     struct wl_surface *surface;
 
-    struct SDL_WaylandTouchPoint *prev;
-    struct SDL_WaylandTouchPoint *next;
+    struct wl_list link;
 };
 
-struct SDL_WaylandTouchPointList
-{
-    struct SDL_WaylandTouchPoint *head;
-    struct SDL_WaylandTouchPoint *tail;
-};
-
-static struct SDL_WaylandTouchPointList touch_points = { NULL, NULL };
+static struct wl_list touch_points;
 
 static char *Wayland_URIToLocal(char *uri);
 
-static void touch_add(SDL_TouchID id, float x, float y, struct wl_surface *surface)
+static void touch_add(SDL_TouchID id, wl_fixed_t fx, wl_fixed_t fy, struct wl_surface *surface)
 {
     struct SDL_WaylandTouchPoint *tp = SDL_malloc(sizeof(struct SDL_WaylandTouchPoint));
 
+    SDL_zerop(tp);
     tp->id = id;
-    tp->x = x;
-    tp->y = y;
+    tp->fx = fx;
+    tp->fy = fy;
     tp->surface = surface;
 
-    if (touch_points.tail) {
-        touch_points.tail->next = tp;
-        tp->prev = touch_points.tail;
-    } else {
-        touch_points.head = tp;
-        tp->prev = NULL;
-    }
-
-    touch_points.tail = tp;
-    tp->next = NULL;
+    WAYLAND_wl_list_insert(&touch_points, &tp->link);
 }
 
-static void touch_update(SDL_TouchID id, float x, float y)
+static void touch_update(SDL_TouchID id, wl_fixed_t fx, wl_fixed_t fy, struct wl_surface **surface)
 {
-    struct SDL_WaylandTouchPoint *tp = touch_points.head;
+    struct SDL_WaylandTouchPoint *tp;
 
-    while (tp) {
+    wl_list_for_each (tp, &touch_points, link) {
         if (tp->id == id) {
-            tp->x = x;
-            tp->y = y;
-        }
-
-        tp = tp->next;
-    }
-}
-
-static void touch_del(SDL_TouchID id, float *x, float *y, struct wl_surface **surface)
-{
-    struct SDL_WaylandTouchPoint *tp = touch_points.head;
-
-    while (tp) {
-        if (tp->id == id) {
-            *x = tp->x;
-            *y = tp->y;
-            *surface = tp->surface;
-
-            if (tp->prev) {
-                tp->prev->next = tp->next;
-            } else {
-                touch_points.head = tp->next;
+            tp->fx = fx;
+            tp->fy = fy;
+            if (surface) {
+                *surface = tp->surface;
             }
-
-            if (tp->next) {
-                tp->next->prev = tp->prev;
-            } else {
-                touch_points.tail = tp->prev;
-            }
-
-            {
-                struct SDL_WaylandTouchPoint *next = tp->next;
-                SDL_free(tp);
-                tp = next;
-            }
-        } else {
-            tp = tp->next;
+            break;
         }
     }
 }
 
-static struct wl_surface *touch_surface(SDL_TouchID id)
+static void touch_del(SDL_TouchID id, wl_fixed_t *fx, wl_fixed_t *fy, struct wl_surface **surface)
 {
-    struct SDL_WaylandTouchPoint *tp = touch_points.head;
+    struct SDL_WaylandTouchPoint *tp;
 
-    while (tp) {
+    wl_list_for_each (tp, &touch_points, link) {
         if (tp->id == id) {
-            return tp->surface;
+            if (fx) {
+                *fx = tp->fx;
+            }
+            if (fy) {
+                *fy = tp->fy;
+            }
+            if (surface) {
+                *surface = tp->surface;
+            }
+
+            WAYLAND_wl_list_remove(&tp->link);
+            SDL_free(tp);
+            break;
         }
-
-        tp = tp->next;
     }
-
-    return NULL;
 }
 
 static Uint64 Wayland_GetEventTimestamp(Uint64 nsTimestamp)
@@ -349,7 +311,7 @@ static SDL_bool keyboard_repeat_key_is_set(SDL_WaylandKeyboardRepeat *repeat_inf
     return repeat_info->is_initialized && repeat_info->is_key_down && key == repeat_info->key;
 }
 
-void Wayland_SendWakeupEvent(_THIS, SDL_Window *window)
+void Wayland_SendWakeupEvent(SDL_VideoDevice *_this, SDL_Window *window)
 {
     SDL_VideoData *d = _this->driverdata;
 
@@ -376,7 +338,7 @@ static int dispatch_queued_events(SDL_VideoData *viddata)
     return ret >= 0 ? 1 : ret;
 }
 
-int Wayland_WaitEventTimeout(_THIS, Sint64 timeoutNS)
+int Wayland_WaitEventTimeout(SDL_VideoDevice *_this, Sint64 timeoutNS)
 {
     SDL_VideoData *d = _this->driverdata;
     struct SDL_WaylandInput *input = d->input;
@@ -391,7 +353,7 @@ int Wayland_WaitEventTimeout(_THIS, Sint64 timeoutNS)
 #endif
 
 #ifdef SDL_USE_LIBDBUS
-    SDL_SystemTheme_PumpEvents();
+    SDL_DBus_PumpEvents();
 #endif
 
     /* If key repeat is active, we'll need to cap our maximum wait time to handle repeats */
@@ -451,7 +413,7 @@ int Wayland_WaitEventTimeout(_THIS, Sint64 timeoutNS)
     }
 }
 
-void Wayland_PumpEvents(_THIS)
+void Wayland_PumpEvents(SDL_VideoDevice *_this)
 {
     SDL_VideoData *d = _this->driverdata;
     struct SDL_WaylandInput *input = d->input;
@@ -464,7 +426,7 @@ void Wayland_PumpEvents(_THIS)
 #endif
 
 #ifdef SDL_USE_LIBDBUS
-    SDL_SystemTheme_PumpEvents();
+    SDL_DBus_PumpEvents();
 #endif
 
 #ifdef HAVE_LIBDECOR_H
@@ -846,8 +808,7 @@ static void pointer_handle_axis(void *data, struct wl_pointer *pointer,
     }
 }
 
-static void
-pointer_handle_axis_relative_direction(void *data, struct wl_pointer *pointer,
+static void pointer_handle_axis_relative_direction(void *data, struct wl_pointer *pointer,
                     uint32_t axis, uint32_t axis_relative_direction)
 {
     struct SDL_WaylandInput *input = data;
@@ -864,8 +825,7 @@ pointer_handle_axis_relative_direction(void *data, struct wl_pointer *pointer,
     }
 }
 
-static void
-pointer_handle_frame(void *data, struct wl_pointer *pointer)
+static void pointer_handle_frame(void *data, struct wl_pointer *pointer)
 {
     struct SDL_WaylandInput *input = data;
     SDL_WindowData *window = input->pointer_focus;
@@ -958,51 +918,67 @@ static void touch_handler_down(void *data, struct wl_touch *touch, uint32_t seri
                                int id, wl_fixed_t fx, wl_fixed_t fy)
 {
     struct SDL_WaylandInput *input = (struct SDL_WaylandInput *)data;
-    SDL_WindowData *window_data = (SDL_WindowData *)wl_surface_get_user_data(surface);
-    const double dblx = wl_fixed_to_double(fx) * window_data->pointer_scale_x;
-    const double dbly = wl_fixed_to_double(fy) * window_data->pointer_scale_y;
-    const float x = dblx / window_data->sdlwindow->w;
-    const float y = dbly / window_data->sdlwindow->h;
+    SDL_WindowData *window_data;
 
-    touch_add(id, x, y, surface);
+    /* Check that this surface belongs to one of the SDL windows */
+    if (!SDL_WAYLAND_own_surface(surface)) {
+        return;
+    }
+
+    touch_add(id, fx, fy, surface);
     input->touch_down_serial = serial;
+    window_data = (SDL_WindowData *)wl_surface_get_user_data(surface);
 
-    SDL_SendTouch(Wayland_GetTouchTimestamp(input, timestamp), (SDL_TouchID)(intptr_t)touch,
-                  (SDL_FingerID)id, window_data->sdlwindow, SDL_TRUE, x, y, 1.0f);
+    if (window_data) {
+        const float x = wl_fixed_to_double(fx) / window_data->wl_window_width;
+        const float y = wl_fixed_to_double(fy) / window_data->wl_window_height;
+
+        SDL_SendTouch(Wayland_GetTouchTimestamp(input, timestamp), (SDL_TouchID)(intptr_t)touch,
+                      (SDL_FingerID)id, window_data->sdlwindow, SDL_TRUE, x, y, 1.0f);
+    }
 }
 
 static void touch_handler_up(void *data, struct wl_touch *touch, uint32_t serial,
                              uint32_t timestamp, int id)
 {
     struct SDL_WaylandInput *input = (struct SDL_WaylandInput *)data;
-    float x = 0, y = 0;
+    wl_fixed_t fx = 0, fy = 0;
     struct wl_surface *surface = NULL;
-    SDL_Window *window = NULL;
 
-    touch_del(id, &x, &y, &surface);
+    touch_del(id, &fx, &fy, &surface);
 
     if (surface) {
         SDL_WindowData *window_data = (SDL_WindowData *)wl_surface_get_user_data(surface);
-        window = window_data->sdlwindow;
-    }
 
-    SDL_SendTouch(Wayland_GetTouchTimestamp(input, timestamp), (SDL_TouchID)(intptr_t)touch,
-                  (SDL_FingerID)id, window, SDL_FALSE, x, y, 0.0f);
+        if (window_data) {
+            const float x = wl_fixed_to_double(fx) / window_data->wl_window_width;
+            const float y = wl_fixed_to_double(fy) / window_data->wl_window_height;
+
+            SDL_SendTouch(Wayland_GetTouchTimestamp(input, timestamp), (SDL_TouchID)(intptr_t)touch,
+                          (SDL_FingerID)id, window_data->sdlwindow, SDL_FALSE, x, y, 0.0f);
+        }
+    }
 }
 
 static void touch_handler_motion(void *data, struct wl_touch *touch, uint32_t timestamp,
                                  int id, wl_fixed_t fx, wl_fixed_t fy)
 {
     struct SDL_WaylandInput *input = (struct SDL_WaylandInput *)data;
-    SDL_WindowData *window_data = (SDL_WindowData *)wl_surface_get_user_data(touch_surface(id));
-    const double dblx = wl_fixed_to_double(fx) * window_data->pointer_scale_x;
-    const double dbly = wl_fixed_to_double(fy) * window_data->pointer_scale_y;
-    const float x = dblx / window_data->sdlwindow->w;
-    const float y = dbly / window_data->sdlwindow->h;
+    struct wl_surface *surface = NULL;
 
-    touch_update(id, x, y);
-    SDL_SendTouchMotion(Wayland_GetPointerTimestamp(input, timestamp), (SDL_TouchID)(intptr_t)touch,
-                        (SDL_FingerID)id, window_data->sdlwindow, x, y, 1.0f);
+    touch_update(id, fx, fy, &surface);
+
+    if (surface) {
+        SDL_WindowData *window_data = (SDL_WindowData *)wl_surface_get_user_data(surface);
+
+        if (window_data) {
+            const float x = wl_fixed_to_double(fx) / window_data->wl_window_width;
+            const float y = wl_fixed_to_double(fy) / window_data->wl_window_height;
+
+            SDL_SendTouchMotion(Wayland_GetPointerTimestamp(input, timestamp), (SDL_TouchID)(intptr_t)touch,
+                                (SDL_FingerID)id, window_data->sdlwindow, x, y, 1.0f);
+        }
+    }
 }
 
 static void touch_handler_frame(void *data, struct wl_touch *touch)
@@ -1626,6 +1602,7 @@ static void seat_handle_capabilities(void *data, struct wl_seat *seat,
     }
 
     if ((caps & WL_SEAT_CAPABILITY_TOUCH) && !input->touch) {
+        WAYLAND_wl_list_init(&touch_points);
         input->touch = wl_seat_get_touch(seat);
         SDL_AddTouch((SDL_TouchID)(intptr_t)input->touch, SDL_TOUCH_DEVICE_DIRECT, "wayland_touch");
         wl_touch_set_user_data(input->touch, input);
@@ -1673,7 +1650,10 @@ static void data_source_handle_send(void *data, struct wl_data_source *wl_data_s
 
 static void data_source_handle_cancelled(void *data, struct wl_data_source *wl_data_source)
 {
-    Wayland_data_source_destroy(data);
+    SDL_WaylandDataSource *source = data;
+    if (source != NULL) {
+        Wayland_data_source_destroy(source);
+    }
 }
 
 static void data_source_handle_dnd_drop_performed(void *data, struct wl_data_source *wl_data_source)
@@ -1715,7 +1695,7 @@ static const struct zwp_primary_selection_source_v1_listener primary_selection_s
     primary_selection_source_cancelled,
 };
 
-SDL_WaylandDataSource *Wayland_data_source_create(_THIS)
+SDL_WaylandDataSource *Wayland_data_source_create(SDL_VideoDevice *_this)
 {
     SDL_WaylandDataSource *data_source = NULL;
     SDL_VideoData *driver_data = NULL;
@@ -1739,7 +1719,6 @@ SDL_WaylandDataSource *Wayland_data_source_create(_THIS)
                 SDL_OutOfMemory();
                 wl_data_source_destroy(id);
             } else {
-                WAYLAND_wl_list_init(&(data_source->mimes));
                 data_source->source = id;
                 wl_data_source_set_user_data(id, data_source);
                 wl_data_source_add_listener(id, &data_source_listener,
@@ -1750,7 +1729,7 @@ SDL_WaylandDataSource *Wayland_data_source_create(_THIS)
     return data_source;
 }
 
-SDL_WaylandPrimarySelectionSource *Wayland_primary_selection_source_create(_THIS)
+SDL_WaylandPrimarySelectionSource *Wayland_primary_selection_source_create(SDL_VideoDevice *_this)
 {
     SDL_WaylandPrimarySelectionSource *primary_selection_source = NULL;
     SDL_VideoData *driver_data = NULL;
@@ -1774,7 +1753,6 @@ SDL_WaylandPrimarySelectionSource *Wayland_primary_selection_source_create(_THIS
                 SDL_OutOfMemory();
                 zwp_primary_selection_source_v1_destroy(id);
             } else {
-                WAYLAND_wl_list_init(&(primary_selection_source->mimes));
                 primary_selection_source->source = id;
                 zwp_primary_selection_source_v1_add_listener(id, &primary_selection_source_listener,
                                                              primary_selection_source);
@@ -2728,6 +2706,9 @@ void Wayland_display_destroy_input(SDL_VideoData *d)
         if (input->primary_selection_device->selection_offer != NULL) {
             Wayland_primary_selection_offer_destroy(input->primary_selection_device->selection_offer);
         }
+        if (input->primary_selection_device->selection_source != NULL) {
+            Wayland_primary_selection_source_destroy(input->primary_selection_device->selection_source);
+        }
         SDL_free(input->primary_selection_device);
     }
 
@@ -2753,11 +2734,18 @@ void Wayland_display_destroy_input(SDL_VideoData *d)
     }
 
     if (input->touch) {
+        struct SDL_WaylandTouchPoint *tp, *tmp;
+
         SDL_DelTouch(1);
         if (wl_touch_get_version(input->touch) >= WL_TOUCH_RELEASE_SINCE_VERSION) {
             wl_touch_release(input->touch);
         } else {
             wl_touch_destroy(input->touch);
+        }
+
+        wl_list_for_each_safe (tp, tmp, &touch_points, link) {
+            WAYLAND_wl_list_remove(&tp->link);
+            SDL_free(tp);
         }
     }
 

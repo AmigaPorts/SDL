@@ -56,7 +56,7 @@ OS4_GL_LogLibraryError()
 }
 
 int
-OS4_GL_LoadLibrary(_THIS, const char * path)
+OS4_GL_LoadLibrary(SDL_VideoDevice *_this, const char * path)
 {
     dprintf("Called %d\n", _this->gl_config.driver_loaded);
 
@@ -86,7 +86,7 @@ OS4_GL_LoadLibrary(_THIS, const char * path)
 }
 
 SDL_FunctionPointer
-OS4_GL_GetProcAddress(_THIS, const char * proc)
+OS4_GL_GetProcAddress(SDL_VideoDevice *_this, const char * proc)
 {
     void *func = NULL;
 
@@ -104,7 +104,7 @@ OS4_GL_GetProcAddress(_THIS, const char * proc)
 }
 
 void
-OS4_GL_UnloadLibrary(_THIS)
+OS4_GL_UnloadLibrary(SDL_VideoDevice *_this)
 {
     dprintf("Called %d\n", _this->gl_config.driver_loaded);
 
@@ -113,7 +113,7 @@ OS4_GL_UnloadLibrary(_THIS)
 }
 
 SDL_bool
-OS4_GL_AllocateBuffers(_THIS, int width, int height, int depth, SDL_WindowData * data)
+OS4_GL_AllocateBuffers(SDL_VideoDevice *_this, int width, int height, int depth, SDL_WindowData * data)
 {
     dprintf("Allocate double buffer bitmaps %d*%d*%d\n", width, height, depth);
 
@@ -173,7 +173,7 @@ OS4_GL_AllocateBuffers(_THIS, int width, int height, int depth, SDL_WindowData *
 }
 
 void
-OS4_GL_FreeBuffers(_THIS, SDL_WindowData * data)
+OS4_GL_FreeBuffers(SDL_VideoDevice *_this, SDL_WindowData * data)
 {
     dprintf("Called\n");
 
@@ -189,7 +189,7 @@ OS4_GL_FreeBuffers(_THIS, SDL_WindowData * data)
 }
 
 SDL_GLContext
-OS4_GL_CreateContext(_THIS, SDL_Window * window)
+OS4_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
 {
     dprintf("Called\n");
 
@@ -252,7 +252,7 @@ OS4_GL_CreateContext(_THIS, SDL_Window * window)
 }
 
 int
-OS4_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
+OS4_GL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext context)
 {
     int result = -1;
 
@@ -271,13 +271,13 @@ OS4_GL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
 }
 
 void
-OS4_GL_GetDrawableSize(_THIS, SDL_Window * window, int * w, int * h)
+OS4_GL_GetDrawableSize(SDL_VideoDevice *_this, SDL_Window * window, int * w, int * h)
 {
     OS4_WaitForResize(_this, window, w, h);
 }
 
 int
-OS4_GL_SetSwapInterval(_THIS, int interval)
+OS4_GL_SetSwapInterval(SDL_VideoDevice *_this, int interval)
 {
     SDL_VideoData *data = _this->driverdata;
 
@@ -294,7 +294,7 @@ OS4_GL_SetSwapInterval(_THIS, int interval)
 }
 
 int
-OS4_GL_GetSwapInterval(_THIS, int* interval)
+OS4_GL_GetSwapInterval(SDL_VideoDevice *_this, int* interval)
 {
     //dprintf("Called\n");
 
@@ -306,7 +306,7 @@ OS4_GL_GetSwapInterval(_THIS, int* interval)
 }
 
 int
-OS4_GL_SwapWindow(_THIS, SDL_Window * window)
+OS4_GL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
     //dprintf("Called\n");
 
@@ -384,7 +384,7 @@ OS4_GL_SwapWindow(_THIS, SDL_Window * window)
 }
 
 int
-OS4_GL_DeleteContext(_THIS, SDL_GLContext context)
+OS4_GL_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context)
 {
     dprintf("Called with context=%p\n", context);
 
@@ -425,7 +425,7 @@ OS4_GL_DeleteContext(_THIS, SDL_GLContext context)
 }
 
 SDL_bool
-OS4_GL_ResizeContext(_THIS, SDL_Window * window)
+OS4_GL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
 {
     if (IMiniGL) {
         SDL_WindowData *data = window->driverdata;
@@ -457,7 +457,7 @@ OS4_GL_ResizeContext(_THIS, SDL_Window * window)
 }
 
 void
-OS4_GL_UpdateWindowPointer(_THIS, SDL_Window * window)
+OS4_GL_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window)
 {
     // Nothing to do for MiniGL
 }

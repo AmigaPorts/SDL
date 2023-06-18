@@ -55,7 +55,7 @@ OS4_PixfToSdlPixelFormat(PIX_FMT from)
 }
 
 int
-OS4_CreateWindowFramebuffer(_THIS, SDL_Window * window, Uint32 * format, void ** pixels, int * pitch)
+OS4_CreateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, Uint32 * format, void ** pixels, int * pitch)
 {
     APTR lock;
     APTR base_address;
@@ -130,7 +130,7 @@ min(int a, int b)
 }
 
 int
-OS4_UpdateWindowFramebuffer(_THIS, SDL_Window * window, const SDL_Rect * rects, int numrects)
+OS4_UpdateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, const SDL_Rect * rects, int numrects)
 {
     SDL_WindowData * data = window->driverdata;
     int32 ret = -1;
@@ -184,7 +184,7 @@ OS4_UpdateWindowFramebuffer(_THIS, SDL_Window * window, const SDL_Rect * rects, 
 }
 
 void
-OS4_DestroyWindowFramebuffer(_THIS, SDL_Window * window)
+OS4_DestroyWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window)
 {
     SDL_WindowData *data = window->driverdata;
 

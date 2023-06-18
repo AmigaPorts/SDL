@@ -189,7 +189,7 @@ OS4_SetAlphaLayer(struct Window * window, SDL_ShapeData * data)
 }
 
 void
-OS4_DestroyShape(_THIS, SDL_Window * window)
+OS4_DestroyShape(SDL_VideoDevice *_this, SDL_Window * window)
 {
     SDL_WindowShaper *shaper = window->shaper;
 

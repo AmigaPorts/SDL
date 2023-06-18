@@ -23,9 +23,9 @@
 #ifndef _SDL_os4framebuffer_h
 #define _SDL_os4framebuffer_h
 
-extern int OS4_CreateWindowFramebuffer(_THIS, SDL_Window * window, Uint32 * format, void ** pixels, int *pitch);
-extern int OS4_UpdateWindowFramebuffer(_THIS, SDL_Window * window, const SDL_Rect * rects, int numrects);
-extern void OS4_DestroyWindowFramebuffer(_THIS, SDL_Window * window);
+extern int OS4_CreateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, Uint32 * format, void ** pixels, int *pitch);
+extern int OS4_UpdateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, const SDL_Rect * rects, int numrects);
+extern void OS4_DestroyWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window);
 
 #endif /* _SDL_os4framebuffer_h */
 

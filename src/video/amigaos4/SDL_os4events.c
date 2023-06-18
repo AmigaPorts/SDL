@@ -44,7 +44,7 @@
 #undef DEBUG
 #include "../../main/amigaos4/SDL_os4debug.h"
 
-extern SDL_bool (*OS4_ResizeGlContext)(_THIS, SDL_Window * window);
+extern SDL_bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window);
 
 struct MyIntuiMessage
 {
@@ -78,7 +78,7 @@ struct QualifierItem
 extern OS4_GlobalMouseState globalMouseState;
 
 static void
-OS4_SyncKeyModifiers(_THIS)
+OS4_SyncKeyModifiers(SDL_VideoDevice *_this)
 {
     int i;
 
@@ -151,7 +151,7 @@ OS4_ResetNormalKeys(void)
 // We could possibly use also Window.userdata field to contain SDL_Window,
 // and thus avoid searching
 static SDL_Window *
-OS4_FindWindow(_THIS, struct Window * syswin)
+OS4_FindWindow(SDL_VideoDevice *_this, struct Window * syswin)
 {
     SDL_Window *sdlwin;
 
@@ -172,7 +172,7 @@ OS4_FindWindow(_THIS, struct Window * syswin)
 }
 
 static char
-OS4_TranslateUnicode(_THIS, uint16 code, uint32 qualifier)
+OS4_TranslateUnicode(SDL_VideoDevice *_this, uint16 code, uint32 qualifier)
 {
     struct InputEvent ie;
     uint16 res;
@@ -238,7 +238,7 @@ OS4_DetectNumLock(const SDL_Scancode s)
 }
 
 static void
-OS4_HandleKeyboard(_THIS, struct MyIntuiMessage * imsg)
+OS4_HandleKeyboard(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
 {
     const uint8 rawkey = imsg->Code & 0x7F;
 
@@ -268,7 +268,7 @@ OS4_HandleKeyboard(_THIS, struct MyIntuiMessage * imsg)
 }
 
 static void
-OS4_HandleHitTestMotion(_THIS, SDL_Window * sdlwin, struct MyIntuiMessage * imsg)
+OS4_HandleHitTestMotion(SDL_VideoDevice *_this, SDL_Window * sdlwin, struct MyIntuiMessage * imsg)
 {
     HitTestInfo *hti = &((SDL_WindowData *)sdlwin->driverdata)->hti;
 
@@ -375,7 +375,7 @@ OS4_IsHitTestResize(HitTestInfo * hti)
 }
 
 static void
-OS4_HandleMouseMotion(_THIS, struct MyIntuiMessage * imsg)
+OS4_HandleMouseMotion(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
 {
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
@@ -405,7 +405,7 @@ OS4_HandleMouseMotion(_THIS, struct MyIntuiMessage * imsg)
 }
 
 static SDL_bool
-OS4_HandleHitTest(_THIS, SDL_Window * sdlwin, struct MyIntuiMessage * imsg)
+OS4_HandleHitTest(SDL_VideoDevice *_this, SDL_Window * sdlwin, struct MyIntuiMessage * imsg)
 {
     if (sdlwin->hit_test) {
         const SDL_Point point = { imsg->WindowMouseX, imsg->WindowMouseY };
@@ -460,7 +460,7 @@ OS4_GetButton(uint16 code)
 }
 
 static void
-OS4_HandleMouseButtons(_THIS, struct MyIntuiMessage * imsg)
+OS4_HandleMouseButtons(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
 {
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
@@ -495,7 +495,7 @@ OS4_HandleMouseButtons(_THIS, struct MyIntuiMessage * imsg)
 }
 
 static void
-OS4_HandleMouseWheel(_THIS, struct MyIntuiMessage * imsg)
+OS4_HandleMouseWheel(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
 {
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
@@ -517,7 +517,7 @@ OS4_HandleMouseWheel(_THIS, struct MyIntuiMessage * imsg)
 }
 
 static void
-OS4_HandleResize(_THIS, struct MyIntuiMessage * imsg)
+OS4_HandleResize(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
 {
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
@@ -552,7 +552,7 @@ OS4_HandleResize(_THIS, struct MyIntuiMessage * imsg)
 }
 
 static void
-OS4_HandleMove(_THIS, struct MyIntuiMessage * imsg)
+OS4_HandleMove(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
 {
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
@@ -566,7 +566,7 @@ OS4_HandleMove(_THIS, struct MyIntuiMessage * imsg)
 }
 
 static void
-OS4_HandleActivation(_THIS, struct MyIntuiMessage * imsg, SDL_bool activated)
+OS4_HandleActivation(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg, SDL_bool activated)
 {
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
@@ -591,7 +591,7 @@ OS4_HandleActivation(_THIS, struct MyIntuiMessage * imsg, SDL_bool activated)
 }
 
 static void
-OS4_HandleClose(_THIS, struct MyIntuiMessage * imsg)
+OS4_HandleClose(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
 {
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
@@ -601,7 +601,7 @@ OS4_HandleClose(_THIS, struct MyIntuiMessage * imsg)
 }
 
 static void
-OS4_HandleTicks(_THIS, struct MyIntuiMessage * imsg)
+OS4_HandleTicks(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
 {
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
@@ -624,7 +624,7 @@ OS4_HandleTicks(_THIS, struct MyIntuiMessage * imsg)
 }
 
 static void
-OS4_HandleGadget(_THIS, struct MyIntuiMessage * msg)
+OS4_HandleGadget(SDL_VideoDevice *_this, struct MyIntuiMessage * msg)
 {
     dprintf("Gadget event %p\n", msg->Gadget);
 
@@ -639,7 +639,7 @@ OS4_HandleGadget(_THIS, struct MyIntuiMessage * msg)
 }
 
 static void
-OS4_HandleAppWindow(_THIS, struct AppMessage * msg)
+OS4_HandleAppWindow(SDL_VideoDevice *_this, struct AppMessage * msg)
 {
     SDL_Window *window = (SDL_Window *)msg->am_UserData;
 
@@ -660,7 +660,7 @@ OS4_HandleAppWindow(_THIS, struct AppMessage * msg)
 }
 
 static void
-OS4_HandleAppIcon(_THIS, struct AppMessage * msg)
+OS4_HandleAppIcon(SDL_VideoDevice *_this, struct AppMessage * msg)
 {
     SDL_Window *window = (SDL_Window *)msg->am_UserData;
     dprintf("Window ptr = %p\n", window);
@@ -698,7 +698,7 @@ OS4_CopyIdcmpMessage(struct IntuiMessage * src, struct MyIntuiMessage * dst)
 
 // TODO: we need to handle Intuition's window move (repositioning) event and update sdlwin's x&y
 static void
-OS4_HandleIdcmpMessages(_THIS, struct MsgPort * msgPort)
+OS4_HandleIdcmpMessages(SDL_VideoDevice *_this, struct MsgPort * msgPort)
 {
     struct IntuiMessage *imsg;
     struct MyIntuiMessage msg;
@@ -763,7 +763,7 @@ OS4_HandleIdcmpMessages(_THIS, struct MsgPort * msgPort)
 }
 
 static void
-OS4_HandleAppMessages(_THIS, struct MsgPort * msgPort)
+OS4_HandleAppMessages(SDL_VideoDevice *_this, struct MsgPort * msgPort)
 {
     struct AppMessage *msg;
 
@@ -785,7 +785,7 @@ OS4_HandleAppMessages(_THIS, struct MsgPort * msgPort)
 }
 
 void
-OS4_PumpEvents(_THIS)
+OS4_PumpEvents(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 

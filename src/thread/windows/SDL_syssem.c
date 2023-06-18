@@ -328,8 +328,7 @@ static const SDL_sem_impl_t SDL_sem_impl_kern = {
  * Runtime selection and redirection
  */
 
-SDL_Semaphore *
-SDL_CreateSemaphore(Uint32 initial_value)
+SDL_Semaphore *SDL_CreateSemaphore(Uint32 initial_value)
 {
     if (SDL_sem_impl_active.Create == NULL) {
         /* Default to fallback implementation */
@@ -377,8 +376,7 @@ int SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore *sem, Sint64 timeoutNS)
     return SDL_sem_impl_active.WaitTimeoutNS(sem, timeoutNS);
 }
 
-Uint32
-SDL_GetSemaphoreValue(SDL_Semaphore *sem)
+Uint32 SDL_GetSemaphoreValue(SDL_Semaphore *sem)
 {
     return SDL_sem_impl_active.Value(sem);
 }

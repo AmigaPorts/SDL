@@ -43,6 +43,20 @@
 #define SDL_atomic_t SDL_AtomicInt
 
 /* ##SDL_audio.h */
+#define AUDIO_F32 SDL_AUDIO_F32
+#define AUDIO_F32LSB SDL_AUDIO_F32LSB
+#define AUDIO_F32MSB SDL_AUDIO_F32MSB
+#define AUDIO_F32SYS SDL_AUDIO_F32SYS
+#define AUDIO_S16 SDL_AUDIO_S16
+#define AUDIO_S16LSB SDL_AUDIO_S16LSB
+#define AUDIO_S16MSB SDL_AUDIO_S16MSB
+#define AUDIO_S16SYS SDL_AUDIO_S16SYS
+#define AUDIO_S32 SDL_AUDIO_S32
+#define AUDIO_S32LSB SDL_AUDIO_S32LSB
+#define AUDIO_S32MSB SDL_AUDIO_S32MSB
+#define AUDIO_S32SYS SDL_AUDIO_S32SYS
+#define AUDIO_S8 SDL_AUDIO_S8
+#define AUDIO_U8 SDL_AUDIO_U8
 #define SDL_AudioStreamAvailable SDL_GetAudioStreamAvailable
 #define SDL_AudioStreamClear SDL_ClearAudioStream
 #define SDL_AudioStreamFlush SDL_FlushAudioStream
@@ -441,22 +455,44 @@
 #define SDL_RenderGetD3D11Device SDL_GetRenderD3D11Device
 #define SDL_RenderGetD3D9Device SDL_GetRenderD3D9Device
 
+/* ##SDL_thread.h */
+#define SDL_TLSCleanup SDL_CleanupTLS
+#define SDL_TLSCreate SDL_CreateTLS
+#define SDL_TLSGet SDL_GetTLS
+#define SDL_TLSSet SDL_SetTLS
+
 /* ##SDL_timer.h */
 #define SDL_GetTicks64 SDL_GetTicks
 
 /* ##SDL_video.h */
 #define SDL_GetClosestDisplayMode SDL_GetClosestFullscreenDisplayMode
+#define SDL_GetDisplayOrientation SDL_GetCurrentDisplayOrientation
 #define SDL_GetPointDisplayIndex SDL_GetDisplayForPoint
 #define SDL_GetRectDisplayIndex SDL_GetDisplayForRect
 #define SDL_GetWindowDisplayIndex SDL_GetDisplayForWindow
 #define SDL_GetWindowDisplayMode SDL_GetWindowFullscreenMode
 #define SDL_IsScreenSaverEnabled SDL_ScreenSaverEnabled
 #define SDL_SetWindowDisplayMode SDL_SetWindowFullscreenMode
+#define SDL_WINDOW_ALLOW_HIGHDPI SDL_WINDOW_HIGH_PIXEL_DENSITY
 #define SDL_WINDOW_INPUT_GRABBED SDL_WINDOW_MOUSE_GRABBED
 
 #elif !defined(SDL_DISABLE_OLD_NAMES)
 
 /* ##SDL_audio.h */
+#define AUDIO_F32 AUDIO_F32_renamed_SDL_AUDIO_F32
+#define AUDIO_F32LSB AUDIO_F32LSB_renamed_SDL_AUDIO_F32LSB
+#define AUDIO_F32MSB AUDIO_F32MSB_renamed_SDL_AUDIO_F32MSB
+#define AUDIO_F32SYS AUDIO_F32SYS_renamed_SDL_AUDIO_F32SYS
+#define AUDIO_S16 AUDIO_S16_renamed_SDL_AUDIO_S16
+#define AUDIO_S16LSB AUDIO_S16LSB_renamed_SDL_AUDIO_S16LSB
+#define AUDIO_S16MSB AUDIO_S16MSB_renamed_SDL_AUDIO_S16MSB
+#define AUDIO_S16SYS AUDIO_S16SYS_renamed_SDL_AUDIO_S16SYS
+#define AUDIO_S32 AUDIO_S32_renamed_SDL_AUDIO_S32
+#define AUDIO_S32LSB AUDIO_S32LSB_renamed_SDL_AUDIO_S32LSB
+#define AUDIO_S32MSB AUDIO_S32MSB_renamed_SDL_AUDIO_S32MSB
+#define AUDIO_S32SYS AUDIO_S32SYS_renamed_SDL_AUDIO_S32SYS
+#define AUDIO_S8 AUDIO_S8_renamed_SDL_AUDIO_S8
+#define AUDIO_U8 AUDIO_U8_renamed_SDL_AUDIO_U8
 #define SDL_AudioStreamAvailable SDL_AudioStreamAvailable_renamed_SDL_GetAudioStreamAvailable
 #define SDL_AudioStreamClear SDL_AudioStreamClear_renamed_SDL_ClearAudioStream
 #define SDL_AudioStreamFlush SDL_AudioStreamFlush_renamed_SDL_FlushAudioStream
@@ -856,17 +892,25 @@
 #define SDL_RenderGetD3D11Device SDL_RenderGetD3D11Device_renamed_SDL_GetRenderD3D11Device
 #define SDL_RenderGetD3D9Device SDL_RenderGetD3D9Device_renamed_SDL_GetRenderD3D9Device
 
+/* ##SDL_thread.h */
+#define SDL_TLSCleanup SDL_TLSCleanup_renamed_SDL_CleanupTLS
+#define SDL_TLSCreate SDL_TLSCreate_renamed_SDL_CreateTLS
+#define SDL_TLSGet SDL_TLSGet_renamed_SDL_GetTLS
+#define SDL_TLSSet SDL_TLSSet_renamed_SDL_SetTLS
+
 /* ##SDL_timer.h */
 #define SDL_GetTicks64 SDL_GetTicks64_renamed_SDL_GetTicks
 
 /* ##SDL_video.h */
 #define SDL_GetClosestDisplayMode SDL_GetClosestDisplayMode_renamed_SDL_GetClosestFullscreenDisplayMode
+#define SDL_GetDisplayOrientation SDL_GetDisplayOrientation_renamed_SDL_GetCurrentDisplayOrientation
 #define SDL_GetPointDisplayIndex SDL_GetPointDisplayIndex_renamed_SDL_GetDisplayForPoint
 #define SDL_GetRectDisplayIndex SDL_GetRectDisplayIndex_renamed_SDL_GetDisplayForRect
 #define SDL_GetWindowDisplayIndex SDL_GetWindowDisplayIndex_renamed_SDL_GetDisplayForWindow
 #define SDL_GetWindowDisplayMode SDL_GetWindowDisplayMode_renamed_SDL_GetWindowFullscreenMode
 #define SDL_IsScreenSaverEnabled SDL_IsScreenSaverEnabled_renamed_SDL_ScreenSaverEnabled
 #define SDL_SetWindowDisplayMode SDL_SetWindowDisplayMode_renamed_SDL_SetWindowFullscreenMode
+#define SDL_WINDOW_ALLOW_HIGHDPI SDL_WINDOW_ALLOW_HIGHDPI_renamed_SDL_WINDOW_HIGH_PIXEL_DENSITY
 #define SDL_WINDOW_INPUT_GRABBED SDL_WINDOW_INPUT_GRABBED_renamed_SDL_WINDOW_MOUSE_GRABBED
 
 #endif /* SDL_ENABLE_OLD_NAMES */

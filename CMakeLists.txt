@@ -167,17 +167,17 @@ endif()
 #  so we default to yes on iOS.
 #  TODO: Windows can support libusb, the hid.c file just depends on Unix APIs
 if((WINDOWS AND NOT WINDOWS_STORE) OR IOS OR TVOS OR ANDROID)
-  set(HIDAPI_SKIP_LIBUSB TRUE)
+  set(SDL_HIDAPI_LIBUSB_AVAILABLE FALSE)
 else()
-  set(HIDAPI_SKIP_LIBUSB FALSE)
+  set(SDL_HIDAPI_LIBUSB_AVAILABLE TRUE)
 endif()
 
 # On the other hand, *BSD specifically uses libusb only, so we make a special
 #  case just for them.
 if(FREEBSD OR NETBSD OR OPENBSD OR BSDI)
-  set(HIDAPI_ONLY_LIBUSB TRUE)
+  set(SDL_HIDAPI_LIBUSB_DEFAULT TRUE)
 else()
-  set(HIDAPI_ONLY_LIBUSB FALSE)
+  set(SDL_HIDAPI_LIBUSB_DEFAULT FALSE)
 endif()
 
 # Compiler info
@@ -442,7 +442,7 @@ set_option(SDL_OFFSCREEN           "Use offscreen video driver" ON)
 option_string(SDL_BACKGROUNDING_SIGNAL "number to use for magic backgrounding signal or 'OFF'" OFF)
 option_string(SDL_FOREGROUNDING_SIGNAL "number to use for magic foregrounding signal or 'OFF'" OFF)
 set_option(SDL_HIDAPI              "Enable the HIDAPI subsystem" ON)
-dep_option(SDL_HIDAPI_LIBUSB       "Use libusb for low level joystick drivers" OFF SDL_HIDAPI OFF)
+dep_option(SDL_HIDAPI_LIBUSB       "Use libusb for low level joystick drivers" ${SDL_HIDAPI_LIBUSB_DEFAULT} "SDL_HIDAPI;${SDL_HIDAPI_LIBUSB_AVAILABLE}" OFF)
 dep_option(SDL_HIDAPI_JOYSTICK     "Use HIDAPI for low level joystick drivers" ON SDL_HIDAPI OFF)
 dep_option(SDL_VIRTUAL_JOYSTICK    "Enable the virtual-joystick driver" ON SDL_HIDAPI OFF)
 set_option(SDL_LIBUDEV             "Enable libudev support" ON)
@@ -465,14 +465,6 @@ dep_option(SDL_TESTS           "Build the test directory" OFF SDL_TEST OFF)
 dep_option(SDL_INSTALL_TESTS   "Install test-cases" OFF "NOT SDL_DISABLE_INSTALL;NOT SDL_FRAMEWORK" OFF)
 
 set(HAVE_STATIC_PIC "${SDL_STATIC_PIC}")
-
-if(SDL_HIDAPI)
-  if(HIDAPI_ONLY_LIBUSB)
-    set(SDL_HIDAPI_LIBUSB ON CACHE BOOL "" FORCE)
-  elseif(HIDAPI_SKIP_LIBUSB)
-    set(SDL_HIDAPI_LIBUSB OFF CACHE BOOL "" FORCE)
-  endif()
-endif()
 
 if(VITA)
   set_option(VIDEO_VITA_PIB  "Build with PSVita piglet gles2 support" OFF)
@@ -570,32 +562,6 @@ if(USE_GCC OR USE_CLANG OR USE_INTELCC OR USE_QCC)
     target_compile_options(sdl-global-options INTERFACE "-fno-strict-aliasing")
   endif()
 
-  # command-line option ‘-Wdeclaration-after-statement’ is valid for C/ObjC but not for C++
-  check_c_compiler_flag(-Wdeclaration-after-statement HAVE_GCC_WDECLARATION_AFTER_STATEMENT)
-  if(HAVE_GCC_WDECLARATION_AFTER_STATEMENT)
-    if(SDL_WERROR)
-      check_c_compiler_flag(-Werror=declaration-after-statement HAVE_GCC_WERROR_DECLARATION_AFTER_STATEMENT)
-      if(HAVE_GCC_WERROR_DECLARATION_AFTER_STATEMENT)
-        if(CMAKE_VERSION VERSION_LESS 3.3)
-          target_compile_options(sdl-global-options INTERFACE "-Werror=declaration-after-statement")
-        else()
-          target_compile_options(sdl-global-options INTERFACE "$<$<COMPILE_LANGUAGE:C>:-Werror=declaration-after-statement>")
-          if(CMAKE_OBJC_COMPILER)
-              target_compile_options(sdl-global-options INTERFACE "$<$<COMPILE_LANGUAGE:OBJC>:-Werror=declaration-after-statement>")
-          endif()
-        endif()
-      endif()
-    endif()
-    if(CMAKE_VERSION VERSION_LESS 3.3)
-      target_compile_options(sdl-global-options INTERFACE "-Wdeclaration-after-statement")
-    else()
-      target_compile_options(sdl-global-options INTERFACE "$<$<COMPILE_LANGUAGE:C>:-Wdeclaration-after-statement>")
-      if(CMAKE_OBJC_COMPILER)
-          target_compile_options(sdl-global-options INTERFACE "$<$<COMPILE_LANGUAGE:OBJC>:-Wdeclaration-after-statement>")
-      endif()
-    endif()
-  endif()
-
   check_c_compiler_flag(-Wdocumentation HAVE_GCC_WDOCUMENTATION)
   if(HAVE_GCC_WDOCUMENTATION)
     if(SDL_WERROR)
@@ -673,6 +639,11 @@ if(USE_GCC OR USE_CLANG OR USE_INTELCC OR USE_QCC)
   check_c_compiler_flag(-Wshadow HAVE_GCC_WSHADOW)
   if(HAVE_GCC_WSHADOW)
     target_compile_options(sdl-global-options INTERFACE "-Wshadow")
+  endif()
+
+  check_c_compiler_flag(-Wunused-local-typedefs HAVE_GCC_WUNUSED_LOCAL_TYPEDEFS)
+  if(HAVE_GCC_WUNUSED_LOCAL_TYPEDEFS)
+    target_compile_options(sdl-global-options INTERFACE "-Wno-unused-local-typedefs")
   endif()
 
   if(APPLE)
@@ -1127,16 +1098,7 @@ if(SDL_LIBC)
       set(${_HAVE_H} 1)
     endforeach()
     set(HAVE_SIGNAL_H 1)
-    foreach(_FN
-            malloc calloc realloc free bsearch qsort abs memset memcpy memmove memcmp
-            wcslen _wcsdup wcsdup wcsstr wcscmp wcsncmp _wcsicmp _wcsnicmp
-            strlen _strrev _strupr _strlwr strchr strrchr strstr itoa _ltoa
-            _ultoa strtol strtoul strtoll strtod atoi atof strcmp strncmp
-            _stricmp _strnicmp sscanf
-            acos acosf asin asinf atan atanf atan2 atan2f ceil ceilf
-            copysign copysignf cos cosf exp expf fabs fabsf floor floorf fmod fmodf
-            log logf log10 log10f lround lroundf modf modff pow powf round roundf
-            scalbn scalbnf sin sinf sqrt sqrtf tan tanf trunc truncf)
+    foreach(_FN abs acos acosf asin asinf atan atan2 atan2f atanf atof atoi bsearch calloc ceil ceilf copysign copysignf cos cosf exp expf fabs fabsf floor floorf fmod fmodf free itoa log log10 log10f logf lround lroundf _ltoa malloc memcmp memcpy memmove memset modf modff pow powf qsort realloc round roundf scalbn scalbnf sin sinf sqrt sqrtf sscanf strchr strcmp _stricmp strlen _strlwr strncmp _strnicmp strrchr _strrev strstr strtod strtol strtoll strtoul _strupr tan tanf trunc truncf _ultoa wcscmp _wcsdup wcsdup _wcsicmp wcslen wcsncmp _wcsnicmp wcsstr wcstol)
       string(TOUPPER ${_FN} _UPPER)
       set(HAVE_${_UPPER} 1)
     endforeach()
@@ -1180,16 +1142,7 @@ if(SDL_LIBC)
     check_c_source_compiles("#include <sys/types.h>
                              #include <sys/mman.h>
                              int main(void) { return 0; }" HAVE_MPROTECT)
-    foreach(_FN
-            strtod malloc calloc realloc free getenv setenv putenv unsetenv
-            bsearch qsort abs bcopy memset memcpy memmove memcmp strlen strlcpy strlcat
-            _strrev _strupr _strlwr index rindex strchr strrchr strstr strtok_r
-            itoa _ltoa _uitoa _ultoa strtol strtoul _i64toa _ui64toa strtoll strtoull
-            atoi atof strcmp strncmp _stricmp strcasecmp _strnicmp strncasecmp strcasestr
-            wcscmp _wcsdup wcsdup wcslcat wcslcpy wcslen wcsncmp wcsstr
-            wcscasecmp _wcsicmp wcsncasecmp _wcsnicmp
-            sscanf vsscanf vsnprintf fopen64 fseeko fseeko64 _Exit
-            )
+    foreach(_FN abs atof atoi bcopy bsearch calloc _Exit fopen64 free fseeko fseeko64 getenv _i64toa index itoa _ltoa malloc memcmp memcpy memmove memset putenv qsort realloc rindex setenv sscanf strcasecmp strcasestr strchr strcmp _stricmp strlcat strlcpy strlen _strlwr strncasecmp strncmp _strnicmp strrchr _strrev strstr strtod strtok_r strtol strtoll strtoul strtoull _strupr _ui64toa _uitoa _ultoa unsetenv vsnprintf vsscanf wcscasecmp wcscmp _wcsdup wcsdup _wcsicmp wcslcat wcslcpy wcslen wcsncasecmp wcsncmp _wcsnicmp wcsstr wcstol)
       string(TOUPPER ${_FN} _UPPER)
       set(LIBC_HAS_VAR "LIBC_HAS_${_UPPER}")
       check_symbol_exists("${_FN}" "${STDC_HEADER_NAMES}" ${LIBC_HAS_VAR})
@@ -1214,8 +1167,8 @@ if(SDL_LIBC)
     foreach(_FN
               atan atan2 atanf atan2f ceil ceilf copysign copysignf cos cosf
               exp expf fabs fabsf floor floorf fmod fmodf log logf log10 log10f
-              lround lroundf pow powf round roundf scalbn scalbnf sin sinf sqrt
-              sqrtf tan tanf acos acosf asin asinf trunc truncf)
+              lround lroundf modf modff pow powf round roundf scalbn scalbnf
+              sin sinf sqrt sqrtf tan tanf acos acosf asin asinf trunc truncf)
         string(TOUPPER ${_FN} _UPPER)
         set(LIBC_HASVAR "LIBC_HAS_${_UPPER}")
         check_symbol_exists("${_FN}" "math.h" ${LIBC_HASVAR})

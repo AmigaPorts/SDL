@@ -49,7 +49,7 @@ OS4_GLES_LogLibraryError()
 }
 
 int
-OS4_GLES_LoadLibrary(_THIS, const char * path)
+OS4_GLES_LoadLibrary(SDL_VideoDevice *_this, const char * path)
 {
     dprintf("Called %d\n", _this->gl_config.driver_loaded);
 
@@ -79,7 +79,7 @@ OS4_GLES_LoadLibrary(_THIS, const char * path)
 }
 
 SDL_FunctionPointer
-OS4_GLES_GetProcAddress(_THIS, const char * proc)
+OS4_GLES_GetProcAddress(SDL_VideoDevice *_this, const char * proc)
 {
     void *func = NULL;
 
@@ -98,7 +98,7 @@ OS4_GLES_GetProcAddress(_THIS, const char * proc)
 }
 
 void
-OS4_GLES_UnloadLibrary(_THIS)
+OS4_GLES_UnloadLibrary(SDL_VideoDevice *_this)
 {
     dprintf("Called %d\n", _this->gl_config.driver_loaded);
 
@@ -107,7 +107,7 @@ OS4_GLES_UnloadLibrary(_THIS)
 }
 
 SDL_GLContext
-OS4_GLES_CreateContext(_THIS, SDL_Window * window)
+OS4_GLES_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
 {
     dprintf("Called\n");
 
@@ -176,7 +176,7 @@ OS4_GLES_CreateContext(_THIS, SDL_Window * window)
 }
 
 int
-OS4_GLES_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
+OS4_GLES_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext context)
 {
     int result = -1;
 
@@ -195,7 +195,7 @@ OS4_GLES_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
 }
 
 int
-OS4_GLES_SwapWindow(_THIS, SDL_Window * window)
+OS4_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
     //dprintf("Called\n");
 
@@ -267,7 +267,7 @@ OS4_GLES_SwapWindow(_THIS, SDL_Window * window)
 }
 
 int
-OS4_GLES_DeleteContext(_THIS, SDL_GLContext context)
+OS4_GLES_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context)
 {
     dprintf("Called with context=%p\n", context);
 
@@ -307,7 +307,7 @@ OS4_GLES_DeleteContext(_THIS, SDL_GLContext context)
 }
 
 SDL_bool
-OS4_GLES_ResizeContext(_THIS, SDL_Window * window)
+OS4_GLES_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
 {
     if (IOGLES2) {
 #if MANAGE_BITMAP
@@ -336,7 +336,7 @@ OS4_GLES_ResizeContext(_THIS, SDL_Window * window)
 }
 
 void
-OS4_GLES_UpdateWindowPointer(_THIS, SDL_Window * window)
+OS4_GLES_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window)
 {
     if (IOGLES2) {
         SDL_WindowData *data = window->driverdata;

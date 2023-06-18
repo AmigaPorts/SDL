@@ -256,7 +256,7 @@ int WASAPI_GetDefaultAudioInfo(char **name, SDL_AudioSpec *spec, int iscapture)
     return SDL_Unsupported();
 }
 
-int WASAPI_ActivateDevice(_THIS, const SDL_bool isrecovery)
+int WASAPI_ActivateDevice(SDL_AudioDevice *_this, const SDL_bool isrecovery)
 {
     LPCWSTR devid = _this->hidden->devid;
     Platform::String ^ defdevid;
@@ -326,12 +326,12 @@ int WASAPI_ActivateDevice(_THIS, const SDL_bool isrecovery)
     return 0;
 }
 
-void WASAPI_PlatformThreadInit(_THIS)
+void WASAPI_PlatformThreadInit(SDL_AudioDevice *_this)
 {
     // !!! FIXME: set this thread to "Pro Audio" priority.
 }
 
-void WASAPI_PlatformThreadDeinit(_THIS)
+void WASAPI_PlatformThreadDeinit(SDL_AudioDevice *_this)
 {
     // !!! FIXME: set this thread to "Pro Audio" priority.
 }
@@ -345,19 +345,19 @@ extern "C" SDL_AudioFormat
 WaveFormatToSDLFormat(WAVEFORMATEX *waveformat)
 {
     if ((waveformat->wFormatTag == WAVE_FORMAT_IEEE_FLOAT) && (waveformat->wBitsPerSample == 32)) {
-        return AUDIO_F32SYS;
+        return SDL_AUDIO_F32SYS;
     } else if ((waveformat->wFormatTag == WAVE_FORMAT_PCM) && (waveformat->wBitsPerSample == 16)) {
-        return AUDIO_S16SYS;
+        return SDL_AUDIO_S16SYS;
     } else if ((waveformat->wFormatTag == WAVE_FORMAT_PCM) && (waveformat->wBitsPerSample == 32)) {
-        return AUDIO_S32SYS;
+        return SDL_AUDIO_S32SYS;
     } else if (waveformat->wFormatTag == WAVE_FORMAT_EXTENSIBLE) {
         const WAVEFORMATEXTENSIBLE *ext = (const WAVEFORMATEXTENSIBLE *)waveformat;
         if ((SDL_memcmp(&ext->SubFormat, &SDL_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT, sizeof(GUID)) == 0) && (waveformat->wBitsPerSample == 32)) {
-            return AUDIO_F32SYS;
+            return SDL_AUDIO_F32SYS;
         } else if ((SDL_memcmp(&ext->SubFormat, &SDL_KSDATAFORMAT_SUBTYPE_PCM, sizeof(GUID)) == 0) && (waveformat->wBitsPerSample == 16)) {
-            return AUDIO_S16SYS;
+            return SDL_AUDIO_S16SYS;
         } else if ((SDL_memcmp(&ext->SubFormat, &SDL_KSDATAFORMAT_SUBTYPE_PCM, sizeof(GUID)) == 0) && (waveformat->wBitsPerSample == 32)) {
-            return AUDIO_S32SYS;
+            return SDL_AUDIO_S32SYS;
         }
     }
     return 0;

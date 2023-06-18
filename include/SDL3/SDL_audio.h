@@ -88,29 +88,29 @@ typedef Uint16 SDL_AudioFormat;
  *  Defaults to LSB byte order.
  */
 /* @{ */
-#define AUDIO_U8        0x0008  /**< Unsigned 8-bit samples */
-#define AUDIO_S8        0x8008  /**< Signed 8-bit samples */
-#define AUDIO_S16LSB    0x8010  /**< Signed 16-bit samples */
-#define AUDIO_S16MSB    0x9010  /**< As above, but big-endian byte order */
-#define AUDIO_S16       AUDIO_S16LSB
+#define SDL_AUDIO_U8        0x0008  /**< Unsigned 8-bit samples */
+#define SDL_AUDIO_S8        0x8008  /**< Signed 8-bit samples */
+#define SDL_AUDIO_S16LSB    0x8010  /**< Signed 16-bit samples */
+#define SDL_AUDIO_S16MSB    0x9010  /**< As above, but big-endian byte order */
+#define SDL_AUDIO_S16       SDL_AUDIO_S16LSB
 /* @} */
 
 /**
  *  \name int32 support
  */
 /* @{ */
-#define AUDIO_S32LSB    0x8020  /**< 32-bit integer samples */
-#define AUDIO_S32MSB    0x9020  /**< As above, but big-endian byte order */
-#define AUDIO_S32       AUDIO_S32LSB
+#define SDL_AUDIO_S32LSB    0x8020  /**< 32-bit integer samples */
+#define SDL_AUDIO_S32MSB    0x9020  /**< As above, but big-endian byte order */
+#define SDL_AUDIO_S32       SDL_AUDIO_S32LSB
 /* @} */
 
 /**
  *  \name float32 support
  */
 /* @{ */
-#define AUDIO_F32LSB    0x8120  /**< 32-bit floating point samples */
-#define AUDIO_F32MSB    0x9120  /**< As above, but big-endian byte order */
-#define AUDIO_F32       AUDIO_F32LSB
+#define SDL_AUDIO_F32LSB    0x8120  /**< 32-bit floating point samples */
+#define SDL_AUDIO_F32MSB    0x9120  /**< As above, but big-endian byte order */
+#define SDL_AUDIO_F32       SDL_AUDIO_F32LSB
 /* @} */
 
 /**
@@ -118,13 +118,13 @@ typedef Uint16 SDL_AudioFormat;
  */
 /* @{ */
 #if SDL_BYTEORDER == SDL_LIL_ENDIAN
-#define AUDIO_S16SYS    AUDIO_S16LSB
-#define AUDIO_S32SYS    AUDIO_S32LSB
-#define AUDIO_F32SYS    AUDIO_F32LSB
+#define SDL_AUDIO_S16SYS    SDL_AUDIO_S16LSB
+#define SDL_AUDIO_S32SYS    SDL_AUDIO_S32LSB
+#define SDL_AUDIO_F32SYS    SDL_AUDIO_F32LSB
 #else
-#define AUDIO_S16SYS    AUDIO_S16MSB
-#define AUDIO_S32SYS    AUDIO_S32MSB
-#define AUDIO_F32SYS    AUDIO_F32MSB
+#define SDL_AUDIO_S16SYS    SDL_AUDIO_S16MSB
+#define SDL_AUDIO_S32SYS    SDL_AUDIO_S32MSB
+#define SDL_AUDIO_F32SYS    SDL_AUDIO_F32MSB
 #endif
 /* @} */
 
@@ -425,7 +425,7 @@ extern DECLSPEC int SDLCALL SDL_GetDefaultAudioInfo(char **name,
  * When filling in the desired audio spec structure:
  *
  * - `desired->freq` should be the frequency in sample-frames-per-second (Hz).
- * - `desired->format` should be the audio format (`AUDIO_S16SYS`, etc).
+ * - `desired->format` should be the audio format (`SDL_AUDIO_S16SYS`, etc).
  * - `desired->samples` is the desired size of the audio buffer, in _sample
  *   frames_ (with stereo output, two samples--left and right--would make a
  *   single sample frame). This number should be a power of two, and may be
@@ -1221,10 +1221,18 @@ extern DECLSPEC void SDLCALL SDL_UnlockAudioDevice(SDL_AudioDeviceID dev);
  */
 extern DECLSPEC void SDLCALL SDL_CloseAudioDevice(SDL_AudioDeviceID dev);
 
-/* !!! FIXME: maybe remove this before SDL3's API is locked down. */
-
 /**
  * Convert some audio data of one format to another format.
+ *
+ * Please note that this function is for convenience, but should not be used
+ * to resample audio in blocks, as it will introduce audio artifacts on the
+ * boundaries. You should only use this function if you are converting audio
+ * data in its entirety in one call. If you want to convert audio in smaller
+ * chunks, use an SDL_AudioStream, which is designed for this situation.
+ *
+ * Internally, this function creates and destroys an SDL_AudioStream on each
+ * use, so it's also less efficient than using one directly, if you need to
+ * convert multiple times.
  *
  * \param src_format The format of the source audio
  * \param src_channels The number of channels of the source audio

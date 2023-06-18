@@ -26,8 +26,7 @@
 
 #ifdef SDL_THREADS_DISABLED
 
-SDL_Semaphore *
-SDL_CreateSemaphore(Uint32 initial_value)
+SDL_Semaphore *SDL_CreateSemaphore(Uint32 initial_value)
 {
     SDL_SetError("SDL not built with thread support");
     return (SDL_Semaphore *)0;
@@ -42,8 +41,7 @@ int SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore *sem, Sint64 timeoutNS)
     return SDL_SetError("SDL not built with thread support");
 }
 
-Uint32
-SDL_GetSemaphoreValue(SDL_Semaphore *sem)
+Uint32 SDL_GetSemaphoreValue(SDL_Semaphore *sem)
 {
     return 0;
 }
@@ -63,8 +61,7 @@ struct SDL_Semaphore
     SDL_Condition *count_nonzero;
 };
 
-SDL_Semaphore *
-SDL_CreateSemaphore(Uint32 initial_value)
+SDL_Semaphore *SDL_CreateSemaphore(Uint32 initial_value)
 {
     SDL_Semaphore *sem;
 
@@ -144,8 +141,7 @@ int SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore *sem, Sint64 timeoutNS)
     return retval;
 }
 
-Uint32
-SDL_GetSemaphoreValue(SDL_Semaphore *sem)
+Uint32 SDL_GetSemaphoreValue(SDL_Semaphore *sem)
 {
     Uint32 value;
 
