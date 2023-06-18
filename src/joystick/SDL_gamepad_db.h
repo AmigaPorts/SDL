@@ -1010,6 +1010,7 @@ static const char *s_GamepadMappings[] = {
     "0300dc994d4159464c41534820417200,MAYFLASH Arcade Fightstick F300,platform:AmigaOS 4,a:b0,b:b1,x:b3,y:b4,back:b10,guide:b11,start:b12,leftshoulder:b6,rightshoulder:b7,dpup:-a1,dpdown:+a1,dpleft:-a0,dpright:+a0,lefttrigger:b8,righttrigger:b9,",
     "03001fc247616d6520436f6e74726f00,Game Controller for Android,platform:AmigaOS 4,a:b3,b:b0,x:b4,y:b1,dpup:-a1,dpdown:+a1,dpleft:-a0,dpright:+a0,",
     "0300acfa32496e3120555342204a6f00,2In1 USB Joystick,platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,start:b9,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:-a1,dpdown:+a1,dpleft:-a0,dpright:+a0,-leftx:h0.8,+leftx:h0.2,-lefty:h0.1,+lefty:h0.4,lefttrigger:b6,righttrigger:b7,",
+    "03006ce85553422047616d6570616400,USB Gamepad,platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,start:b9,rightstick:b11,leftshoulder:b4,rightshoulder:b5,leftx:a0,lefty:a1,lefttrigger:b6,righttrigger:b7,",
 #endif
 #ifdef SDL_JOYSTICK_VITA
     "0000000050535669746120436f6e7400,PSVita Controller,crc:d598,a:b2,b:b1,back:b10,dpdown:b6,dpleft:b7,dpright:b9,dpup:b8,leftshoulder:b4,leftstick:b14,lefttrigger:a4,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b15,righttrigger:a5,rightx:a2,righty:a3,start:b11,x:b3,y:b0,",
