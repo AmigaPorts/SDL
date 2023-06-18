@@ -31,7 +31,7 @@
 #include "../../main/amigaos4/SDL_os4debug.h"
 
 static SDL_bool
-OS4_GetDisplayMode(_THIS, ULONG id, SDL_DisplayMode * mode)
+OS4_GetDisplayMode(SDL_VideoDevice *_this, ULONG id, SDL_DisplayMode * mode)
 {
     SDL_DisplayModeData *data;
     APTR handle;
@@ -62,9 +62,9 @@ OS4_GetDisplayMode(_THIS, ULONG id, SDL_DisplayMode * mode)
     data->modeid = id;
     data->x = diminfo.Nominal.MinX;
     data->y = diminfo.Nominal.MinY;
-    mode->pixel_w = mode->screen_w = diminfo.Nominal.MaxX - diminfo.Nominal.MinX + 1;
-    mode->pixel_h = mode->screen_h = diminfo.Nominal.MaxY - diminfo.Nominal.MinY + 1;
-    mode->display_scale = 1.0f;
+    mode->w = diminfo.Nominal.MaxX - diminfo.Nominal.MinX + 1;
+    mode->h = diminfo.Nominal.MaxY - diminfo.Nominal.MinY + 1;
+    mode->pixel_density = 1.0f;
     mode->refresh_rate = 60.0f; // grab DTAG_MNTR?
     mode->format = SDL_PIXELFORMAT_UNKNOWN;
 
@@ -97,7 +97,7 @@ OS4_GetDisplayMode(_THIS, ULONG id, SDL_DisplayMode * mode)
 }
 
 static SDL_bool
-OS4_LockPubScreen(_THIS)
+OS4_LockPubScreen(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
@@ -115,7 +115,7 @@ OS4_LockPubScreen(_THIS)
 }
 
 static void
-OS4_UnlockPubScreen(_THIS)
+OS4_UnlockPubScreen(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
@@ -128,7 +128,7 @@ OS4_UnlockPubScreen(_THIS)
 }
 
 int
-OS4_InitModes(_THIS)
+OS4_InitModes(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
     SDL_VideoDisplay display;
@@ -168,14 +168,14 @@ OS4_InitModes(_THIS)
 }
 
 int
-OS4_GetDisplayBounds(_THIS, SDL_VideoDisplay * display, SDL_Rect * rect)
+OS4_GetDisplayBounds(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_Rect * rect)
 {
     SDL_DisplayModeData *data = (SDL_DisplayModeData *) display->current_mode->driverdata;
 
     rect->x = data->x;
     rect->y = data->y;
-    rect->w = display->current_mode->screen_w;
-    rect->h = display->current_mode->screen_h;
+    rect->w = display->current_mode->w;
+    rect->h = display->current_mode->h;
 
     dprintf("x=%d, y=%d, w=%d, h=%d\n", rect->x, rect->y, rect->w, rect->h);
 
@@ -183,7 +183,7 @@ OS4_GetDisplayBounds(_THIS, SDL_VideoDisplay * display, SDL_Rect * rect)
 }
 
 int
-OS4_GetDisplayModes(_THIS, SDL_VideoDisplay * display)
+OS4_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay * display)
 {
     SDL_DisplayMode mode;
     ULONG id = INVALID_ID;
@@ -208,7 +208,7 @@ OS4_GetDisplayModes(_THIS, SDL_VideoDisplay * display)
 }
 
 void
-OS4_CloseScreen(_THIS, struct Screen * screen)
+OS4_CloseScreen(SDL_VideoDevice *_this, struct Screen * screen)
 {
     if (screen) {
         SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
@@ -231,7 +231,7 @@ OS4_CloseScreen(_THIS, struct Screen * screen)
 }
 
 int
-OS4_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
+OS4_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
 {
     SDL_VideoData *driverdata = (SDL_VideoData *) _this->driverdata;
     SDL_DisplayData *displaydata = (SDL_DisplayData *) display->driverdata;
@@ -248,8 +248,8 @@ OS4_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
     }
 
     displaydata->screen = IIntuition->OpenScreenTags(NULL,
-        SA_Width,       mode->screen_w,
-        SA_Height,      mode->screen_h,
+        SA_Width,       mode->w,
+        SA_Height,      mode->h,
         SA_Depth,       bpp,
         SA_DisplayID,   data->modeid,
         SA_Quiet,       TRUE,
@@ -294,13 +294,13 @@ OS4_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
 
     // Paint it black (it helps in cases where window doesn't fill the screen)
     // ...do we need a backfill hook?
-    IGraphics->RectFillColor(&displaydata->screen->RastPort, 0, 0, mode->screen_w - 1, mode->screen_h - 1, 0xFF000000);
+    IGraphics->RectFillColor(&displaydata->screen->RastPort, 0, 0, mode->w - 1, mode->h - 1, 0xFF000000);
 
     return 0;
 }
 
 void
-OS4_QuitModes(_THIS)
+OS4_QuitModes(SDL_VideoDevice *_this)
 {
     dprintf("Called\n");
 

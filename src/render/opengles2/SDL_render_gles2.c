@@ -152,7 +152,7 @@ typedef struct GLES2_RenderData
 
 /* AmigaOS 4 workaround: add "my" prefix to function pointer names because glCall gets extended to IOGLES2->glCall
    which doesn't compile in cases of data->glCall */
-#define SDL_PROC(ret, func, params) ret(APIENTRY *my##func) params;
+#define SDL_PROC(ret, func, params) ret (APIENTRY *my##func) params;
 #include "SDL_gles2funcs.h"
 #undef SDL_PROC
     GLES2_FBOList *framebuffers;
@@ -177,8 +177,7 @@ typedef struct GLES2_RenderData
 
 static const float inv255f = 1.0f / 255.0f;
 
-SDL_FORCE_INLINE const char *
-GL_TranslateError(GLenum error)
+static const char *GL_TranslateError(GLenum error)
 {
 #define GL_ERROR_TRANSLATE(e) \
     case e:                   \
@@ -195,8 +194,7 @@ GL_TranslateError(GLenum error)
 #undef GL_ERROR_TRANSLATE
 }
 
-SDL_FORCE_INLINE void
-GL_ClearErrors(SDL_Renderer *renderer)
+static void GL_ClearErrors(SDL_Renderer *renderer)
 {
     GLES2_RenderData *data = (GLES2_RenderData *)renderer->driverdata;
 
@@ -208,8 +206,7 @@ GL_ClearErrors(SDL_Renderer *renderer)
     }
 }
 
-SDL_FORCE_INLINE int
-GL_CheckAllErrors(const char *prefix, SDL_Renderer *renderer, const char *file, int line, const char *function)
+static int GL_CheckAllErrors(const char *prefix, SDL_Renderer *renderer, const char *file, int line, const char *function)
 {
     GLES2_RenderData *data = (GLES2_RenderData *)renderer->driverdata;
     int ret = 0;

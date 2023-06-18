@@ -35,13 +35,13 @@ struct SDL_DisplayModeData
     LONG					y;
 };
 
-extern int OS4_InitModes(_THIS);
-extern int OS4_GetDisplayBounds(_THIS, SDL_VideoDisplay * display, SDL_Rect * rect);
-extern int OS4_GetDisplayModes(_THIS, SDL_VideoDisplay * display);
-extern int OS4_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode);
-extern void OS4_QuitModes(_THIS);
+extern int OS4_InitModes(SDL_VideoDevice *_this);
+extern int OS4_GetDisplayBounds(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_Rect * rect);
+extern int OS4_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay * display);
+extern int OS4_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_DisplayMode * mode);
+extern void OS4_QuitModes(SDL_VideoDevice *_this);
 
-extern void OS4_CloseScreen(_THIS, struct Screen *screen);
+extern void OS4_CloseScreen(SDL_VideoDevice *_this, struct Screen *screen);
 
 #endif /* _SDL_os4modes_h */
 

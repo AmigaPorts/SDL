@@ -55,7 +55,7 @@ static struct BitMap fallbackPointerBitMap = { 2, 16, 0, 2, 0,
 OS4_GlobalMouseState globalMouseState;
 
 static Uint32
-OS4_GetDoubleClickTimeInMillis(_THIS)
+OS4_GetDoubleClickTimeInMillis(SDL_VideoDevice *_this)
 {
     struct Preferences preferences;
     Uint32 interval;
@@ -256,7 +256,7 @@ OS4_CreateSystemCursor(SDL_SystemCursor id)
 static void
 OS4_SetPointerForEachWindow(ULONG type, Object * object)
 {
-    _THIS = SDL_GetVideoDevice();
+    SDL_VideoDevice *_this = SDL_GetVideoDevice();
 
     SDL_Window *sdlwin;
 
@@ -497,7 +497,7 @@ OS4_GetGlobalMouseState(float * x, float * y)
 }
 
 void
-OS4_InitMouse(_THIS)
+OS4_InitMouse(SDL_VideoDevice *_this)
 {
     //SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
@@ -523,7 +523,7 @@ OS4_InitMouse(_THIS)
 }
 
 void
-OS4_QuitMouse(_THIS)
+OS4_QuitMouse(SDL_VideoDevice *_this)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
 

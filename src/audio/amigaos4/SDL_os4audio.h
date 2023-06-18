@@ -27,9 +27,6 @@
 
 #include "../SDL_sysaudio.h"
 
-/* Hidden "this" pointer for the video functions */
-#define _THIS   SDL_AudioDevice *_this
-
 struct SDL_PrivateAudioData
 {
     struct MsgPort       *ahiReplyPort;

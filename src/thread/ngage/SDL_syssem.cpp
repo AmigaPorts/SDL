@@ -75,8 +75,7 @@ static void WaitAll(SDL_Semaphore *sem)
     }
 }
 
-SDL_Semaphore *
-SDL_CreateSemaphore(Uint32 initial_value)
+SDL_Semaphore *SDL_CreateSemaphore(Uint32 initial_value)
 {
     RSemaphore s;
     TInt status = CreateUnique(NewSema, &s, &initial_value);
@@ -139,8 +138,7 @@ int SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore *sem, Sint64 timeoutNS)
     return info->iVal;
 }
 
-Uint32
-SDL_GetSemaphoreValue(SDL_Semaphore *sem)
+Uint32 SDL_GetSemaphoreValue(SDL_Semaphore *sem)
 {
     if (sem == NULL) {
         SDL_InvalidParamError("sem");

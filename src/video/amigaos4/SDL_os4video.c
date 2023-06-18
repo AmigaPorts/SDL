@@ -54,14 +54,14 @@
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
-static int OS4_VideoInit(_THIS);
-static void OS4_VideoQuit(_THIS);
+static int OS4_VideoInit(SDL_VideoDevice *_this);
+static void OS4_VideoQuit(SDL_VideoDevice *_this);
 
-SDL_bool (*OS4_ResizeGlContext)(_THIS, SDL_Window * window) = NULL;
-void (*OS4_UpdateGlWindowPointer)(_THIS, SDL_Window * window) = NULL;
+SDL_bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window) = NULL;
+void (*OS4_UpdateGlWindowPointer)(SDL_VideoDevice *_this, SDL_Window * window) = NULL;
 
 static SDL_bool
-OS4_CheckInterfaces(_THIS)
+OS4_CheckInterfaces(SDL_VideoDevice *_this)
 {
     dprintf("Checking interfaces\n");
 
@@ -80,7 +80,7 @@ OS4_CheckInterfaces(_THIS)
 }
 
 static void
-OS4_FindApplicationName(_THIS)
+OS4_FindApplicationName(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
@@ -109,7 +109,7 @@ OS4_FindApplicationName(_THIS)
 }
 
 static void
-OS4_ConfigureBlanker(_THIS)
+OS4_ConfigureBlanker(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
@@ -131,7 +131,7 @@ OS4_ConfigureBlanker(_THIS)
 }
 
 static void
-OS4_RegisterApplication(_THIS)
+OS4_RegisterApplication(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
@@ -148,7 +148,7 @@ OS4_RegisterApplication(_THIS)
 }
 
 static void
-OS4_UnregisterApplication(_THIS)
+OS4_UnregisterApplication(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
@@ -163,7 +163,7 @@ OS4_UnregisterApplication(_THIS)
 }
 
 static SDL_bool
-OS4_AllocSystemResources(_THIS)
+OS4_AllocSystemResources(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
@@ -231,7 +231,7 @@ OS4_AllocSystemResources(_THIS)
 }
 
 static void
-OS4_FreeSystemResources(_THIS)
+OS4_FreeSystemResources(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
@@ -338,7 +338,7 @@ OS4_SetGLESFunctions(SDL_VideoDevice * device)
 #endif
 
 static SDL_bool
-OS4_IsMiniGL(_THIS)
+OS4_IsMiniGL(SDL_VideoDevice *_this)
 {
     if ((_this->gl_config.profile_mask == 0) &&
         (_this->gl_config.major_version == 1) &&
@@ -352,7 +352,7 @@ OS4_IsMiniGL(_THIS)
 
 #if SDL_VIDEO_OPENGL_ES2
 static SDL_bool
-OS4_IsOpenGLES2(_THIS)
+OS4_IsOpenGLES2(SDL_VideoDevice *_this)
 {
     if ((_this->gl_config.profile_mask == SDL_GL_CONTEXT_PROFILE_ES) &&
         (_this->gl_config.major_version == 2) &&
@@ -366,7 +366,7 @@ OS4_IsOpenGLES2(_THIS)
 #endif
 
 static int
-OS4_LoadGlLibrary(_THIS, const char * path)
+OS4_LoadGlLibrary(SDL_VideoDevice *_this, const char * path)
 {
     dprintf("Profile_mask %d, major ver %d, minor ver %d\n",
         _this->gl_config.profile_mask,
@@ -525,7 +525,7 @@ VideoBootStrap AMIGAOS4_bootstrap = {
 };
 
 int
-OS4_VideoInit(_THIS)
+OS4_VideoInit(SDL_VideoDevice *_this)
 {
     dprintf("Called\n");
 
@@ -546,7 +546,7 @@ OS4_VideoInit(_THIS)
 }
 
 void
-OS4_VideoQuit(_THIS)
+OS4_VideoQuit(SDL_VideoDevice *_this)
 {
     dprintf("Called\n");
 
@@ -556,7 +556,7 @@ OS4_VideoQuit(_THIS)
 }
 
 void *
-OS4_SaveAllocPooled(_THIS, uint32 size)
+OS4_SaveAllocPooled(SDL_VideoDevice *_this, uint32 size)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
@@ -564,7 +564,7 @@ OS4_SaveAllocPooled(_THIS, uint32 size)
 }
 
 void *
-OS4_SaveAllocVecPooled(_THIS, uint32 size)
+OS4_SaveAllocVecPooled(SDL_VideoDevice *_this, uint32 size)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
@@ -572,7 +572,7 @@ OS4_SaveAllocVecPooled(_THIS, uint32 size)
 }
 
 void
-OS4_SaveFreePooled(_THIS, void * mem, uint32 size)
+OS4_SaveFreePooled(SDL_VideoDevice *_this, void * mem, uint32 size)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
@@ -580,7 +580,7 @@ OS4_SaveFreePooled(_THIS, void * mem, uint32 size)
 }
 
 void
-OS4_SaveFreeVecPooled(_THIS, void * mem)
+OS4_SaveFreeVecPooled(SDL_VideoDevice *_this, void * mem)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 

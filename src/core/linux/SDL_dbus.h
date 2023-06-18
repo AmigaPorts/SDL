@@ -28,6 +28,10 @@
 #define SDL_USE_LIBDBUS 1
 #include <dbus/dbus.h>
 
+#ifndef DBUS_TIMEOUT_USE_DEFAULT
+#define DBUS_TIMEOUT_USE_DEFAULT -1
+#endif
+
 typedef struct SDL_DBusContext
 {
     DBusConnection *session_conn;
@@ -93,6 +97,8 @@ extern SDL_bool SDL_DBus_QueryPropertyOnConnection(DBusConnection *conn, const c
 
 extern void SDL_DBus_ScreensaverTickle(void);
 extern SDL_bool SDL_DBus_ScreensaverInhibit(SDL_bool inhibit);
+
+extern void SDL_DBus_PumpEvents(void);
 
 #endif /* HAVE_DBUS_DBUS_H */
 

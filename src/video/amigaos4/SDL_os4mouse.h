@@ -34,8 +34,8 @@ typedef struct OS4_GlobalMouseState
 
 extern void OS4_RefreshCursorState(void);
 
-extern void OS4_InitMouse(_THIS);
-extern void OS4_QuitMouse(_THIS);
+extern void OS4_InitMouse(SDL_VideoDevice *this);
+extern void OS4_QuitMouse(SDL_VideoDevice *this);
 
 #endif /* _SDL_os4mouse_h */
 

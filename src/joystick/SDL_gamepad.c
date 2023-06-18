@@ -150,60 +150,8 @@ struct SDL_Gamepad
         return retval;                                                       \
     }
 
-typedef struct
-{
-    int num_entries;
-    int max_entries;
-    Uint32 *entries;
-} SDL_vidpid_list;
-
 static SDL_vidpid_list SDL_allowed_gamepads;
 static SDL_vidpid_list SDL_ignored_gamepads;
-
-static void SDL_LoadVIDPIDListFromHint(const char *hint, SDL_vidpid_list *list)
-{
-    Uint32 entry;
-    char *spot;
-    char *file = NULL;
-
-    list->num_entries = 0;
-
-    if (hint && *hint == '@') {
-        spot = file = (char *)SDL_LoadFile(hint + 1, NULL);
-    } else {
-        spot = (char *)hint;
-    }
-
-    if (spot == NULL) {
-        return;
-    }
-
-    while ((spot = SDL_strstr(spot, "0x")) != NULL) {
-        entry = (Uint16)SDL_strtol(spot, &spot, 0);
-        entry <<= 16;
-        spot = SDL_strstr(spot, "0x");
-        if (spot == NULL) {
-            break;
-        }
-        entry |= (Uint16)SDL_strtol(spot, &spot, 0);
-
-        if (list->num_entries == list->max_entries) {
-            int max_entries = list->max_entries + 16;
-            Uint32 *entries = (Uint32 *)SDL_realloc(list->entries, max_entries * sizeof(*list->entries));
-            if (entries == NULL) {
-                /* Out of memory, go with what we have already */
-                break;
-            }
-            list->entries = entries;
-            list->max_entries = max_entries;
-        }
-        list->entries[list->num_entries++] = entry;
-    }
-
-    if (file) {
-        SDL_free(file);
-    }
-}
 
 static void SDLCALL SDL_GamepadIgnoreDevicesChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
 {
@@ -370,6 +318,22 @@ static void RecenterGamepad(SDL_Gamepad *gamepad)
     }
 }
 
+/* SDL defines sensor orientation relative to the device natural
+   orientation, so when it's changed orientation to be used as a
+   gamepad, change the sensor orientation to match.
+ */
+static void AdjustSensorOrientation(SDL_Joystick *joystick, float *src, float *dst)
+{
+    unsigned int i, j;
+
+    for (i = 0; i < 3; ++i) {
+        dst[i] = 0.0f;
+        for (j = 0; j < 3; ++j) {
+            dst[i] += joystick->sensor_transform[i][j] * src[j];
+        }
+    }
+}
+
 /*
  * Event filter to fire gamepad events from joystick ones
  */
@@ -443,6 +407,23 @@ static int SDLCALL SDL_GamepadEventWatcher(void *userdata, SDL_Event *event)
             deviceevent.gdevice.which = event->jdevice.which;
             SDL_PushEvent(&deviceevent);
         }
+    } break;
+    case SDL_EVENT_SENSOR_UPDATE:
+    {
+        SDL_LockJoysticks();
+        for (gamepad = SDL_gamepads; gamepad; gamepad = gamepad->next) {
+            if (gamepad->joystick->accel && gamepad->joystick->accel_sensor == event->sensor.which) {
+                float data[3];
+                AdjustSensorOrientation(gamepad->joystick, event->sensor.data, data);
+                SDL_SendJoystickSensor(event->common.timestamp, gamepad->joystick, SDL_SENSOR_ACCEL, event->sensor.sensor_timestamp, data, SDL_arraysize(data));
+            }
+            if (gamepad->joystick->gyro && gamepad->joystick->gyro_sensor == event->sensor.which) {
+                float data[3];
+                AdjustSensorOrientation(gamepad->joystick, event->sensor.data, data);
+                SDL_SendJoystickSensor(event->common.timestamp, gamepad->joystick, SDL_SENSOR_GYRO, event->sensor.sensor_timestamp, data, SDL_arraysize(data));
+            }
+        }
+        SDL_UnlockJoysticks();
     } break;
     default:
         break;
@@ -573,10 +554,15 @@ static GamepadMapping_t *SDL_CreateMappingForHIDAPIGamepad(SDL_JoystickGUID guid
         /* GameCube driver has 12 buttons and 6 axes */
         SDL_strlcat(mapping_string, "a:b0,b:b1,dpdown:b6,dpleft:b4,dpright:b5,dpup:b7,lefttrigger:a4,leftx:a0,lefty:a1,rightshoulder:b9,righttrigger:a5,rightx:a2,righty:a3,start:b8,x:b2,y:b3,", sizeof(mapping_string));
     } else if (vendor == USB_VENDOR_NINTENDO &&
-               guid.data[15] != k_eSwitchDeviceInfoControllerType_Unknown &&
-               guid.data[15] != k_eSwitchDeviceInfoControllerType_ProController &&
-               guid.data[15] != k_eWiiExtensionControllerType_Gamepad &&
-               guid.data[15] != k_eWiiExtensionControllerType_WiiUPro) {
+               (guid.data[15] == k_eSwitchDeviceInfoControllerType_NESLeft ||
+                guid.data[15] == k_eSwitchDeviceInfoControllerType_NESRight ||
+                guid.data[15] == k_eSwitchDeviceInfoControllerType_SNES ||
+                guid.data[15] == k_eSwitchDeviceInfoControllerType_N64 ||
+                guid.data[15] == k_eSwitchDeviceInfoControllerType_SEGA_Genesis ||
+                guid.data[15] == k_eWiiExtensionControllerType_None ||
+                guid.data[15] == k_eWiiExtensionControllerType_Nunchuk ||
+                guid.data[15] == k_eSwitchDeviceInfoControllerType_JoyConLeft ||
+                guid.data[15] == k_eSwitchDeviceInfoControllerType_JoyConRight)) {
         switch (guid.data[15]) {
         case k_eSwitchDeviceInfoControllerType_NESLeft:
         case k_eSwitchDeviceInfoControllerType_NESRight:
@@ -1350,8 +1336,6 @@ static GamepadMapping_t *SDL_PrivateGetGamepadMappingForNameAndGUID(const char *
             mapping = SDL_PrivateAddMappingForGUID(guid,
                                                    "none,X360 Wireless Controller,a:b0,b:b1,back:b6,dpdown:b14,dpleft:b11,dpright:b12,dpup:b13,guide:b8,leftshoulder:b4,leftstick:b9,lefttrigger:a2,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b10,righttrigger:a5,rightx:a3,righty:a4,start:b7,x:b2,y:b3,",
                                                    &existing, SDL_GAMEPAD_MAPPING_PRIORITY_DEFAULT);
-        } else if (SDL_strstr(name, "Xbox") || SDL_strstr(name, "X-Box") || SDL_strstr(name, "XBOX")) {
-            mapping = s_pXInputMapping;
         }
     }
 #endif /* __LINUX__ */
@@ -2076,11 +2060,9 @@ static SDL_bool SDL_endswith(const char *string, const char *suffix)
  */
 SDL_bool SDL_ShouldIgnoreGamepad(const char *name, SDL_JoystickGUID guid)
 {
-    int i;
     Uint16 vendor;
     Uint16 product;
     Uint16 version;
-    Uint32 vidpid;
 
 #ifdef __LINUX__
     if (SDL_endswith(name, " Motion Sensors")) {
@@ -2129,20 +2111,14 @@ SDL_bool SDL_ShouldIgnoreGamepad(const char *name, SDL_JoystickGUID guid)
         }
     }
 
-    vidpid = MAKE_VIDPID(vendor, product);
-
     if (SDL_allowed_gamepads.num_entries > 0) {
-        for (i = 0; i < SDL_allowed_gamepads.num_entries; ++i) {
-            if (vidpid == SDL_allowed_gamepads.entries[i]) {
-                return SDL_FALSE;
-            }
+        if (SDL_VIDPIDInList(vendor, product, &SDL_allowed_gamepads)) {
+            return SDL_FALSE;
         }
         return SDL_TRUE;
     } else {
-        for (i = 0; i < SDL_ignored_gamepads.num_entries; ++i) {
-            if (vidpid == SDL_ignored_gamepads.entries[i]) {
-                return SDL_TRUE;
-            }
+        if (SDL_VIDPIDInList(vendor, product, &SDL_ignored_gamepads)) {
+            return SDL_TRUE;
         }
         return SDL_FALSE;
     }
@@ -2520,22 +2496,50 @@ int SDL_SetGamepadSensorEnabled(SDL_Gamepad *gamepad, SDL_SensorType type, SDL_b
                         return 0;
                     }
 
-                    if (enabled) {
-                        if (joystick->nsensors_enabled == 0) {
-                            if (joystick->driver->SetSensorsEnabled(joystick, SDL_TRUE) < 0) {
+                    if (type == SDL_SENSOR_ACCEL && joystick->accel_sensor) {
+                        if (enabled) {
+                            joystick->accel = SDL_OpenSensor(joystick->accel_sensor);
+                            if (!joystick->accel) {
                                 SDL_UnlockJoysticks();
                                 return -1;
                             }
+                        } else {
+                            if (joystick->accel) {
+                                SDL_CloseSensor(joystick->accel);
+                                joystick->accel = NULL;
+                            }
                         }
-                        ++joystick->nsensors_enabled;
+                    } else if (type == SDL_SENSOR_GYRO && joystick->gyro_sensor) {
+                        if (enabled) {
+                            joystick->gyro = SDL_OpenSensor(joystick->gyro_sensor);
+                            if (!joystick->gyro) {
+                                SDL_UnlockJoysticks();
+                                return -1;
+                            }
+                        } else {
+                            if (joystick->gyro) {
+                                SDL_CloseSensor(joystick->gyro);
+                                joystick->gyro = NULL;
+                            }
+                        }
                     } else {
-                        if (joystick->nsensors_enabled == 1) {
-                            if (joystick->driver->SetSensorsEnabled(joystick, SDL_FALSE) < 0) {
-                                SDL_UnlockJoysticks();
-                                return -1;
+                        if (enabled) {
+                            if (joystick->nsensors_enabled == 0) {
+                                if (joystick->driver->SetSensorsEnabled(joystick, SDL_TRUE) < 0) {
+                                    SDL_UnlockJoysticks();
+                                    return -1;
+                                }
                             }
+                            ++joystick->nsensors_enabled;
+                        } else {
+                            if (joystick->nsensors_enabled == 1) {
+                                if (joystick->driver->SetSensorsEnabled(joystick, SDL_FALSE) < 0) {
+                                    SDL_UnlockJoysticks();
+                                    return -1;
+                                }
+                            }
+                            --joystick->nsensors_enabled;
                         }
-                        --joystick->nsensors_enabled;
                     }
 
                     sensor->enabled = enabled;
@@ -3036,14 +3040,8 @@ void SDL_QuitGamepadMappings(void)
     SDL_DelHintCallback(SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT,
                         SDL_GamepadIgnoreDevicesExceptChanged, NULL);
 
-    if (SDL_allowed_gamepads.entries) {
-        SDL_free(SDL_allowed_gamepads.entries);
-        SDL_zero(SDL_allowed_gamepads);
-    }
-    if (SDL_ignored_gamepads.entries) {
-        SDL_free(SDL_ignored_gamepads.entries);
-        SDL_zero(SDL_ignored_gamepads);
-    }
+    SDL_FreeVIDPIDList(&SDL_allowed_gamepads);
+    SDL_FreeVIDPIDList(&SDL_ignored_gamepads);
 }
 
 /*

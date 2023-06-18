@@ -53,10 +53,10 @@ struct SDL_VideoData
 
 #define IInput ((SDL_VideoData *) _this->driverdata)->iInput
 
-extern void * OS4_SaveAllocPooled(_THIS, uint32 size);
-extern void * OS4_SaveAllocVecPooled(_THIS, uint32 size);
-extern void OS4_SaveFreePooled(_THIS, void *mem, uint32 size);
-extern void OS4_SaveFreeVecPooled(_THIS, void *mem);
+extern void * OS4_SaveAllocPooled(SDL_VideoDevice *this, uint32 size);
+extern void * OS4_SaveAllocVecPooled(SDL_VideoDevice *this, uint32 size);
+extern void OS4_SaveFreePooled(SDL_VideoDevice *this, void *mem, uint32 size);
+extern void OS4_SaveFreeVecPooled(SDL_VideoDevice *this, void *mem);
 
 extern DECLSPEC struct MsgPort * OS4_GetSharedMessagePort();
 

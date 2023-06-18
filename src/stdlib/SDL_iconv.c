@@ -38,8 +38,7 @@ As a workaround, fallback to custom implementation. */
 
 SDL_COMPILE_TIME_ASSERT(iconv_t, sizeof(iconv_t) <= sizeof(SDL_iconv_t));
 
-SDL_iconv_t
-SDL_iconv_open(const char *tocode, const char *fromcode)
+SDL_iconv_t SDL_iconv_open(const char *tocode, const char *fromcode)
 {
     return (SDL_iconv_t)((uintptr_t)iconv_open(tocode, fromcode));
 }
@@ -49,8 +48,7 @@ int SDL_iconv_close(SDL_iconv_t cd)
     return iconv_close((iconv_t)((uintptr_t)cd));
 }
 
-size_t
-SDL_iconv(SDL_iconv_t cd,
+size_t SDL_iconv(SDL_iconv_t cd,
           const char **inbuf, size_t *inbytesleft,
           char **outbuf, size_t *outbytesleft)
 {
@@ -194,8 +192,7 @@ static const char *getlocale(char *buffer, size_t bufsize)
     return buffer;
 }
 
-SDL_iconv_t
-SDL_iconv_open(const char *tocode, const char *fromcode)
+SDL_iconv_t SDL_iconv_open(const char *tocode, const char *fromcode)
 {
     int src_fmt = ENCODING_UNKNOWN;
     int dst_fmt = ENCODING_UNKNOWN;
@@ -234,8 +231,7 @@ SDL_iconv_open(const char *tocode, const char *fromcode)
     return (SDL_iconv_t)-1;
 }
 
-size_t
-SDL_iconv(SDL_iconv_t cd,
+size_t SDL_iconv(SDL_iconv_t cd,
           const char **inbuf, size_t *inbytesleft,
           char **outbuf, size_t *outbytesleft)
 {
@@ -787,9 +783,7 @@ int SDL_iconv_close(SDL_iconv_t cd)
 
 #endif /* !HAVE_ICONV */
 
-char *
-SDL_iconv_string(const char *tocode, const char *fromcode, const char *inbuf,
-                 size_t inbytesleft)
+char *SDL_iconv_string(const char *tocode, const char *fromcode, const char *inbuf, size_t inbytesleft)
 {
     SDL_iconv_t cd;
     char *string;
@@ -840,7 +834,8 @@ SDL_iconv_string(const char *tocode, const char *fromcode, const char *inbuf,
             outbuf = string + (outbuf - oldstring);
             outbytesleft = stringsize - (outbuf - string);
             SDL_memset(outbuf, 0, 4);
-        } break;
+            continue;
+        }
         case SDL_ICONV_EILSEQ:
             /* Try skipping some input data - not perfect, but... */
             ++inbuf;

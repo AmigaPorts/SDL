@@ -171,7 +171,7 @@ OS4_FillCaptureRequest(struct AHIRequest * request, void * buffer, int length, i
 /* Audio driver exported functions implementation */
 /* ---------------------------------------------- */
 static void
-OS4_CloseDevice(_THIS)
+OS4_CloseDevice(SDL_AudioDevice *_this)
 {
     OS4AudioData *os4data = _this->hidden;
 
@@ -191,7 +191,7 @@ OS4_CloseDevice(_THIS)
 }
 
 static int
-OS4_OpenDevice(_THIS, const char * devname)
+OS4_OpenDevice(SDL_AudioDevice *_this, const char * devname)
 {
     int result = 0;
     OS4AudioData *os4data = NULL;
@@ -210,20 +210,20 @@ OS4_OpenDevice(_THIS, const char * devname)
 
     switch (_this->spec.format & 0xFF) {
         case 8:
-            dprintf("8-bits requested, use AUDIO_S8\n");
-            _this->spec.format = AUDIO_S8;
+            dprintf("8-bits requested, use SDL_AUDIO_S8\n");
+            _this->spec.format = SDL_AUDIO_S8;
             break;
         case 16:
-            dprintf("16 bits requested, use AUDIO_S16MSB\n");
-            _this->spec.format = AUDIO_S16MSB;
+            dprintf("16 bits requested, use SDL_AUDIO_S16MSB\n");
+            _this->spec.format = SDL_AUDIO_S16MSB;
             break;
         case 32:
-            dprintf("32 bits requested, use AUDIO_S32MSB\n");
-            _this->spec.format = AUDIO_S32MSB;
+            dprintf("32 bits requested, use SDL_AUDIO_S32MSB\n");
+            _this->spec.format = SDL_AUDIO_S32MSB;
             break;
         default:
-            dprintf("%u bits requested, fallback to AUDIO_S16MSB\n", _this->spec.format & 0xFF);
-            _this->spec.format = AUDIO_S16MSB;
+            dprintf("%u bits requested, fallback to SDL_AUDIO_S16MSB\n", _this->spec.format & 0xFF);
+            _this->spec.format = SDL_AUDIO_S16MSB;
             break;
     }
 
@@ -232,9 +232,9 @@ OS4_OpenDevice(_THIS, const char * devname)
         dprintf("%u channels requested, fallback to stereo", _this->spec.channels);
         _this->spec.channels = 2;
     } else if (_this->spec.channels > 2) {
-        dprintf("%u channels requested, use 8 channel AUDIO_S32MSB\n", _this->spec.channels);
+        dprintf("%u channels requested, use 8 channel SDL_AUDIO_S32MSB\n", _this->spec.channels);
         _this->spec.channels = 8;
-        _this->spec.format = AUDIO_S32MSB;
+        _this->spec.format = SDL_AUDIO_S32MSB;
     }
 
     dprintf("SDL audio format = 0x%x\n", _this->spec.format);
@@ -260,15 +260,15 @@ OS4_OpenDevice(_THIS, const char * devname)
 
     /* Decide AHI format */
     switch(_this->spec.format) {
-        case AUDIO_S8:
+        case SDL_AUDIO_S8:
             os4data->ahiType = (_this->spec.channels < 2) ? AHIST_M8S : AHIST_S8S;
             break;
 
-        case AUDIO_S16MSB:
+        case SDL_AUDIO_S16MSB:
             os4data->ahiType = (_this->spec.channels < 2) ? AHIST_M16S : AHIST_S16S;
             break;
 
-        case AUDIO_S32MSB:
+        case SDL_AUDIO_S32MSB:
             switch (_this->spec.channels) {
                 case 1:
                     os4data->ahiType = AHIST_M32S;
@@ -298,7 +298,7 @@ OS4_OpenDevice(_THIS, const char * devname)
 }
 
 static void
-OS4_ThreadInit(_THIS)
+OS4_ThreadInit(SDL_AudioDevice *_this)
 {
     OS4AudioData *os4data = _this->hidden;
 
@@ -318,7 +318,7 @@ OS4_ThreadInit(_THIS)
 }
 
 static void
-OS4_WaitDevice(_THIS)
+OS4_WaitDevice(SDL_AudioDevice *_this)
 {
     /* Dummy - OS4_PlayDevice handles the waiting */
     //dprintf("Called\n");
@@ -364,7 +364,7 @@ OS4_RemapSurround(Sint32* buffer, int samples)
 }
 
 static void
-OS4_PlayDevice(_THIS)
+OS4_PlayDevice(SDL_AudioDevice *_this)
 {
     struct AHIRequest  *ahiRequest;
     SDL_AudioSpec      *spec    = &_this->spec;
@@ -409,7 +409,7 @@ OS4_PlayDevice(_THIS)
 }
 
 static Uint8 *
-OS4_GetDeviceBuf(_THIS)
+OS4_GetDeviceBuf(SDL_AudioDevice *_this)
 {
     //dprintf("Called\n");
 
@@ -423,7 +423,7 @@ OS4_GetDeviceBuf(_THIS)
 #define RESTART_CAPTURE_THRESHOLD 500
 
 static int
-OS4_CaptureFromDevice(_THIS, void * buffer, int buflen)
+OS4_CaptureFromDevice(SDL_AudioDevice *_this, void * buffer, int buflen)
 {
     struct AHIRequest  *request;
     SDL_AudioSpec      *spec    = &_this->spec;

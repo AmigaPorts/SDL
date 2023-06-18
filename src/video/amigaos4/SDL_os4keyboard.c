@@ -34,7 +34,7 @@
 #include "../../main/amigaos4/SDL_os4debug.h"
 
 static SDL_Keycode
-OS4_MapRawKey(_THIS, int code)
+OS4_MapRawKey(SDL_VideoDevice *_this, int code)
 {
     struct InputEvent ie;
     int res;
@@ -55,7 +55,7 @@ OS4_MapRawKey(_THIS, int code)
 }
 
 static void
-OS4_UpdateKeymap(_THIS)
+OS4_UpdateKeymap(SDL_VideoDevice *_this)
 {
     int i;
     SDL_Scancode scancode;
@@ -86,7 +86,7 @@ OS4_UpdateKeymap(_THIS)
 }
 
 int
-OS4_SetClipboardText(_THIS, const char *text)
+OS4_SetClipboardText(SDL_VideoDevice *_this, const char *text)
 {
     LONG result = ITextClip->WriteClipVector(text, SDL_strlen(text));
 
@@ -96,7 +96,7 @@ OS4_SetClipboardText(_THIS, const char *text)
 }
 
 char *
-OS4_GetClipboardText(_THIS)
+OS4_GetClipboardText(SDL_VideoDevice *_this)
 {
     STRPTR from;
     ULONG size;
@@ -127,7 +127,7 @@ OS4_GetClipboardText(_THIS)
 }
 
 SDL_bool
-OS4_HasClipboardText(_THIS)
+OS4_HasClipboardText(SDL_VideoDevice *_this)
 {
     /* This is silly but is there a better way to check? */
     char *to = OS4_GetClipboardText(_this);
@@ -146,7 +146,7 @@ OS4_HasClipboardText(_THIS)
 }
 
 void
-OS4_InitKeyboard(_THIS)
+OS4_InitKeyboard(SDL_VideoDevice *_this)
 {
     OS4_UpdateKeymap(_this);
 
@@ -157,7 +157,7 @@ OS4_InitKeyboard(_THIS)
 }
 
 void
-OS4_QuitKeyboard(_THIS)
+OS4_QuitKeyboard(SDL_VideoDevice *_this)
 {
 }
 

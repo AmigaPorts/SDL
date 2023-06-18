@@ -758,7 +758,7 @@ int main(int argc, char *argv[])
         ctx.myglBindTexture(g_texture_type, g_texture);
         GL_CHECK(ctx.myglClearColor(1, 1, 1, 1));
 
-        // SDL_BLENDMODE_BLEND
+        /* SDL_BLENDMODE_BLEND */
         GL_CHECK(ctx.myglEnable(GL_BLEND));
         ctx.myglBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         ctx.myglBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);

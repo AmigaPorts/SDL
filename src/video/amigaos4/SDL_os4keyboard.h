@@ -23,12 +23,12 @@
 #ifndef _SDL_os4keyboard_h
 #define _SDL_os4keyboard_h
 
-extern int OS4_SetClipboardText(_THIS, const char *text);
-extern char * OS4_GetClipboardText(_THIS);
-extern SDL_bool OS4_HasClipboardText(_THIS);
+extern int OS4_SetClipboardText(SDL_VideoDevice *_this, const char *text);
+extern char * OS4_GetClipboardText(SDL_VideoDevice *_this);
+extern SDL_bool OS4_HasClipboardText(SDL_VideoDevice *_this);
 
-extern void OS4_InitKeyboard(_THIS);
-extern void OS4_QuitKeyboard(_THIS);
+extern void OS4_InitKeyboard(SDL_VideoDevice *_this);
+extern void OS4_QuitKeyboard(SDL_VideoDevice *_this);
 
 #endif /* _SDL_os4keyboard_h */
 
