@@ -190,6 +190,12 @@ OS4_CloseDevice(SDL_AudioDevice *_this)
     SDL_free(os4data);
 }
 
+static void
+OS4_DetectDevices(void)
+{
+    dprintf("Called\n");
+}
+
 static int
 OS4_OpenDevice(SDL_AudioDevice *_this, const char * devname)
 {
@@ -315,6 +321,12 @@ OS4_ThreadInit(SDL_AudioDevice *_this)
     One possibility: create a configuration GUI or ENV variable that allows
     user to select priority, if there is no silver bullet value */
     IExec->SetTaskPri(IExec->FindTask(NULL), 5);
+}
+
+static void
+OS4_ThreadDeinit(SDL_AudioDevice *_this)
+{
+    dprintf("Called\n");
 }
 
 static void
@@ -498,6 +510,36 @@ OS4_CaptureFromDevice(SDL_AudioDevice *_this, void * buffer, int buflen)
     return copyLen;
 }
 
+static void
+OS4_FlushCapture(SDL_AudioDevice *this)
+{
+    dprintf("Called\n");
+}
+
+static void
+OS4_LockDevice(SDL_AudioDevice *this)
+{
+    dprintf("Called\n");
+}
+
+static void
+OS4_UnlockDevice(SDL_AudioDevice *this)
+{
+    dprintf("Called\n");
+}
+
+static void
+OS4_FreeDeviceHandle(void *handle)
+{
+    dprintf("Called\n");
+}
+
+static void
+OS4_Deinitialize(void)
+{
+    dprintf("Called\n");
+}
+
 /* ------------------------------------------ */
 /* Audio driver init functions implementation */
 /* ------------------------------------------ */
@@ -509,20 +551,21 @@ OS4_Init(SDL_AudioDriverImpl * impl)
         return SDL_FALSE;
     }
 
-    // impl->DetectDevices?
+    impl->DetectDevices = OS4_DetectDevices;
     impl->OpenDevice = OS4_OpenDevice;
     impl->ThreadInit = OS4_ThreadInit;
+    impl->ThreadDeinit = OS4_ThreadDeinit;
     impl->WaitDevice = OS4_WaitDevice;
     impl->PlayDevice = OS4_PlayDevice;
-    // impl->GetPendingBytes?
     impl->GetDeviceBuf = OS4_GetDeviceBuf;
     impl->CaptureFromDevice = OS4_CaptureFromDevice;
-    // impl->FlushCapture
-    // impl->PrepareToClose()
+    impl->FlushCapture = OS4_FlushCapture;
     impl->CloseDevice = OS4_CloseDevice;
-    // impl->Lock+UnlockDevice
-    // impl->FreeDeviceHandle
-    // impl->Deinitialize
+    impl->LockDevice = OS4_LockDevice;
+    impl->UnlockDevice = OS4_UnlockDevice;
+    impl->FreeDeviceHandle = OS4_FreeDeviceHandle;
+    impl->Deinitialize = OS4_Deinitialize;
+    //impl->GetDefaultAudioInfo = OS4_GetDefaultAudioInfo;
 
     impl->HasCaptureSupport = 1;
     impl->OnlyHasDefaultOutputDevice = 1;
