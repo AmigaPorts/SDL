@@ -1056,7 +1056,7 @@ static int audio_resampleLoss(void *arg)
     SDLTest_AssertPass("Test resampling of %i s %i Hz %f phase sine wave from sampling rate of %i Hz to %i Hz",
                        spec->time, spec->freq, spec->phase, spec->rate_in, spec->rate_out);
 
-    stream = SDL_CreateAudioStream(SDL_AUDIO_F32, 1, spec->rate_in, SDL_AUDIO_F32, 1, spec->rate_out);
+    stream = SDL_CreateAudioStream(SDL_AUDIO_F32SYS, 1, spec->rate_in, SDL_AUDIO_F32SYS, 1, spec->rate_out);
     SDLTest_AssertPass("Call to SDL_CreateAudioStream(SDL_AUDIO_F32, 1, %i, SDL_AUDIO_F32, 1, %i)", spec->rate_in, spec->rate_out);
     SDLTest_AssertCheck(stream != NULL, "Expected SDL_CreateAudioStream to succeed.");
     if (stream == NULL) {
