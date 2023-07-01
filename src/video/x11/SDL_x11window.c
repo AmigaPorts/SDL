@@ -123,8 +123,6 @@ void X11_SetNetWMState(SDL_VideoDevice *_this, Window xwindow, Uint32 flags)
     Atom _NET_WM_STATE_MAXIMIZED_HORZ = videodata->_NET_WM_STATE_MAXIMIZED_HORZ;
     Atom _NET_WM_STATE_FULLSCREEN = videodata->_NET_WM_STATE_FULLSCREEN;
     Atom _NET_WM_STATE_ABOVE = videodata->_NET_WM_STATE_ABOVE;
-    Atom _NET_WM_STATE_SKIP_TASKBAR = videodata->_NET_WM_STATE_SKIP_TASKBAR;
-    Atom _NET_WM_STATE_SKIP_PAGER = videodata->_NET_WM_STATE_SKIP_PAGER;
     Atom atoms[16];
     int count = 0;
 
@@ -139,10 +137,6 @@ void X11_SetNetWMState(SDL_VideoDevice *_this, Window xwindow, Uint32 flags)
 
     if (flags & SDL_WINDOW_ALWAYS_ON_TOP) {
         atoms[count++] = _NET_WM_STATE_ABOVE;
-    }
-    if (flags & SDL_WINDOW_SKIP_TASKBAR) {
-        atoms[count++] = _NET_WM_STATE_SKIP_TASKBAR;
-        atoms[count++] = _NET_WM_STATE_SKIP_PAGER;
     }
     if (flags & SDL_WINDOW_INPUT_FOCUS) {
         atoms[count++] = _NET_WM_STATE_FOCUSED;
@@ -1303,12 +1297,17 @@ void X11_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
     SDL_WindowData *data = window->driverdata;
     Display *display = data->videodata->display;
+    SDL_bool bActivate = SDL_GetHintBoolean(SDL_HINT_WINDOW_ACTIVATE_WHEN_SHOWN, SDL_TRUE);
     XEvent event;
 
     if (window->parent) {
         /* Update our position in case our parent moved while we were hidden */
         X11_UpdateWindowPosition(window);
     }
+
+    /* Whether XMapRaised focuses the window is based on the window type and it is
+     * wm specific. There isn't much we can do here */
+    (void)bActivate;
 
     if (!X11_IsWindowMapped(_this, window)) {
         X11_XMapRaised(display, data->xwindow);
@@ -1408,9 +1407,12 @@ void X11_RaiseWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
     SDL_WindowData *data = window->driverdata;
     Display *display = data->videodata->display;
+    SDL_bool bActivate = SDL_GetHintBoolean(SDL_HINT_WINDOW_ACTIVATE_WHEN_RAISED, SDL_TRUE);
 
     X11_XRaiseWindow(display, data->xwindow);
-    X11_SetWindowActive(_this, window);
+    if (bActivate) {
+        X11_SetWindowActive(_this, window);
+    }
     X11_XFlush(display);
 }
 

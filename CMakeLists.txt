@@ -59,6 +59,7 @@ find_package(PkgConfig)
 
 list(APPEND CMAKE_MODULE_PATH "${SDL3_SOURCE_DIR}/cmake")
 include(${SDL3_SOURCE_DIR}/cmake/macros.cmake)
+include(${SDL3_SOURCE_DIR}/cmake/sdlmanpages.cmake)
 include(${SDL3_SOURCE_DIR}/cmake/sdlchecks.cmake)
 include(${SDL3_SOURCE_DIR}/cmake/sdlfind.cmake)
 include(${SDL3_SOURCE_DIR}/cmake/sdlplatform.cmake)
@@ -66,11 +67,12 @@ include(${SDL3_SOURCE_DIR}/cmake/CheckCPUArchitecture.cmake)
 include(${SDL3_SOURCE_DIR}/cmake/GetGitRevisionDescription.cmake)
 include(${SDL3_SOURCE_DIR}/cmake/3rdparty.cmake)
 
-# Enable large file support on 32-bit glibc, so that we can access files
-# with large inode numbers
 check_symbol_exists("__GLIBC__" "stdlib.h" LIBC_IS_GLIBC)
-if (LIBC_IS_GLIBC AND CMAKE_SIZEOF_VOID_P EQUAL 4)
-    target_compile_definitions(sdl-build-options INTERFACE "_FILE_OFFSET_BITS=64")
+if(LIBC_IS_GLIBC AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+  # Enable large file support on 32-bit glibc, so that we can access files with large inode numbers
+  target_compile_definitions(sdl-build-options INTERFACE "_FILE_OFFSET_BITS=64")
+  # Enable 64-bit time_t on 32-bit glibc, so that time stamps remain correct beyond January 2038
+  target_compile_definitions(sdl-build-options INTERFACE "_TIME_BITS=64")
 endif()
 
 if(CMAKE_VERSION VERSION_LESS "3.26")
@@ -3687,28 +3689,10 @@ if(NOT SDL_DISABLE_INSTALL)
   endif()
 
   if(NOT SDL_DISABLE_INSTALL_MAN)
-    find_package(Perl)
-    if(PERL_FOUND)
-      file(GLOB SDL3_MAN_INCLUDE_FILES "${SDL3_SOURCE_DIR}/include/SDL3/*.h")
-      set(SDL3_BINARY_DOCDIR "${SDL3_BINARY_DIR}/docs")
-      set(SDL3_BINARY_DOC_WIKIDIR "${SDL3_BINARY_DOCDIR}/wiki")
-      set(SDL3_BINARY_DOC_MANDIR "${SDL3_BINARY_DOCDIR}/man")
-      execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${SDL3_BINARY_DOC_WIKIDIR}")
-      add_custom_command(
-        OUTPUT "${SDL3_BINARY_DOC_WIKIDIR}/SDL_Init.md"
-        COMMAND "${PERL_EXECUTABLE}" "${SDL3_SOURCE_DIR}/build-scripts/wikiheaders.pl" "${SDL3_SOURCE_DIR}" "${SDL3_BINARY_DOC_WIKIDIR}" "--options=${SDL3_SOURCE_DIR}/.wikiheaders-options" --copy-to-wiki
-        DEPENDS ${SDL3_MAN_INCLUDE_FILES} "${SDL3_SOURCE_DIR}/build-scripts/wikiheaders.pl" "${SDL3_SOURCE_DIR}/.wikiheaders-options"
-        COMMENT "Generating SDL3 wiki markdown files"
-      )
-      add_custom_command(
-        OUTPUT "${SDL3_BINARY_DOC_MANDIR}/man3/SDL_Init.3"
-        COMMAND "${PERL_EXECUTABLE}" "${SDL3_SOURCE_DIR}/build-scripts/wikiheaders.pl" "${SDL3_SOURCE_DIR}" "${SDL3_BINARY_DOC_WIKIDIR}" "--options=${SDL3_SOURCE_DIR}/.wikiheaders-options" --"manpath=${SDL3_BINARY_DOC_MANDIR}" --copy-to-manpages
-        DEPENDS "${SDL3_BINARY_DOC_WIKIDIR}/SDL_Init.md" "${SDL3_SOURCE_DIR}/build-scripts/wikiheaders.pl" "${SDL3_SOURCE_DIR}/.wikiheaders-options"
-        COMMENT "Generating SDL3 man pages"
-      )
-      add_custom_target(SDL3_docs ALL DEPENDS "${SDL3_BINARY_DOC_MANDIR}/man3/SDL_Init.3")
-      install(DIRECTORY "${SDL3_BINARY_DOCDIR}/man/" DESTINATION "${CMAKE_INSTALL_MANDIR}")
-    endif()
+    SDL_generate_manpages(
+      SYMBOL "SDL_Init"
+      WIKIHEADERS_PL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/build-scripts/wikiheaders.pl"
+    )
   endif()
 endif()
 

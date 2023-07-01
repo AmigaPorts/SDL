@@ -221,10 +221,10 @@ static int SDL_FindFreePlayerIndex(void)
 
     for (player_index = 0; player_index < SDL_joystick_player_count; ++player_index) {
         if (SDL_joystick_players[player_index] == 0) {
-            return player_index;
+            break;
         }
     }
-    return -1;
+    return player_index;
 }
 
 static int SDL_GetPlayerIndexForJoystickID(SDL_JoystickID instance_id)
@@ -514,14 +514,6 @@ static SDL_bool SDL_JoystickAxesCenteredAtZero(SDL_Joystick *joystick)
 #endif /* __WINRT__ */
 }
 
-static SDL_bool IsBackboneOne(SDL_Joystick *joystick)
-{
-    if (joystick->name && SDL_strstr(joystick->name, "Backbone One")) {
-        return SDL_TRUE;
-    }
-    return SDL_FALSE;
-}
-
 static SDL_bool IsROGAlly(SDL_Joystick *joystick)
 {
     Uint16 vendor, product;
@@ -609,7 +601,9 @@ static SDL_bool ShouldAttemptSensorFusion(SDL_Joystick *joystick, SDL_bool *inve
     }
 
     /* See if this is another known wraparound gamepad */
-    if (IsBackboneOne(joystick)) {
+    if (joystick->name &&
+        (SDL_strstr(joystick->name, "Backbone One") ||
+         SDL_strstr(joystick->name, "Kishi"))) {
         return SDL_TRUE;
     }
     if (IsROGAlly(joystick)) {
@@ -1762,6 +1756,7 @@ int SDL_SendJoystickAxis(Uint64 timestamp, SDL_Joystick *joystick, Uint8 axis, S
 
     /* Update internal joystick state */
     info->value = value;
+    joystick->update_complete = timestamp;
 
     /* Post the event, if desired */
     posted = 0;
@@ -1804,6 +1799,7 @@ int SDL_SendJoystickHat(Uint64 timestamp, SDL_Joystick *joystick, Uint8 hat, Uin
 
     /* Update internal joystick state */
     joystick->hats[hat] = value;
+    joystick->update_complete = timestamp;
 
     /* Post the event, if desired */
     posted = 0;
@@ -1862,6 +1858,7 @@ int SDL_SendJoystickButton(Uint64 timestamp, SDL_Joystick *joystick, Uint8 butto
 
     /* Update internal joystick state */
     joystick->buttons[button] = state;
+    joystick->update_complete = timestamp;
 
     /* Post the event, if desired */
     posted = 0;
@@ -1896,16 +1893,6 @@ void SDL_UpdateJoysticks(void)
 
     for (joystick = SDL_joysticks; joystick; joystick = joystick->next) {
         if (joystick->attached) {
-            if (joystick->accel || joystick->gyro) {
-                SDL_LockSensors();
-                if (joystick->gyro) {
-                    SDL_UpdateSensor(joystick->gyro);
-                }
-                if (joystick->accel) {
-                    SDL_UpdateSensor(joystick->accel);
-                }
-                SDL_UnlockSensors();
-            }
             joystick->driver->Update(joystick);
 
             if (joystick->delayed_guide_button) {
@@ -1929,6 +1916,21 @@ void SDL_UpdateJoysticks(void)
 
         if (joystick->trigger_rumble_expiration && now >= joystick->trigger_rumble_expiration) {
             SDL_RumbleJoystickTriggers(joystick, 0, 0, 0);
+        }
+    }
+
+    if (SDL_EventEnabled(SDL_EVENT_JOYSTICK_UPDATE_COMPLETE)) {
+        for (joystick = SDL_joysticks; joystick; joystick = joystick->next) {
+            if (joystick->update_complete) {
+                SDL_Event event;
+
+                event.type = SDL_EVENT_JOYSTICK_UPDATE_COMPLETE;
+                event.common.timestamp = joystick->update_complete;
+                event.gdevice.which = joystick->instance_id;
+                SDL_PushEvent(&event);
+
+                joystick->update_complete = 0;
+            }
         }
     }
 
@@ -3197,6 +3199,7 @@ int SDL_SendJoystickTouchpad(Uint64 timestamp, SDL_Joystick *joystick, int touch
     finger_info->x = x;
     finger_info->y = y;
     finger_info->pressure = pressure;
+    joystick->update_complete = timestamp;
 
     /* Post the event, if desired */
     posted = 0;
@@ -3238,6 +3241,7 @@ int SDL_SendJoystickSensor(Uint64 timestamp, SDL_Joystick *joystick, SDL_SensorT
 
                 /* Update internal sensor state */
                 SDL_memcpy(sensor->data, data, num_values * sizeof(*data));
+                joystick->update_complete = timestamp;
 
                 /* Post the event, if desired */
 #ifndef SDL_EVENTS_DISABLED
