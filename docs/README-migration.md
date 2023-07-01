@@ -53,7 +53,7 @@ The following structures have been renamed:
 
 ## SDL_audio.h
 
-SDL_AudioInit() and SDL_AudioQuit() have been removed. Instead you can call SDL_InitSubSytem() and SDL_QuitSubSytem() with SDL_INIT_AUDIO, which will properly refcount the subsystems. You can choose a specific audio driver using SDL_AUDIO_DRIVER hint.
+SDL_AudioInit() and SDL_AudioQuit() have been removed. Instead you can call SDL_InitSubSystem() and SDL_QuitSubSystem() with SDL_INIT_AUDIO, which will properly refcount the subsystems. You can choose a specific audio driver using SDL_AUDIO_DRIVER hint.
 
 SDL_PauseAudioDevice() is only used to pause audio playback. Use SDL_PlayAudioDevice() to start playing audio.
 
@@ -385,6 +385,8 @@ functionality to your app and aid migration. That is located in the
 ## SDL_hints.h
 
 SDL_AddHintCallback() now returns a standard int result instead of void, returning 0 if the function succeeds or a negative error code if there was an error.
+
+Calling SDL_GetHint() with the name of the hint being changed from within a hint callback will now return the new value rather than the old value. The old value is still passed as a parameter to the hint callback.
 
 The following hints have been removed:
 * SDL_HINT_VIDEO_HIGHDPI_DISABLED - high DPI support is always enabled
@@ -1066,7 +1068,7 @@ SDL_GetRevisionNumber() has been removed from the API, it always returned 0 in S
 
 ## SDL_video.h
 
-SDL_VideoInit() and SDL_VideoQuit() have been removed. Instead you can call SDL_InitSubSytem() and SDL_QuitSubSytem() with SDL_INIT_VIDEO, which will properly refcount the subsystems. You can choose a specific video driver using SDL_VIDEO_DRIVER hint.
+SDL_VideoInit() and SDL_VideoQuit() have been removed. Instead you can call SDL_InitSubSystem() and SDL_QuitSubSystem() with SDL_INIT_VIDEO, which will properly refcount the subsystems. You can choose a specific video driver using SDL_VIDEO_DRIVER hint.
 
 Rather than iterating over displays using display index, there is a new function SDL_GetDisplays() to get the current list of displays, and functions which used to take a display index now take SDL_DisplayID, with an invalid ID being 0.
 ```c
@@ -1093,6 +1095,8 @@ SDL_CreateWindow() has been simplified and no longer takes a window position. Yo
 The SDL_WINDOWPOS_UNDEFINED_DISPLAY() and SDL_WINDOWPOS_CENTERED_DISPLAY() macros take a display ID instead of display index. The display ID 0 has a special meaning in this case, and is used to indicate the primary display.
 
 The SDL_WINDOW_SHOWN flag has been removed. Windows are shown by default and can be created hidden by using the SDL_WINDOW_HIDDEN flag.
+
+The SDL_WINDOW_SKIP_TASKBAR flag has been replaced by the SDL_WINDOW_UTILITY flag, which has the same functionality.
 
 SDL_DisplayMode now includes the pixel density which can be greater than 1.0 for display modes that have a higher pixel size than the mode size. You should use SDL_GetWindowSizeInPixels() to get the actual pixel size of the window back buffer.
 

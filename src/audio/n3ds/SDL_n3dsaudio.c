@@ -207,7 +207,7 @@ static void N3DSAUDIO_PlayDevice(SDL_AudioDevice *_this)
 
     contextUnlock(_this);
 
-    memcpy((void *)_this->hidden->waveBuf[nextbuf].data_vaddr,
+    SDL_memcpy((void *)_this->hidden->waveBuf[nextbuf].data_vaddr,
            _this->hidden->mixbuf, sampleLen);
     DSP_FlushDataCache(_this->hidden->waveBuf[nextbuf].data_vaddr, sampleLen);
 
@@ -238,7 +238,7 @@ static void N3DSAUDIO_CloseDevice(SDL_AudioDevice *_this)
 
     if (!_this->hidden->isCancelled) {
         ndspChnReset(0);
-        memset(_this->hidden->waveBuf, 0, sizeof(ndspWaveBuf) * NUM_BUFFERS);
+        SDL_memset(_this->hidden->waveBuf, 0, sizeof(ndspWaveBuf) * NUM_BUFFERS);
         CondVar_Broadcast(&_this->hidden->cv);
     }
 

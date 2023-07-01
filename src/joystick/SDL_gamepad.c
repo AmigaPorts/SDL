@@ -22,6 +22,7 @@
 
 /* This is the gamepad API for Simple DirectMedia Layer */
 
+#include "../SDL_utils_c.h"
 #include "SDL_sysjoystick.h"
 #include "SDL_joystick_c.h"
 #include "SDL_gamepad_c.h"
@@ -318,22 +319,6 @@ static void RecenterGamepad(SDL_Gamepad *gamepad)
     }
 }
 
-/* SDL defines sensor orientation relative to the device natural
-   orientation, so when it's changed orientation to be used as a
-   gamepad, change the sensor orientation to match.
- */
-static void AdjustSensorOrientation(SDL_Joystick *joystick, float *src, float *dst)
-{
-    unsigned int i, j;
-
-    for (i = 0; i < 3; ++i) {
-        dst[i] = 0.0f;
-        for (j = 0; j < 3; ++j) {
-            dst[i] += joystick->sensor_transform[i][j] * src[j];
-        }
-    }
-}
-
 /*
  * Event filter to fire gamepad events from joystick ones
  */
@@ -408,28 +393,73 @@ static int SDLCALL SDL_GamepadEventWatcher(void *userdata, SDL_Event *event)
             SDL_PushEvent(&deviceevent);
         }
     } break;
-    case SDL_EVENT_SENSOR_UPDATE:
+    case SDL_EVENT_JOYSTICK_UPDATE_COMPLETE:
     {
-        SDL_LockJoysticks();
+        SDL_AssertJoysticksLocked();
+
         for (gamepad = SDL_gamepads; gamepad; gamepad = gamepad->next) {
-            if (gamepad->joystick->accel && gamepad->joystick->accel_sensor == event->sensor.which) {
-                float data[3];
-                AdjustSensorOrientation(gamepad->joystick, event->sensor.data, data);
-                SDL_SendJoystickSensor(event->common.timestamp, gamepad->joystick, SDL_SENSOR_ACCEL, event->sensor.sensor_timestamp, data, SDL_arraysize(data));
-            }
-            if (gamepad->joystick->gyro && gamepad->joystick->gyro_sensor == event->sensor.which) {
-                float data[3];
-                AdjustSensorOrientation(gamepad->joystick, event->sensor.data, data);
-                SDL_SendJoystickSensor(event->common.timestamp, gamepad->joystick, SDL_SENSOR_GYRO, event->sensor.sensor_timestamp, data, SDL_arraysize(data));
+            if (gamepad->joystick->instance_id == event->jdevice.which) {
+                SDL_Event deviceevent;
+
+                deviceevent.type = SDL_EVENT_GAMEPAD_UPDATE_COMPLETE;
+                deviceevent.common.timestamp = event->jdevice.timestamp;
+                deviceevent.gdevice.which = event->jdevice.which;
+                SDL_PushEvent(&deviceevent);
+                break;
             }
         }
-        SDL_UnlockJoysticks();
     } break;
     default:
         break;
     }
 
     return 1;
+}
+
+/* SDL defines sensor orientation relative to the device natural
+   orientation, so when it's changed orientation to be used as a
+   gamepad, change the sensor orientation to match.
+ */
+static void AdjustSensorOrientation(SDL_Joystick *joystick, float *src, float *dst)
+{
+    unsigned int i, j;
+
+    for (i = 0; i < 3; ++i) {
+        dst[i] = 0.0f;
+        for (j = 0; j < 3; ++j) {
+            dst[i] += joystick->sensor_transform[i][j] * src[j];
+        }
+    }
+}
+
+/*
+ * Event filter to fire gamepad sensor events from system sensor events
+ *
+ * We don't use SDL_GamepadEventWatcher() for this because we want to
+ * deliver gamepad sensor events when system sensor events are disabled,
+ * and we also need to avoid a potential deadlock where joystick event
+ * delivery locks the joysticks and then the event queue, but sensor
+ * event delivery would lock the event queue and then from within the
+ * event watcher function lock the joysticks.
+ */
+void SDL_GamepadSensorWatcher(Uint64 timestamp, SDL_SensorID sensor, Uint64 sensor_timestamp, float *data, int num_values)
+{
+    SDL_Gamepad *gamepad;
+
+    SDL_LockJoysticks();
+    for (gamepad = SDL_gamepads; gamepad; gamepad = gamepad->next) {
+        if (gamepad->joystick->accel && gamepad->joystick->accel_sensor == sensor) {
+            float gamepad_data[3];
+            AdjustSensorOrientation(gamepad->joystick, data, gamepad_data);
+            SDL_SendJoystickSensor(timestamp, gamepad->joystick, SDL_SENSOR_ACCEL, sensor_timestamp, gamepad_data, SDL_arraysize(gamepad_data));
+        }
+        if (gamepad->joystick->gyro && gamepad->joystick->gyro_sensor == sensor) {
+            float gamepad_data[3];
+            AdjustSensorOrientation(gamepad->joystick, data, gamepad_data);
+            SDL_SendJoystickSensor(timestamp, gamepad->joystick, SDL_SENSOR_GYRO, sensor_timestamp, gamepad_data, SDL_arraysize(gamepad_data));
+        }
+    }
+    SDL_UnlockJoysticks();
 }
 
 #ifdef __ANDROID__
@@ -554,7 +584,9 @@ static GamepadMapping_t *SDL_CreateMappingForHIDAPIGamepad(SDL_JoystickGUID guid
         /* GameCube driver has 12 buttons and 6 axes */
         SDL_strlcat(mapping_string, "a:b0,b:b1,dpdown:b6,dpleft:b4,dpright:b5,dpup:b7,lefttrigger:a4,leftx:a0,lefty:a1,rightshoulder:b9,righttrigger:a5,rightx:a2,righty:a3,start:b8,x:b2,y:b3,", sizeof(mapping_string));
     } else if (vendor == USB_VENDOR_NINTENDO &&
-               (guid.data[15] == k_eSwitchDeviceInfoControllerType_NESLeft ||
+               (guid.data[15] == k_eSwitchDeviceInfoControllerType_HVCLeft ||
+                guid.data[15] == k_eSwitchDeviceInfoControllerType_HVCRight ||
+                guid.data[15] == k_eSwitchDeviceInfoControllerType_NESLeft ||
                 guid.data[15] == k_eSwitchDeviceInfoControllerType_NESRight ||
                 guid.data[15] == k_eSwitchDeviceInfoControllerType_SNES ||
                 guid.data[15] == k_eSwitchDeviceInfoControllerType_N64 ||
@@ -564,6 +596,11 @@ static GamepadMapping_t *SDL_CreateMappingForHIDAPIGamepad(SDL_JoystickGUID guid
                 guid.data[15] == k_eSwitchDeviceInfoControllerType_JoyConLeft ||
                 guid.data[15] == k_eSwitchDeviceInfoControllerType_JoyConRight)) {
         switch (guid.data[15]) {
+        case k_eSwitchDeviceInfoControllerType_HVCLeft:
+            SDL_strlcat(mapping_string, "a:b0,b:b1,back:b4,dpdown:b12,dpleft:b13,dpright:b14,dpup:b11,leftshoulder:b9,rightshoulder:b10,start:b6,", sizeof(mapping_string));
+        case k_eSwitchDeviceInfoControllerType_HVCRight:
+            SDL_strlcat(mapping_string, "a:b0,b:b1,dpdown:b12,dpleft:b13,dpright:b14,dpup:b11,leftshoulder:b9,rightshoulder:b10,", sizeof(mapping_string));
+            break;
         case k_eSwitchDeviceInfoControllerType_NESLeft:
         case k_eSwitchDeviceInfoControllerType_NESRight:
             SDL_strlcat(mapping_string, "a:b0,b:b1,back:b4,dpdown:b12,dpleft:b13,dpright:b14,dpup:b11,leftshoulder:b9,rightshoulder:b10,start:b6,", sizeof(mapping_string));
@@ -2040,21 +2077,6 @@ SDL_bool SDL_IsGamepad(SDL_JoystickID instance_id)
     return retval;
 }
 
-#ifdef __LINUX__
-static SDL_bool SDL_endswith(const char *string, const char *suffix)
-{
-    size_t string_length = string ? SDL_strlen(string) : 0;
-    size_t suffix_length = suffix ? SDL_strlen(suffix) : 0;
-
-    if (suffix_length > 0 && suffix_length <= string_length) {
-        if (SDL_memcmp(string + string_length - suffix_length, suffix, suffix_length) == 0) {
-            return SDL_TRUE;
-        }
-    }
-    return SDL_FALSE;
-}
-#endif
-
 /*
  * Return 1 if the gamepad should be ignored by SDL
  */
@@ -3182,6 +3204,11 @@ void SDL_GamepadHandleDelayedGuideButton(SDL_Joystick *joystick)
     for (gamepad = SDL_gamepads; gamepad; gamepad = gamepad->next) {
         if (gamepad->joystick == joystick) {
             SDL_SendGamepadButton(0, gamepad, SDL_GAMEPAD_BUTTON_GUIDE, SDL_RELEASED);
+
+            /* Make sure we send an update complete event for this change */
+            if (!gamepad->joystick->update_complete) {
+                gamepad->joystick->update_complete = SDL_GetTicksNS();
+            }
             break;
         }
     }
