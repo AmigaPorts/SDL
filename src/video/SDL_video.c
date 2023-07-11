@@ -62,6 +62,10 @@
 #include <unistd.h>
 #endif
 
+#ifdef __AMIGAOS4__
+#include "../main/amigaos4/SDL_os4debug.h"
+#endif
+
 /* Available video drivers */
 static VideoBootStrap *bootstrap[] = {
 #ifdef SDL_VIDEO_DRIVER_COCOA
@@ -1509,7 +1513,7 @@ static int SDL_UpdateFullscreenMode(SDL_Window *window, SDL_bool fullscreen)
            copy necessary mode data into window struct */
         if (mode == NULL) {
             SDL_DisplayMode fullscreen_mode;
-            fullscreen_mode.displayID = 0;
+            fullscreen_mode.displayID = 1;
             fullscreen_mode.format = SDL_PIXELFORMAT_RGB888;
             fullscreen_mode.w = window->w;
             fullscreen_mode.h = window->h;
@@ -1521,7 +1525,20 @@ static int SDL_UpdateFullscreenMode(SDL_Window *window, SDL_bool fullscreen)
             SDL_memcpy(&window->current_fullscreen_mode, &fullscreen_mode, sizeof(window->requested_fullscreen_mode));
 
             mode = (SDL_DisplayMode *)SDL_GetWindowFullscreenMode(window);
-    }
+
+            if (mode == NULL) {
+                SDL_Rect bounds;
+                int result = SDL_GetDisplayBounds(SDL_GetPrimaryDisplay(), &bounds);
+                if (result == 0) {
+                    dprintf("Display bounds %d * %d\n", bounds.w, bounds.h);
+                    /* This makes testautomation video_setWindowCenteredOnDisplay case pass. Otherwise window
+                       opens on the Workbench screen */
+                    mode = (SDL_DisplayMode *)SDL_GetClosestFullscreenDisplayMode(1, bounds.w, bounds.h, 0.0f, SDL_FALSE);
+                } else {
+                    dprintf("Failed to get display bounds: %s\n", SDL_GetError());
+                }
+            }
+        }
 #endif
 
         if (mode != NULL) {
