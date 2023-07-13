@@ -368,7 +368,7 @@ OS4_FillVertexData(OS4_Vertex vertices[4], const SDL_FRect * srcrect, const SDL_
 }
 
 static int
-OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * points, int count, SDL_BlendMode mode,
+OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, int count, SDL_BlendMode mode,
     Uint8 a, Uint8 r, Uint8 g, Uint8 b)
 {
     OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
@@ -383,22 +383,20 @@ OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * points, int count
     }
 
     if (mode == SDL_BLENDMODE_NONE) {
-
         const Uint32 color = a << 24 | r << 16 | g << 8 | b;
 
         for (i = 0; i < count; ++i) {
             IGraphics->RectFillColor(
                 &data->rastport,
-                points[i].x,
-                points[i].y,
-                points[i].x + points[i].w - 1,
-                points[i].y + points[i].h - 1,
+                rects[i].x,
+                rects[i].y,
+                rects[i].x + rects[i].w - 1,
+                rects[i].y + rects[i].h - 1,
                 color); // graphics.lib v54!
         }
 
         status = 0;
     } else {
-
         Uint32 colormod;
 
         if (!data->solidcolor) {
@@ -414,14 +412,13 @@ OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * points, int count
 
         /* TODO: batch */
         for (i = 0; i < count; ++i) {
-
             const SDL_FRect srcrect = { 0.0f, 0.0f, 1.0f, 1.0f };
 
             OS4_Vertex vertices[4];
 
             uint32 ret_code;
 
-            OS4_FillVertexData(vertices, &srcrect, &points[i], 0.0, NULL, SDL_FLIP_NONE, 1.0f, 1.0f);
+            OS4_FillVertexData(vertices, &srcrect, &rects[i], 0.0, NULL, SDL_FLIP_NONE, 1.0f, 1.0f);
 
             ret_code = IGraphics->CompositeTags(
                 OS4_ConvertBlendMode(mode),
@@ -735,7 +732,7 @@ OS4_QueueDrawLines(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FP
 static int
 OS4_QueueFillRects(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FRect * rects, int count)
 {
-    SDL_Rect *verts = (SDL_Rect *) SDL_AllocateRenderVertices(renderer, count * sizeof(SDL_Rect), 0, &cmd->data.draw.first);
+    SDL_FRect *verts = (SDL_FRect *) SDL_AllocateRenderVertices(renderer, count * sizeof(SDL_FRect), 0, &cmd->data.draw.first);
     size_t i;
 
     if (!verts) {
@@ -1062,7 +1059,7 @@ SDL_RenderDriver OS4_RenderDriver = {
     OS4_CreateRenderer,
     {
         "compositing",
-        SDL_RENDERER_ACCELERATED | /*SDL_RENDERER_TARGETTEXTURE | TODO: removed? */ SDL_RENDERER_PRESENTVSYNC,
+        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC,
         1,
         {
             SDL_PIXELFORMAT_ARGB8888,
