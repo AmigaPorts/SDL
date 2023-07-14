@@ -622,8 +622,6 @@ OS4_ShowWindow(SDL_VideoDevice *_this, SDL_Window * window)
 
         IIntuition->ActivateWindow(data->syswin);
 
-        window->flags |= SDL_WINDOW_INPUT_FOCUS;
-
         SDL_SetKeyboardFocus(window);
 
         // If cursor was disabled earlier, make sure also this window gets the news
