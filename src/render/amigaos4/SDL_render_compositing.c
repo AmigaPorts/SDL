@@ -386,6 +386,8 @@ OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, int count,
         const Uint32 color = a << 24 | r << 16 | g << 8 | b;
 
         for (i = 0; i < count; ++i) {
+            //dprintf("rp %p, rect x %f, y %f, w %f, h %f\n", &data->rastport, rects[i].x, rects[i].y, rects[i].w, rects[i].h);
+
             IGraphics->RectFillColor(
                 &data->rastport,
                 rects[i].x,
@@ -474,7 +476,7 @@ OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Ver
 
     OS4_SetupCompositing(renderer->target, &params, texture->scaleMode, mode, cmd->data.draw.a);
 
-    //dprintf("clip %d, %d, %d, %d\n", data->cliprect.x, data->cliprect.y, data->cliprect.w, data->cliprect.h);
+    //dprintf("clip x %d, y %d, w %d, h %d\n", data->cliprect.x, data->cliprect.y, data->cliprect.w, data->cliprect.h);
 
     ret_code = IGraphics->CompositeTags(
         OS4_ConvertBlendMode(mode),
@@ -666,6 +668,8 @@ OS4_RenderClear(SDL_Renderer * renderer, Uint8 a, Uint8 r, Uint8 g, Uint8 b, str
     int height = 0;
 
     OS4_GetBitMapSize(renderer, bitmap, &width, &height);
+
+    //dprintf("Clear with color 0x%X rp %p, w %d, h %d\n", color, &data->rastport, width, height);
 
     IGraphics->RectFillColor(
         &data->rastport,
@@ -886,11 +890,13 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
                 if (SDL_memcmp(viewport, &cmd->data.viewport.rect, sizeof(SDL_Rect)) != 0) {
                     SDL_memcpy(viewport, &cmd->data.viewport.rect, sizeof(SDL_Rect));
 
-                    //dprintf("viewport %d, %d\n", viewport->w, viewport->h);
+                    //dprintf("viewport x %d, y %d, w %d, h %d\n", viewport->x, viewport->y, viewport->w, viewport->h);
 
                     if (!data->cliprect_enabled) {
                         OS4_ResetClipRect(renderer, bitmap);
                     }
+
+                    SDL_GetRectIntersection(viewport, &data->cliprect, &data->cliprect);
                 }
                 break;
             }
@@ -906,12 +912,20 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
                 if (SDL_memcmp(&data->cliprect, rect, sizeof(SDL_Rect)) != 0) {
                     SDL_memcpy(&data->cliprect, rect, sizeof(SDL_Rect));
 
-                    //dprintf("cliprect %d, %d\n", data->cliprect.w, data->cliprect.h);
+                    if (data->cliprect_enabled) {
+                        data->cliprect.x += data->viewport.x;
+                        data->cliprect.y += data->viewport.y;
+
+                        //dprintf("cliprect x %d, y %d, w %d, h %d\n", data->cliprect.x, data->cliprect.y, data->cliprect.w, data->cliprect.h);
+                    }
                 }
 
                 if (!data->cliprect_enabled) {
                     OS4_ResetClipRect(renderer, bitmap);
                 }
+
+                SDL_GetRectIntersection(&data->viewport, &data->cliprect, &data->cliprect);
+
                 break;
             }
 
@@ -930,8 +944,18 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
                 const Uint8 b = cmd->data.draw.b;
                 const Uint8 a = cmd->data.draw.a;
                 const size_t count = cmd->data.draw.count;
-                const SDL_Point *verts = (SDL_Point *)(((Uint8 *) vertices) + cmd->data.draw.first);
+                SDL_Point *verts = (SDL_Point *)(((Uint8 *) vertices) + cmd->data.draw.first);
                 const SDL_BlendMode blend = cmd->data.draw.blend;
+
+                /* Apply viewport */
+                if (data->viewport.x || data->viewport.y) {
+                    int i;
+                    for (i = 0; i < count; i++) {
+                        verts[i].x += data->viewport.x;
+                        verts[i].y += data->viewport.y;
+                    }
+                }
+
                 OS4_RenderDrawPoints(renderer, verts, count, blend, a, r, g, b);
                 break;
             }
@@ -942,8 +966,18 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
                 const Uint8 b = cmd->data.draw.b;
                 const Uint8 a = cmd->data.draw.a;
                 const size_t count = cmd->data.draw.count;
-                const SDL_Point *verts = (SDL_Point *)(((Uint8 *) vertices) + cmd->data.draw.first);
+                SDL_Point *verts = (SDL_Point *)(((Uint8 *) vertices) + cmd->data.draw.first);
                 const SDL_BlendMode blend = cmd->data.draw.blend;
+
+                /* Apply viewport */
+                if (data->viewport.x || data->viewport.y) {
+                    int i;
+                    for (i = 0; i < count; i++) {
+                        verts[i].x += data->viewport.x;
+                        verts[i].y += data->viewport.y;
+                    }
+                }
+
                 OS4_RenderDrawLines(renderer, verts, count, blend, a, r, g, b);
                 break;
             }
@@ -954,26 +988,69 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
                 const Uint8 b = cmd->data.draw.b;
                 const Uint8 a = cmd->data.draw.a;
                 const size_t count = cmd->data.draw.count;
-                const SDL_FRect *verts = (SDL_FRect *)(((Uint8 *) vertices) + cmd->data.draw.first);
+                SDL_FRect *verts = (SDL_FRect *)(((Uint8 *) vertices) + cmd->data.draw.first);
                 const SDL_BlendMode blend = cmd->data.draw.blend;
+
+                /* Apply viewport */
+                if (data->viewport.x || data->viewport.y) {
+                    int i;
+                    for (i = 0; i < count; i++) {
+                        verts[i].x += data->viewport.x;
+                        verts[i].y += data->viewport.y;
+                    }
+                }
+
                 OS4_RenderFillRects(renderer, verts, count, blend, a, r, g, b);
                 break;
             }
 
             case SDL_RENDERCMD_COPY: {
-                const OS4_Vertex *verts = (OS4_Vertex *)(((Uint8 *) vertices) + cmd->data.draw.first);
+                OS4_Vertex *verts = (OS4_Vertex *)(((Uint8 *) vertices) + cmd->data.draw.first);
+                const size_t count = cmd->data.draw.count;
+
+                /* Apply viewport */
+                if (data->viewport.x || data->viewport.y) {
+                    int i;
+                    for (i = 0; i < count * 4; i++) {
+                        verts[i].x += data->viewport.x;
+                        verts[i].y += data->viewport.y;
+                    }
+                }
+
                 OS4_RenderCopyEx(renderer, cmd, verts, bitmap);
                 break;
             }
 
             case SDL_RENDERCMD_COPY_EX: {
-                const OS4_Vertex *verts = (OS4_Vertex *)(((Uint8 *) vertices) + cmd->data.draw.first);
+                OS4_Vertex *verts = (OS4_Vertex *)(((Uint8 *) vertices) + cmd->data.draw.first);
+                const size_t count = cmd->data.draw.count;
+
+                /* Apply viewport */
+                if (data->viewport.x || data->viewport.y) {
+                    int i;
+                    for (i = 0; i < count * 4; i++) {
+                        verts[i].x += data->viewport.x;
+                        verts[i].y += data->viewport.y;
+                    }
+                }
+
                 OS4_RenderCopyEx(renderer, cmd, verts, bitmap);
                 break;
             }
 
             case SDL_RENDERCMD_GEOMETRY: {
-                const OS4_Vertex *verts = (OS4_Vertex *)(((Uint8 *) vertices) + cmd->data.draw.first);
+                OS4_Vertex *verts = (OS4_Vertex *)(((Uint8 *) vertices) + cmd->data.draw.first);
+                const size_t count = cmd->data.draw.count;
+
+                /* Apply viewport */
+                if (data->viewport.x || data->viewport.y) {
+                    int i;
+                    for (i = 0; i < count; i++) {
+                        verts[i].x += data->viewport.x;
+                        verts[i].y += data->viewport.y;
+                    }
+                }
+
                 OS4_RenderGeometry(renderer, cmd, verts, bitmap);
                 break;
             }
