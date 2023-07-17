@@ -124,9 +124,9 @@ static int PixelFormatToVITAFMT(Uint32 format)
     switch (format) {
     case SDL_PIXELFORMAT_ARGB8888:
         return SCE_GXM_TEXTURE_FORMAT_U8U8U8U8_ARGB;
-    case SDL_PIXELFORMAT_RGB888:
+    case SDL_PIXELFORMAT_XRGB8888:
         return SCE_GXM_TEXTURE_FORMAT_U8U8U8U8_ARGB;
-    case SDL_PIXELFORMAT_BGR888:
+    case SDL_PIXELFORMAT_XBGR8888:
         return SCE_GXM_TEXTURE_FORMAT_U8U8U8U8_ABGR;
     case SDL_PIXELFORMAT_ABGR8888:
         return SCE_GXM_TEXTURE_FORMAT_U8U8U8U8_ABGR;
@@ -601,7 +601,7 @@ static void VITA_GXM_SetTextureScaleMode(SDL_Renderer *renderer, SDL_Texture *te
 
     /*
      set texture filtering according to scaleMode
-     suported hint values are nearest (0, default) or linear (1)
+     supported hint values are nearest (0, default) or linear (1)
      vitaScaleMode is either SCE_GXM_TEXTURE_FILTER_POINT (good for tile-map)
      or SCE_GXM_TEXTURE_FILTER_LINEAR (good for scaling)
      */

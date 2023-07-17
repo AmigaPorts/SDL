@@ -109,9 +109,9 @@ const char *SDL_GetPixelFormatName(Uint32 format)
         CASE(SDL_PIXELFORMAT_BGR565)
         CASE(SDL_PIXELFORMAT_RGB24)
         CASE(SDL_PIXELFORMAT_BGR24)
-        CASE(SDL_PIXELFORMAT_RGB888)
+        CASE(SDL_PIXELFORMAT_XRGB8888)
         CASE(SDL_PIXELFORMAT_RGBX8888)
-        CASE(SDL_PIXELFORMAT_BGR888)
+        CASE(SDL_PIXELFORMAT_XBGR8888)
         CASE(SDL_PIXELFORMAT_BGRX8888)
         CASE(SDL_PIXELFORMAT_ARGB8888)
         CASE(SDL_PIXELFORMAT_RGBA8888)
@@ -309,14 +309,13 @@ Uint32 SDL_GetPixelFormatEnumForMasks(int bpp, Uint32 Rmask, Uint32 Gmask, Uint3
         /* SDL defaults to MSB ordering */
         return SDL_PIXELFORMAT_INDEX4MSB;
     case 8:
-        if (Rmask == 0) {
-            return SDL_PIXELFORMAT_INDEX8;
-        }
         if (Rmask == 0xE0 &&
             Gmask == 0x1C &&
             Bmask == 0x03 &&
             Amask == 0x00) {
             return SDL_PIXELFORMAT_RGB332;
+        } else {
+            return SDL_PIXELFORMAT_INDEX8;
         }
         break;
     case 12:
@@ -444,13 +443,13 @@ Uint32 SDL_GetPixelFormatEnumForMasks(int bpp, Uint32 Rmask, Uint32 Gmask, Uint3
         break;
     case 32:
         if (Rmask == 0) {
-            return SDL_PIXELFORMAT_RGB888;
+            return SDL_PIXELFORMAT_XRGB8888;
         }
         if (Rmask == 0x00FF0000 &&
             Gmask == 0x0000FF00 &&
             Bmask == 0x000000FF &&
             Amask == 0x00000000) {
-            return SDL_PIXELFORMAT_RGB888;
+            return SDL_PIXELFORMAT_XRGB8888;
         }
         if (Rmask == 0xFF000000 &&
             Gmask == 0x00FF0000 &&
@@ -462,7 +461,7 @@ Uint32 SDL_GetPixelFormatEnumForMasks(int bpp, Uint32 Rmask, Uint32 Gmask, Uint3
             Gmask == 0x0000FF00 &&
             Bmask == 0x00FF0000 &&
             Amask == 0x00000000) {
-            return SDL_PIXELFORMAT_BGR888;
+            return SDL_PIXELFORMAT_XBGR8888;
         }
         if (Rmask == 0x0000FF00 &&
             Gmask == 0x00FF0000 &&

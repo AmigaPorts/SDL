@@ -632,12 +632,12 @@ int SDL_GetSurfaceClipRect(SDL_Surface *surface, SDL_Rect *rect)
  * accelerated blitting function.
  *
  * These parts are separated out and each used internally by this
- * library in the optimimum places.  They are exported so that if
+ * library in the optimum places.  They are exported so that if
  * you know exactly what you are doing, you can optimize your code
  * by calling the one(s) you need.
  */
-int SDL_BlitSurfaceUnchecked(SDL_Surface *src, SDL_Rect *srcrect,
-                  SDL_Surface *dst, SDL_Rect *dstrect)
+int SDL_BlitSurfaceUnchecked(SDL_Surface *src, const SDL_Rect *srcrect,
+                             SDL_Surface *dst, const SDL_Rect *dstrect)
 {
     /* Check to make sure the blit mapping is valid */
     if ((src->map->dst != dst) ||
@@ -927,14 +927,14 @@ int SDL_PrivateBlitSurfaceScaled(SDL_Surface *src, const SDL_Rect *srcrect,
  *  This is a semi-private blit function and it performs low-level surface
  *  scaled blitting only.
  */
-int SDL_BlitSurfaceUncheckedScaled(SDL_Surface *src, SDL_Rect *srcrect,
-                        SDL_Surface *dst, SDL_Rect *dstrect)
+int SDL_BlitSurfaceUncheckedScaled(SDL_Surface *src, const SDL_Rect *srcrect,
+                                   SDL_Surface *dst, const SDL_Rect *dstrect)
 {
     return SDL_PrivateBlitSurfaceUncheckedScaled(src, srcrect, dst, dstrect, SDL_SCALEMODE_NEAREST);
 }
 
-int SDL_PrivateBlitSurfaceUncheckedScaled(SDL_Surface *src, SDL_Rect *srcrect,
-                               SDL_Surface *dst, SDL_Rect *dstrect, SDL_ScaleMode scaleMode)
+int SDL_PrivateBlitSurfaceUncheckedScaled(SDL_Surface *src, const SDL_Rect *srcrect,
+                                          SDL_Surface *dst, const SDL_Rect *dstrect, SDL_ScaleMode scaleMode)
 {
     static const Uint32 complex_copy_flags = (SDL_COPY_MODULATE_COLOR | SDL_COPY_MODULATE_ALPHA |
                                               SDL_COPY_BLEND | SDL_COPY_ADD | SDL_COPY_MOD | SDL_COPY_MUL |
@@ -1299,7 +1299,7 @@ SDL_Surface *SDL_ConvertSurface(SDL_Surface *surface, const SDL_PixelFormat *for
 
             tmp->map->info.flags &= ~SDL_COPY_COLORKEY;
 
-            /* Convertion of the colorkey */
+            /* Conversion of the colorkey */
             tmp2 = SDL_ConvertSurface(tmp, format);
             if (tmp2 == NULL) {
                 SDL_DestroySurface(tmp);

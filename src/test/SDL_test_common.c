@@ -938,11 +938,11 @@ static void SDLTest_PrintPixelFormat(char *text, size_t maxlen, Uint32 format)
     case SDL_PIXELFORMAT_BGR24:
         SDL_snprintfcat(text, maxlen, "BGR24");
         break;
-    case SDL_PIXELFORMAT_RGB888:
-        SDL_snprintfcat(text, maxlen, "RGB888");
+    case SDL_PIXELFORMAT_XRGB8888:
+        SDL_snprintfcat(text, maxlen, "XRGB8888");
         break;
-    case SDL_PIXELFORMAT_BGR888:
-        SDL_snprintfcat(text, maxlen, "BGR888");
+    case SDL_PIXELFORMAT_XBGR8888:
+        SDL_snprintfcat(text, maxlen, "XBGR8888");
         break;
     case SDL_PIXELFORMAT_ARGB8888:
         SDL_snprintfcat(text, maxlen, "ARGB8888");
@@ -1824,10 +1824,78 @@ static void SDLTest_PrintEvent(SDL_Event *event)
     }
 }
 
-static void SDLTest_ScreenShot(SDL_Renderer *renderer)
+#define SCREENSHOT_FILE "screenshot.bmp"
+
+typedef struct
+{
+    void *image;
+    size_t size;
+} SDLTest_ClipboardData;
+
+static void SDLTest_ScreenShotClipboardCleanup(void *context)
+{
+    SDLTest_ClipboardData *data = (SDLTest_ClipboardData *)context;
+
+    SDL_Log("Cleaning up screenshot image data\n");
+
+    if (data->image) {
+        SDL_free(data->image);
+    }
+    SDL_free(data);
+}
+
+static const void *SDLTest_ScreenShotClipboardProvider(void *context, const char *mime_type, size_t *size)
+{
+    SDLTest_ClipboardData *data = (SDLTest_ClipboardData *)context;
+
+    if (SDL_strncmp(mime_type, "text", 4) == 0) {
+        SDL_Log("Providing screenshot title to clipboard!\n");
+
+        /* Return "Test screenshot" */
+        *size = 15;
+        return "Test screenshot (but this isn't part of it)";
+    }
+
+    SDL_Log("Providing screenshot image to clipboard!\n");
+
+    if (!data->image) {
+        SDL_RWops *file;
+
+        file = SDL_RWFromFile(SCREENSHOT_FILE, "r");
+        if (file) {
+            size_t length = (size_t)SDL_RWsize(file);
+            void *image = SDL_malloc(length);
+            if (image) {
+                if (SDL_RWread(file, image, length) != length) {
+                    SDL_Log("Couldn't read %s: %s\n", SCREENSHOT_FILE, SDL_GetError());
+                    SDL_free(image);
+                    image = NULL;
+                }
+            }
+            SDL_RWclose(file);
+
+            if (image) {
+                data->image = image;
+                data->size = length;
+            }
+        } else {
+            SDL_Log("Couldn't load %s: %s\n", SCREENSHOT_FILE, SDL_GetError());
+        }
+    }
+
+    *size = data->size;
+    return data->image;
+}
+
+static void SDLTest_CopyScreenShot(SDL_Renderer *renderer)
 {
     SDL_Rect viewport;
     SDL_Surface *surface;
+    const char *image_formats[] = {
+        "text/plain;charset=utf-8",
+        "image/bmp"
+    };
+    SDLTest_ClipboardData *clipboard_data;
 
     if (renderer == NULL) {
         return;
@@ -1849,11 +1917,50 @@ static void SDLTest_ScreenShot(SDL_Renderer *renderer)
         return;
     }
 
-    if (SDL_SaveBMP(surface, "screenshot.bmp") < 0) {
-        SDL_Log("Couldn't save screenshot.bmp: %s\n", SDL_GetError());
+    if (SDL_SaveBMP(surface, SCREENSHOT_FILE) < 0) {
+        SDL_Log("Couldn't save %s: %s\n", SCREENSHOT_FILE, SDL_GetError());
         SDL_free(surface);
         return;
     }
+    SDL_free(surface);
+
+    clipboard_data = (SDLTest_ClipboardData *)SDL_calloc(1, sizeof(*clipboard_data));
+    if (!clipboard_data) {
+        SDL_Log("Couldn't allocate clipboard data\n");
+        return;
+    }
+    SDL_SetClipboardData(SDLTest_ScreenShotClipboardProvider, SDLTest_ScreenShotClipboardCleanup, clipboard_data, image_formats, SDL_arraysize(image_formats));
+    SDL_Log("Saved screenshot to %s and clipboard\n", SCREENSHOT_FILE);
+}
+
+static void SDLTest_PasteScreenShot(void)
+{
+    const char *image_formats[] = {
+        "image/bmp",
+        "image/png",
+        "image/tiff",
+    };
+    size_t i;
+
+    for (i = 0; i < SDL_arraysize(image_formats); ++i) {
+        size_t size;
+        void *data = SDL_GetClipboardData(image_formats[i], &size);
+        if (data) {
+            char filename[16];
+            SDL_RWops *file;
+
+            SDL_snprintf(filename, sizeof(filename), "clipboard.%s", image_formats[i] + 6);
+            file = SDL_RWFromFile(filename, "w");
+            if (file) {
+                SDL_Log("Writing clipboard image to %s", filename);
+                SDL_RWwrite(file, data, size);
+                SDL_RWclose(file);
+            }
+            SDL_free(data);
+            return;
+        }
+    }
+    SDL_Log("No supported screenshot data in the clipboard");
 }
 
 static void FullscreenTo(SDLTest_CommonState *state, int index, int windowId)
@@ -1906,7 +2013,6 @@ static void FullscreenTo(SDLTest_CommonState *state, int index, int windowId)
 void SDLTest_CommonEvent(SDLTest_CommonState *state, SDL_Event *event, int *done)
 {
     int i;
-    static SDL_MouseMotionEvent lastEvent;
 
     if (state->verbose & VERBOSE_EVENT) {
         if (((event->type != SDL_EVENT_MOUSE_MOTION) &&
@@ -1974,7 +2080,7 @@ void SDLTest_CommonEvent(SDLTest_CommonState *state, SDL_Event *event, int *done
             if (window) {
                 for (i = 0; i < state->num_windows; ++i) {
                     if (window == state->windows[i]) {
-                        SDLTest_ScreenShot(state->renderers[i]);
+                        SDLTest_CopyScreenShot(state->renderers[i]);
                     }
                 }
             }
@@ -2080,52 +2186,56 @@ void SDLTest_CommonEvent(SDLTest_CommonState *state, SDL_Event *event, int *done
                 }
             }
             break;
-
         case SDLK_c:
-            if (withControl) {
-                /* Ctrl-C copy awesome text! */
-                SDL_SetClipboardText("SDL rocks!\nYou know it!");
-                SDL_Log("Copied text to clipboard\n");
-            }
             if (withAlt) {
-                /* Alt-C toggle a render clip rectangle */
-                for (i = 0; i < state->num_windows; ++i) {
-                    int w, h;
-                    if (state->renderers[i]) {
-                        SDL_Rect clip;
-                        SDL_GetWindowSize(state->windows[i], &w, &h);
-                        SDL_GetRenderClipRect(state->renderers[i], &clip);
-                        if (SDL_RectEmpty(&clip)) {
-                            clip.x = w / 4;
-                            clip.y = h / 4;
-                            clip.w = w / 2;
-                            clip.h = h / 2;
-                            SDL_SetRenderClipRect(state->renderers[i], &clip);
-                        } else {
-                            SDL_SetRenderClipRect(state->renderers[i], NULL);
+                /* Alt-C copy awesome text to the primary selection! */
+                SDL_SetPrimarySelectionText("SDL rocks!\nYou know it!");
+                SDL_Log("Copied text to primary selection\n");
+
+            } else if (withControl) {
+                if (withShift) {
+                    /* Ctrl-Shift-C copy screenshot! */
+                    SDL_Window *window = SDL_GetWindowFromID(event->key.windowID);
+                    if (window) {
+                        for (i = 0; i < state->num_windows; ++i) {
+                            if (window == state->windows[i]) {
+                                SDLTest_CopyScreenShot(state->renderers[i]);
+                            }
                         }
                     }
+                } else {
+                    /* Ctrl-C copy awesome text! */
+                    SDL_SetClipboardText("SDL rocks!\nYou know it!");
+                    SDL_Log("Copied text to clipboard\n");
                 }
-            }
-            if (withShift) {
-                SDL_Window *current_win = SDL_GetKeyboardFocus();
-                if (current_win) {
-                    const SDL_bool shouldCapture = !(SDL_GetWindowFlags(current_win) & SDL_WINDOW_MOUSE_CAPTURE);
-                    const int rc = SDL_CaptureMouse(shouldCapture);
-                    SDL_Log("%sapturing mouse %s!\n", shouldCapture ? "C" : "Unc", (rc == 0) ? "succeeded" : "failed");
-                }
+                break;
             }
             break;
         case SDLK_v:
-            if (withControl) {
-                /* Ctrl-V paste awesome text! */
-                char *text = SDL_GetClipboardText();
+            if (withAlt) {
+                /* Alt-V paste awesome text from the primary selection! */
+                char *text = SDL_GetPrimarySelectionText();
                 if (*text) {
-                    SDL_Log("Clipboard: %s\n", text);
+                    SDL_Log("Primary selection: %s\n", text);
                 } else {
-                    SDL_Log("Clipboard is empty\n");
+                    SDL_Log("Primary selection is empty\n");
                 }
                 SDL_free(text);
+
+            } else if (withControl) {
+                if (withShift) {
+                    /* Ctrl-Shift-V paste screenshot! */
+                    SDLTest_PasteScreenShot();
+                } else {
+                    /* Ctrl-V paste awesome text! */
+                    char *text = SDL_GetClipboardText();
+                    if (*text) {
+                        SDL_Log("Clipboard: %s\n", text);
+                    } else {
+                        SDL_Log("Clipboard is empty\n");
+                    }
+                    SDL_free(text);
+                }
             }
             break;
         case SDLK_f:
@@ -2166,6 +2276,14 @@ void SDLTest_CommonEvent(SDLTest_CommonState *state, SDL_Event *event, int *done
                     } else {
                         SDL_MaximizeWindow(window);
                     }
+                }
+            }
+            if (withShift) {
+                SDL_Window *current_win = SDL_GetKeyboardFocus();
+                if (current_win) {
+                    const SDL_bool shouldCapture = !(SDL_GetWindowFlags(current_win) & SDL_WINDOW_MOUSE_CAPTURE);
+                    const int rc = SDL_CaptureMouse(shouldCapture);
+                    SDL_Log("%sapturing mouse %s!\n", shouldCapture ? "C" : "Unc", (rc == 0) ? "succeeded" : "failed");
                 }
             }
             break;
@@ -2271,16 +2389,6 @@ void SDLTest_CommonEvent(SDLTest_CommonState *state, SDL_Event *event, int *done
         case SDLK_ESCAPE:
             *done = 1;
             break;
-        case SDLK_SPACE:
-        {
-            char message[256];
-            SDL_Window *window = SDL_GetWindowFromID(event->key.windowID);
-
-            (void)SDL_snprintf(message, sizeof(message), "(%g, %g), rel (%g, %g)\n",
-                               lastEvent.x, lastEvent.y, lastEvent.xrel, lastEvent.yrel);
-            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Last mouse position", message, window);
-            break;
-        }
         default:
             break;
         }
@@ -2288,9 +2396,6 @@ void SDLTest_CommonEvent(SDLTest_CommonState *state, SDL_Event *event, int *done
     }
     case SDL_EVENT_QUIT:
         *done = 1;
-        break;
-    case SDL_EVENT_MOUSE_MOTION:
-        lastEvent = event->motion;
         break;
 
     case SDL_EVENT_DROP_FILE:

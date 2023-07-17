@@ -1514,7 +1514,7 @@ static int SDL_UpdateFullscreenMode(SDL_Window *window, SDL_bool fullscreen)
         if (mode == NULL) {
             SDL_DisplayMode fullscreen_mode;
             fullscreen_mode.displayID = 1;
-            fullscreen_mode.format = SDL_PIXELFORMAT_RGB888;
+            fullscreen_mode.format = SDL_PIXELFORMAT_XRGB8888;
             fullscreen_mode.w = window->w;
             fullscreen_mode.h = window->h;
             fullscreen_mode.pixel_density = 1.0f;
@@ -3752,6 +3752,9 @@ void SDL_VideoQuit(void)
         return;
     }
 
+    /* Make sure we don't try to serve clipboard data after this */
+    SDL_ClearClipboardData();
+
     /* Halt event processing before doing anything else */
     SDL_QuitTouch();
     SDL_QuitMouse();
@@ -3776,8 +3779,10 @@ void SDL_VideoQuit(void)
         _this->displays = NULL;
         _this->num_displays = 0;
     }
-    SDL_free(_this->clipboard_text);
-    _this->clipboard_text = NULL;
+    if (_this->primary_selection_text) {
+        SDL_free(_this->primary_selection_text);
+        _this->primary_selection_text = NULL;
+    }
     _this->free(_this);
     _this = NULL;
 }
