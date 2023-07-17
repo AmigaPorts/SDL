@@ -567,6 +567,11 @@ int WIN_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window)
     SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
 
     if (window->flags & SDL_WINDOW_MINIMIZED) {
+        /* TODO: We have to clear SDL_WINDOW_HIDDEN here to ensure the window flags match the window state. The
+           window is already shown after this and windows with WS_MINIMIZE do not generate a WM_SHOWWINDOW. This
+           means you can't currently create a window that is initially hidden and is minimized when shown.
+        */
+        window->flags &= ~SDL_WINDOW_HIDDEN;
         ShowWindow(hwnd, SW_SHOWMINNOACTIVE);
     }
 
@@ -809,7 +814,7 @@ int WIN_GetWindowBordersSize(SDL_VideoDevice *_this, SDL_Window *window, int *to
     rcWindow.bottom = ptDiff.y;
     rcWindow.right = ptDiff.x;
 
-    /* Now that both the inner and outer rects use the same coordinate system we can substract them to get the border size.
+    /* Now that both the inner and outer rects use the same coordinate system we can subtract them to get the border size.
      * Keep in mind that the top/left coordinates of rcWindow are negative because the border lies slightly before {0,0},
      * so switch them around because SDL3 wants them in positive. */
     *top = rcClient.top - rcWindow.top;
@@ -854,10 +859,11 @@ void WIN_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
     style = GetWindowLong(hwnd, GWL_EXSTYLE);
     if (style & WS_EX_NOACTIVATE) {
         nCmdShow = SW_SHOWNOACTIVATE;
+        bActivate = SDL_FALSE;
     }
     ShowWindow(hwnd, nCmdShow);
 
-    if (window->flags & SDL_WINDOW_POPUP_MENU) {
+    if (window->flags & SDL_WINDOW_POPUP_MENU && bActivate) {
         if (window->parent == SDL_GetKeyboardFocus()) {
             WIN_SetKeyboardFocus(window);
         }
@@ -917,6 +923,11 @@ void WIN_RaiseWindow(SDL_VideoDevice *_this, SDL_Window *window)
     }
     if (bActivate) {
         SetForegroundWindow(hwnd);
+        if (window->flags & SDL_WINDOW_POPUP_MENU) {
+            if (window->parent == SDL_GetKeyboardFocus()) {
+                WIN_SetKeyboardFocus(window);
+            }
+        }
     } else {
         SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, data->copybits_flag | SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
     }
@@ -1300,6 +1311,13 @@ void WIN_OnWindowEnter(SDL_VideoDevice *_this, SDL_Window *window)
     }
 }
 
+static BOOL GetClientScreenRect(HWND hwnd, RECT *rect)
+{
+    return GetClientRect(hwnd, rect) &&             /* RECT( left , top , right , bottom )   */
+           ClientToScreen(hwnd, (LPPOINT)rect) &&   /* POINT( left , top )                    */
+           ClientToScreen(hwnd, (LPPOINT)rect + 1); /*             POINT( right , bottom )   */
+}
+
 void WIN_UpdateClipCursor(SDL_Window *window)
 {
     SDL_WindowData *data = window->driverdata;
@@ -1320,7 +1338,7 @@ void WIN_UpdateClipCursor(SDL_Window *window)
          (window->mouse_rect.w > 0 && window->mouse_rect.h > 0)) &&
         (window->flags & SDL_WINDOW_INPUT_FOCUS)) {
         if (mouse->relative_mode && !mouse->relative_mode_warp && data->mouse_relative_mode_center) {
-            if (GetWindowRect(data->hwnd, &rect)) {
+            if (GetClientScreenRect(data->hwnd, &rect)) {
                 /* WIN_WarpCursor() jitters by +1, and remote desktop warp wobble is +/- 1 */
                 LONG remote_desktop_adjustment = GetSystemMetrics(SM_REMOTESESSION) ? 2 : 0;
                 LONG cx, cy;
@@ -1341,9 +1359,7 @@ void WIN_UpdateClipCursor(SDL_Window *window)
                 }
             }
         } else {
-            if (GetClientRect(data->hwnd, &rect)) {
-                ClientToScreen(data->hwnd, (LPPOINT)&rect);
-                ClientToScreen(data->hwnd, (LPPOINT)&rect + 1);
+            if (GetClientScreenRect(data->hwnd, &rect)) {
                 if (window->mouse_rect.w > 0 && window->mouse_rect.h > 0) {
                     SDL_Rect mouse_rect_win_client;
                     RECT mouse_rect, intersection;

@@ -14,7 +14,7 @@
 //
 // A few options:
 //   --c++=11            to parse cpp file
-//   --max-width 200     to increase line witdth of generated source
+//   --max-width 200     to increase line width of generated source
 //
 // Apply the patch to your project:
 //	patch -p1 <patch.txt
@@ -28,7 +28,7 @@
 // @@
 // rule / transformation
 //
-// So this file is a set of many semantic patches, mostly independant.
+// So this file is a set of many semantic patches, mostly independent.
 
 
 @ rule_audio_open @
@@ -599,12 +599,12 @@ expression e1, e2, e3, e4, e5, e6, e7, e8, e9;
 |
 
 - SDL_CreateRGBSurface(e1, e2, e3, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0x00000000)
-+ SDL_CreateSurface(e2, e3, SDL_PIXELFORMAT_RGB888)
++ SDL_CreateSurface(e2, e3, SDL_PIXELFORMAT_XRGB8888)
 
 |
 
 - SDL_CreateRGBSurfaceFrom(e1, e2, e3, 32, e4, 0x00FF0000, 0x0000FF00, 0x000000FF, 0x00000000)
-+ SDL_CreateSurfaceFrom(e1, e2, e3, e4, SDL_PIXELFORMAT_RGB888)
++ SDL_CreateSurfaceFrom(e1, e2, e3, e4, SDL_PIXELFORMAT_XRGB8888)
 
 |
 
@@ -619,12 +619,12 @@ expression e1, e2, e3, e4, e5, e6, e7, e8, e9;
 |
 
 - SDL_CreateRGBSurface(e1, e2, e3, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0x00000000)
-+ SDL_CreateSurface(e2, e3, SDL_PIXELFORMAT_BGR888)
++ SDL_CreateSurface(e2, e3, SDL_PIXELFORMAT_XBGR8888)
 
 |
 
 - SDL_CreateRGBSurfaceFrom(e1, e2, e3, 32, e4, 0x000000FF, 0x0000FF00, 0x00FF0000, 0x00000000)
-+ SDL_CreateSurfaceFrom(e1, e2, e3, e4, SDL_PIXELFORMAT_BGR888)
++ SDL_CreateSurfaceFrom(e1, e2, e3, e4, SDL_PIXELFORMAT_XBGR8888)
 
 |
 
@@ -2677,3 +2677,16 @@ typedef SDL_cond, SDL_Condition;
 @@
 - SDL_WINDOW_SKIP_TASKBAR
 + SDL_WINDOW_UTILITY
+@@
+@@
+- SDL_PIXELFORMAT_RGB888
++ SDL_PIXELFORMAT_XRGB8888
+@@
+@@
+- SDL_PIXELFORMAT_BGR888
++ SDL_PIXELFORMAT_XBGR8888
+@@
+@@
+- SDL_strtokr
++ SDL_strtok_r
+  (...)

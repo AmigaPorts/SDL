@@ -6,7 +6,6 @@ LIBS   = -L.. -use-dynld -lSDL3_test -lSDL3 -athread=native
 
 TARGETS = \
 	checkkeys \
-	gamepadmap \
 	helloworld \
 	loopwave \
 	loopwavequeue \
@@ -17,6 +16,7 @@ TARGETS = \
 	testaudioinfo \
 	testautomation \
 	testbounds \
+	testcontroller \
 	testcustomcursor \
 	testdisplayinfo \
 	testdraw \
@@ -25,7 +25,6 @@ TARGETS = \
 	testerror \
 	testfile \
 	testfilesystem \
-	testgamepad \
 	testgeometry \
 	testgl \
 	testgles \
@@ -37,7 +36,6 @@ TARGETS = \
 	testiconv \
 	testime \
 	testintersections \
-	testjoystick \
 	testkeys \
 	testloadso \
 	testlocale \
@@ -124,6 +122,9 @@ testautomation: testautomation.o \
 		      testautomation_video.o
 	$(CC) -o $@ $^ $(LIBS) 
 
+testcontroller: testcontroller.o gamepadutils.o
+	$(CC) -o $@ $^ $(LIBS)
+
 testmultiaudio: testmultiaudio.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
@@ -160,9 +161,6 @@ testerror: testerror.o
 testfile: testfile.o
 	$(CC) -o $@ $^ $(LIBS)
 
-testgamepad: testgamepad.o testutils.o
-	$(CC) -o $@ $^ $(LIBS)
-
 testgeometry: testgeometry.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
  
@@ -194,9 +192,6 @@ testiconv: testiconv.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testime: testime.o testutils.o
-	$(CC) -o $@ $^ $(LIBS)
-
-testjoystick: testjoystick.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testkeys: testkeys.o
@@ -296,9 +291,6 @@ testbounds: testbounds.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testcustomcursor: testcustomcursor.o
-	$(CC) -o $@ $^ $(LIBS)
-
-gamepadmap: gamepadmap.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testvulkan: testvulkan.o

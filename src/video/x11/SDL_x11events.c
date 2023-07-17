@@ -32,6 +32,7 @@
 #include "SDL_x11touch.h"
 #include "SDL_x11xinput2.h"
 #include "SDL_x11xfixes.h"
+#include "../SDL_clipboard_c.h"
 #include "../../core/unix/SDL_poll.h"
 #include "../../events/SDL_events_c.h"
 #include "../../events/SDL_mouse_c.h"
@@ -685,8 +686,9 @@ static void X11_HandleClipboardEvent(SDL_VideoDevice *_this, const XEvent *xeven
                         continue;
                     }
 
-                    /* FIXME: We don't support the X11 INCR protocol for large clipboards. Do we want that? */
-                    seln_data = clipboard->callback(&seln_length, mime_type, clipboard->userdata);
+                    /* FIXME: We don't support the X11 INCR protocol for large clipboards. Do we want that? - Yes, yes we do. */
+                    /* This is a safe cast, XChangeProperty() doesn't take a const value, but it doesn't modify the data */
+                    seln_data = (unsigned char *)clipboard->callback(clipboard->userdata, mime_type, &seln_length);
                     if (seln_data != NULL) {
                         X11_XChangeProperty(display, req->requestor, req->property,
                                             req->target, 8, PropModeReplace,
@@ -726,13 +728,14 @@ static void X11_HandleClipboardEvent(SDL_VideoDevice *_this, const XEvent *xeven
             clipboard = &videodata->primary_selection;
         } else if (XA_CLIPBOARD != None && xevent->xselectionclear.selection == XA_CLIPBOARD) {
             clipboard = &videodata->clipboard;
-            if (clipboard->internal == SDL_FALSE) {
-                SDL_SendClipboardCancelled(clipboard->userdata);
-            }
         }
-        if (clipboard != NULL && clipboard->internal == SDL_TRUE) {
-            SDL_free(clipboard->userdata);
-            clipboard->userdata = NULL;
+        if (clipboard && clipboard->callback) {
+            if (clipboard->sequence) {
+                SDL_CancelClipboardData(clipboard->sequence);
+            } else {
+                SDL_free(clipboard->userdata);
+            }
+            SDL_zerop(clipboard);
         }
     } break;
     }
@@ -835,7 +838,7 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
         orig_keycode = 0;
     }
 
-    /* filter events catchs XIM events and sends them to the correct handler */
+    /* filter events catches XIM events and sends them to the correct handler */
     if (X11_XFilterEvent(xevent, None) == True) {
 #if 0
         printf("Filtered event type = %d display = %d window = %d\n",
@@ -887,6 +890,27 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
     printf("type = %d display = %d window = %d\n",
            xevent->type, xevent->xany.display, xevent->xany.window);
 #endif
+
+#ifdef SDL_VIDEO_DRIVER_X11_XFIXES
+    if (SDL_X11_HAVE_XFIXES &&
+            xevent->type == X11_GetXFixesSelectionNotifyEvent()) {
+        XFixesSelectionNotifyEvent *ev = (XFixesSelectionNotifyEvent *) xevent;
+
+        /* !!! FIXME: cache atoms */
+        Atom XA_CLIPBOARD = X11_XInternAtom(display, "CLIPBOARD", 0);
+
+#ifdef DEBUG_XEVENTS
+        printf("window CLIPBOARD: XFixesSelectionNotify (selection = %s)\n",
+                X11_XGetAtomName(display, ev->selection));
+#endif
+
+        if (ev->selection == XA_PRIMARY ||
+                (XA_CLIPBOARD != None && ev->selection == XA_CLIPBOARD)) {
+            SDL_SendClipboardUpdate();
+            return;
+        }
+    }
+#endif /* SDL_VIDEO_DRIVER_X11_XFIXES */
 
     if ((videodata->clipboard_window != None) &&
         (videodata->clipboard_window == xevent->xany.window)) {
@@ -1215,7 +1239,7 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
             unsigned int NumChildren;
             Window ChildReturn, Root, Parent;
             Window *Children;
-            /* Translate these coodinates back to relative to root */
+            /* Translate these coordinates back to relative to root */
             X11_XQueryTree(data->videodata->display, xevent->xconfigure.window, &Root, &Parent, &Children, &NumChildren);
             X11_XTranslateCoordinates(xevent->xconfigure.display,
                                       Parent, DefaultRootWindow(xevent->xconfigure.display),
@@ -1591,7 +1615,7 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
                 char *saveptr = NULL;
                 char *name = X11_XGetAtomName(display, target);
                 if (name) {
-                    char *token = SDL_strtokr((char *)p.data, "\r\n", &saveptr);
+                    char *token = SDL_strtok_r((char *)p.data, "\r\n", &saveptr);
                     while (token != NULL) {
                         if (SDL_strcmp("text/plain", name) == 0) {
                             SDL_SendDropText(data->window, token);
@@ -1601,7 +1625,7 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
                                 SDL_SendDropFile(data->window, fn);
                             }
                         }
-                        token = SDL_strtokr(NULL, "\r\n", &saveptr);
+                        token = SDL_strtok_r(NULL, "\r\n", &saveptr);
                     }
                     X11_XFree(name);
                 }

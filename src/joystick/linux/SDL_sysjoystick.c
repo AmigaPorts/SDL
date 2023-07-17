@@ -46,6 +46,7 @@
 #include "../../core/linux/SDL_evdev.h"
 #include "../SDL_sysjoystick.h"
 #include "../SDL_joystick_c.h"
+#include "../usb_ids.h"
 #include "../steam/SDL_steamcontroller.h"
 #include "SDL_sysjoystick_c.h"
 #include "../hidapi/SDL_hidapijoystick_c.h"
@@ -317,43 +318,17 @@ static int IsJoystick(const char *path, int fd, char **name_return, SDL_Joystick
 static int IsSensor(const char *path, int fd)
 {
     struct input_id inpid;
-    char *name;
-    char product_string[128];
 
     if (ioctl(fd, EVIOCGID, &inpid) < 0) {
         return 0;
     }
 
-    if (ioctl(fd, EVIOCGNAME(sizeof(product_string)), product_string) < 0) {
-        return 0;
-    }
-
-    name = SDL_CreateJoystickName(inpid.vendor, inpid.product, NULL, product_string);
-    if (name == NULL) {
-        return 0;
-    }
-
-    if (SDL_endswith(name, " Motion Sensors")) {
-        /* PS3 and PS4 motion controls */
-        SDL_free(name);
-        return 1;
-    }
-    if (SDL_strncmp(name, "Nintendo ", 9) == 0 && SDL_strstr(name, " IMU") != NULL) {
-        /* Nintendo Switch Joy-Con and Pro Controller IMU */
-        SDL_free(name);
-        return 1;
-    }
-    if (SDL_endswith(name, " Accelerometer") ||
-        SDL_endswith(name, " IR") ||
-        SDL_endswith(name, " Motion Plus") ||
-        SDL_endswith(name, " Nunchuk")) {
+    if (inpid.vendor == USB_VENDOR_NINTENDO && inpid.product == USB_PRODUCT_NINTENDO_WII_REMOTE) {
         /* Wii extension controls */
         /* These may create 3 sensor devices but we only support reading from 1: ignore them */
-        SDL_free(name);
         return 0;
     }
 
-    SDL_free(name);
     return GuessIsSensor(fd);
 }
 
@@ -1371,7 +1346,7 @@ static int PrepareJoystickHwdata(SDL_Joystick *joystick, SDL_joylist_item *item,
         if (fd < 0) {
             return SDL_SetError("Unable to open %s", item->path);
         }
-        /* If openning sensor fail, continue with buttons and axes only */
+        /* If opening sensor fail, continue with buttons and axes only */
         if (item_sensor != NULL) {
             fd_sensor = open(item_sensor->path, O_RDONLY | O_CLOEXEC, 0);
         }
@@ -2411,7 +2386,7 @@ static SDL_bool LINUX_JoystickGetGamepadMapping(int device_index, SDL_GamepadMap
 #endif
     }
 
-    if (!(mapped & MAPPED_TRIGGER_LEFT) && joystick->hwdata->has_key[BTN_TR2]) {
+    if (!(mapped & MAPPED_TRIGGER_RIGHT) && joystick->hwdata->has_key[BTN_TR2]) {
         out->righttrigger.kind = EMappingKind_Button;
         out->righttrigger.target = joystick->hwdata->key_map[BTN_TR2];
         mapped |= MAPPED_TRIGGER_RIGHT;

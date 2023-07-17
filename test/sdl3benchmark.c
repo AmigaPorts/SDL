@@ -666,7 +666,7 @@ checkPixelFormat(Context *ctx)
 
     SDL_Log("Pixel format 0x%X (%s)\n", pf, SDL_GetPixelFormatName(pf));
 
-    if (pf != SDL_PIXELFORMAT_ARGB8888 && pf != SDL_PIXELFORMAT_RGB888) {
+    if (pf != SDL_PIXELFORMAT_ARGB8888 && pf != SDL_PIXELFORMAT_XRGB8888) {
         SDL_Log("NOTE: window's pixel format not ARGB8888 - possible bitmap conversion can slow down\n");
     }
 }

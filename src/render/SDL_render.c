@@ -1261,14 +1261,14 @@ SDL_Texture *SDL_CreateTextureFromSurface(SDL_Renderer *renderer, SDL_Surface *s
     /* Try to have the best pixel format for the texture */
     /* No alpha, but a colorkey => promote to alpha */
     if (!fmt->Amask && SDL_SurfaceHasColorKey(surface)) {
-        if (fmt->format == SDL_PIXELFORMAT_RGB888) {
+        if (fmt->format == SDL_PIXELFORMAT_XRGB8888) {
             for (i = 0; i < (int)renderer->info.num_texture_formats; ++i) {
                 if (renderer->info.texture_formats[i] == SDL_PIXELFORMAT_ARGB8888) {
                     format = SDL_PIXELFORMAT_ARGB8888;
                     break;
                 }
             }
-        } else if (fmt->format == SDL_PIXELFORMAT_BGR888) {
+        } else if (fmt->format == SDL_PIXELFORMAT_XBGR8888) {
             for (i = 0; i < (int)renderer->info.num_texture_formats; ++i) {
                 if (renderer->info.texture_formats[i] == SDL_PIXELFORMAT_ABGR8888) {
                     format = SDL_PIXELFORMAT_ABGR8888;
@@ -1314,7 +1314,7 @@ SDL_Texture *SDL_CreateTextureFromSurface(SDL_Renderer *renderer, SDL_Surface *s
             direct_update = SDL_TRUE;
         }
     } else {
-        /* Surface and Renderer formats are differents, it needs an intermediate conversion. */
+        /* Surface and Renderer formats are different, it needs an intermediate conversion. */
         direct_update = SDL_FALSE;
     }
 
@@ -2264,6 +2264,60 @@ int SDL_GetRenderLogicalPresentation(SDL_Renderer *renderer, int *w, int *h, SDL
         *scale_mode = renderer->logical_scale_mode;
     }
     return 0;
+}
+
+static void SDL_RenderLogicalBorders(SDL_Renderer *renderer)
+{
+    const SDL_FRect *dst = &renderer->logical_dst_rect;
+
+    if (dst->x > 0.0f || dst->y > 0.0f) {
+        SDL_BlendMode saved_blend_mode = renderer->blendMode;
+        SDL_Color saved_color = renderer->color;
+
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+
+        if (dst->x > 0.0f) {
+            SDL_FRect rect;
+
+            rect.x = 0.0f;
+            rect.y = 0.0f;
+            rect.w = dst->x;
+            rect.h = (float)renderer->view->pixel_h;
+            SDL_RenderFillRect(renderer, &rect);
+
+            rect.x = dst->x + dst->w;
+            rect.w = (float)renderer->view->pixel_w - rect.x;
+            SDL_RenderFillRect(renderer, &rect);
+        }
+
+        if (dst->y > 0.0f) {
+            SDL_FRect rect;
+
+            rect.x = 0.0f;
+            rect.y = 0.0f;
+            rect.w = (float)renderer->view->pixel_w;
+            rect.h = dst->y;
+            SDL_RenderFillRect(renderer, &rect);
+
+            rect.y = dst->y + dst->h;
+            rect.h = (float)renderer->view->pixel_h - rect.y;
+            SDL_RenderFillRect(renderer, &rect);
+        }
+
+        SDL_SetRenderDrawBlendMode(renderer, saved_blend_mode);
+        SDL_SetRenderDrawColor(renderer, saved_color.r, saved_color.g, saved_color.b, saved_color.a);
+    }
+}
+
+static void SDL_RenderLogicalPresentation(SDL_Renderer *renderer)
+{
+    SDL_assert(renderer->target == NULL);
+    SDL_SetRenderViewport(renderer, NULL);
+    SDL_SetRenderClipRect(renderer, NULL);
+    SDL_SetRenderScale(renderer, 1.0f, 1.0f);
+    SDL_RenderLogicalBorders(renderer);
+    SDL_RenderTexture(renderer, renderer->logical_target, &renderer->logical_src_rect, &renderer->logical_dst_rect);
 }
 
 int SDL_RenderCoordinatesFromWindow(SDL_Renderer *renderer, float window_x, float window_y, float *x, float *y)
@@ -3930,50 +3984,6 @@ static void SDL_SimulateRenderVSync(SDL_Renderer *renderer)
     }
 }
 
-static void SDL_RenderLogicalBorders(SDL_Renderer *renderer)
-{
-    const SDL_FRect *dst = &renderer->logical_dst_rect;
-
-    if (dst->x > 0.0f || dst->y > 0.0f) {
-        SDL_BlendMode saved_blend_mode = renderer->blendMode;
-        SDL_Color saved_color = renderer->color;
-
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-
-        if (dst->x > 0.0f) {
-            SDL_FRect rect;
-
-            rect.x = 0.0f;
-            rect.y = 0.0f;
-            rect.w = dst->x;
-            rect.h = (float)renderer->view->pixel_h;
-            SDL_RenderFillRect(renderer, &rect);
-
-            rect.x = dst->x + dst->w;
-            rect.w = (float)renderer->view->pixel_w - rect.x;
-            SDL_RenderFillRect(renderer, &rect);
-        }
-
-        if (dst->y > 0.0f) {
-            SDL_FRect rect;
-
-            rect.x = 0.0f;
-            rect.y = 0.0f;
-            rect.w = (float)renderer->view->pixel_w;
-            rect.h = dst->y;
-            SDL_RenderFillRect(renderer, &rect);
-
-            rect.y = dst->y + dst->h;
-            rect.h = (float)renderer->view->pixel_h - rect.y;
-            SDL_RenderFillRect(renderer, &rect);
-        }
-
-        SDL_SetRenderDrawBlendMode(renderer, saved_blend_mode);
-        SDL_SetRenderDrawColor(renderer, saved_color.r, saved_color.g, saved_color.b, saved_color.a);
-    }
-}
-
 int SDL_RenderPresent(SDL_Renderer *renderer)
 {
     SDL_bool presented = SDL_TRUE;
@@ -3982,11 +3992,7 @@ int SDL_RenderPresent(SDL_Renderer *renderer)
 
     if (renderer->logical_target) {
         SDL_SetRenderTargetInternal(renderer, NULL);
-        SDL_SetRenderViewport(renderer, NULL);
-        SDL_SetRenderClipRect(renderer, NULL);
-        SDL_SetRenderScale(renderer, 1.0f, 1.0f);
-        SDL_RenderLogicalBorders(renderer);
-        SDL_RenderTexture(renderer, renderer->logical_target, &renderer->logical_src_rect, &renderer->logical_dst_rect);
+        SDL_RenderLogicalPresentation(renderer);
     }
 
     FlushRenderCommands(renderer); /* time to send everything to the GPU! */
@@ -4024,6 +4030,12 @@ static int SDL_DestroyTextureInternal(SDL_Texture *texture, SDL_bool is_destroyi
     } else {
         if (texture == renderer->target) {
             SDL_SetRenderTargetInternal(renderer, NULL); /* implies command queue flush */
+
+            if (texture == renderer->logical_target) {
+                /* Complete any logical presentation */
+                SDL_RenderLogicalPresentation(renderer);
+                FlushRenderCommands(renderer);
+            }
         } else {
             FlushRenderCommandsIfTextureNeeded(texture);
         }

@@ -230,6 +230,20 @@ static void SetLedsForPlayerIndex(DS4EffectsState_t *effects, int player_index)
     effects->ucLedBlue = colors[player_index][2];
 }
 
+static SDL_bool ReadWiredSerial(SDL_HIDAPI_Device *device, char *serial, size_t serial_size)
+{
+    Uint8 data[USB_PACKET_LENGTH];
+    int size;
+
+    size = ReadFeatureReport(device->dev, k_ePS4FeatureReportIdSerialNumber, data, sizeof(data));
+    if (size >= 7 && (data[1] || data[2] || data[3] || data[4] || data[5] || data[6])) {
+        (void)SDL_snprintf(serial, serial_size, "%.2x-%.2x-%.2x-%.2x-%.2x-%.2x",
+                           data[6], data[5], data[4], data[3], data[2], data[1]);
+        return SDL_TRUE;
+    }
+    return SDL_FALSE;
+}
+
 static SDL_bool HIDAPI_DriverPS4_InitDevice(SDL_HIDAPI_Device *device)
 {
     SDL_DriverPS4_Context *ctx;
@@ -270,23 +284,13 @@ static SDL_bool HIDAPI_DriverPS4_InitDevice(SDL_HIDAPI_Device *device)
     /* Check for type of connection */
     ctx->is_dongle = (device->vendor_id == USB_VENDOR_SONY && device->product_id == USB_PRODUCT_SONY_DS4_DONGLE);
     if (ctx->is_dongle) {
-        size = ReadFeatureReport(device->dev, k_ePS4FeatureReportIdSerialNumber, data, sizeof(data));
-        if (size >= 7 && (data[1] || data[2] || data[3] || data[4] || data[5] || data[6])) {
-            (void)SDL_snprintf(serial, sizeof(serial), "%.2x-%.2x-%.2x-%.2x-%.2x-%.2x",
-                               data[6], data[5], data[4], data[3], data[2], data[1]);
-        }
+        ReadWiredSerial(device, serial, sizeof(serial));
         ctx->enhanced_mode = SDL_TRUE;
     } else if (device->vendor_id == USB_VENDOR_SONY && device->product_id == USB_PRODUCT_SONY_DS4_STRIKEPAD) {
         ctx->enhanced_mode = SDL_TRUE;
 
     } else if (device->vendor_id == USB_VENDOR_SONY) {
-        /* This will fail if we're on Bluetooth */
-        size = ReadFeatureReport(device->dev, k_ePS4FeatureReportIdSerialNumber, data, sizeof(data));
-        if (size >= 7 && (data[1] || data[2] || data[3] || data[4] || data[5] || data[6])) {
-            (void)SDL_snprintf(serial, sizeof(serial), "%.2x-%.2x-%.2x-%.2x-%.2x-%.2x",
-                               data[6], data[5], data[4], data[3], data[2], data[1]);
-            ctx->enhanced_mode = SDL_TRUE;
-        } else {
+        if (device->is_bluetooth) {
             /* Read a report to see if we're in enhanced mode */
             size = SDL_hid_read_timeout(device->dev, data, sizeof(data), 16);
 #ifdef DEBUG_PS4_PROTOCOL
@@ -301,83 +305,89 @@ static SDL_bool HIDAPI_DriverPS4_InitDevice(SDL_HIDAPI_Device *device)
                 data[0] <= k_EPS4ReportIdBluetoothState9) {
                 ctx->enhanced_mode = SDL_TRUE;
             }
+        } else {
+            ReadWiredSerial(device, serial, sizeof(serial));
+            ctx->enhanced_mode = SDL_TRUE;
         }
     } else {
         /* Third party controllers appear to all be wired */
         ctx->enhanced_mode = SDL_TRUE;
     }
 
-    size = ReadFeatureReport(device->dev, k_ePS4FeatureReportIdCapabilities, data, sizeof(data));
-    /* Get the device capabilities */
-    if (size == 48 && data[2] == 0x27) {
-        Uint8 capabilities = data[4];
-        Uint8 device_type = data[5];
-        Uint16 gyro_numerator = LOAD16(data[10], data[11]);
-        Uint16 gyro_denominator = LOAD16(data[12], data[13]);
-        Uint16 accel_numerator = LOAD16(data[14], data[15]);
-        Uint16 accel_denominator = LOAD16(data[16], data[17]);
-
-#ifdef DEBUG_PS4_PROTOCOL
-        HIDAPI_DumpPacket("PS4 capabilities: size = %d", data, size);
-#endif
-        if (capabilities & 0x02) {
-            ctx->sensors_supported = SDL_TRUE;
-        }
-        if (capabilities & 0x04) {
-            ctx->lightbar_supported = SDL_TRUE;
-        }
-        if (capabilities & 0x08) {
-            ctx->vibration_supported = SDL_TRUE;
-        }
-        if (capabilities & 0x40) {
-            ctx->touchpad_supported = SDL_TRUE;
-        }
-
-        switch (device_type) {
-        case 0x00:
-            joystick_type = SDL_JOYSTICK_TYPE_GAMEPAD;
-            break;
-        case 0x01:
-            joystick_type = SDL_JOYSTICK_TYPE_GUITAR;
-            break;
-        case 0x02:
-            joystick_type = SDL_JOYSTICK_TYPE_DRUM_KIT;
-            break;
-        case 0x04:
-            joystick_type = SDL_JOYSTICK_TYPE_DANCE_PAD;
-            break;
-        case 0x06:
-            joystick_type = SDL_JOYSTICK_TYPE_WHEEL;
-            break;
-        case 0x07:
-            joystick_type = SDL_JOYSTICK_TYPE_ARCADE_STICK;
-            break;
-        case 0x08:
-            joystick_type = SDL_JOYSTICK_TYPE_FLIGHT_STICK;
-            break;
-        default:
-            joystick_type = SDL_JOYSTICK_TYPE_UNKNOWN;
-            break;
-        }
-
-        if (gyro_numerator && gyro_denominator) {
-            ctx->gyro_numerator = gyro_numerator;
-            ctx->gyro_denominator = gyro_denominator;
-        }
-        if (accel_numerator && accel_denominator) {
-            ctx->accel_numerator = accel_numerator;
-            ctx->accel_denominator = accel_denominator;
-        }
-    } else if (device->vendor_id == USB_VENDOR_SONY) {
+    if (device->vendor_id == USB_VENDOR_SONY) {
         ctx->official_controller = SDL_TRUE;
         ctx->sensors_supported = SDL_TRUE;
         ctx->lightbar_supported = SDL_TRUE;
         ctx->vibration_supported = SDL_TRUE;
         ctx->touchpad_supported = SDL_TRUE;
-    } else if (device->vendor_id == USB_VENDOR_RAZER) {
-        /* The Razer Raiju doesn't respond to the detection protocol, but has a touchpad and vibration */
-        ctx->vibration_supported = SDL_TRUE;
-        ctx->touchpad_supported = SDL_TRUE;
+    } else {
+        /* Third party controller capability request */
+        size = ReadFeatureReport(device->dev, k_ePS4FeatureReportIdCapabilities, data, sizeof(data));
+        /* Get the device capabilities */
+        if (size == 48 && data[2] == 0x27) {
+            Uint8 capabilities = data[4];
+            Uint8 device_type = data[5];
+            Uint16 gyro_numerator = LOAD16(data[10], data[11]);
+            Uint16 gyro_denominator = LOAD16(data[12], data[13]);
+            Uint16 accel_numerator = LOAD16(data[14], data[15]);
+            Uint16 accel_denominator = LOAD16(data[16], data[17]);
+
+#ifdef DEBUG_PS4_PROTOCOL
+            HIDAPI_DumpPacket("PS4 capabilities: size = %d", data, size);
+#endif
+            if (capabilities & 0x02) {
+                ctx->sensors_supported = SDL_TRUE;
+            }
+            if (capabilities & 0x04) {
+                ctx->lightbar_supported = SDL_TRUE;
+            }
+            if (capabilities & 0x08) {
+                ctx->vibration_supported = SDL_TRUE;
+            }
+            if (capabilities & 0x40) {
+                ctx->touchpad_supported = SDL_TRUE;
+            }
+
+            switch (device_type) {
+            case 0x00:
+                joystick_type = SDL_JOYSTICK_TYPE_GAMEPAD;
+                break;
+            case 0x01:
+                joystick_type = SDL_JOYSTICK_TYPE_GUITAR;
+                break;
+            case 0x02:
+                joystick_type = SDL_JOYSTICK_TYPE_DRUM_KIT;
+                break;
+            case 0x04:
+                joystick_type = SDL_JOYSTICK_TYPE_DANCE_PAD;
+                break;
+            case 0x06:
+                joystick_type = SDL_JOYSTICK_TYPE_WHEEL;
+                break;
+            case 0x07:
+                joystick_type = SDL_JOYSTICK_TYPE_ARCADE_STICK;
+                break;
+            case 0x08:
+                joystick_type = SDL_JOYSTICK_TYPE_FLIGHT_STICK;
+                break;
+            default:
+                joystick_type = SDL_JOYSTICK_TYPE_UNKNOWN;
+                break;
+            }
+
+            if (gyro_numerator && gyro_denominator) {
+                ctx->gyro_numerator = gyro_numerator;
+                ctx->gyro_denominator = gyro_denominator;
+            }
+            if (accel_numerator && accel_denominator) {
+                ctx->accel_numerator = accel_numerator;
+                ctx->accel_denominator = accel_denominator;
+            }
+        } else if (device->vendor_id == USB_VENDOR_RAZER) {
+            /* The Razer Raiju doesn't respond to the detection protocol, but has a touchpad and vibration */
+            ctx->vibration_supported = SDL_TRUE;
+            ctx->touchpad_supported = SDL_TRUE;
+        }
     }
     ctx->effects_supported = (ctx->lightbar_supported || ctx->vibration_supported);
 
@@ -643,16 +653,25 @@ static int HIDAPI_DriverPS4_UpdateEffects(SDL_HIDAPI_Device *device)
 
 static void HIDAPI_DriverPS4_TickleBluetooth(SDL_HIDAPI_Device *device)
 {
-    /* This is just a dummy packet that should have no effect, since we don't set the CRC */
-    Uint8 data[78];
+    SDL_DriverPS4_Context *ctx = (SDL_DriverPS4_Context *)device->context;
 
-    SDL_zeroa(data);
+    if (ctx->enhanced_mode) {
+        /* This is just a dummy packet that should have no effect, since we don't set the CRC */
+        Uint8 data[78];
 
-    data[0] = k_EPS4ReportIdBluetoothEffects;
-    data[1] = 0xC0; /* Magic value HID + CRC */
+        SDL_zeroa(data);
 
-    if (SDL_HIDAPI_LockRumble() == 0) {
-        SDL_HIDAPI_SendRumbleAndUnlock(device, data, sizeof(data));
+        data[0] = k_EPS4ReportIdBluetoothEffects;
+        data[1] = 0xC0; /* Magic value HID + CRC */
+
+        if (SDL_HIDAPI_LockRumble() == 0) {
+            SDL_HIDAPI_SendRumbleAndUnlock(device, data, sizeof(data));
+        }
+    } else {
+        /* We can't even send an invalid effects packet, or it will put the controller in enhanced mode */
+        if (device->num_joysticks > 0) {
+            HIDAPI_JoystickDisconnected(device, device->joysticks[0]);
+        }
     }
 }
 

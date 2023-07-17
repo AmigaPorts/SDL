@@ -31,6 +31,7 @@
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
+// TODO: merge SDL2 framebuffer changes (hard-coded 32-bit mode)
 static Uint32
 OS4_PixfToSdlPixelFormat(PIX_FMT from)
 {
@@ -41,8 +42,8 @@ OS4_PixfToSdlPixelFormat(PIX_FMT from)
         case PIXF_A8B8G8R8: return SDL_PIXELFORMAT_ABGR8888;
         case PIXF_R8G8B8A8: return SDL_PIXELFORMAT_RGBA8888;
         // 24-bit (WinUAE Picasso-IV may use one)
-        case PIXF_R8G8B8: return SDL_PIXELFORMAT_RGB888;
-        case PIXF_B8G8R8: return SDL_PIXELFORMAT_BGR888;
+        case PIXF_R8G8B8: return SDL_PIXELFORMAT_XRGB8888;
+        case PIXF_B8G8R8: return SDL_PIXELFORMAT_XBGR8888;
         // 16-bit
         case PIXF_R5G6B5: return SDL_PIXELFORMAT_RGB565;
         // 8-bit
