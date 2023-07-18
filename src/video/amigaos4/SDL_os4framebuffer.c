@@ -94,7 +94,20 @@ OS4_CreateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, Uint32 
         BMATags_PixelFormat, pixf,
         TAG_DONE);
 
-    if (!data->bitmap) {
+    if (data->bitmap) {
+        /* Fill with zeroes, similar to SW renderer surface creation */
+        struct RastPort rp;
+        IGraphics->InitRastPort(&rp);
+        rp.BitMap = data->bitmap;
+
+        IGraphics->RectFillColor(
+            &rp,
+            0,
+            0,
+            window->w - 1,
+            window->h - 1,
+            0x00000000); // graphics.lib v54!
+    } else {
         dprintf("Failed to allocate bitmap\n");
         return SDL_SetError("Failed to allocate bitmap for framebuffer");
     }
