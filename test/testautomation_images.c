@@ -14,6 +14,18 @@
 
 /* GIMP RGB C-Source image dump (blit.c) */
 
+/* Workaround: convert 24-bit surfaces to 32-bit because comparison function doesn't work
+   on big endian systems. */
+static SDL_Surface* ConvertToARGB(SDL_Surface * original)
+{
+    SDL_Surface * converted = SDL_ConvertSurfaceFormat(original, SDL_PIXELFORMAT_ARGB8888);
+    if (converted) {
+        SDL_DestroySurface(original);
+    }
+
+    return converted;
+}
+
 static const SDLTest_SurfaceImage_t SDLTest_imageBlit = {
     80,
     60,
@@ -537,7 +549,7 @@ SDL_Surface *SDLTest_ImageBlit(void)
         SDLTest_imageBlit.width,
         SDLTest_imageBlit.height,
         SDLTest_imageBlit.width * SDLTest_imageBlit.bytes_per_pixel, SDL_PIXELFORMAT_RGB24);
-    return surface;
+    return ConvertToARGB(surface);
 }
 
 static const SDLTest_SurfaceImage_t SDLTest_imageBlitColor = {
@@ -1009,7 +1021,7 @@ SDL_Surface *SDLTest_ImageBlitColor(void)
         SDLTest_imageBlitColor.width,
         SDLTest_imageBlitColor.height,
         SDLTest_imageBlitColor.width * SDLTest_imageBlitColor.bytes_per_pixel, SDL_PIXELFORMAT_RGB24);
-    return surface;
+    return ConvertToARGB(surface);
 }
 
 static const SDLTest_SurfaceImage_t SDLTest_imageBlitAlpha = {
@@ -1644,7 +1656,7 @@ SDL_Surface *SDLTest_ImageBlitAlpha(void)
         SDLTest_imageBlitAlpha.width,
         SDLTest_imageBlitAlpha.height,
         SDLTest_imageBlitAlpha.width * SDLTest_imageBlitAlpha.bytes_per_pixel, SDL_PIXELFORMAT_RGB24);
-    return surface;
+    return ConvertToARGB(surface);
 }
 
 /* GIMP RGB C-Source image dump (alpha.c) */
@@ -2212,7 +2224,7 @@ SDL_Surface *SDLTest_ImageBlitBlendAdd(void)
         SDLTest_imageBlitBlendAdd.width,
         SDLTest_imageBlitBlendAdd.height,
         SDLTest_imageBlitBlendAdd.width * SDLTest_imageBlitBlendAdd.bytes_per_pixel, SDL_PIXELFORMAT_RGB24);
-    return surface;
+    return ConvertToARGB(surface);
 }
 
 static const SDLTest_SurfaceImage_t SDLTest_imageBlitBlend = {
@@ -2801,7 +2813,7 @@ SDL_Surface *SDLTest_ImageBlitBlend(void)
         SDLTest_imageBlitBlend.width,
         SDLTest_imageBlitBlend.height,
         SDLTest_imageBlitBlend.width * SDLTest_imageBlitBlend.bytes_per_pixel, SDL_PIXELFORMAT_RGB24);
-    return surface;
+    return ConvertToARGB(surface);
 }
 
 static const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendMod = {
@@ -3220,7 +3232,7 @@ SDL_Surface *SDLTest_ImageBlitBlendMod(void)
         SDLTest_imageBlitBlendMod.width,
         SDLTest_imageBlitBlendMod.height,
         SDLTest_imageBlitBlendMod.width * SDLTest_imageBlitBlendMod.bytes_per_pixel, SDL_PIXELFORMAT_RGB24);
-    return surface;
+    return ConvertToARGB(surface);
 }
 
 static const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendNone = {
@@ -4022,7 +4034,7 @@ SDL_Surface *SDLTest_ImageBlitBlendNone(void)
         SDLTest_imageBlitBlendNone.width,
         SDLTest_imageBlitBlendNone.height,
         SDLTest_imageBlitBlendNone.width * SDLTest_imageBlitBlendNone.bytes_per_pixel, SDL_PIXELFORMAT_RGB24);
-    return surface;
+    return ConvertToARGB(surface);
 }
 
 static const SDLTest_SurfaceImage_t SDLTest_imageBlitBlendAll = {
@@ -4556,7 +4568,7 @@ SDL_Surface *SDLTest_ImageBlitBlendAll(void)
         SDLTest_imageBlitBlendAll.width,
         SDLTest_imageBlitBlendAll.height,
         SDLTest_imageBlitBlendAll.width * SDLTest_imageBlitBlendAll.bytes_per_pixel, SDL_PIXELFORMAT_RGB24);
-    return surface;
+    return ConvertToARGB(surface);
 }
 
 /* GIMP RGBA C-Source image dump (face.c) */
@@ -5260,7 +5272,7 @@ SDL_Surface *SDLTest_ImagePrimitives(void)
         SDLTest_imagePrimitives.width,
         SDLTest_imagePrimitives.height,
         SDLTest_imagePrimitives.width * SDLTest_imagePrimitives.bytes_per_pixel, SDL_PIXELFORMAT_RGB24);
-    return surface;
+    return ConvertToARGB(surface);
 }
 
 /* GIMP RGB C-Source image dump (alpha.c) */
@@ -5925,5 +5937,5 @@ SDL_Surface *SDLTest_ImagePrimitivesBlend(void)
         SDLTest_imagePrimitivesBlend.width,
         SDLTest_imagePrimitivesBlend.height,
         SDLTest_imagePrimitivesBlend.width * SDLTest_imagePrimitivesBlend.bytes_per_pixel, SDL_PIXELFORMAT_RGB24);
-    return surface;
+    return ConvertToARGB(surface);
 }
