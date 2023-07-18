@@ -69,10 +69,9 @@ OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
         return SDL_OutOfMemory();
     }
 
-    texturedata->bitmap = OS4_AllocBitMap(renderer, texture->w, texture->h, bpp);
+    texturedata->bitmap = OS4_AllocBitMap(renderer, texture->w, texture->h, bpp, "texture");
 
     if (!texturedata->bitmap) {
-        dprintf("Failed to allocate bitmap\n");
         SDL_free(texturedata);
         return SDL_SetError("Failed to allocate bitmap");
     }
@@ -196,8 +195,7 @@ OS4_SetTextureColorMod(SDL_Renderer * renderer, SDL_Texture * texture)
         }
 
         if (!texturedata->finalbitmap) {
-            if (!(texturedata->finalbitmap = OS4_AllocBitMap(renderer, texture->w, texture->h, 32))) {
-                dprintf("Failed to allocate final bitmap\n");
+            if (!(texturedata->finalbitmap = OS4_AllocBitMap(renderer, texture->w, texture->h, 32, "color modulation"))) {
                 return SDL_OutOfMemory();
             }
         }
@@ -238,10 +236,8 @@ OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
     }
 
     if (OS4_IsColorModEnabled(texture)) {
-
         if (!texturedata->finalbitmap) {
-            if (!(texturedata->finalbitmap = OS4_AllocBitMap(renderer, texture->w, texture->h, 32))) {
-                dprintf("Failed to allocate final bitmap\n");
+            if (!(texturedata->finalbitmap = OS4_AllocBitMap(renderer, texture->w, texture->h, 32, "color modulation"))) {
                 return SDL_OutOfMemory();
             }
         }

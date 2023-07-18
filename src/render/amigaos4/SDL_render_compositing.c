@@ -82,16 +82,36 @@ OS4_IsColorModEnabled(SDL_Texture * texture)
 }
 
 struct BitMap *
-OS4_AllocBitMap(SDL_Renderer * renderer, int width, int height, int depth)
+OS4_AllocBitMap(SDL_Renderer * renderer, int width, int height, int depth, const char* const reason)
 {
-    return IGraphics->AllocBitMapTags(
+    dprintf("Allocating bitmap %d*%d*%d for %s\n", width, height, depth, reason);
+
+    struct BitMap *bitmap = IGraphics->AllocBitMapTags(
         width,
         height,
         depth,
         BMATags_Displayable, TRUE,
         BMATags_PixelFormat, PIXF_A8R8G8B8,
-        //BMATags_Clear, TRUE,
         TAG_DONE);
+
+    if (bitmap) {
+        /* Fill with zeroes, similar to SW renderer surface creation */
+        struct RastPort rp;
+        IGraphics->InitRastPort(&rp);
+        rp.BitMap = bitmap;
+
+        IGraphics->RectFillColor(
+            &rp,
+            0,
+            0,
+            width - 1,
+            height - 1,
+            0x00000000); // graphics.lib v54!
+    } else {
+        dprintf("Failed to allocate bitmap\n");
+    }
+
+    return bitmap;
 }
 
 struct BitMap *
@@ -109,13 +129,7 @@ OS4_ActivateRenderer(SDL_Renderer * renderer)
         int height = renderer->window->h;
         int depth = 32;
 
-        dprintf("Allocating VRAM bitmap %d*%d*%d for renderer\n", width, height, depth);
-
-        data->target = data->bitmap = OS4_AllocBitMap(renderer, width, height, depth);
-
-        if (!data->bitmap) {
-            dprintf("Allocation failed\n");
-        }
+        data->target = data->bitmap = OS4_AllocBitMap(renderer, width, height, depth, "renderer");
     }
 
     if (!data->solidcolor) {
@@ -123,11 +137,7 @@ OS4_ActivateRenderer(SDL_Renderer * renderer)
         int height = 1;
         int depth = 32;
 
-        data->solidcolor = OS4_AllocBitMap(renderer, width, height, depth);
-
-        if (!data->solidcolor) {
-            dprintf("Failed to allocate solid color bitmap\n");
-        }
+        data->solidcolor = OS4_AllocBitMap(renderer, width, height, depth, "solid color");
     }
 
     data->rastport.BitMap = data->target;
