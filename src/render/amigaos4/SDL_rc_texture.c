@@ -161,7 +161,6 @@ OS4_SetTextureColorMod(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     /* Modulate only when needed, it's CPU heavy */
     if (OS4_IsColorModEnabled(texture) && OS4_NeedRemodulation(texture)) {
-
         OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
         OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
 
@@ -208,6 +207,9 @@ OS4_SetTextureColorMod(SDL_Renderer * renderer, SDL_Texture * texture)
         texturedata->r = texture->color.r;
         texturedata->g = texture->color.g;
         texturedata->b = texture->color.b;
+
+        /* Workaround: color modulation cannot be batched due to texture manipulation */
+        SDL_RenderFlush(renderer);
     }
 
     return 0;
