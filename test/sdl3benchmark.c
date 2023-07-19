@@ -19,7 +19,7 @@ TODO:
 
 #include "SDL3/SDL.h"
 
-#define BENCHMARK_VERSION "0.7"
+#define BENCHMARK_VERSION "1.0"
 
 #define WIDTH 800
 #define HEIGHT 600
@@ -701,9 +701,7 @@ testAllRenderers(Context *ctx)
     int r;
 
     for (r = 0; r < SDL_GetNumRenderDrivers(); r++) {
-
-        // TODO
-        ctx->renderer = SDL_CreateRenderer(ctx->window, NULL, 0);
+        ctx->renderer = SDL_CreateRenderer(ctx->window, SDL_GetRenderDriver(r), 0);
 
         testRenderer(ctx);
 
@@ -726,7 +724,7 @@ main(int argc, char **argv)
 
     SDL_GetVersion(&linked);
 
-    SDL_Log("SDL2 renderer benchmark v. " BENCHMARK_VERSION " (SDL version %d.%d.%d)\n",
+    SDL_Log("SDL3 renderer benchmark v. " BENCHMARK_VERSION " (SDL version %d.%d.%d)\n",
         linked.major, linked.minor, linked.patch);
 
     SDL_Log("This tool measures the speed of various 2D drawing features\n");
