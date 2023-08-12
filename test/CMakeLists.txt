@@ -1,13 +1,12 @@
 #
 # CMake script for building the SDL tests
 #
-
 if(SDL_TESTS_LINK_SHARED)
     set(sdl_name_component SDL3-shared)
 else()
     set(sdl_name_component SDL3-static)
 endif()
-set(HAVE_TESTS_LINK_SHARED "${SDL_TESTS_LINK_SHARED}")
+set(HAVE_TESTS_LINK_SHARED "${SDL_TESTS_LINK_SHARED}" PARENT_SCOPE)
 
 # CMake incorrectly detects opengl32.lib being present on MSVC ARM64
 if(NOT (MSVC AND SDL_CPU_ARM64))
@@ -18,11 +17,10 @@ endif()
 
 set(SDL_TEST_EXECUTABLES)
 
-# FIXME: can be OBJECT library for CMake 3.16
-add_library(sdltests_utils STATIC
+add_library(sdltests_utils OBJECT
     testutils.c
 )
-target_link_libraries(sdltests_utils PRIVATE SDL3::${sdl_name_component})
+target_link_libraries(sdltests_utils PRIVATE SDL3::Headers)
 
 file(GLOB RESOURCE_FILES *.bmp *.wav *.hex moose.dat utf8.txt)
 set(RESOURCE_FILE_NAMES)
@@ -43,6 +41,9 @@ macro(add_sdl_test_executable TARGET)
     if(NOT AST_SOURCES)
         message(FATAL_ERROR "add_sdl_test_executable needs at least one source")
     endif()
+    if(AST_TESTUTILS)
+        list(APPEND AST_SOURCES $<TARGET_OBJECTS:sdltests_utils>)
+    endif()
     if(AST_NEEDS_RESOURCES)
         list(APPEND AST_SOURCES ${RESOURCE_FILES})
     endif()
@@ -51,10 +52,8 @@ macro(add_sdl_test_executable TARGET)
     else()
         add_executable(${TARGET} ${AST_SOURCES})
     endif()
+    SDL_AddCommonCompilerFlags(${TARGET})
     target_link_libraries(${TARGET} PRIVATE SDL3::SDL3_test SDL3::${sdl_name_component})
-    if(AST_TESTUTILS)
-        target_link_libraries(${TARGET} PRIVATE sdltests_utils)
-    endif()
     if(NOT AST_NO_C90 AND NOT SDL_CMAKE_PLATFORM MATCHES "^(n3ds|ps2|psp)$")
         set_property(TARGET ${TARGET} PROPERTY C_STANDARD 90)
         set_property(TARGET ${TARGET} PROPERTY C_EXTENSIONS FALSE)
@@ -86,7 +85,7 @@ macro(add_sdl_test_executable TARGET)
         set_property(TARGET ${TARGET} APPEND PROPERTY ADDITIONAL_CLEAN_FILES "$<TARGET_FILE_DIR:${TARGET}>/$<JOIN:${RESOURCE_FILE_NAMES},$<SEMICOLON>$<TARGET_FILE_DIR:${TARGET}>/>")
     endif()
     if(AST_BUILD_DEPENDENT)
-        target_include_directories(${TARGET} BEFORE PRIVATE $<TARGET_PROPERTY:sdl-build-options,INTERFACE_INCLUDE_DIRECTORIES>)
+        target_include_directories(${TARGET} BEFORE PRIVATE $<TARGET_PROPERTY:SDL3::${sdl_name_component},INCLUDE_DIRECTORIES>)
         target_include_directories(${TARGET} BEFORE PRIVATE ${SDL3_SOURCE_DIR}/src)
     endif()
 
@@ -103,10 +102,7 @@ macro(add_sdl_test_executable TARGET)
         target_compile_definitions(${TARGET} PRIVATE HAVE_OPENGL)
     endif()
 
-    if(TARGET sdl-global-options)
-        target_link_libraries(${TARGET} PRIVATE $<BUILD_INTERFACE:sdl-global-options>)
-    endif()
-
+    # FIXME: only add "${SDL3_BINARY_DIR}/include-config-$<LOWER_CASE:$<CONFIG>>" + include paths of external dependencies
     target_include_directories(${TARGET} PRIVATE "$<TARGET_PROPERTY:SDL3::${sdl_name_component},INCLUDE_DIRECTORIES>")
 endmacro()
 
@@ -123,11 +119,10 @@ endif()
 add_sdl_test_executable(checkkeys SOURCES checkkeys.c)
 add_sdl_test_executable(checkkeysthreads SOURCES checkkeysthreads.c)
 add_sdl_test_executable(loopwave NEEDS_RESOURCES TESTUTILS SOURCES loopwave.c)
-add_sdl_test_executable(loopwavequeue NEEDS_RESOURCES TESTUTILS SOURCES loopwavequeue.c)
 add_sdl_test_executable(testsurround SOURCES testsurround.c)
 add_sdl_test_executable(testresample NEEDS_RESOURCES SOURCES testresample.c)
 add_sdl_test_executable(testaudioinfo SOURCES testaudioinfo.c)
-add_sdl_test_executable(testaudiostreamdynamicresample SOURCES testaudiostreamdynamicresample.c)
+add_sdl_test_executable(testaudiostreamdynamicresample NEEDS_RESOURCES TESTUTILS SOURCES testaudiostreamdynamicresample.c)
 
 file(GLOB TESTAUTOMATION_SOURCE_FILES testautomation*.c)
 add_sdl_test_executable(testautomation NEEDS_RESOURCES NO_C90 SOURCES ${TESTAUTOMATION_SOURCE_FILES})
@@ -189,8 +184,8 @@ set(gamepad_images
     gamepad_touchpad.bmp
 )
 set(gamepad_image_headers)
-find_package(PythonInterp)
-if(PYTHONINTERP_FOUND AND NOT PYTHON_VERSION_STRING VERSION_LESS "3.2")
+find_package(Python3)
+if(Python3_FOUND AND Python3_VERSION VERSION_GREATER_EQUAL "3.2")
     set(xxd "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/xxd.py")
     foreach(bmp ${gamepad_images})
         get_filename_component(bmp_we "${bmp}" NAME_WE)
@@ -199,7 +194,7 @@ if(PYTHONINTERP_FOUND AND NOT PYTHON_VERSION_STRING VERSION_LESS "3.2")
         # Don't add the 'final' headers to the output, to avoid marking them as GENERATED
         # (generated files are removed when running the CLEAN target)
         add_custom_command(OUTPUT "${intermediate}"
-            COMMAND "${PYTHON_EXECUTABLE}" "${xxd}" -i "${CMAKE_CURRENT_SOURCE_DIR}/${bmp}" "-o" "${intermediate}"
+            COMMAND Python3::Interpreter "${xxd}" -i "${CMAKE_CURRENT_SOURCE_DIR}/${bmp}" "-o" "${intermediate}"
             COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${intermediate}" "${final}"
             DEPENDS "${xxd}" "${bmp}"
         )
@@ -207,6 +202,7 @@ if(PYTHONINTERP_FOUND AND NOT PYTHON_VERSION_STRING VERSION_LESS "3.2")
     endforeach()
 endif()
 
+add_sdl_test_executable(testaudio NEEDS_RESOURCES TESTUTILS SOURCES testaudio.c)
 add_sdl_test_executable(testfile NONINTERACTIVE SOURCES testfile.c)
 add_sdl_test_executable(testcontroller TESTUTILS SOURCES testcontroller.c gamepadutils.c ${gamepad_image_headers})
 add_sdl_test_executable(testgeometry TESTUTILS SOURCES testgeometry.c)
@@ -273,7 +269,7 @@ endif()
 cmake_push_check_state()
 if(HAVE_WFORMAT)
     # Some compilers ignore -Wformat-extra-args without -Wformat
-    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -Wformat")
+    string(APPEND CMAKE_REQUIRED_FLAGS " -Wformat")
 endif()
 check_c_compiler_flag(-Wformat-extra-args HAVE_WFORMAT_EXTRA_ARGS)
 cmake_pop_check_state()
@@ -283,7 +279,6 @@ endif()
 
 if(SDL_DUMMYAUDIO)
     set_property(TARGET testaudioinfo PROPERTY SDL_NONINTERACTIVE 1)
-    set_property(TARGET testsurround PROPERTY SDL_NONINTERACTIVE 1)
 endif()
 
 if(SDL_DUMMYVIDEO)
@@ -390,19 +385,13 @@ endif()
 # Set Apple App ID / Bundle ID.  This is needed to launch apps on some Apple
 # platforms (iOS, for example).
 if(APPLE)
-    if(CMAKE_VERSION VERSION_LESS "3.7.0")
-        # CMake's 'BUILDSYSTEM_TARGETS' property is only available in
-        # CMake 3.7 and above.
-        message(WARNING "Unable to set Bundle ID for Apple .app builds due to old CMake (pre 3.7).")
-    else()
-        foreach(CURRENT_TARGET ${SDL_TEST_EXECUTABLES})
-            set_target_properties("${CURRENT_TARGET}" PROPERTIES
-                MACOSX_BUNDLE_GUI_IDENTIFIER "org.libsdl.${CURRENT_TARGET}"
-                MACOSX_BUNDLE_BUNDLE_VERSION "${SDL3_VERSION}"
-                MACOSX_BUNDLE_SHORT_VERSION_STRING "${SDL3_VERSION}"
-            )
-        endforeach()
-    endif()
+  foreach(CURRENT_TARGET ${SDL_TEST_EXECUTABLES})
+    set_target_properties("${CURRENT_TARGET}" PROPERTIES
+      MACOSX_BUNDLE_GUI_IDENTIFIER "org.libsdl.${CURRENT_TARGET}"
+      MACOSX_BUNDLE_BUNDLE_VERSION "${SDL3_VERSION}"
+      MACOSX_BUNDLE_SHORT_VERSION_STRING "${SDL3_VERSION}"
+    )
+  endforeach()
 endif()
 
 set(TESTS_ENVIRONMENT
@@ -459,4 +448,139 @@ if(SDL_INSTALL_TESTS)
         FILES ${RESOURCE_FILES}
         DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/installed-tests/SDL3
     )
+endif()
+
+if(ANDROID AND TARGET SDL3-jar)
+    list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../cmake/android")
+    find_package(SdlAndroid MODULE)
+    if(SdlAndroid_FOUND)
+        set(apks "")
+        set(packages "")
+
+        include(SdlAndroidFunctions)
+        sdl_create_android_debug_keystore(SDL_test-debug-keystore)
+        sdl_android_compile_resources(SDL_test-resources RESFOLDER android/res)
+        add_custom_target(sdl-test-apks)
+        foreach(TEST ${SDL_TEST_EXECUTABLES})
+            set(ANDROID_MANIFEST_APP_NAME "${TEST}")
+            set(ANDROID_MANIFEST_LABEL "${TEST}")
+            set(ANDROID_MANIFEST_LIB_NAME "$<TARGET_FILE_BASE_NAME:${TEST}>")
+            set(ANDROID_MANIFEST_PACKAGE "org.libsdl.sdl.test.${TEST}")
+            set(generated_manifest_path "${CMAKE_CURRENT_BINARY_DIR}/android/${TEST}-src/AndroidManifest.xml")
+            string(REPLACE "." "/" JAVA_PACKAGE_DIR "${ANDROID_MANIFEST_PACKAGE}")
+            set(GENERATED_SRC_FOLDER "${CMAKE_CURRENT_BINARY_DIR}/android/${TEST}-src")
+            set(GENERATED_RES_FOLDER "${GENERATED_SRC_FOLDER}/res")
+            set(JAVA_PACKAGE_DIR "${GENERATED_SRC_FOLDER}/${JAVA_PACKAGE_DIR}")
+            configure_file(android/cmake/SDLEntryTestActivity.java.cmake "${JAVA_PACKAGE_DIR}/SDLEntryTestActivity.java" @ONLY)
+            configure_file(android/cmake/SDLTestActivity.java.cmake "${JAVA_PACKAGE_DIR}/SDLTestActivity.java" @ONLY)
+            configure_file(android/cmake/res/values/strings.xml.cmake android/res/values/strings-${TEST}.xml @ONLY)
+            configure_file(android/cmake/res/xml/shortcuts.xml.cmake "${GENERATED_RES_FOLDER}/xml/shortcuts.xml" @ONLY)
+            configure_file(android/cmake/AndroidManifest.xml.cmake "${generated_manifest_path}" @ONLY)
+            file(GENERATE
+                OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/android/${TEST}-$<CONFIG>/res/values/strings.xml"
+                INPUT "${CMAKE_CURRENT_BINARY_DIR}/android/res/values/strings-${TEST}.xml"
+            )
+
+            sdl_android_compile_resources(${TEST}-resources
+                RESOURCES
+                    "${CMAKE_CURRENT_BINARY_DIR}/android/${TEST}-$<CONFIG>/res/values/strings.xml"
+                    "${GENERATED_RES_FOLDER}/xml/shortcuts.xml"
+            )
+
+            sdl_android_link_resources(${TEST}-apk-linked
+                MANIFEST "${generated_manifest_path}"
+                PACKAGE ${ANDROID_MANIFEST_PACKAGE}
+                RES_TARGETS SDL_test-resources ${TEST}-resources
+                TARGET_SDK_VERSION 31
+            )
+
+            set(CMAKE_JAVA_COMPILE_FLAGS "-encoding;utf-8")
+            set(classes_path "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${TEST}-java.dir/classes")
+            # Some CMake versions have a slow `cmake -E make_directory` implementation
+            if(NOT IS_DIRECTORY "${classes_path}")
+                execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${classes_path}")
+            endif()
+            set(OUT_JAR "${CMAKE_CURRENT_BINARY_DIR}/${TEST}.jar")
+            add_custom_command(
+                OUTPUT "${OUT_JAR}"
+                COMMAND ${CMAKE_COMMAND} -E rm -rf "${classes_path}"
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${classes_path}"
+                COMMAND ${Java_JAVAC_EXECUTABLE}
+                    -source 1.8 -target 1.8
+                    -bootclasspath "$<TARGET_PROPERTY:SDL3-jar,OUTPUT>"
+                    "${JAVA_PACKAGE_DIR}/SDLEntryTestActivity.java"
+                    "${JAVA_PACKAGE_DIR}/SDLTestActivity.java"
+                    $<TARGET_PROPERTY:${TEST}-apk-linked,JAVA_R>
+                    -cp "$<TARGET_PROPERTY:SDL3-jar,OUTPUT>:${path_android_jar}"
+                    -d "${classes_path}"
+                COMMAND ${Java_JAR_EXECUTABLE} cf "${OUT_JAR}" -C "${classes_path}" .
+                DEPENDS $<TARGET_PROPERTY:${TEST}-apk-linked,OUTPUTS> "$<TARGET_PROPERTY:SDL3-jar,OUTPUT>" "${JAVA_PACKAGE_DIR}/SDLTestActivity.java" "${JAVA_PACKAGE_DIR}/SDLEntryTestActivity.java"
+            )
+            add_custom_target(${TEST}-jar DEPENDS "${OUT_JAR}")
+            set_property(TARGET ${TEST}-jar PROPERTY OUTPUT "${OUT_JAR}")
+
+            set(dexworkdir "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${TEST}-dex.dir")
+            # Some CMake versions have a slow `cmake -E make_directory` implementation
+            if(NOT IS_DIRECTORY "${dexworkdir}")
+                execute_process(COMMAND "${CMAKE_COMMAND}" -E make_directory "${dexworkdir}")
+            endif()
+            set(classes_dex_base_name "classes.dex")
+            set(classes_dex "${dexworkdir}/${classes_dex_base_name}")
+            add_custom_command(
+                OUTPUT "${classes_dex}"
+                COMMAND SdlAndroid::d8
+                    $<TARGET_PROPERTY:${TEST}-jar,OUTPUT>
+                    $<TARGET_PROPERTY:SDL3-jar,OUTPUT>
+                    --lib "${path_android_jar}"
+                    --output "${dexworkdir}"
+                DEPENDS $<TARGET_PROPERTY:${TEST}-jar,OUTPUT> $<TARGET_PROPERTY:SDL3-jar,OUTPUT>
+            )
+            add_custom_target(${TEST}-dex DEPENDS "${classes_dex}")
+            set_property(TARGET ${TEST}-dex PROPERTY OUTPUT "${classes_dex}")
+            set_property(TARGET ${TEST}-dex PROPERTY OUTPUT_BASE_NAME "${classes_dex_base_name}")
+
+            sdl_add_to_apk_unaligned(${TEST}-unaligned-apk
+                APK_IN ${TEST}-apk-linked
+                OUTDIR "${CMAKE_CURRENT_BINARY_DIR}/intermediates"
+                ASSETS ${RESOURCE_FILES}
+                NATIVE_LIBS SDL3::SDL3-shared ${TEST}
+                DEX ${TEST}-dex
+            )
+
+            sdl_apk_align(${TEST}-aligned-apk ${TEST}-unaligned-apk
+                OUTDIR "${CMAKE_CURRENT_BINARY_DIR}/intermediates"
+            )
+            sdl_apk_sign(${TEST}-apk ${TEST}-aligned-apk
+                KEYSTORE SDL_test-debug-keystore
+            )
+            add_dependencies(sdl-test-apks ${TEST}-apk)
+
+            if(TARGET SdlAndroid::adb)
+                add_custom_target(install-${TEST}
+                    COMMAND "${CMAKE_COMMAND}" -DACTION=install "-DAPKS=$<TARGET_PROPERTY:${TEST}-apk,OUTPUT>" -P "${SDL3_SOURCE_DIR}/cmake/android/SdlAndroidScript.cmake"
+                    DEPENDS "${TEST}-apk"
+                )
+                add_custom_target(start-${TEST}
+                    COMMAND "${ADB_BIN}" shell am start-activity -S "${ANDROID_MANIFEST_PACKAGE}/.SDLTestActivity"
+                )
+                add_custom_target(build-install-start-${TEST}
+                    COMMAND "${CMAKE_COMMAND}" -DACTION=build-install-run "-DEXECUTABLES=${TEST}" "-DBUILD_FOLDER=${CMAKE_BINARY_DIR}" -P "${SDL3_SOURCE_DIR}/cmake/android/SdlAndroidScript.cmake"
+                )
+            endif()
+
+            list(APPEND packages "${ANDROID_MANIFEST_PACKAGE}")
+            list(APPEND install_targets install-${TEST})
+        endforeach()
+
+        if(TARGET SdlAndroid::adb)
+            add_custom_target(install-sdl-test-apks
+                DEPENDS ${install_targets}
+                VERBATIM
+            )
+            add_custom_target(uninstall-sdl-test-apks
+                COMMAND "${CMAKE_COMMAND}" "-DADB=$<TARGET_FILE:SdlAndroid::adb>" -DACTION=uninstall "-DPACKAGES=${packages}" -P "${SDL3_SOURCE_DIR}/cmake/android/SdlAndroidScript.cmake"
+                VERBATIM
+            )
+        endif()
+    endif()
 endif()

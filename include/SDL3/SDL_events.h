@@ -121,6 +121,7 @@ typedef enum
     SDL_EVENT_WINDOW_ICCPROF_CHANGED,   /**< The ICC profile of the window's display has changed */
     SDL_EVENT_WINDOW_DISPLAY_CHANGED,   /**< Window has been moved to display data1 */
     SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED, /**< Window display scale has been changed */
+    SDL_EVENT_WINDOW_OCCLUDED,          /**< The window has been occluded */
     SDL_EVENT_WINDOW_DESTROYED,         /**< The window with the associated ID is being or has been destroyed. If this message is being handled
                                              in an event watcher, the window handle is still valid and can still be used to retrieve any userdata
                                              associated with the window. Otherwise, the handle has already been destroyed and all resources
@@ -151,7 +152,7 @@ typedef enum
     SDL_EVENT_JOYSTICK_ADDED,         /**< A new joystick has been inserted into the system */
     SDL_EVENT_JOYSTICK_REMOVED,       /**< An opened joystick has been removed */
     SDL_EVENT_JOYSTICK_BATTERY_UPDATED,      /**< Joystick battery level change */
-    SDL_EVENT_JOYSTICK_UPDATE_COMPLETE,      /**< Joystick update is complete (disabled by default) */
+    SDL_EVENT_JOYSTICK_UPDATE_COMPLETE,      /**< Joystick update is complete */
 
     /* Gamepad events */
     SDL_EVENT_GAMEPAD_AXIS_MOTION  = 0x650, /**< Gamepad axis motion */
@@ -164,7 +165,7 @@ typedef enum
     SDL_EVENT_GAMEPAD_TOUCHPAD_MOTION,      /**< Gamepad touchpad finger was moved */
     SDL_EVENT_GAMEPAD_TOUCHPAD_UP,          /**< Gamepad touchpad finger was lifted */
     SDL_EVENT_GAMEPAD_SENSOR_UPDATE,        /**< Gamepad sensor was updated */
-    SDL_EVENT_GAMEPAD_UPDATE_COMPLETE,      /**< Gamepad update is complete (disabled by default) */
+    SDL_EVENT_GAMEPAD_UPDATE_COMPLETE,      /**< Gamepad update is complete */
 
     /* Touch events */
     SDL_EVENT_FINGER_DOWN      = 0x700,
@@ -492,7 +493,7 @@ typedef struct SDL_AudioDeviceEvent
 {
     Uint32 type;        /**< ::SDL_EVENT_AUDIO_DEVICE_ADDED, or ::SDL_EVENT_AUDIO_DEVICE_REMOVED */
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_AudioDeviceID which;       /**< The audio device index for the ADDED event (valid until next SDL_GetNumAudioDevices() call), SDL_AudioDeviceID for the REMOVED event */
+    SDL_AudioDeviceID which;       /**< SDL_AudioDeviceID for the device being added or removed */
     Uint8 iscapture;    /**< zero if an output device, non-zero if a capture device. */
     Uint8 padding1;
     Uint8 padding2;

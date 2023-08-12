@@ -84,7 +84,7 @@ static int X11_SafetyNetErrHandler(Display *d, XErrorEvent *e)
         if (device != NULL) {
             int i;
             for (i = 0; i < device->num_displays; i++) {
-                SDL_VideoDisplay *display = &device->displays[i];
+                SDL_VideoDisplay *display = device->displays[i];
                 if (SDL_GetCurrentDisplayMode(display->id) != SDL_GetDesktopDisplayMode(display->id)) {
                     X11_SetDisplayMode(device, display, &display->desktop_mode);
                 }
@@ -213,6 +213,7 @@ static SDL_VideoDevice *X11_CreateDevice(void)
     device->SetWindowHitTest = X11_SetWindowHitTest;
     device->AcceptDragAndDrop = X11_AcceptDragAndDrop;
     device->FlashWindow = X11_FlashWindow;
+    device->ShowWindowSystemMenu = X11_ShowWindowSystemMenu;
 
 #ifdef SDL_VIDEO_DRIVER_X11_XFIXES
     device->SetWindowMouseRect = X11_SetWindowMouseRect;

@@ -8,7 +8,6 @@ TARGETS = \
 	checkkeys \
 	helloworld \
 	loopwave \
-	loopwavequeue \
 	sdl3benchmark \
 	testatomic \
 	testaudiocapture \
@@ -82,9 +81,6 @@ helloworld: helloworld.o
 	$(CC) -o $@ $^ $(LIBS)
 
 loopwave: loopwave.o testutils.o
-	$(CC) -o $@ $^ $(LIBS)
-
-loopwavequeue: loopwavequeue.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 sdl3benchmark: sdl3benchmark.o

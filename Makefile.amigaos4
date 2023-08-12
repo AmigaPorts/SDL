@@ -50,6 +50,7 @@ SOURCES = \
 	./src/thread/*.c \
 	./src/thread/amigaos4/*.c \
 	./src/thread/generic/SDL_syscond.c \
+	./src/thread/generic/SDL_sysrwlock.c \
 	./src/thread/generic/SDL_systls.c \
 	./src/timer/*.c \
 	./src/timer/amigaos4/*.c \

@@ -51,6 +51,14 @@ typedef HRESULT (WINAPI *DwmSetWindowAttribute_t)(HWND hwnd, DWORD dwAttribute, 
 #define SWP_NOCOPYBITS 0
 #endif
 
+/* An undocumented message to create a popup system menu
+ * - wParam is always 0
+ * - lParam = MAKELONG(x, y) where x and y are the screen coordinates where the menu should be displayed
+ */
+#ifndef WM_POPUPSYSTEMMENU
+#define WM_POPUPSYSTEMMENU 0x313
+#endif
+
 /* #define HIGHDPI_DEBUG */
 
 /* Fake window to help with DirectInput events. */
@@ -845,7 +853,6 @@ void WIN_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
     DWORD style;
     HWND hwnd;
-    int nCmdShow;
 
     SDL_bool bActivate = SDL_GetHintBoolean(SDL_HINT_WINDOW_ACTIVATE_WHEN_SHOWN, SDL_TRUE);
 
@@ -855,13 +862,16 @@ void WIN_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
     }
 
     hwnd = window->driverdata->hwnd;
-    nCmdShow = bActivate ? SW_SHOW : SW_SHOWNA;
     style = GetWindowLong(hwnd, GWL_EXSTYLE);
     if (style & WS_EX_NOACTIVATE) {
-        nCmdShow = SW_SHOWNOACTIVATE;
         bActivate = SDL_FALSE;
     }
-    ShowWindow(hwnd, nCmdShow);
+    if (bActivate) {
+        ShowWindow(hwnd, SW_SHOW);
+    } else {
+        /* Use SetWindowPos instead of ShowWindow to avoid activating the parent window if this is a child window */
+        SetWindowPos(hwnd, NULL, 0, 0, 0, 0, window->driverdata->copybits_flag | SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
+    }
 
     if (window->flags & SDL_WINDOW_POPUP_MENU && bActivate) {
         if (window->parent == SDL_GetKeyboardFocus()) {
@@ -1482,6 +1492,17 @@ int WIN_FlashWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_FlashOperati
     FlashWindowEx(&desc);
 
     return 0;
+}
+
+void WIN_ShowWindowSystemMenu(SDL_Window *window, int x, int y)
+{
+    const SDL_WindowData *data = window->driverdata;
+    POINT pt;
+
+    pt.x = x;
+    pt.y = y;
+    ClientToScreen(data->hwnd, &pt);
+    SendMessage(data->hwnd, WM_POPUPSYSTEMMENU, 0, MAKELPARAM(pt.x, pt.y));
 }
 #endif /*!defined(__XBOXONE__) && !defined(__XBOXSERIES__)*/
 

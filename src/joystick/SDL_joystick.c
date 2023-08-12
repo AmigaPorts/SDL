@@ -116,7 +116,8 @@ SDL_Mutex *SDL_joystick_lock = NULL; /* This needs to support recursive locks */
 static SDL_AtomicInt SDL_joystick_lock_pending;
 static int SDL_joysticks_locked;
 static SDL_bool SDL_joysticks_initialized;
-static SDL_bool SDL_joysticks_quitting = SDL_FALSE;
+static SDL_bool SDL_joysticks_quitting;
+static SDL_bool SDL_joystick_being_added;
 static SDL_Joystick *SDL_joysticks SDL_GUARDED_BY(SDL_joystick_lock) = NULL;
 static SDL_AtomicInt SDL_last_joystick_instance_id SDL_GUARDED_BY(SDL_joystick_lock);
 static int SDL_joystick_player_count SDL_GUARDED_BY(SDL_joystick_lock) = 0;
@@ -152,26 +153,33 @@ void SDL_LockJoysticks(void)
 
 void SDL_UnlockJoysticks(void)
 {
-    SDL_Mutex *joystick_lock = SDL_joystick_lock;
     SDL_bool last_unlock = SDL_FALSE;
 
     --SDL_joysticks_locked;
 
     if (!SDL_joysticks_initialized) {
+        /* NOTE: There's a small window here where another thread could lock the mutex after we've checked for pending locks */
         if (!SDL_joysticks_locked && SDL_AtomicGet(&SDL_joystick_lock_pending) == 0) {
-            /* NOTE: There's a small window here where another thread could lock the mutex */
-            SDL_joystick_lock = NULL;
             last_unlock = SDL_TRUE;
         }
     }
-
-    SDL_UnlockMutex(joystick_lock);
 
     /* The last unlock after joysticks are uninitialized will cleanup the mutex,
      * allowing applications to lock joysticks while reinitializing the system.
      */
     if (last_unlock) {
+        SDL_Mutex *joystick_lock = SDL_joystick_lock;
+
+        SDL_LockMutex(joystick_lock);
+        {
+            SDL_UnlockMutex(SDL_joystick_lock);
+
+            SDL_joystick_lock = NULL;
+        }
+        SDL_UnlockMutex(joystick_lock);
         SDL_DestroyMutex(joystick_lock);
+    } else {
+        SDL_UnlockMutex(SDL_joystick_lock);
     }
 }
 
@@ -562,6 +570,8 @@ static SDL_bool ShouldAttemptSensorFusion(SDL_Joystick *joystick, SDL_bool *inve
     const char *hint;
     int hint_value;
 
+    SDL_AssertJoysticksLocked();
+
     *invert_sensors = SDL_FALSE;
 
     /* The SDL controller sensor API is only available for gamepads (at the moment) */
@@ -621,6 +631,8 @@ static void AttemptSensorFusion(SDL_Joystick *joystick, SDL_bool invert_sensors)
 {
     SDL_SensorID *sensors;
     unsigned int i, j;
+
+    SDL_AssertJoysticksLocked();
 
     if (SDL_InitSubSystem(SDL_INIT_SENSOR) < 0) {
         return;
@@ -688,6 +700,8 @@ static void AttemptSensorFusion(SDL_Joystick *joystick, SDL_bool invert_sensors)
 
 static void CleanupSensorFusion(SDL_Joystick *joystick)
 {
+    SDL_AssertJoysticksLocked();
+
     if (joystick->accel_sensor || joystick->gyro_sensor) {
         if (joystick->accel_sensor) {
             if (joystick->accel) {
@@ -1504,12 +1518,20 @@ void SDL_CloseJoystick(SDL_Joystick *joystick)
 void SDL_QuitJoysticks(void)
 {
     int i;
+    SDL_JoystickID *joysticks;
 
     SDL_LockJoysticks();
 
     SDL_joysticks_quitting = SDL_TRUE;
 
-    /* Stop the event polling */
+    joysticks = SDL_GetJoysticks(NULL);
+    if (joysticks) {
+        for (i = 0; joysticks[i]; ++i) {
+            SDL_PrivateJoystickRemoved(joysticks[i]);
+        }
+        SDL_free(joysticks);
+    }
+
     while (SDL_joysticks) {
         SDL_joysticks->ref_count = 1;
         SDL_CloseJoystick(SDL_joysticks);
@@ -1616,6 +1638,8 @@ void SDL_PrivateJoystickAdded(SDL_JoystickID instance_id)
         return;
     }
 
+    SDL_joystick_being_added = SDL_TRUE;
+
     if (SDL_GetDriverAndJoystickIndex(instance_id, &driver, &device_index)) {
         player_index = driver->GetDevicePlayerIndex(device_index);
     }
@@ -1639,6 +1663,17 @@ void SDL_PrivateJoystickAdded(SDL_JoystickID instance_id)
         }
     }
 #endif /* !SDL_EVENTS_DISABLED */
+
+    SDL_joystick_being_added = SDL_FALSE;
+
+    if (SDL_IsGamepad(instance_id)) {
+        SDL_PrivateGamepadAdded(instance_id);
+    }
+}
+
+SDL_bool SDL_IsJoystickBeingAdded(void)
+{
+    return SDL_joystick_being_added;
 }
 
 void SDL_PrivateJoystickForceRecentering(SDL_Joystick *joystick)
@@ -1689,6 +1724,13 @@ void SDL_PrivateJoystickRemoved(SDL_JoystickID instance_id)
             joystick->attached = SDL_FALSE;
             break;
         }
+    }
+
+    /* FIXME: The driver no longer provides the name and GUID at this point, so we
+     *        don't know whether this was a gamepad. For now always send the event.
+     */
+    if (SDL_TRUE /*SDL_IsGamepad(instance_id)*/) {
+        SDL_PrivateGamepadRemoved(instance_id);
     }
 
 #ifndef SDL_EVENTS_DISABLED
@@ -1756,6 +1798,7 @@ int SDL_SendJoystickAxis(Uint64 timestamp, SDL_Joystick *joystick, Uint8 axis, S
     }
 
     /* Update internal joystick state */
+    SDL_assert(timestamp != 0);
     info->value = value;
     joystick->update_complete = timestamp;
 
@@ -1799,6 +1842,7 @@ int SDL_SendJoystickHat(Uint64 timestamp, SDL_Joystick *joystick, Uint8 hat, Uin
     }
 
     /* Update internal joystick state */
+    SDL_assert(timestamp != 0);
     joystick->hats[hat] = value;
     joystick->update_complete = timestamp;
 
@@ -1858,6 +1902,7 @@ int SDL_SendJoystickButton(Uint64 timestamp, SDL_Joystick *joystick, Uint8 butto
     }
 
     /* Update internal joystick state */
+    SDL_assert(timestamp != 0);
     joystick->buttons[button] = state;
     joystick->update_complete = timestamp;
 
@@ -1927,7 +1972,7 @@ void SDL_UpdateJoysticks(void)
 
                 event.type = SDL_EVENT_JOYSTICK_UPDATE_COMPLETE;
                 event.common.timestamp = joystick->update_complete;
-                event.gdevice.which = joystick->instance_id;
+                event.jdevice.which = joystick->instance_id;
                 SDL_PushEvent(&event);
 
                 joystick->update_complete = 0;
@@ -2274,7 +2319,7 @@ void SDL_SetJoystickGUIDCRC(SDL_JoystickGUID *guid, Uint16 crc)
 
 SDL_GamepadType SDL_GetGamepadTypeFromVIDPID(Uint16 vendor, Uint16 product, const char *name, SDL_bool forUI)
 {
-    SDL_GamepadType type = SDL_GAMEPAD_TYPE_UNKNOWN;
+    SDL_GamepadType type = SDL_GAMEPAD_TYPE_STANDARD;
 
     if (vendor == 0x0000 && product == 0x0000) {
         /* Some devices are only identifiable by their name */
@@ -2287,7 +2332,7 @@ SDL_GamepadType SDL_GetGamepadTypeFromVIDPID(Uint16 vendor, Uint16 product, cons
         }
 
     } else if (vendor == 0x0001 && product == 0x0001) {
-        type = SDL_GAMEPAD_TYPE_UNKNOWN;
+        type = SDL_GAMEPAD_TYPE_STANDARD;
 
     } else if (vendor == USB_VENDOR_MICROSOFT && product == USB_PRODUCT_XBOX_ONE_XINPUT_CONTROLLER) {
         type = SDL_GAMEPAD_TYPE_XBOXONE;
@@ -2298,7 +2343,7 @@ SDL_GamepadType SDL_GetGamepadTypeFromVIDPID(Uint16 vendor, Uint16 product, cons
     } else if (vendor == USB_VENDOR_NINTENDO && product == USB_PRODUCT_NINTENDO_SWITCH_JOYCON_RIGHT) {
         if (name && SDL_strstr(name, "NES Controller") != NULL) {
             /* We don't have a type for the Nintendo Online NES Controller */
-            type = SDL_GAMEPAD_TYPE_UNKNOWN;
+            type = SDL_GAMEPAD_TYPE_STANDARD;
         } else {
             type = SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT;
         }
@@ -2334,7 +2379,7 @@ SDL_GamepadType SDL_GetGamepadTypeFromVIDPID(Uint16 vendor, Uint16 product, cons
             if (forUI) {
                 type = SDL_GAMEPAD_TYPE_PS4;
             } else {
-                type = SDL_GAMEPAD_TYPE_UNKNOWN;
+                type = SDL_GAMEPAD_TYPE_STANDARD;
             }
             break;
         case k_eControllerType_SwitchProController:
@@ -2345,7 +2390,7 @@ SDL_GamepadType SDL_GetGamepadTypeFromVIDPID(Uint16 vendor, Uint16 product, cons
             if (forUI) {
                 type = SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO;
             } else {
-                type = SDL_GAMEPAD_TYPE_UNKNOWN;
+                type = SDL_GAMEPAD_TYPE_STANDARD;
             }
             break;
         default:
@@ -2362,7 +2407,7 @@ SDL_GamepadType SDL_GetGamepadTypeFromGUID(SDL_JoystickGUID guid, const char *na
 
     SDL_GetJoystickGUIDInfo(guid, &vendor, &product, NULL, NULL);
     type = SDL_GetGamepadTypeFromVIDPID(vendor, product, name, SDL_TRUE);
-    if (type == SDL_GAMEPAD_TYPE_UNKNOWN) {
+    if (type == SDL_GAMEPAD_TYPE_STANDARD) {
         if (SDL_IsJoystickXInput(guid)) {
             /* This is probably an Xbox One controller */
             return SDL_GAMEPAD_TYPE_XBOXONE;
@@ -3199,6 +3244,7 @@ int SDL_SendJoystickTouchpad(Uint64 timestamp, SDL_Joystick *joystick, int touch
     }
 
     /* Update internal joystick state */
+    SDL_assert(timestamp != 0);
     finger_info->state = state;
     finger_info->x = x;
     finger_info->y = y;

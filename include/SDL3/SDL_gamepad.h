@@ -61,6 +61,7 @@ typedef struct SDL_Gamepad SDL_Gamepad;
 typedef enum
 {
     SDL_GAMEPAD_TYPE_UNKNOWN = 0,
+    SDL_GAMEPAD_TYPE_STANDARD,
     SDL_GAMEPAD_TYPE_XBOX360,
     SDL_GAMEPAD_TYPE_XBOXONE,
     SDL_GAMEPAD_TYPE_PS3,
@@ -70,6 +71,7 @@ typedef enum
     SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT,
     SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT,
     SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR,
+    SDL_GAMEPAD_TYPE_MAX
 } SDL_GamepadType;
 
 /**
@@ -93,11 +95,11 @@ typedef enum
     SDL_GAMEPAD_BUTTON_DPAD_DOWN,
     SDL_GAMEPAD_BUTTON_DPAD_LEFT,
     SDL_GAMEPAD_BUTTON_DPAD_RIGHT,
-    SDL_GAMEPAD_BUTTON_MISC1,    /* Xbox Series X share button, PS5 microphone button, Nintendo Switch Pro capture button, Amazon Luna microphone button */
-    SDL_GAMEPAD_BUTTON_PADDLE1,  /* Xbox Elite paddle P1 (upper left, facing the back) */
-    SDL_GAMEPAD_BUTTON_PADDLE2,  /* Xbox Elite paddle P3 (upper right, facing the back) */
-    SDL_GAMEPAD_BUTTON_PADDLE3,  /* Xbox Elite paddle P2 (lower left, facing the back) */
-    SDL_GAMEPAD_BUTTON_PADDLE4,  /* Xbox Elite paddle P4 (lower right, facing the back) */
+    SDL_GAMEPAD_BUTTON_MISC1,    /* Additional button (e.g. Xbox Series X share button, PS5 microphone button, Nintendo Switch Pro capture button, Amazon Luna microphone button) */
+    SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1,  /* Upper or primary paddle, under your right hand (e.g. Xbox Elite paddle P1) */
+    SDL_GAMEPAD_BUTTON_LEFT_PADDLE1,   /* Upper or primary paddle, under your left hand (e.g. Xbox Elite paddle P3) */
+    SDL_GAMEPAD_BUTTON_RIGHT_PADDLE2,  /* Lower or secondary paddle, under your right hand (e.g. Xbox Elite paddle P2) */
+    SDL_GAMEPAD_BUTTON_LEFT_PADDLE2,   /* Lower or secondary paddle, under your left hand (e.g. Xbox Elite paddle P4) */
     SDL_GAMEPAD_BUTTON_TOUCHPAD, /* PS4/PS5 touchpad button */
     SDL_GAMEPAD_BUTTON_MAX
 } SDL_GamepadButton;
@@ -173,8 +175,9 @@ extern DECLSPEC int SDLCALL SDL_AddGamepadMapping(const char *mapping);
  * processing it, so take this into consideration if you are in a memory
  * constrained environment.
  *
- * \param rw the data stream for the mappings to be added
- * \param freerw non-zero to close the stream after being read
+ * \param src the data stream for the mappings to be added
+ * \param freesrc if SDL_TRUE, calls SDL_RWclose() on `src` before returning,
+ *                even in the case of an error
  * \returns the number of mappings added or -1 on error; call SDL_GetError()
  *          for more information.
  *
@@ -184,14 +187,44 @@ extern DECLSPEC int SDLCALL SDL_AddGamepadMapping(const char *mapping);
  * \sa SDL_AddGamepadMappingsFromFile
  * \sa SDL_GetGamepadMappingForGUID
  */
-extern DECLSPEC int SDLCALL SDL_AddGamepadMappingsFromRW(SDL_RWops *rw, int freerw);
+extern DECLSPEC int SDLCALL SDL_AddGamepadMappingsFromRW(SDL_RWops *src, SDL_bool freesrc);
 
 /**
- *  Load a set of mappings from a file, filtered by the current SDL_GetPlatform()
+ * Load a set of gamepad mappings from a file.
  *
- *  Convenience macro.
+ * You can call this function several times, if needed, to load different
+ * database files.
+ *
+ * If a new mapping is loaded for an already known gamepad GUID, the later
+ * version will overwrite the one currently loaded.
+ *
+ * Mappings not belonging to the current platform or with no platform field
+ * specified will be ignored (i.e. mappings for Linux will be ignored in
+ * Windows, etc).
+ *
+ * \param file the mappings file to load
+ * \returns the number of mappings added or -1 on error; call SDL_GetError()
+ *          for more information.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_AddGamepadMapping
+ * \sa SDL_AddGamepadMappingsFromRW
+ * \sa SDL_GetGamepadMappingForGUID
  */
-#define SDL_AddGamepadMappingsFromFile(file)   SDL_AddGamepadMappingsFromRW(SDL_RWFromFile(file, "rb"), 1)
+extern DECLSPEC int SDLCALL SDL_AddGamepadMappingsFromFile(const char *file);
+
+/**
+ * Reinitialize the SDL mapping database to its initial state.
+ *
+ * This will generate gamepad events as needed if device mappings change.
+ *
+ * \returns 0 on success or a negative error code on failure; call
+ *          SDL_GetError() for more information.
+ *
+ * \since This function is available since SDL 3.0.0.
+ */
+extern DECLSPEC int SDLCALL SDL_ReloadGamepadMappings(void);
 
 /**
  * Get the number of mappings installed.
@@ -289,7 +322,6 @@ extern DECLSPEC SDL_JoystickID *SDLCALL SDL_GetGamepads(int *count);
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_GetGamepadNameForIndex
  * \sa SDL_OpenGamepad
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_IsGamepad(SDL_JoystickID instance_id);
@@ -412,6 +444,18 @@ extern DECLSPEC Uint16 SDLCALL SDL_GetGamepadInstanceProductVersion(SDL_Joystick
 extern DECLSPEC SDL_GamepadType SDLCALL SDL_GetGamepadInstanceType(SDL_JoystickID instance_id);
 
 /**
+ * Get the type of a gamepad, ignoring any mapping override.
+ *
+ * This can be called before any gamepads are opened.
+ *
+ * \param instance_id the joystick instance ID
+ * \returns the gamepad type.
+ *
+ * \since This function is available since SDL 3.0.0.
+ */
+extern DECLSPEC SDL_GamepadType SDLCALL SDL_GetRealGamepadInstanceType(SDL_JoystickID instance_id);
+
+/**
  * Get the mapping of a gamepad.
  *
  * This can be called before any gamepads are opened.
@@ -434,7 +478,6 @@ extern DECLSPEC char *SDLCALL SDL_GetGamepadInstanceMapping(SDL_JoystickID insta
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_CloseGamepad
- * \sa SDL_GetGamepadNameForIndex
  * \sa SDL_IsGamepad
  */
 extern DECLSPEC SDL_Gamepad *SDLCALL SDL_OpenGamepad(SDL_JoystickID instance_id);
@@ -481,9 +524,6 @@ extern DECLSPEC SDL_JoystickID SDLCALL SDL_GetGamepadInstanceID(SDL_Gamepad *gam
 /**
  * Get the implementation-dependent name for an opened gamepad.
  *
- * This is the same name as returned by SDL_GetGamepadNameForIndex(), but it
- * takes a gamepad identifier instead of the (unstable) device index.
- *
  * \param gamepad a gamepad identifier previously returned by
  *                SDL_OpenGamepad()
  * \returns the implementation dependent name for the gamepad, or NULL if
@@ -491,16 +531,13 @@ extern DECLSPEC SDL_JoystickID SDLCALL SDL_GetGamepadInstanceID(SDL_Gamepad *gam
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_GetGamepadNameForIndex
+ * \sa SDL_GetGamepadInstanceName
  * \sa SDL_OpenGamepad
  */
 extern DECLSPEC const char *SDLCALL SDL_GetGamepadName(SDL_Gamepad *gamepad);
 
 /**
  * Get the implementation-dependent path for an opened gamepad.
- *
- * This is the same path as returned by SDL_GetGamepadNameForIndex(), but it
- * takes a gamepad identifier instead of the (unstable) device index.
  *
  * \param gamepad a gamepad identifier previously returned by
  *                SDL_OpenGamepad()
@@ -514,17 +551,30 @@ extern DECLSPEC const char *SDLCALL SDL_GetGamepadName(SDL_Gamepad *gamepad);
 extern DECLSPEC const char *SDLCALL SDL_GetGamepadPath(SDL_Gamepad *gamepad);
 
 /**
- * Get the type of this currently opened gamepad
- *
- * This is the same name as returned by SDL_GetGamepadInstanceType(), but it
- * takes a gamepad identifier instead of the (unstable) device index.
+ * Get the type of an opened gamepad.
  *
  * \param gamepad the gamepad object to query.
- * \returns the gamepad type.
+ * \returns the gamepad type, or SDL_GAMEPAD_TYPE_UNKNOWN if it's not
+ *          available.
  *
  * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_GetGamepadInstanceType
  */
 extern DECLSPEC SDL_GamepadType SDLCALL SDL_GetGamepadType(SDL_Gamepad *gamepad);
+
+/**
+ * Get the type of an opened gamepad, ignoring any mapping override.
+ *
+ * \param gamepad the gamepad object to query.
+ * \returns the gamepad type, or SDL_GAMEPAD_TYPE_UNKNOWN if it's not
+ *          available.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_GetRealGamepadInstanceType
+ */
+extern DECLSPEC SDL_GamepadType SDLCALL SDL_GetRealGamepadType(SDL_Gamepad *gamepad);
 
 /**
  * Get the player index of an opened gamepad.
@@ -697,6 +747,39 @@ extern DECLSPEC SDL_bool SDLCALL SDL_GamepadEventsEnabled(void);
  */
 extern DECLSPEC void SDLCALL SDL_UpdateGamepads(void);
 
+/**
+ * Convert a string into SDL_GamepadType enum.
+ *
+ * This function is called internally to translate SDL_Gamepad mapping strings
+ * for the underlying joystick device into the consistent SDL_Gamepad mapping.
+ * You do not normally need to call this function unless you are parsing
+ * SDL_Gamepad mappings in your own code.
+ *
+ * \param str string representing a SDL_GamepadType type
+ * \returns the SDL_GamepadType enum corresponding to the input string, or
+ *          `SDL_GAMEPAD_TYPE_UNKNOWN` if no match was found.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_GetGamepadStringForType
+ */
+extern DECLSPEC SDL_GamepadType SDLCALL SDL_GetGamepadTypeFromString(const char *str);
+
+/**
+ * Convert from an SDL_GamepadType enum to a string.
+ *
+ * The caller should not SDL_free() the returned string.
+ *
+ * \param type an enum value for a given SDL_GamepadType
+ * \returns a string for the given type, or NULL if an invalid type is
+ *          specified. The string returned is of the format used by
+ *          SDL_Gamepad mapping strings.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_GetGamepadTypeFromString
+ */
+extern DECLSPEC const char *SDLCALL SDL_GetGamepadStringForType(SDL_GamepadType type);
 
 /**
  * Convert a string into SDL_GamepadAxis enum.
