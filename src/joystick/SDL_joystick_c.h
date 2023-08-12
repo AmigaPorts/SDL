@@ -145,6 +145,7 @@ extern SDL_bool SDL_ShouldIgnoreJoystick(const char *name, SDL_JoystickGUID guid
 extern void SDL_PrivateJoystickAddTouchpad(SDL_Joystick *joystick, int nfingers);
 extern void SDL_PrivateJoystickAddSensor(SDL_Joystick *joystick, SDL_SensorType type, float rate);
 extern void SDL_PrivateJoystickAdded(SDL_JoystickID instance_id);
+extern SDL_bool SDL_IsJoystickBeingAdded(void);
 extern void SDL_PrivateJoystickRemoved(SDL_JoystickID instance_id);
 extern void SDL_PrivateJoystickForceRecentering(SDL_Joystick *joystick);
 extern int SDL_SendJoystickAxis(Uint64 timestamp, SDL_Joystick *joystick,
@@ -195,10 +196,10 @@ typedef struct SDL_GamepadMapping
     SDL_InputMapping dpleft;
     SDL_InputMapping dpright;
     SDL_InputMapping misc1;
-    SDL_InputMapping paddle1;
-    SDL_InputMapping paddle2;
-    SDL_InputMapping paddle3;
-    SDL_InputMapping paddle4;
+    SDL_InputMapping right_paddle1;
+    SDL_InputMapping left_paddle1;
+    SDL_InputMapping right_paddle2;
+    SDL_InputMapping left_paddle2;
     SDL_InputMapping leftx;
     SDL_InputMapping lefty;
     SDL_InputMapping rightx;

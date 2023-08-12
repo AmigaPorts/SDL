@@ -191,13 +191,13 @@ OS4_CloseDevice(SDL_AudioDevice *_this)
 }
 
 static void
-OS4_DetectDevices(void)
+OS4_DetectDevices(SDL_AudioDevice **default_output, SDL_AudioDevice **default_capture)
 {
     dprintf("Called\n");
 }
 
 static int
-OS4_OpenDevice(SDL_AudioDevice *_this, const char * devname)
+OS4_OpenDevice(SDL_AudioDevice *_this)
 {
     int result = 0;
     OS4AudioData *os4data = NULL;
@@ -247,12 +247,14 @@ OS4_OpenDevice(SDL_AudioDevice *_this, const char * devname)
     dprintf("Buffer size = %u\n", _this->spec.size);
     dprintf("Channels = %u\n", _this->spec.channels);
 
-    /* Calculate the final parameters for this audio specification */
-    SDL_CalculateAudioSpec(&_this->spec);
+    /* TODO: FIXME: Calculate the final parameters for this audio specification */
+    //SDL_CalculateAudioSpec(&_this->spec);
 
-    os4data->audioBufferSize = _this->spec.size;
-    os4data->audioBuffer[0] = (Uint8 *) SDL_malloc(_this->spec.size);
-    os4data->audioBuffer[1] = (Uint8 *) SDL_malloc(_this->spec.size);
+    #define AHI_AUDIO_BUFFER_SIZE 4096
+
+    os4data->audioBufferSize = AHI_AUDIO_BUFFER_SIZE;
+    os4data->audioBuffer[0] = (Uint8 *) SDL_malloc(AHI_AUDIO_BUFFER_SIZE);
+    os4data->audioBuffer[1] = (Uint8 *) SDL_malloc(AHI_AUDIO_BUFFER_SIZE);
 
     if (os4data->audioBuffer[0] == NULL || os4data->audioBuffer[1] == NULL) {
         OS4_CloseDevice(_this);
@@ -261,8 +263,8 @@ OS4_OpenDevice(SDL_AudioDevice *_this, const char * devname)
         return -1;
     }
 
-    SDL_memset(os4data->audioBuffer[0], _this->spec.silence, _this->spec.size);
-    SDL_memset(os4data->audioBuffer[1], _this->spec.silence, _this->spec.size);
+    SDL_memset(os4data->audioBuffer[0], SDL_GetSilenceValueForFormat(_this->spec.format), AHI_AUDIO_BUFFER_SIZE);
+    SDL_memset(os4data->audioBuffer[1], SDL_GetSilenceValueForFormat(_this->spec.format), AHI_AUDIO_BUFFER_SIZE);
 
     /* Decide AHI format */
     switch(_this->spec.format) {
@@ -376,7 +378,7 @@ OS4_RemapSurround(Sint32* buffer, int samples)
 }
 
 static void
-OS4_PlayDevice(SDL_AudioDevice *_this)
+OS4_PlayDevice(SDL_AudioDevice *_this, const Uint8 *buffer, int buflen)
 {
     struct AHIRequest  *ahiRequest;
     SDL_AudioSpec      *spec    = &_this->spec;
@@ -407,7 +409,7 @@ OS4_PlayDevice(SDL_AudioDevice *_this)
        because order of 7.1 channels is different (AHI <-> SDL), remap it here */
 
     if (spec->channels == 8) {
-        OS4_RemapSurround((Sint32 *)os4data->audioBuffer[current], spec->samples);
+        OS4_RemapSurround((Sint32 *)os4data->audioBuffer[current], os4data->audioBufferSize/sizeof(Sint32)/8 /* TODO: FIXME */);
     }
 
     IExec->SendIO((struct IORequest *)ahiRequest);
@@ -421,11 +423,21 @@ OS4_PlayDevice(SDL_AudioDevice *_this)
 }
 
 static Uint8 *
-OS4_GetDeviceBuf(SDL_AudioDevice *_this)
+OS4_GetDeviceBuf(SDL_AudioDevice *_this, int *buffer_size)
 {
     //dprintf("Called\n");
 
+    if (buffer_size) {
+        *buffer_size = AHI_AUDIO_BUFFER_SIZE;
+    }
+
     return _this->hidden->audioBuffer[_this->hidden->currentBuffer];
+}
+
+static void
+OS4_WaitCaptureDevice(SDL_AudioDevice *device)
+{
+    dprintf("Called\n");
 }
 
 #ifndef MIN
@@ -517,19 +529,7 @@ OS4_FlushCapture(SDL_AudioDevice *this)
 }
 
 static void
-OS4_LockDevice(SDL_AudioDevice *this)
-{
-    dprintf("Called\n");
-}
-
-static void
-OS4_UnlockDevice(SDL_AudioDevice *this)
-{
-    dprintf("Called\n");
-}
-
-static void
-OS4_FreeDeviceHandle(void *handle)
+OS4_FreeDeviceHandle(SDL_AudioDevice *device)
 {
     dprintf("Called\n");
 }
@@ -558,14 +558,12 @@ OS4_Init(SDL_AudioDriverImpl * impl)
     impl->WaitDevice = OS4_WaitDevice;
     impl->PlayDevice = OS4_PlayDevice;
     impl->GetDeviceBuf = OS4_GetDeviceBuf;
+    impl->WaitCaptureDevice = OS4_WaitCaptureDevice;
     impl->CaptureFromDevice = OS4_CaptureFromDevice;
     impl->FlushCapture = OS4_FlushCapture;
     impl->CloseDevice = OS4_CloseDevice;
-    impl->LockDevice = OS4_LockDevice;
-    impl->UnlockDevice = OS4_UnlockDevice;
     impl->FreeDeviceHandle = OS4_FreeDeviceHandle;
     impl->Deinitialize = OS4_Deinitialize;
-    //impl->GetDefaultAudioInfo = OS4_GetDefaultAudioInfo;
 
     impl->HasCaptureSupport = 1;
     impl->OnlyHasDefaultOutputDevice = 1;

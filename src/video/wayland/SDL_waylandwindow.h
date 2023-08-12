@@ -122,6 +122,7 @@ struct SDL_WindowData
     int system_min_required_height;
     SDL_DisplayID last_displayID;
     SDL_bool floating;
+    SDL_bool suspended;
     SDL_bool is_fullscreen;
     SDL_bool in_fullscreen_transition;
     SDL_bool fullscreen_was_positioned;
@@ -149,6 +150,7 @@ extern void Wayland_SetWindowMaximumSize(SDL_VideoDevice *_this, SDL_Window *win
 extern void Wayland_GetWindowSizeInPixels(SDL_VideoDevice *_this, SDL_Window *window, int *w, int *h);
 extern int Wayland_SetWindowModalFor(SDL_VideoDevice *_this, SDL_Window *modal_window, SDL_Window *parent_window);
 extern void Wayland_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window);
+extern void Wayland_ShowWindowSystemMenu(SDL_Window *window, int x, int y);
 extern void Wayland_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window);
 extern int Wayland_SuspendScreenSaver(SDL_VideoDevice *_this);
 

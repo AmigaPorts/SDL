@@ -8,6 +8,34 @@
 /* Test case functions */
 
 /**
+ * \brief Call to SDL_strnlen
+ */
+#undef SDL_strnlen
+static int stdlib_strnlen(void *arg)
+{
+    size_t result;
+    char *text_result;
+    const char *text = "food";
+    const char *expected;
+
+    result = SDL_strnlen(text, 6);
+    SDLTest_AssertPass("Call to SDL_strndup(\"food\", 6)");
+    SDLTest_AssertCheck(result == 4, "Check result value, expected: 4, got: %d", (int)result);
+
+    result = SDL_strnlen(text, 3);
+    SDLTest_AssertPass("Call to SDL_strndup(\"food\", 3)");
+    SDLTest_AssertCheck(result == 3, "Check result value, expected: 3, got: %d", (int)result);
+
+    text_result = SDL_strndup(text, 3);
+    expected = "foo";
+    SDLTest_AssertPass("Call to SDL_strndup(\"food\", 3)");
+    SDLTest_AssertCheck(SDL_strcmp(text_result, expected) == 0, "Check text, expected: %s, got: %s", expected, text_result);
+    SDL_free(text_result);
+
+    return TEST_COMPLETED;
+}
+
+/**
  * \brief Call to SDL_strlcpy
  */
 #undef SDL_strlcpy
@@ -169,30 +197,34 @@ static int stdlib_snprintf(void *arg)
     {
         static struct
         {
+            int precision;
             float value;
             const char *expected_f;
             const char *expected_g;
         } f_and_g_test_cases[] = {
-            { 100.0f, "100.000000", "100" },
-            { -100.0f, "-100.000000", "-100" },
-            { 100.75f, "100.750000", "100.75" },
-            { -100.75f, "-100.750000", "-100.75" },
-            { ((100 * 60 * 1000) / 1001) / 100.0f, "59.939999", "59.94" },
-            { -((100 * 60 * 1000) / 1001) / 100.0f, "-59.939999", "-59.94" },
-            { ((100 * 120 * 1000) / 1001) / 100.0f, "119.879997", "119.88" },
-            { -((100 * 120 * 1000) / 1001) / 100.0f, "-119.879997", "-119.88" },
-            { 9.9999999f, "10.000000", "10" },
-            { -9.9999999f, "-10.000000", "-10" },
+            { 6, 100.0f, "100.000000", "100" },
+            { 6, -100.0f, "-100.000000", "-100" },
+            { 6, 100.75f, "100.750000", "100.75" },
+            { 6, -100.75f, "-100.750000", "-100.75" },
+            { 6, ((100 * 60 * 1000) / 1001) / 100.0f, "59.939999", "59.94" },
+            { 6, -((100 * 60 * 1000) / 1001) / 100.0f, "-59.939999", "-59.94" },
+            { 6, ((100 * 120 * 1000) / 1001) / 100.0f, "119.879997", "119.88" },
+            { 6, -((100 * 120 * 1000) / 1001) / 100.0f, "-119.879997", "-119.88" },
+            { 6, 0.9999999f, "1.000000", "1" },
+            { 6, -0.9999999f, "-1.000000", "-1" },
+            { 5, 9.999999f, "10.00000", "10" },
+            { 5, -9.999999f, "-10.00000", "-10" },
         };
         int i;
 
         for (i = 0; i < SDL_arraysize(f_and_g_test_cases); ++i) {
             float value = f_and_g_test_cases[i].value;
+            int prec = f_and_g_test_cases[i].precision;
 
-            result = SDL_snprintf(text, sizeof(text), "%f", value);
-            predicted = SDL_snprintf(NULL, 0, "%f", value);
+            result = SDL_snprintf(text, sizeof(text), "%.*f", prec, value);
+            predicted = SDL_snprintf(NULL, 0, "%.*f", prec, value);
             expected = f_and_g_test_cases[i].expected_f;
-            SDLTest_AssertPass("Call to SDL_snprintf(\"%%f\", %g)", value);
+            SDLTest_AssertPass("Call to SDL_snprintf(\"%%.5f\", %g)", value);
             SDLTest_AssertCheck(SDL_strcmp(text, expected) == 0, "Check text, expected: '%s', got: '%s'", expected, text);
             SDLTest_AssertCheck(result == SDL_strlen(expected), "Check result value, expected: %d, got: %d", (int)SDL_strlen(expected), result);
             SDLTest_AssertCheck(predicted == result, "Check predicted value, expected: %d, got: %d", result, predicted);
@@ -814,26 +846,30 @@ stdlib_overflow(void *arg)
 
 /* Standard C routine test cases */
 static const SDLTest_TestCaseReference stdlibTest1 = {
-    stdlib_strlcpy, "stdlib_strlcpy", "Call to SDL_strlcpy", TEST_ENABLED
+    stdlib_strnlen, "stdlib_strnlen", "Call to SDL_strnlen", TEST_ENABLED
 };
 
 static const SDLTest_TestCaseReference stdlibTest2 = {
-    stdlib_snprintf, "stdlib_snprintf", "Call to SDL_snprintf", TEST_ENABLED
+    stdlib_strlcpy, "stdlib_strlcpy", "Call to SDL_strlcpy", TEST_ENABLED
 };
 
 static const SDLTest_TestCaseReference stdlibTest3 = {
-    stdlib_swprintf, "stdlib_swprintf", "Call to SDL_swprintf", TEST_ENABLED
+    stdlib_snprintf, "stdlib_snprintf", "Call to SDL_snprintf", TEST_ENABLED
 };
 
 static const SDLTest_TestCaseReference stdlibTest4 = {
-    stdlib_getsetenv, "stdlib_getsetenv", "Call to SDL_getenv and SDL_setenv", TEST_ENABLED
+    stdlib_swprintf, "stdlib_swprintf", "Call to SDL_swprintf", TEST_ENABLED
 };
 
 static const SDLTest_TestCaseReference stdlibTest5 = {
-    stdlib_sscanf, "stdlib_sscanf", "Call to SDL_sscanf", TEST_ENABLED
+    stdlib_getsetenv, "stdlib_getsetenv", "Call to SDL_getenv and SDL_setenv", TEST_ENABLED
 };
 
 static const SDLTest_TestCaseReference stdlibTest6 = {
+    stdlib_sscanf, "stdlib_sscanf", "Call to SDL_sscanf", TEST_ENABLED
+};
+
+static const SDLTest_TestCaseReference stdlibTest7 = {
     stdlib_aligned_alloc, "stdlib_aligned_alloc", "Call to SDL_aligned_alloc", TEST_ENABLED
 };
 
@@ -849,6 +885,7 @@ static const SDLTest_TestCaseReference *stdlibTests[] = {
     &stdlibTest4,
     &stdlibTest5,
     &stdlibTest6,
+    &stdlibTest7,
     &stdlibTestOverflow,
     NULL
 };

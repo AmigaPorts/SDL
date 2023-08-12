@@ -209,6 +209,7 @@ static SDL_VideoDevice *Wayland_CreateDevice(void)
     device->SetWindowHitTest = Wayland_SetWindowHitTest;
     device->FlashWindow = Wayland_FlashWindow;
     device->HasScreenKeyboardSupport = Wayland_HasScreenKeyboardSupport;
+    device->ShowWindowSystemMenu = Wayland_ShowWindowSystemMenu;
 
 #ifdef SDL_USE_LIBDBUS
     if (SDL_SystemTheme_Init())
@@ -672,6 +673,10 @@ static void Wayland_free_display(SDL_VideoDisplay *display)
         SDL_DisplayData *display_data = display->driverdata;
         int i;
 
+        if (display_data->xdg_output) {
+            zxdg_output_v1_destroy(display_data->xdg_output);
+        }
+
         if (wl_output_get_version(display_data->output) >= WL_OUTPUT_RELEASE_SINCE_VERSION) {
             wl_output_release(display_data->output);
         } else {
@@ -752,7 +757,7 @@ static void display_handle_global(void *data, struct wl_registry *registry, uint
     } else if (SDL_strcmp(interface, "wl_seat") == 0) {
         Wayland_display_add_input(d, id, version);
     } else if (SDL_strcmp(interface, "xdg_wm_base") == 0) {
-        d->shell.xdg = wl_registry_bind(d->registry, id, &xdg_wm_base_interface, SDL_min(version, 3));
+        d->shell.xdg = wl_registry_bind(d->registry, id, &xdg_wm_base_interface, SDL_min(version, 6));
         xdg_wm_base_add_listener(d->shell.xdg, &shell_listener_xdg, NULL);
     } else if (SDL_strcmp(interface, "wl_shm") == 0) {
         d->shm = wl_registry_bind(registry, id, &wl_shm_interface, 1);
@@ -931,7 +936,7 @@ static void Wayland_VideoCleanup(SDL_VideoDevice *_this)
     Wayland_FiniMouse(data);
 
     for (i = _this->num_displays - 1; i >= 0; --i) {
-        SDL_VideoDisplay *display = &_this->displays[i];
+        SDL_VideoDisplay *display = _this->displays[i];
         Wayland_free_display(display);
     }
 

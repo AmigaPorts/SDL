@@ -354,6 +354,9 @@ struct SDL_VideoDevice
     /* Tell window that app enabled drag'n'drop events */
     void (*AcceptDragAndDrop)(SDL_Window *window, SDL_bool accept);
 
+    /* Display the system-level window menu */
+    void (*ShowWindowSystemMenu)(SDL_Window *window, int x, int y);
+
     /* * * */
     /* Data common to all drivers */
     SDL_threadID thread;
@@ -363,7 +366,7 @@ struct SDL_VideoDevice
     SDL_Window *wakeup_window;
     SDL_Mutex *wakeup_lock; /* Initialized only if WaitEventTimeout/SendWakeupEvent are supported */
     int num_displays;
-    SDL_VideoDisplay *displays;
+    SDL_VideoDisplay **displays;
     SDL_Window *windows;
     SDL_Window *grabbed_window;
     Uint8 window_magic;
