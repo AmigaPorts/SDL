@@ -33,6 +33,8 @@
 
 #include <proto/exec.h>
 
+#define AHI_AUDIO_BUFFER_SIZE 4096
+
 static SDL_bool
 OS4_OpenAhiDevice(OS4AudioData * os4data)
 {
@@ -194,6 +196,19 @@ static void
 OS4_DetectDevices(SDL_AudioDevice **default_output, SDL_AudioDevice **default_capture)
 {
     dprintf("Called\n");
+
+    SDL_AudioSpec output, capture;
+
+    output.freq = 44100;
+    output.format = SDL_AUDIO_S16MSB;
+    output.channels = 2;
+
+    capture.freq = output.freq;
+    capture.format = output.format;
+    capture.channels = 1;
+
+    *default_output = SDL_AddAudioDevice(/*iscapture=*/SDL_FALSE, "AHI default output device", &output, SDL_strdup("default"));
+    *default_capture = SDL_AddAudioDevice(/*iscapture=*/SDL_TRUE, "AHI default capture device", &capture, SDL_strdup("default"));
 }
 
 static int
@@ -202,7 +217,7 @@ OS4_OpenDevice(SDL_AudioDevice *_this)
     int result = 0;
     OS4AudioData *os4data = NULL;
 
-    dprintf("devname %s\n", devname);
+    dprintf("Called\n");
 
     _this->hidden = (OS4AudioData *) SDL_malloc(sizeof(OS4AudioData));
 
@@ -243,18 +258,15 @@ OS4_OpenDevice(SDL_AudioDevice *_this)
         _this->spec.format = SDL_AUDIO_S32MSB;
     }
 
-    dprintf("SDL audio format = 0x%x\n", _this->spec.format);
-    dprintf("Buffer size = %u\n", _this->spec.size);
-    dprintf("Channels = %u\n", _this->spec.channels);
-
-    /* TODO: FIXME: Calculate the final parameters for this audio specification */
-    //SDL_CalculateAudioSpec(&_this->spec);
-
-    #define AHI_AUDIO_BUFFER_SIZE 4096
+    SDL_UpdatedAudioDeviceFormat(_this);
 
     os4data->audioBufferSize = AHI_AUDIO_BUFFER_SIZE;
-    os4data->audioBuffer[0] = (Uint8 *) SDL_malloc(AHI_AUDIO_BUFFER_SIZE);
-    os4data->audioBuffer[1] = (Uint8 *) SDL_malloc(AHI_AUDIO_BUFFER_SIZE);
+    os4data->audioBuffer[0] = (Uint8 *) SDL_malloc(os4data->audioBufferSize);
+    os4data->audioBuffer[1] = (Uint8 *) SDL_malloc(os4data->audioBufferSize);
+
+    dprintf("SDL audio format = 0x%x\n", _this->spec.format);
+    dprintf("Buffer size = %u bytes\n", os4data->audioBufferSize);
+    dprintf("Channels = %u\n", _this->spec.channels);
 
     if (os4data->audioBuffer[0] == NULL || os4data->audioBuffer[1] == NULL) {
         OS4_CloseDevice(_this);
@@ -263,8 +275,8 @@ OS4_OpenDevice(SDL_AudioDevice *_this)
         return -1;
     }
 
-    SDL_memset(os4data->audioBuffer[0], SDL_GetSilenceValueForFormat(_this->spec.format), AHI_AUDIO_BUFFER_SIZE);
-    SDL_memset(os4data->audioBuffer[1], SDL_GetSilenceValueForFormat(_this->spec.format), AHI_AUDIO_BUFFER_SIZE);
+    SDL_memset(os4data->audioBuffer[0], SDL_GetSilenceValueForFormat(_this->spec.format), os4data->audioBufferSize);
+    SDL_memset(os4data->audioBuffer[1], SDL_GetSilenceValueForFormat(_this->spec.format), os4data->audioBufferSize);
 
     /* Decide AHI format */
     switch(_this->spec.format) {
@@ -428,7 +440,9 @@ OS4_GetDeviceBuf(SDL_AudioDevice *_this, int *buffer_size)
     //dprintf("Called\n");
 
     if (buffer_size) {
-        *buffer_size = AHI_AUDIO_BUFFER_SIZE;
+        OS4AudioData *os4data = _this->hidden;
+
+        *buffer_size = os4data->audioBufferSize;
     }
 
     return _this->hidden->audioBuffer[_this->hidden->currentBuffer];
@@ -573,6 +587,6 @@ OS4_Init(SDL_AudioDriverImpl * impl)
 }
 
 AudioBootStrap AMIGAOS4AUDIO_bootstrap = {
-    "amigaos4", "AmigaOS4 AHI audio", OS4_Init, 0
+    "amigaos4", "AmigaOS 4 AHI audio", OS4_Init, SDL_FALSE
 };
 #endif
