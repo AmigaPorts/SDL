@@ -15,6 +15,12 @@ if(NOT (MSVC AND SDL_CPU_ARM64))
     find_package(OpenGL)
 endif()
 
+if(WINDOWS_STORE)
+    cmake_minimum_required(VERSION 3.19)
+    # CMP0112: Target file component generator expressions do not add target dependencies.
+    cmake_policy(SET CMP0112 NEW)
+endif()
+
 set(SDL_TEST_EXECUTABLES)
 
 add_library(sdltests_utils OBJECT
@@ -24,7 +30,7 @@ target_link_libraries(sdltests_utils PRIVATE SDL3::Headers)
 
 file(GLOB RESOURCE_FILES *.bmp *.wav *.hex moose.dat utf8.txt)
 set(RESOURCE_FILE_NAMES)
-foreach(RESOURCE_FILE ${RESOURCE_FILES})
+foreach(RESOURCE_FILE IN LISTS RESOURCE_FILES)
     get_filename_component(res_file_name ${RESOURCE_FILE} NAME)
     list(APPEND RESOURCE_FILE_NAMES "${res_file_name}")
 endforeach()
@@ -32,6 +38,14 @@ endforeach()
 define_property(TARGET PROPERTY SDL_NONINTERACTIVE BRIEF_DOCS "If true, target is a non-interactive test executable." FULL_DOCS "If true, target is a noninteractive test executable.")
 define_property(TARGET PROPERTY SDL_NONINTERACTIVE_ARGUMENTS BRIEF_DOCS "Argument(s) to run executable in non-interactive mode." FULL_DOCS "Argument(s) to run executable in non-interactive mode.")
 define_property(TARGET PROPERTY SDL_NONINTERACTIVE_TIMEOUT BRIEF_DOCS "Timeout for noninteractive executable." FULL_DOCS "Timeout for noninteractive executable.")
+
+if(WINDOWS_STORE)
+    add_library(sdl_test_main_uwp OBJECT main.cpp)
+    target_link_libraries(sdl_test_main_uwp PRIVATE SDL3::Headers)
+    target_compile_options(sdl_test_main_uwp PRIVATE "/ZW")
+
+    set_source_files_properties(${RESOURCE_FILES} PROPERTIES VS_DEPLOYENT_LOCATION "Assets")
+endif()
 
 macro(add_sdl_test_executable TARGET)
     cmake_parse_arguments(AST "BUILD_DEPENDENT;NONINTERACTIVE;NEEDS_RESOURCES;TESTUTILS;NO_C90" "" "NONINTERACTIVE_TIMEOUT;NONINTERACTIVE_ARGS;SOURCES" ${ARGN})
@@ -44,13 +58,34 @@ macro(add_sdl_test_executable TARGET)
     if(AST_TESTUTILS)
         list(APPEND AST_SOURCES $<TARGET_OBJECTS:sdltests_utils>)
     endif()
+    set(EXTRA_SOURCES "")
+    if(WINDOWS_STORE)
+        set(uwp_bindir "${CMAKE_CURRENT_BINARY_DIR}/${TARGET}.dir")
+        if(NOT IS_DIRECTORY "${uwp_bindir}")
+            execute_process(COMMAND "${CMAKE_COMMAND}" -E make_directory "${uwp_bindir}")
+        endif()
+        string(REGEX REPLACE "[_]" "" SAFE_TARGET "${TARGET}")
+        file(GENERATE OUTPUT "${uwp_bindir}/${TARGET}.appxmanifest"
+            INPUT "${CMAKE_CURRENT_SOURCE_DIR}/uwp/Package.appxmanifest.in"
+            TARGET "${TARGET}"
+        )
+        set_property(SOURCE "${uwp_bindir}/${TARGET}.appxmanifest" PROPERTY VS_DEPLOYMENT_CONTENT 1)
+        list(APPEND EXTRA_SOURCES
+            "$<TARGET_OBJECTS:sdl_test_main_uwp>"
+            "${uwp_bindir}/${TARGET}.appxmanifest"
+            "uwp/logo-50x50.png"
+            "uwp/square-44x44.png"
+            "uwp/square-150x150.png"
+            "uwp/splash-620x300.png"
+        )
+    endif()
     if(AST_NEEDS_RESOURCES)
-        list(APPEND AST_SOURCES ${RESOURCE_FILES})
+        list(APPEND EXTRA_SOURCES ${RESOURCE_FILES})
     endif()
     if(ANDROID)
-        add_library(${TARGET} SHARED ${AST_SOURCES})
+        add_library(${TARGET} SHARED ${AST_SOURCES} ${EXTRA_SOURCES})
     else()
-        add_executable(${TARGET} ${AST_SOURCES})
+        add_executable(${TARGET} ${AST_SOURCES} ${EXTRA_SOURCES})
     endif()
     SDL_AddCommonCompilerFlags(${TARGET})
     target_link_libraries(${TARGET} PRIVATE SDL3::SDL3_test SDL3::${sdl_name_component})
@@ -74,6 +109,16 @@ macro(add_sdl_test_executable TARGET)
             add_custom_command(TARGET ${TARGET} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} ARGS -E make_directory $<TARGET_FILE_DIR:${TARGET}>/sdl-${TARGET}
                 COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different ${RESOURCE_FILES} $<TARGET_FILE_DIR:${TARGET}>/sdl-${TARGET})
+        elseif(WINDOWS_STORE)
+            # MSVC does build the dependent targets (or POST_BUILD commands) when building an application
+            # after starting to debug. By copying the resources in a custom target, the files can be copied afterwards.
+            # FIXME: find out proper way to add assets to UWP package
+            cmake_minimum_required(VERSION 3.19)
+            add_custom_target(zzz-resources-copy-${TARGET}
+                COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${TARGET}>/AppX"
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RESOURCE_FILES} "$<TARGET_FILE_DIR:${TARGET}>/AppX"
+            )
+            add_dependencies(${TARGET} zzz-resources-copy-${TARGET})
         else()
             add_custom_command(TARGET ${TARGET} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different ${RESOURCE_FILES} $<TARGET_FILE_DIR:${TARGET}>)
@@ -81,6 +126,12 @@ macro(add_sdl_test_executable TARGET)
         if(APPLE)
             # Make sure resource files get installed into macOS/iOS .app bundles.
             set_target_properties(${TARGET} PROPERTIES RESOURCE "${RESOURCE_FILES}")
+        endif()
+        if(EMSCRIPTEN)
+            foreach(res IN LISTS RESOURCE_FILES)
+                get_filename_component(res_name "${res}" NAME)
+                target_link_options(${TARGET} PRIVATE "SHELL:--embed-file ${res}@${res_name}")
+            endforeach()
         endif()
         set_property(TARGET ${TARGET} APPEND PROPERTY ADDITIONAL_CLEAN_FILES "$<TARGET_FILE_DIR:${TARGET}>/$<JOIN:${RESOURCE_FILE_NAMES},$<SEMICOLON>$<TARGET_FILE_DIR:${TARGET}>/>")
     endif()
@@ -96,6 +147,21 @@ macro(add_sdl_test_executable TARGET)
         endif()
     elseif(PSP)
         target_link_libraries(${TARGET} PRIVATE GL)
+    endif()
+    if(WINDOWS_STORE)
+        target_compile_definitions(${TARGET} PRIVATE "SDL_MAIN_NOIMPL")
+        set_property(TARGET ${TARGET} PROPERTY WIN32_EXECUTABLE TRUE)
+        set_property(TARGET ${TARGET} PROPERTY RUNTIME_OUTPUT_DIRECTORY "${uwp_bindir}")
+        target_link_options(${TARGET} PRIVATE
+            -nodefaultlib:vccorlib$<$<CONFIG:Debug>:d>
+            -nodefaultlib:msvcrt$<$<CONFIG:Debug>:d>
+            vccorlib$<$<CONFIG:Debug>:d>.lib
+            msvcrt$<$<CONFIG:Debug>:d>.lib
+        )
+    endif()
+
+    if(EMSCRIPTEN)
+        set_property(TARGET ${TARGET} PROPERTY SUFFIX ".html")
     endif()
 
     if(OPENGL_FOUND)
@@ -212,7 +278,7 @@ if(ANDROID)
     target_link_libraries(testgles PRIVATE GLESv1_CM)
 endif()
 add_sdl_test_executable(testgles2 SOURCES testgles2.c)
-add_sdl_test_executable(testgles2_sdf TESTUTILS SOURCES testgles2_sdf.c)
+add_sdl_test_executable(testgles2_sdf NEEDS_RESOURCES TESTUTILS SOURCES testgles2_sdf.c)
 add_sdl_test_executable(testhaptic SOURCES testhaptic.c)
 add_sdl_test_executable(testhotplug SOURCES testhotplug.c)
 add_sdl_test_executable(testrumble SOURCES testrumble.c)
@@ -302,6 +368,12 @@ if(OPENGL_FOUND)
 endif()
 if(EMSCRIPTEN)
     set_property(TARGET testshader APPEND_STRING PROPERTY LINK_FLAGS " -sLEGACY_GL_EMULATION")
+
+    find_package(Python3 COMPONENTS Interpreter)
+    if(TARGET Python3::Interpreter)
+        add_custom_target(serve-sdl-tests
+            COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/emscripten/server.py" -d "${CMAKE_CURRENT_BINARY_DIR}")
+    endif()
 endif()
 
 if(PSP)

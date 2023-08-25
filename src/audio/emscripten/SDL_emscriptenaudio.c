@@ -55,11 +55,6 @@ static void EMSCRIPTENAUDIO_PlayDevice(SDL_AudioDevice *device, const Uint8 *buf
     }, buffer, buffer_size / framelen);
 }
 
-static void HandleAudioProcess(SDL_AudioDevice *device)  // this fires when the main thread is idle.
-{
-    SDL_OutputAudioThreadIterate(device);
-}
-
 
 static void EMSCRIPTENAUDIO_FlushCapture(SDL_AudioDevice *device)
 {
@@ -92,11 +87,6 @@ static int EMSCRIPTENAUDIO_CaptureFromDevice(SDL_AudioDevice *device, void *buff
     return buflen;
 }
 
-static void HandleCaptureProcess(SDL_AudioDevice *device)  // this fires when the main thread is idle.
-{
-    SDL_CaptureAudioThreadIterate(device);
-}
-
 static void EMSCRIPTENAUDIO_CloseDevice(SDL_AudioDevice *device)
 {
     if (!device->hidden) {
@@ -107,32 +97,28 @@ static void EMSCRIPTENAUDIO_CloseDevice(SDL_AudioDevice *device)
         var SDL3 = Module['SDL3'];
         if ($0) {
             if (SDL3.capture.silenceTimer !== undefined) {
-                clearTimeout(SDL3.capture.silenceTimer);
+                clearInterval(SDL3.capture.silenceTimer);
             }
             if (SDL3.capture.stream !== undefined) {
                 var tracks = SDL3.capture.stream.getAudioTracks();
                 for (var i = 0; i < tracks.length; i++) {
                     SDL3.capture.stream.removeTrack(tracks[i]);
                 }
-                SDL3.capture.stream = undefined;
             }
             if (SDL3.capture.scriptProcessorNode !== undefined) {
                 SDL3.capture.scriptProcessorNode.onaudioprocess = function(audioProcessingEvent) {};
                 SDL3.capture.scriptProcessorNode.disconnect();
-                SDL3.capture.scriptProcessorNode = undefined;
             }
             if (SDL3.capture.mediaStreamNode !== undefined) {
                 SDL3.capture.mediaStreamNode.disconnect();
-                SDL3.capture.mediaStreamNode = undefined;
-            }
-            if (SDL3.capture.silenceBuffer !== undefined) {
-                SDL3.capture.silenceBuffer = undefined
             }
             SDL3.capture = undefined;
         } else {
             if (SDL3.audio.scriptProcessorNode != undefined) {
                 SDL3.audio.scriptProcessorNode.disconnect();
-                SDL3.audio.scriptProcessorNode = undefined;
+            }
+            if (SDL3.audio.silenceTimer !== undefined) {
+                clearInterval(SDL3.audio.silenceTimer);
             }
             SDL3.audio = undefined;
         }
@@ -174,7 +160,9 @@ static int EMSCRIPTENAUDIO_OpenDevice(SDL_AudioDevice *device)
                 SDL3.audioContext = new webkitAudioContext();
             }
             if (SDL3.audioContext) {
-                autoResumeAudioContext(SDL3.audioContext);
+                if ((typeof navigator.userActivation) === 'undefined') {  // Firefox doesn't have this (as of August 2023), use autoResumeAudioContext instead.
+                    autoResumeAudioContext(SDL3.audioContext);
+                }
             }
         }
         return SDL3.audioContext === undefined ? -1 : 0;
@@ -227,8 +215,9 @@ static int EMSCRIPTENAUDIO_OpenDevice(SDL_AudioDevice *device)
             var have_microphone = function(stream) {
                 //console.log('SDL audio capture: we have a microphone! Replacing silence callback.');
                 if (SDL3.capture.silenceTimer !== undefined) {
-                    clearTimeout(SDL3.capture.silenceTimer);
+                    clearInterval(SDL3.capture.silenceTimer);
                     SDL3.capture.silenceTimer = undefined;
+                    SDL3.capture.silenceBuffer = undefined
                 }
                 SDL3.capture.mediaStreamNode = SDL3.audioContext.createMediaStreamSource(stream);
                 SDL3.capture.scriptProcessorNode = SDL3.audioContext.createScriptProcessor($1, $0, 1);
@@ -255,14 +244,14 @@ static int EMSCRIPTENAUDIO_OpenDevice(SDL_AudioDevice *device)
                 dynCall('vi', $2, [$3]);
             };
 
-            SDL3.capture.silenceTimer = setTimeout(silence_callback, ($1 / SDL3.audioContext.sampleRate) * 1000);
+            SDL3.capture.silenceTimer = setInterval(silence_callback, ($1 / SDL3.audioContext.sampleRate) * 1000);
 
             if ((navigator.mediaDevices !== undefined) && (navigator.mediaDevices.getUserMedia !== undefined)) {
                 navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(have_microphone).catch(no_microphone);
             } else if (navigator.webkitGetUserMedia !== undefined) {
                 navigator.webkitGetUserMedia({ audio: true, video: false }, have_microphone, no_microphone);
             }
-        }, device->spec.channels, device->sample_frames, HandleCaptureProcess, device);
+        }, device->spec.channels, device->sample_frames, SDL_CaptureAudioThreadIterate, device);
     } else {
         // setup a ScriptProcessorNode
         MAIN_THREAD_EM_ASM({
@@ -270,11 +259,38 @@ static int EMSCRIPTENAUDIO_OpenDevice(SDL_AudioDevice *device)
             SDL3.audio.scriptProcessorNode = SDL3.audioContext['createScriptProcessor']($1, 0, $0);
             SDL3.audio.scriptProcessorNode['onaudioprocess'] = function (e) {
                 if ((SDL3 === undefined) || (SDL3.audio === undefined)) { return; }
+                // if we're actually running the node, we don't need the fake callback anymore, so kill it.
+                if (SDL3.audio.silenceTimer !== undefined) {
+                    clearInterval(SDL3.audio.silenceTimer);
+                    SDL3.audio.silenceTimer = undefined;
+                    SDL3.audio.silenceBuffer = undefined;
+                }
                 SDL3.audio.currentOutputBuffer = e['outputBuffer'];
                 dynCall('vi', $2, [$3]);
             };
+
             SDL3.audio.scriptProcessorNode['connect'](SDL3.audioContext['destination']);
-        }, device->spec.channels, device->sample_frames, HandleAudioProcess, device);
+
+            if (SDL3.audioContext.state === 'suspended') {  // uhoh, autoplay is blocked.
+                SDL3.audio.silenceBuffer = SDL3.audioContext.createBuffer($0, $1, SDL3.audioContext.sampleRate);
+                SDL3.audio.silenceBuffer.getChannelData(0).fill(0.0);
+                var silence_callback = function() {
+                    if ((typeof navigator.userActivation) !== 'undefined') {  // Almost everything modern except Firefox (as of August 2023)
+                        if (navigator.userActivation.hasBeenActive) {
+                            SDL3.audioContext.resume();
+                        }
+                    }
+
+                    // the buffer that gets filled here just gets ignored, so the app can make progress
+                    //  and/or avoid flooding audio queues until we can actually play audio.
+                    SDL3.audio.currentOutputBuffer = SDL3.audio.silenceBuffer;
+                    dynCall('vi', $2, [$3]);
+                    SDL3.audio.currentOutputBuffer = undefined;
+                };
+
+                SDL3.audio.silenceTimer = setInterval(silence_callback, ($1 / SDL3.audioContext.sampleRate) * 1000);
+            }
+        }, device->spec.channels, device->sample_frames, SDL_OutputAudioThreadIterate, device);
     }
 
     return 0;
