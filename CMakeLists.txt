@@ -112,8 +112,8 @@ endif()
 #  for systems without support. It's not currently enough to not use
 #  pthread functions in a pthread-build; it won't start up on unsupported
 #  browsers. As such, you have to explicitly enable it on Emscripten builds
-#  for the time being. This default with change to ON once this becomes
-#  commonly supported in browsers or the Emscripten teams makes a single
+#  for the time being. This default will change to ON once this becomes
+#  commonly supported in browsers or the Emscripten team makes a single
 #  binary work everywhere.
 if (UNIX_OR_MAC_SYS AND NOT EMSCRIPTEN)
   set(SDL_PTHREADS_DEFAULT ON)
@@ -135,14 +135,6 @@ if((WINDOWS AND NOT WINDOWS_STORE) OR IOS OR TVOS OR VISIONOS OR ANDROID)
   set(SDL_HIDAPI_LIBUSB_AVAILABLE FALSE)
 else()
   set(SDL_HIDAPI_LIBUSB_AVAILABLE TRUE)
-endif()
-
-# On the other hand, *BSD specifically uses libusb only, so we make a special
-#  case just for them.
-if(FREEBSD OR NETBSD OR OPENBSD OR BSDI)
-  set(SDL_HIDAPI_LIBUSB_DEFAULT TRUE)
-else()
-  set(SDL_HIDAPI_LIBUSB_DEFAULT FALSE)
 endif()
 
 set(SDL_ASSEMBLY_DEFAULT OFF)
@@ -304,7 +296,7 @@ set_option(SDL_DUMMYAUDIO          "Support the dummy audio driver" ON)
 set_option(SDL_DUMMYVIDEO          "Use dummy video driver" ON)
 dep_option(SDL_IBUS                "Enable IBus support" ON ${UNIX_SYS} OFF)
 dep_option(SDL_OPENGL              "Include OpenGL support" ON "NOT VISIONOS" OFF)
-dep_option(SDL_OPENGLES            "Include OpenGL ES support" ON "NOT VISIONOS" OFF) 
+dep_option(SDL_OPENGLES            "Include OpenGL ES support" ON "NOT VISIONOS" OFF)
 set_option(SDL_PTHREADS            "Use POSIX threads for multi-threading" ${SDL_PTHREADS_DEFAULT})
 dep_option(SDL_PTHREADS_SEM        "Use pthread semaphores" ON "SDL_PTHREADS" OFF)
 dep_option(SDL_OSS                 "Support the OSS audio API" ON "UNIX_SYS OR RISCOS" OFF)
@@ -349,7 +341,8 @@ set_option(SDL_OFFSCREEN           "Use offscreen video driver" ON)
 option_string(SDL_BACKGROUNDING_SIGNAL "number to use for magic backgrounding signal or 'OFF'" OFF)
 option_string(SDL_FOREGROUNDING_SIGNAL "number to use for magic foregrounding signal or 'OFF'" OFF)
 dep_option(SDL_HIDAPI              "Enable the HIDAPI subsystem" ON "NOT VISIONOS" OFF)
-dep_option(SDL_HIDAPI_LIBUSB       "Use libusb for low level joystick drivers" ${SDL_HIDAPI_LIBUSB_DEFAULT} "SDL_HIDAPI;${SDL_HIDAPI_LIBUSB_AVAILABLE}" OFF)
+dep_option(SDL_HIDAPI_LIBUSB       "Use libusb for low level joystick drivers" ON SDL_HIDAPI_LIBUSB_AVAILABLE OFF)
+dep_option(SDL_HIDAPI_LIBUSB_SHARED "Dynamically load libusb support" ON SDL_HIDAPI_LIBUSB OFF)
 dep_option(SDL_HIDAPI_JOYSTICK     "Use HIDAPI for low level joystick drivers" ON SDL_HIDAPI OFF)
 dep_option(SDL_VIRTUAL_JOYSTICK    "Enable the virtual-joystick driver" ON SDL_HIDAPI OFF)
 set_option(SDL_LIBUDEV             "Enable libudev support" ON)
@@ -365,7 +358,7 @@ option(SDL_TEST_LIBRARY   "Build the SDL3_test library" ON)
 
 dep_option(SDL_STATIC_PIC      "Static version of the library should be built with Position Independent Code" "${CMAKE_POSITION_INDEPENDENT_CODE}" "SDL_STATIC" OFF)
 dep_option(SDL_TESTS           "Build the test directory" OFF SDL_TEST_LIBRARY OFF)
-dep_option(SDL_INSTALL_TESTS   "Install test-cases" OFF "NOT SDL_DISABLE_INSTALL;NOT SDL_FRAMEWORK" OFF)
+dep_option(SDL_INSTALL_TESTS   "Install test-cases" OFF "NOT SDL_DISABLE_INSTALL;NOT SDL_FRAMEWORK;NOT WINDOWS_STORE" OFF)
 dep_option(SDL_TESTS_LINK_SHARED "link tests to shared SDL library" "${SDL_SHARED}" "SDL_SHARED;SDL_STATIC" "${SDL_SHARED}")
 set(SDL_TESTS_TIMEOUT_MULTIPLIER "1" CACHE STRING "Timeout multiplier to account for really slow machines")
 

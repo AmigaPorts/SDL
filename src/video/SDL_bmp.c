@@ -560,7 +560,7 @@ SDL_Surface *SDL_LoadBMP_RW(SDL_RWops *src, SDL_bool freesrc)
         } break;
 
         default:
-            if (SDL_RWread(src, bits, surface->pitch) != surface->pitch) {
+            if (SDL_RWread(src, bits, surface->pitch) != (size_t)surface->pitch) {
                 goto done;
             }
             if (biBitCount == 8 && palette && biClrUsed < (1u << biBitCount)) {
@@ -743,7 +743,7 @@ int SDL_SaveBMP_RW(SDL_Surface *surface, SDL_RWops *dst, SDL_bool freedst)
     }
 
     if (SDL_LockSurface(intermediate_surface) == 0) {
-        const int bw = intermediate_surface->w * intermediate_surface->format->BytesPerPixel;
+        const size_t bw = intermediate_surface->w * intermediate_surface->format->BytesPerPixel;
 
         /* Set the BMP file header values */
         bfSize = 0; /* We'll write this when we're done */

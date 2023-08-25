@@ -692,31 +692,26 @@ static int audio_convertAudio(void *arg)
                     } else {
                         Uint8 *dst_buf = NULL, *src_buf = NULL;
                         int dst_len = 0, src_len = 0, real_dst_len = 0;
-                        int l = 64;
+                        int l = 64, m;
                         int src_samplesize, dst_samplesize;
+                        int src_silence, dst_silence;
 
                         src_samplesize = (SDL_AUDIO_BITSIZE(spec1.format) / 8) * spec1.channels;
                         dst_samplesize = (SDL_AUDIO_BITSIZE(spec2.format) / 8) * spec2.channels;
 
-
-                        /* Create some random data to convert */
                         src_len = l * src_samplesize;
                         SDLTest_Log("Creating dummy sample buffer of %i length (%i bytes)", l, src_len);
                         src_buf = (Uint8 *)SDL_malloc(src_len);
-                        SDLTest_AssertCheck(dst_buf != NULL, "Check src data buffer to convert is not NULL");
+                        SDLTest_AssertCheck(src_buf != NULL, "Check src data buffer to convert is not NULL");
                         if (src_buf == NULL) {
                             return TEST_ABORTED;
                         }
 
-                        src_len = src_len & ~(src_samplesize - 1);
-                        dst_len = dst_samplesize * (src_len / src_samplesize);
-                        if (spec1.freq < spec2.freq) {
-                            const double mult = ((double)spec2.freq) / ((double)spec1.freq);
-                            dst_len *= (int) SDL_ceil(mult);
-                        }
+                        src_silence = SDL_GetSilenceValueForFormat(spec1.format);
+                        SDL_memset(src_buf, src_silence, src_len);
 
-                        dst_len = dst_len & ~(dst_samplesize - 1);
-                        dst_buf = (Uint8 *)SDL_calloc(1, dst_len);
+                        dst_len = ((int)((((Sint64)l * spec2.freq) - 1) / spec1.freq) + 1) * dst_samplesize;
+                        dst_buf = (Uint8 *)SDL_malloc(dst_len);
                         SDLTest_AssertCheck(dst_buf != NULL, "Check dst data buffer to convert is not NULL");
                         if (dst_buf == NULL) {
                             return TEST_ABORTED;
@@ -728,18 +723,28 @@ static int audio_convertAudio(void *arg)
                             return TEST_ABORTED;
                         }
 
+                        real_dst_len = SDL_GetAudioStreamAvailable(stream);
+                        SDLTest_AssertCheck(dst_len == real_dst_len, "Verify available; expected: %i; got: %i", dst_len, real_dst_len);
+
                         real_dst_len = SDL_GetAudioStreamData(stream, dst_buf, dst_len);
-                        SDLTest_AssertCheck(real_dst_len > 0, "Verify result value; expected: > 0; got: %i", real_dst_len);
-                        if (real_dst_len < 0) {
+                        SDLTest_AssertCheck(dst_len == real_dst_len, "Verify result value; expected: %i; got: %i", dst_len, real_dst_len);
+                        if (dst_len != real_dst_len) {
                             return TEST_ABORTED;
+                        }
+
+                        dst_silence = SDL_GetSilenceValueForFormat(spec2.format);
+
+                        for (m = 0; m < real_dst_len; ++m) {
+                            if (dst_buf[m] != dst_silence) {
+                                SDLTest_LogError("Output buffer is not silent");
+                                return TEST_ABORTED;
+                            }
                         }
 
                         SDL_DestroyAudioStream(stream);
                         /* Free converted buffer */
                         SDL_free(src_buf);
                         SDL_free(dst_buf);
-
-
                     }
                 }
             }
@@ -794,24 +799,30 @@ static int audio_resampleLoss(void *arg)
     double signal_to_noise;
     double max_error;
   } test_specs[] = {
-    { 50, 440, 0, 44100, 48000, 60, 0.0025 },
-    { 50, 5000, SDL_PI_D / 2, 20000, 10000, 65, 0.0010 },
+    { 50, 440, 0, 44100, 48000, 80, 0.0009 },
+    { 50, 5000, SDL_PI_D / 2, 20000, 10000, 999, 0.0001 },
+    { 50, 440, 0, 22050, 96000, 79, 0.0120 },
+    { 50, 440, 0, 96000, 22050, 80, 0.0002 },
     { 0 }
   };
 
   int spec_idx = 0;
+  int min_channels = 1;
+  int max_channels = 1 /*8*/;
+  int num_channels = min_channels;
 
-  for (spec_idx = 0; test_specs[spec_idx].time > 0; ++spec_idx) {
+  for (spec_idx = 0; test_specs[spec_idx].time > 0; ++num_channels) {
     const struct test_spec_t *spec = &test_specs[spec_idx];
     const int frames_in = spec->time * spec->rate_in;
     const int frames_target = spec->time * spec->rate_out;
-    const int len_in = frames_in * (int)sizeof(float);
-    const int len_target = frames_target * (int)sizeof(float);
+    const int len_in = (frames_in * num_channels) * (int)sizeof(float);
+    const int len_target = (frames_target * num_channels) * (int)sizeof(float);
 
     SDL_AudioSpec tmpspec1, tmpspec2;
     Uint64 tick_beg = 0;
     Uint64 tick_end = 0;
     int i = 0;
+    int j = 0;
     int ret = 0;
     SDL_AudioStream *stream = NULL;
     float *buf_in = NULL;
@@ -821,15 +832,20 @@ static int audio_resampleLoss(void *arg)
     double sum_squared_error = 0;
     double sum_squared_value = 0;
     double signal_to_noise = 0;
+   
+    if (num_channels > max_channels) {
+        num_channels = 1;
+        ++spec_idx;
+    }
 
     SDLTest_AssertPass("Test resampling of %i s %i Hz %f phase sine wave from sampling rate of %i Hz to %i Hz",
                        spec->time, spec->freq, spec->phase, spec->rate_in, spec->rate_out);
 
     tmpspec1.format = SDL_AUDIO_F32;
-    tmpspec1.channels = 1;
+    tmpspec1.channels = num_channels;
     tmpspec1.freq = spec->rate_in;
     tmpspec2.format = SDL_AUDIO_F32;
-    tmpspec2.channels = 1;
+    tmpspec2.channels = num_channels;
     tmpspec2.freq = spec->rate_out;
     stream = SDL_CreateAudioStream(&tmpspec1, &tmpspec2);
     SDLTest_AssertPass("Call to SDL_CreateAudioStream(SDL_AUDIO_F32, 1, %i, SDL_AUDIO_F32, 1, %i)", spec->rate_in, spec->rate_out);
@@ -846,7 +862,10 @@ static int audio_resampleLoss(void *arg)
     }
 
     for (i = 0; i < frames_in; ++i) {
-      *(buf_in + i) = (float)sine_wave_sample(i, spec->rate_in, spec->freq, spec->phase);
+      float f = (float)sine_wave_sample(i, spec->rate_in, spec->freq, spec->phase);
+      for (j = 0; j < num_channels; ++j) {
+        *(buf_in + (i * num_channels) + j) = f;
+      }
     }
 
     tick_beg = SDL_GetPerformanceCounter();
@@ -877,9 +896,7 @@ static int audio_resampleLoss(void *arg)
 
     len_out = SDL_GetAudioStreamData(stream, buf_out, len_target);
     SDLTest_AssertPass("Call to SDL_GetAudioStreamData(stream, buf_out, %i)", len_target);
-    /** !!! FIXME: SDL_AudioStream does not return output of the same length as
-     ** !!! FIXME: the input even if SDL_FlushAudioStream is called. */
-    SDLTest_AssertCheck(len_out <= len_target, "Expected output length to be no larger than %i, got %i.",
+    SDLTest_AssertCheck(len_out == len_target, "Expected output length to be no larger than %i, got %i.",
                         len_target, len_out);
     SDL_DestroyAudioStream(stream);
     if (len_out > len_target) {
@@ -890,13 +907,15 @@ static int audio_resampleLoss(void *arg)
     tick_end = SDL_GetPerformanceCounter();
     SDLTest_Log("Resampling used %f seconds.", ((double)(tick_end - tick_beg)) / SDL_GetPerformanceFrequency());
 
-    for (i = 0; i < len_out / (int)sizeof(float); ++i) {
-        const float output = *(buf_out + i);
+    for (i = 0; i < frames_target; ++i) {
         const double target = sine_wave_sample(i, spec->rate_out, spec->freq, spec->phase);
-        const double error = SDL_fabs(target - output);
-        max_error = SDL_max(max_error, error);
-        sum_squared_error += error * error;
-        sum_squared_value += target * target;
+        for (j = 0; j < num_channels; ++j) {
+            const float output = *(buf_out + (i * num_channels) + j);
+            const double error = SDL_fabs(target - output);
+            max_error = SDL_max(max_error, error);
+            sum_squared_error += error * error;
+            sum_squared_value += target * target;
+        }
     }
     SDL_free(buf_out);
     signal_to_noise = 10 * SDL_log10(sum_squared_value / sum_squared_error); /* decibel */
@@ -912,6 +931,141 @@ static int audio_resampleLoss(void *arg)
   }
 
   return TEST_COMPLETED;
+}
+
+/**
+ * \brief Check accuracy converting between audio formats.
+ *
+ * \sa SDL_ConvertAudioSamples
+ */
+static int audio_convertAccuracy(void *arg)
+{
+    static SDL_AudioFormat formats[] = { SDL_AUDIO_S8, SDL_AUDIO_U8, SDL_AUDIO_S16SYS, SDL_AUDIO_S32SYS };
+    static const char* format_names[] = { "S8", "U8", "S16", "S32" };
+
+    int src_num = 65537 + 2048 + 48 + 256 + 100000;
+    int src_len = src_num * sizeof(float);
+    float* src_data = SDL_malloc(src_len);
+    int i, j;
+
+    SDLTest_AssertCheck(src_data != NULL, "Expected source buffer to be created.");
+    if (src_data == NULL) {
+        return TEST_ABORTED;
+    }
+
+    j = 0;
+
+    /* Generate a uniform range of floats between [-1.0, 1.0] */
+    for (i = 0; i < 65537; ++i) {
+        src_data[j++] = ((float)i - 32768.0f) / 32768.0f;
+    }
+
+    /* Generate floats close to 1.0 */
+    const float max_val = 16777216.0f;
+
+    for (i = 0; i < 1024; ++i) {
+        float f = (max_val + (float)(512 - i)) / max_val;
+        src_data[j++] =  f;
+        src_data[j++] = -f;
+    }
+
+    for (i = 0; i < 24; ++i) {
+        float f = (max_val + (float)(3u << i)) / max_val;
+        src_data[j++] =  f;
+        src_data[j++] = -f;
+    }
+
+    /* Generate floats far outside the [-1.0, 1.0] range */
+    for (i = 0; i < 128; ++i) {
+        float f = 2.0f + (float) i;
+        src_data[j++] =  f;
+        src_data[j++] = -f;
+    }
+
+    /* Fill the rest with random floats between [-1.0, 1.0] */
+    for (i = 0; i < 100000; ++i) {
+        src_data[j++] = SDLTest_RandomSint32() / 2147483648.0f;
+    }
+
+    /* Shuffle the data for good measure */
+    for (i = src_num - 1; i >= 0; --i) {
+        float f = src_data[i];
+        j = SDLTest_RandomIntegerInRange(0, src_num);
+        src_data[i] = src_data[j];
+        src_data[j] = f;
+    }
+
+    for (i = 0; i < SDL_arraysize(formats); ++i) {
+        SDL_AudioSpec src_spec, tmp_spec;
+        Uint64 convert_begin, convert_end;
+        Uint8 *tmp_data, *dst_data;
+        int tmp_len, dst_len;
+        int ret;
+
+        SDL_AudioFormat format = formats[i];
+        const char* format_name = format_names[i];
+
+        /* Formats with > 23 bits can represent every value exactly */
+        float min_delta =  1.0f;
+        float max_delta = -1.0f;
+
+        /* Subtract 1 bit to account for sign */
+        int bits = SDL_AUDIO_BITSIZE(format) - 1;
+        float target_max_delta = (bits > 23) ? 0.0f : (1.0f / (float)(1 << bits));
+        float target_min_delta = -target_max_delta;
+
+        src_spec.format = SDL_AUDIO_F32;
+        src_spec.channels = 1;
+        src_spec.freq = 44800;
+
+        tmp_spec.format = format;
+        tmp_spec.channels = 1;
+        tmp_spec.freq = 44800;
+
+        convert_begin = SDL_GetPerformanceCounter();
+
+        tmp_data = NULL;
+        tmp_len = 0;
+        ret = SDL_ConvertAudioSamples(&src_spec, (const Uint8*) src_data, src_len, &tmp_spec, &tmp_data, &tmp_len);
+        SDLTest_AssertCheck(ret == 0, "Expected SDL_ConvertAudioSamples(F32->%s) to succeed", format_name);
+        if (ret != 0) {
+            SDL_free(src_data);
+            return TEST_ABORTED;
+        }
+
+        dst_data = NULL;
+        dst_len = 0;
+        ret = SDL_ConvertAudioSamples(&tmp_spec, tmp_data, tmp_len, &src_spec, &dst_data, &dst_len);
+        SDLTest_AssertCheck(ret == 0, "Expected SDL_ConvertAudioSamples(%s->F32) to succeed", format_name);
+        if (ret != 0) {
+            SDL_free(tmp_data);
+            SDL_free(src_data);
+            return TEST_ABORTED;
+        }
+
+        convert_end = SDL_GetPerformanceCounter();
+        SDLTest_Log("Conversion via %s took %f seconds.", format_name, ((double)(convert_end - convert_begin)) / SDL_GetPerformanceFrequency());
+
+        SDL_free(tmp_data);
+
+        for (j = 0; j < src_num; ++j) {
+            float x = src_data[j];
+            float y = ((float*)dst_data)[j];
+            float d = SDL_clamp(x, -1.0f, 1.0f) - y;
+
+            min_delta = SDL_min(min_delta, d);
+            max_delta = SDL_max(max_delta, d);
+        }
+
+        SDLTest_AssertCheck(min_delta >= target_min_delta, "%s has min delta of %+f, should be >= %+f", format_name, min_delta, target_min_delta);
+        SDLTest_AssertCheck(max_delta <= target_max_delta, "%s has max delta of %+f, should be <= %+f", format_name, max_delta, target_max_delta);
+
+        SDL_free(dst_data);
+    }
+
+    SDL_free(src_data);
+
+    return TEST_COMPLETED;
 }
 /* ================= Test Case References ================== */
 
@@ -952,12 +1106,8 @@ static const SDLTest_TestCaseReference audioTest9 = {
     audio_lockUnlockOpenAudioDevice, "audio_lockUnlockOpenAudioDevice", "Locks and unlocks an open audio device.", TEST_ENABLED
 };
 
-/* TODO: enable test when SDL_ConvertAudio segfaults on cygwin have been fixed.
- * TODO: re-check, since this was changer to AudioStream */
-/* For debugging, test case can be run manually using --filter audio_convertAudio  */
-
 static const SDLTest_TestCaseReference audioTest10 = {
-    audio_convertAudio, "audio_convertAudio", "Convert audio using available formats.", TEST_DISABLED
+    audio_convertAudio, "audio_convertAudio", "Convert audio using available formats.", TEST_ENABLED
 };
 
 /* TODO: enable test when SDL_AudioDeviceConnected has been implemented.           */
@@ -986,11 +1136,16 @@ static const SDLTest_TestCaseReference audioTest16 = {
     audio_resampleLoss, "audio_resampleLoss", "Check signal-to-noise ratio and maximum error of audio resampling.", TEST_ENABLED
 };
 
+static const SDLTest_TestCaseReference audioTest17 = {
+    audio_convertAccuracy, "audio_convertAccuracy", "Check accuracy converting between audio formats.", TEST_ENABLED
+};
+
 /* Sequence of Audio test cases */
 static const SDLTest_TestCaseReference *audioTests[] = {
     &audioTest1, &audioTest2, &audioTest3, &audioTest4, &audioTest5, &audioTest6,
     &audioTest7, &audioTest8, &audioTest9, &audioTest10, &audioTest11,
-    &audioTest12, &audioTest13, &audioTest14, &audioTest15, &audioTest16, NULL
+    &audioTest12, &audioTest13, &audioTest14, &audioTest15, &audioTest16,
+    &audioTest17, NULL
 };
 
 /* Audio test suite (global) */
