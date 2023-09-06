@@ -898,22 +898,22 @@ static void initialize_spa_info(const SDL_AudioSpec *spec, struct spa_audio_info
     case SDL_AUDIO_S8:
         info->format = SPA_AUDIO_FORMAT_S8;
         break;
-    case SDL_AUDIO_S16LSB:
+    case SDL_AUDIO_S16LE:
         info->format = SPA_AUDIO_FORMAT_S16_LE;
         break;
-    case SDL_AUDIO_S16MSB:
+    case SDL_AUDIO_S16BE:
         info->format = SPA_AUDIO_FORMAT_S16_BE;
         break;
-    case SDL_AUDIO_S32LSB:
+    case SDL_AUDIO_S32LE:
         info->format = SPA_AUDIO_FORMAT_S32_LE;
         break;
-    case SDL_AUDIO_S32MSB:
+    case SDL_AUDIO_S32BE:
         info->format = SPA_AUDIO_FORMAT_S32_BE;
         break;
-    case SDL_AUDIO_F32LSB:
+    case SDL_AUDIO_F32LE:
         info->format = SPA_AUDIO_FORMAT_F32_LE;
         break;
-    case SDL_AUDIO_F32MSB:
+    case SDL_AUDIO_F32BE:
         info->format = SPA_AUDIO_FORMAT_F32_BE;
         break;
     }
@@ -940,7 +940,7 @@ static Uint8 *PIPEWIRE_GetDeviceBuf(SDL_AudioDevice *device, int *buffer_size)
     return (Uint8 *) spa_buf->datas[0].data;
 }
 
-static void PIPEWIRE_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buffer_size)
+static int PIPEWIRE_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buffer_size)
 {
     struct pw_stream *stream = device->hidden->stream;
     struct pw_buffer *pw_buf = device->hidden->pw_buf;
@@ -951,6 +951,8 @@ static void PIPEWIRE_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, in
 
     PIPEWIRE_pw_stream_queue_buffer(stream, pw_buf);
     device->hidden->pw_buf = NULL;
+
+    return 0;
 }
 
 static void output_callback(void *data)
@@ -1106,7 +1108,7 @@ static int PIPEWIRE_OpenDevice(SDL_AudioDevice *device)
     }
 
     /* Size of a single audio frame in bytes */
-    priv->stride = (SDL_AUDIO_BITSIZE(device->spec.format) / 8) * device->spec.channels;
+    priv->stride = SDL_AUDIO_FRAMESIZE(device->spec);
 
     if (device->sample_frames < min_period) {
         device->sample_frames = min_period;

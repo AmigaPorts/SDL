@@ -149,7 +149,7 @@ static int jackProcessPlaybackCallback(jack_nframes_t nframes, void *arg)
     return 0;
 }
 
-static void JACK_PlayDevice(SDL_AudioDevice *device, const Uint8 *ui8buffer, int buflen)
+static int JACK_PlayDevice(SDL_AudioDevice *device, const Uint8 *ui8buffer, int buflen)
 {
     const float *buffer = (float *) ui8buffer;
     jack_port_t **ports = device->hidden->sdlports;
@@ -167,6 +167,8 @@ static void JACK_PlayDevice(SDL_AudioDevice *device, const Uint8 *ui8buffer, int
             }
         }
     }
+
+    return 0;
 }
 
 static Uint8 *JACK_GetDeviceBuf(SDL_AudioDevice *device, int *buffer_size)
@@ -307,7 +309,7 @@ static int JACK_OpenDevice(SDL_AudioDevice *device)
     /* !!! FIXME: docs say about buffer size: "This size may change, clients that depend on it must register a bufsize_callback so they will be notified if it does." */
 
     /* Jack pretty much demands what it wants. */
-    device->spec.format = SDL_AUDIO_F32SYS;
+    device->spec.format = SDL_AUDIO_F32;
     device->spec.freq = JACK_jack_get_sample_rate(client);
     device->spec.channels = channels;
     device->sample_frames = JACK_jack_get_buffer_size(client);

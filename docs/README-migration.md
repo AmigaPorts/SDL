@@ -4,6 +4,8 @@ This guide provides useful information for migrating applications from SDL 2.0 t
 
 Details on API changes are organized by SDL 2.0 header below.
 
+The file with your main() function should include <SDL3/SDL_main.h>, as that is no longer included in SDL.h.
+
 Many functions and symbols have been renamed. We have provided a handy Python script [rename_symbols.py](https://github.com/libsdl-org/SDL/blob/main/build-scripts/rename_symbols.py) to rename SDL2 functions to their SDL3 counterparts:
 ```sh
 rename_symbols.py --all-symbols source_code_path
@@ -11,13 +13,10 @@ rename_symbols.py --all-symbols source_code_path
 
 It's also possible to apply a semantic patch to migrate more easily to SDL3: [SDL_migration.cocci](https://github.com/libsdl-org/SDL/blob/main/build-scripts/SDL_migration.cocci)
 
-
 SDL headers should now be included as `#include <SDL3/SDL.h>`. Typically that's the only header you'll need in your application unless you are using OpenGL or Vulkan functionality. We have provided a handy Python script [rename_headers.py](https://github.com/libsdl-org/SDL/blob/main/build-scripts/rename_headers.py) to rename SDL2 headers to their SDL3 counterparts:
 ```sh
 rename_headers.py source_code_path
 ```
-
-The file with your main() function should also include <SDL3/SDL_main.h>, see below in the SDL_main.h section.
 
 CMake users should use this snippet to include SDL support in their project:
 ```
@@ -39,10 +38,7 @@ LDFLAGS += $(shell pkg-config sdl3 --libs)
 
 The SDL3test library has been renamed SDL3_test.
 
-There is no SDLmain library anymore, it's now header-only, see below in the SDL_main.h section.
-
-
-begin_code.h and close_code.h in the public headers have been renamed to SDL_begin_code.h and SDL_close_code.h. These aren't meant to be included directly by applications, but if your application did, please update your `#include` lines.
+The SDLmain library has been removed, it's been entirely replaced by SDL_main.h.
 
 The vi format comments have been removed from source code. Vim users can use the [editorconfig plugin](https://github.com/editorconfig/editorconfig-vim) to automatically set tab spacing for the SDL coding style.
 
@@ -53,15 +49,15 @@ The following structures have been renamed:
 
 ## SDL_audio.h
 
-The audio subsystem in SDL3 is dramatically different than SDL2. The primary way to play audio is no longer an audio callback; instead you bind SDL_AudioStreams to devices.
+The audio subsystem in SDL3 is dramatically different than SDL2. The primary way to play audio is no longer an audio callback; instead you bind SDL_AudioStreams to devices; however, there is still a callback method available if needed.
 
 The SDL 1.2 audio compatibility API has also been removed, as it was a simplified version of the audio callback interface.
 
 SDL3 will not implicitly initialize the audio subsystem on your behalf if you open a device without doing so. Please explicitly call SDL_Init(SDL_INIT_AUDIO) at some point.
 
-If your app depends on the callback method, there is a similar approach you can take. But first, this is the new approach:
+SDL3's audio subsystem offers an enormous amount of power over SDL2, but if you just want a simple migration of your existing code, you can ignore most of it. The simplest migration path from SDL2 looks something like this:
 
-In SDL2, you might have done something like this to play audio:
+In SDL2, you might have done something like this to play audio...
 
 ```c
     void SDLCALL MyAudioCallback(void *userdata, Uint8 * stream, int len)
@@ -82,20 +78,7 @@ In SDL2, you might have done something like this to play audio:
     SDL_PauseAudioDevice(my_audio_device, 0);
 ```
 
-in SDL3:
-
-```c
-    /* ...somewhere near startup... */
-    SDL_AudioSpec spec = { SDL_AUDIO_S16, 2, 44100 };
-    SDL_AudioDeviceID my_audio_device = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &spec);
-    SDL_AudioSteam *stream = SDL_CreateAndBindAudioStream(my_audio_device, &spec);
-
-    /* ...in your main loop... */
-    /* calculate a little more audio into `buf`, add it to `stream` */
-    SDL_PutAudioStreamData(stream, buf, buflen);
-```
-
-If you absolutely require the callback method, SDL_AudioStreams can use a callback whenever more data is to be read from them, which can be used to simulate SDL2 semantics:
+...in SDL3, you can do this...
 
 ```c
     void SDLCALL MyAudioCallback(SDL_AudioStream *stream, int len, void *userdata)
@@ -105,19 +88,32 @@ If you absolutely require the callback method, SDL_AudioStreams can use a callba
     }
 
     /* ...somewhere near startup... */
-    SDL_AudioSpec spec = { SDL_AUDIO_S16, 2, 44100 };
-    SDL_AudioDeviceID my_audio_device = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &spec);
-    SDL_AudioSteam *stream = SDL_CreateAndBindAudioStream(my_audio_device, &spec);
-    SDL_SetAudioStreamGetCallback(stream, MyAudioCallback);
-
-    /* MyAudioCallback will be called whenever the device requests more audio data. */
+    const SDL_AudioSpec spec = { SDL_AUDIO_S16, 2, 44100 };
+    SDL_AudioStream *stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &spec, MyAudioCallback, &my_audio_callback_user_data);
+    SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(stream));
 ```
+
+If you used SDL_QueueAudio instead of a callback in SDL2, this is also straightforward.
+
+```c
+    /* ...somewhere near startup... */
+    const SDL_AudioSpec spec = { SDL_AUDIO_S16, 2, 44100 };
+    SDL_AudioStream *stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &spec, NULL, NULL);
+    SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(stream));
+
+    /* ...in your main loop... */
+    /* calculate a little more audio into `buf`, add it to `stream` */
+    SDL_PutAudioStreamData(stream, buf, buflen);
+
+```
+
+...these same migration examples apply to audio capture, just using SDL_GetAudioStreamData instead of SDL_PutAudioStreamData.
 
 SDL_AudioInit() and SDL_AudioQuit() have been removed. Instead you can call SDL_InitSubSystem() and SDL_QuitSubSystem() with SDL_INIT_AUDIO, which will properly refcount the subsystems. You can choose a specific audio driver using SDL_AUDIO_DRIVER hint.
 
 The `SDL_AUDIO_ALLOW_*` symbols have been removed; now one may request the format they desire from the audio device, but ultimately SDL_AudioStream will manage the difference. One can use SDL_GetAudioDeviceFormat() to see what the final format is, if any "allowed" changes should be accomodated by the app.
 
-SDL_AudioDeviceID now represents both an open audio device's handle (a "logical" device) and the instance ID that the hardware owns as long as it exists on the system (a "physical" device). The separation between device instances and device indexes is gone.
+SDL_AudioDeviceID now represents both an open audio device's handle (a "logical" device) and the instance ID that the hardware owns as long as it exists on the system (a "physical" device). The separation between device instances and device indexes is gone, and logical and physical devices are almost entirely interchangeable at the API level.
 
 Devices are opened by physical device instance ID, and a new logical instance ID is generated by the open operation; This allows any device to be opened multiple times, possibly by unrelated pieces of code. SDL will manage the logical devices to provide a single stream of audio to the physical device behind the scenes.
 
@@ -125,13 +121,13 @@ Devices are not opened by an arbitrary string name anymore, but by device instan
 
 Many functions that would accept a device index and an `iscapture` parameter now just take an SDL_AudioDeviceID, as they are unique across all devices, instead of separate indices into output and capture device lists.
 
-Rather than iterating over audio devices using a device index, there is a new function, SDL_GetAudioDevices(), to get the current list of devices, and new functions to get information about devices from their instance ID:
+Rather than iterating over audio devices using a device index, there are new functions, SDL_GetAudioOutputDevices() and SDL_GetAudioCaptureDevices(), to get the current list of devices, and new functions to get information about devices from their instance ID:
 
 ```c
 {
     if (SDL_InitSubSystem(SDL_INIT_AUDIO) == 0) {
         int i, num_devices;
-        SDL_AudioDeviceID *devices = SDL_GetAudioDevices(/*iscapture=*/SDL_FALSE, &num_devices);
+        SDL_AudioDeviceID *devices = SDL_GetAudioOutputDevices(&num_devices);
         if (devices) {
             for (i = 0; i < num_devices; ++i) {
                 SDL_AudioDeviceID instance_id = devices[i];
@@ -259,18 +255,18 @@ The following functions have been removed:
 * SDL_GetQueuedAudioSize()
 
 The following symbols have been renamed:
-* AUDIO_F32 => SDL_AUDIO_F32
-* AUDIO_F32LSB => SDL_AUDIO_F32LSB
-* AUDIO_F32MSB => SDL_AUDIO_F32MSB
-* AUDIO_F32SYS => SDL_AUDIO_F32SYS
-* AUDIO_S16 => SDL_AUDIO_S16
-* AUDIO_S16LSB => SDL_AUDIO_S16LSB
-* AUDIO_S16MSB => SDL_AUDIO_S16MSB
-* AUDIO_S16SYS => SDL_AUDIO_S16SYS
-* AUDIO_S32 => SDL_AUDIO_S32
-* AUDIO_S32LSB => SDL_AUDIO_S32LSB
-* AUDIO_S32MSB => SDL_AUDIO_S32MSB
-* AUDIO_S32SYS => SDL_AUDIO_S32SYS
+* AUDIO_F32 => SDL_AUDIO_F32LE
+* AUDIO_F32LSB => SDL_AUDIO_F32LE
+* AUDIO_F32MSB => SDL_AUDIO_F32BE
+* AUDIO_F32SYS => SDL_AUDIO_F32
+* AUDIO_S16 => SDL_AUDIO_S16LE
+* AUDIO_S16LSB => SDL_AUDIO_S16LE
+* AUDIO_S16MSB => SDL_AUDIO_S16BE
+* AUDIO_S16SYS => SDL_AUDIO_S16
+* AUDIO_S32 => SDL_AUDIO_S32LE
+* AUDIO_S32LSB => SDL_AUDIO_S32LE
+* AUDIO_S32MSB => SDL_AUDIO_S32BE
+* AUDIO_S32SYS => SDL_AUDIO_S32
 * AUDIO_S8 => SDL_AUDIO_S8
 * AUDIO_U8 => SDL_AUDIO_U8
 
@@ -698,27 +694,6 @@ Instead SDL_main.h is now a header-only library **and not included by SDL.h anym
 
 Using it is really simple: Just `#include <SDL3/SDL_main.h>` in the source file with your standard
 `int main(int argc, char* argv[])` function.
-
-The rest happens automatically: If your target platform needs the SDL_main functionality,
-your main function will be renamed to SDL_main (with a macro, just like in SDL2),
-and the real main-function will be implemented by inline code from SDL_main.h - and if your target
-platform doesn't need it, nothing happens.
-Like in SDL2, if you want to handle the platform-specific main yourself instead of using the SDL_main magic,
-you can `#define SDL_MAIN_HANDLED` before `#include <SDL3/SDL_main.h>` - don't forget to call SDL_SetMainReady()
-
-If you need SDL_main.h in another source file (that doesn't implement main()), you also need to
-`#define SDL_MAIN_HANDLED` there, to avoid that multiple main functions are generated by SDL_main.h
-
-There is currently one platform where this approach doesn't always work: WinRT.
-It requires WinMain to be implemented in a C++ source file that's compiled with `/ZW`. If your main
-is implemented in plain C, or you can't use `/ZW` on that file, you can add another .cpp
-source file that just contains `#include <SDL3/SDL_main.h>` and compile that with `/ZW` - but keep
-in mind that the source file with your standard main also needs that include!
-See [README-winrt.md](./README-winrt.md) for more details.
-
-Furthermore, the different SDL_*RunApp() functions (SDL_WinRtRunApp, SDL_GDKRunApp, SDL_UIKitRunApp)
-have been unified into just `int SDL_RunApp(int argc, char* argv[], void * reserved)` (which is also
-used by additional platforms that didn't have a SDL_RunApp-like function before).
 
 ## SDL_metal.h
 

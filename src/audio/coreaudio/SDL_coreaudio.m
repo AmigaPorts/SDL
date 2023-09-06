@@ -525,7 +525,7 @@ static SDL_bool UpdateAudioSession(SDL_AudioDevice *device, SDL_bool open, SDL_b
 #endif
 
 
-static void COREAUDIO_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buffer_size)
+static int COREAUDIO_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buffer_size)
 {
     AudioQueueBufferRef current_buffer = device->hidden->current_buffer;
     SDL_assert(current_buffer != NULL);  // should have been called from OutputBufferReadyCallback
@@ -533,6 +533,7 @@ static void COREAUDIO_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, i
     current_buffer->mAudioDataByteSize = current_buffer->mAudioDataBytesCapacity;
     device->hidden->current_buffer = NULL;
     AudioQueueEnqueueBuffer(device->hidden->audioQueue, current_buffer, 0, NULL);
+    return 0;
 }
 
 static Uint8 *COREAUDIO_GetDeviceBuf(SDL_AudioDevice *device, int *buffer_size)
@@ -875,12 +876,12 @@ static int COREAUDIO_OpenDevice(SDL_AudioDevice *device)
         switch (test_format) {
         case SDL_AUDIO_U8:
         case SDL_AUDIO_S8:
-        case SDL_AUDIO_S16LSB:
-        case SDL_AUDIO_S16MSB:
-        case SDL_AUDIO_S32LSB:
-        case SDL_AUDIO_S32MSB:
-        case SDL_AUDIO_F32LSB:
-        case SDL_AUDIO_F32MSB:
+        case SDL_AUDIO_S16LE:
+        case SDL_AUDIO_S16BE:
+        case SDL_AUDIO_S32LE:
+        case SDL_AUDIO_S32BE:
+        case SDL_AUDIO_F32LE:
+        case SDL_AUDIO_F32BE:
             break;
 
         default:

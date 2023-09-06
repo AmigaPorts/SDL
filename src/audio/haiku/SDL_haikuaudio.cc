@@ -46,13 +46,14 @@ static Uint8 *HAIKUAUDIO_GetDeviceBuf(SDL_AudioDevice *device, int *buffer_size)
     return device->hidden->current_buffer;
 }
 
-static void HAIKUAUDIO_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buffer_size)
+static int HAIKUAUDIO_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buffer_size)
 {
     // We already wrote our output right into the BSoundPlayer's callback's stream. Just clean up our stuff.
     SDL_assert(device->hidden->current_buffer != NULL);
     SDL_assert(device->hidden->current_buffer_len > 0);
     device->hidden->current_buffer = NULL;
     device->hidden->current_buffer_len = 0;
+    return 0;
 }
 
 // The Haiku callback for handling the audio buffer
@@ -130,29 +131,29 @@ static int HAIKUAUDIO_OpenDevice(SDL_AudioDevice *device)
             format.format = media_raw_audio_format::B_AUDIO_UCHAR;
             break;
 
-        case SDL_AUDIO_S16LSB:
+        case SDL_AUDIO_S16LE:
             format.format = media_raw_audio_format::B_AUDIO_SHORT;
             break;
 
-        case SDL_AUDIO_S16MSB:
+        case SDL_AUDIO_S16BE:
             format.format = media_raw_audio_format::B_AUDIO_SHORT;
             format.byte_order = B_MEDIA_BIG_ENDIAN;
             break;
 
-        case SDL_AUDIO_S32LSB:
+        case SDL_AUDIO_S32LE:
             format.format = media_raw_audio_format::B_AUDIO_INT;
             break;
 
-        case SDL_AUDIO_S32MSB:
+        case SDL_AUDIO_S32BE:
             format.format = media_raw_audio_format::B_AUDIO_INT;
             format.byte_order = B_MEDIA_BIG_ENDIAN;
             break;
 
-        case SDL_AUDIO_F32LSB:
+        case SDL_AUDIO_F32LE:
             format.format = media_raw_audio_format::B_AUDIO_FLOAT;
             break;
 
-        case SDL_AUDIO_F32MSB:
+        case SDL_AUDIO_F32BE:
             format.format = media_raw_audio_format::B_AUDIO_FLOAT;
             format.byte_order = B_MEDIA_BIG_ENDIAN;
             break;

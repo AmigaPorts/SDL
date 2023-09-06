@@ -200,7 +200,7 @@ OS4_DetectDevices(SDL_AudioDevice **default_output, SDL_AudioDevice **default_ca
     SDL_AudioSpec output, capture;
 
     output.freq = 44100;
-    output.format = SDL_AUDIO_S16MSB;
+    output.format = SDL_AUDIO_S16BE;
     output.channels = 2;
 
     capture.freq = output.freq;
@@ -235,16 +235,16 @@ OS4_OpenDevice(SDL_AudioDevice *_this)
             _this->spec.format = SDL_AUDIO_S8;
             break;
         case 16:
-            dprintf("16 bits requested, use SDL_AUDIO_S16MSB\n");
-            _this->spec.format = SDL_AUDIO_S16MSB;
+            dprintf("16 bits requested, use SDL_AUDIO_S16BE\n");
+            _this->spec.format = SDL_AUDIO_S16BE;
             break;
         case 32:
-            dprintf("32 bits requested, use SDL_AUDIO_S32MSB\n");
-            _this->spec.format = SDL_AUDIO_S32MSB;
+            dprintf("32 bits requested, use SDL_AUDIO_S32BE\n");
+            _this->spec.format = SDL_AUDIO_S32BE;
             break;
         default:
-            dprintf("%u bits requested, fallback to SDL_AUDIO_S16MSB\n", _this->spec.format & 0xFF);
-            _this->spec.format = SDL_AUDIO_S16MSB;
+            dprintf("%u bits requested, fallback to SDL_AUDIO_S16BE\n", _this->spec.format & 0xFF);
+            _this->spec.format = SDL_AUDIO_S16BE;
             break;
     }
 
@@ -253,9 +253,9 @@ OS4_OpenDevice(SDL_AudioDevice *_this)
         dprintf("%u channels requested, fallback to stereo", _this->spec.channels);
         _this->spec.channels = 2;
     } else if (_this->spec.channels > 2) {
-        dprintf("%u channels requested, use 8 channel SDL_AUDIO_S32MSB\n", _this->spec.channels);
+        dprintf("%u channels requested, use 8 channel SDL_AUDIO_S32BE\n", _this->spec.channels);
         _this->spec.channels = 8;
-        _this->spec.format = SDL_AUDIO_S32MSB;
+        _this->spec.format = SDL_AUDIO_S32BE;
     }
 
     SDL_UpdatedAudioDeviceFormat(_this);
@@ -284,11 +284,11 @@ OS4_OpenDevice(SDL_AudioDevice *_this)
             os4data->ahiType = (_this->spec.channels < 2) ? AHIST_M8S : AHIST_S8S;
             break;
 
-        case SDL_AUDIO_S16MSB:
+        case SDL_AUDIO_S16BE:
             os4data->ahiType = (_this->spec.channels < 2) ? AHIST_M16S : AHIST_S16S;
             break;
 
-        case SDL_AUDIO_S32MSB:
+        case SDL_AUDIO_S32BE:
             switch (_this->spec.channels) {
                 case 1:
                     os4data->ahiType = AHIST_M32S;
@@ -389,7 +389,7 @@ OS4_RemapSurround(Sint32* buffer, int samples)
     }
 }
 
-static void
+static int
 OS4_PlayDevice(SDL_AudioDevice *_this, const Uint8 *buffer, int buflen)
 {
     struct AHIRequest  *ahiRequest;
@@ -401,7 +401,7 @@ OS4_PlayDevice(SDL_AudioDevice *_this, const Uint8 *buffer, int buflen)
 
     if (!os4data->deviceOpen) {
         dprintf("Device is not open\n");
-        return;
+        return -1;
     }
 
     ahiRequest = os4data->ahiRequest[current];
@@ -432,6 +432,8 @@ OS4_PlayDevice(SDL_AudioDevice *_this, const Uint8 *buffer, int buflen)
 
     os4data->link = ahiRequest;
     os4data->currentBuffer = OS4_SwapBuffer(current);
+
+    return 0;
 }
 
 static Uint8 *
