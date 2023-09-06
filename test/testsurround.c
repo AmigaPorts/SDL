@@ -96,7 +96,7 @@ static SDL_bool is_lfe_channel(int channel_index, int channel_count)
     return (channel_count == 3 && channel_index == 2) || (channel_count >= 6 && channel_index == 3);
 }
 
-static void SDLCALL fill_buffer(SDL_AudioStream *stream, int len, void *unused)
+static void SDLCALL fill_buffer(void *userdata, SDL_AudioStream *stream, int len)
 {
     const int samples = len / sizeof(Sint16);
     Sint16 *buffer = NULL;
@@ -193,7 +193,6 @@ int main(int argc, char *argv[])
         char *devname = SDL_GetAudioDeviceName(devices[i]);
         int j;
         SDL_AudioSpec spec;
-        SDL_AudioDeviceID dev;
 
         SDL_Log("Testing audio device: %s\n", devname);
         SDL_free(devname);
@@ -206,26 +205,18 @@ int main(int argc, char *argv[])
         SDL_Log("  (%d channels)\n", spec.channels);
 
         spec.freq = SAMPLE_RATE_HZ;
-        spec.format = SDL_AUDIO_S16SYS;
-
-        dev = SDL_OpenAudioDevice(devices[i], &spec);
-        if (dev == 0) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_OpenAudioDevice() failed: %s\n", SDL_GetError());
-            continue;
-        }
-
-        stream = SDL_CreateAndBindAudioStream(dev, &spec);
-        if (stream == NULL) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_CreateAndBindAudioStream() failed: %s\n", SDL_GetError());
-            SDL_CloseAudioDevice(dev);
-            continue;
-        }
+        spec.format = SDL_AUDIO_S16;
 
         /* These are used by the fill_buffer callback */
         total_channels = spec.channels;
         active_channel = 0;
 
-        SDL_SetAudioStreamGetCallback(stream, fill_buffer, NULL);
+        stream = SDL_OpenAudioDeviceStream(devices[i], &spec, fill_buffer, NULL);
+        if (stream == NULL) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_OpenAudioDeviceStream() failed: %s\n", SDL_GetError());
+            continue;
+        }
+        SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(stream));
 
         for (j = 0; j < total_channels; j++) {
             const int sine_freq = is_lfe_channel(j, total_channels) ? LFE_SINE_FREQ_HZ : SINE_FREQ_HZ;
@@ -240,7 +231,6 @@ int main(int argc, char *argv[])
             }
         }
 
-        SDL_CloseAudioDevice(dev);
         SDL_DestroyAudioStream(stream);
     }
 

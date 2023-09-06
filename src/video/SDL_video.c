@@ -1784,10 +1784,10 @@ Uint32 SDL_GetWindowPixelFormat(SDL_Window *window)
     /* Without this hack, SDL would trigger us to open a window before screen which causes unnecessary
     work, because then we would have to close the window first and re-open it on the custom screen */
     #define CREATE_FLAGS \
-        (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_METAL | SDL_WINDOW_TRANSPARENT | SDL_WINDOW_FULLSCREEN)
+        (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_METAL | SDL_WINDOW_TRANSPARENT | SDL_WINDOW_NOT_FOCUSABLE | SDL_WINDOW_FULLSCREEN)
 #else
     #define CREATE_FLAGS \
-        (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_METAL | SDL_WINDOW_TRANSPARENT)
+        (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_METAL | SDL_WINDOW_TRANSPARENT | SDL_WINDOW_NOT_FOCUSABLE)
 #endif
 
 static SDL_INLINE SDL_bool IsAcceptingDragAndDrop(void)
@@ -3260,6 +3260,24 @@ int SDL_SetWindowInputFocus(SDL_Window *window)
     }
 
     return _this->SetWindowInputFocus(_this, window);
+}
+
+int SDL_SetWindowFocusable(SDL_Window *window, SDL_bool focusable)
+{
+    CHECK_WINDOW_MAGIC(window, -1);
+
+    const int want = (focusable != SDL_FALSE); /* normalize the flag. */
+    const int have = !(window->flags & SDL_WINDOW_NOT_FOCUSABLE);
+    if ((want != have) && (_this->SetWindowFocusable)) {
+        if (want) {
+            window->flags &= ~SDL_WINDOW_NOT_FOCUSABLE;
+        } else {
+            window->flags |= SDL_WINDOW_NOT_FOCUSABLE;
+        }
+        _this->SetWindowFocusable(_this, window, (SDL_bool)want);
+    }
+
+    return 0;
 }
 
 void SDL_UpdateWindowGrab(SDL_Window *window)

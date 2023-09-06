@@ -175,16 +175,17 @@ static void SNDIO_WaitDevice(SDL_AudioDevice *device)
     }
 }
 
-static void SNDIO_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buflen)
+static int SNDIO_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buflen)
 {
     // !!! FIXME: this should be non-blocking so we can check device->shutdown.
     // this is set to blocking, because we _have_ to send the entire buffer down, but hopefully WaitDevice took most of the delay time.
     if (SNDIO_sio_write(device->hidden->dev, buffer, buflen) != buflen) {
-        SDL_AudioDeviceDisconnected(device);  // If we couldn't write, assume fatal error for now
+        return -1;  // If we couldn't write, assume fatal error for now
     }
 #ifdef DEBUG_AUDIO
     fprintf(stderr, "Wrote %d bytes of audio data\n", written);
 #endif
+    return 0;
 }
 
 static int SNDIO_CaptureFromDevice(SDL_AudioDevice *device, void *buffer, int buflen)
@@ -283,13 +284,13 @@ static int SNDIO_OpenDevice(SDL_AudioDevice *device)
     }
 
     if ((par.bps == 4) && (par.sig) && (par.le)) {
-        device->spec.format = SDL_AUDIO_S32LSB;
+        device->spec.format = SDL_AUDIO_S32LE;
     } else if ((par.bps == 4) && (par.sig) && (!par.le)) {
-        device->spec.format = SDL_AUDIO_S32MSB;
+        device->spec.format = SDL_AUDIO_S32BE;
     } else if ((par.bps == 2) && (par.sig) && (par.le)) {
-        device->spec.format = SDL_AUDIO_S16LSB;
+        device->spec.format = SDL_AUDIO_S16LE;
     } else if ((par.bps == 2) && (par.sig) && (!par.le)) {
-        device->spec.format = SDL_AUDIO_S16MSB;
+        device->spec.format = SDL_AUDIO_S16BE;
     } else if ((par.bps == 1) && (par.sig)) {
         device->spec.format = SDL_AUDIO_S8;
     } else if ((par.bps == 1) && (!par.sig)) {

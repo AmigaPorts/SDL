@@ -248,7 +248,7 @@ static int openslES_CreatePCMRecorder(SDL_AudioDevice *device)
     }
 
     // Just go with signed 16-bit audio as it's the most compatible
-    device->spec.format = SDL_AUDIO_S16SYS;
+    device->spec.format = SDL_AUDIO_S16;
     device->spec.channels = 1;
     //device->spec.freq = SL_SAMPLINGRATE_16 / 1000;*/
 
@@ -424,12 +424,12 @@ static int openslES_CreatePCMPlayer(SDL_AudioDevice *device)
         if (!test_format) {
             // Didn't find a compatible format :
             LOGI("No compatible audio format, using signed 16-bit audio");
-            test_format = SDL_AUDIO_S16SYS;
+            test_format = SDL_AUDIO_S16;
         }
         device->spec.format = test_format;
     } else {
         // Just go with signed 16-bit audio as it's the most compatible
-        device->spec.format = SDL_AUDIO_S16SYS;
+        device->spec.format = SDL_AUDIO_S16;
     }
 
     // Update the fragment size as size in bytes
@@ -638,7 +638,7 @@ static void openslES_WaitDevice(SDL_AudioDevice *device)
     SDL_WaitSemaphore(audiodata->playsem);
 }
 
-static void openslES_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buflen)
+static int openslES_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buflen)
 {
     struct SDL_PrivateAudioData *audiodata = device->hidden;
 
@@ -657,6 +657,8 @@ static void openslES_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, in
     if (SL_RESULT_SUCCESS != result) {
         SDL_PostSemaphore(audiodata->playsem);
     }
+
+    return 0;
 }
 
 ///           n   playn sem
