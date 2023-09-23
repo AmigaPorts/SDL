@@ -102,7 +102,7 @@ typedef struct
     Uint8 rgucAccelX[2];          /* 21 */
     Uint8 rgucAccelY[2];          /* 23 */
     Uint8 rgucAccelZ[2];          /* 25 */
-    Uint8 rgucSensorTimestamp[4]; /* 27 - 32 bit little endian */
+    Uint8 rgucSensorTimestamp[4]; /* 27 - 16/32 bit little endian */
 
 } PS5StatePacketCommon_t;
 
@@ -154,7 +154,9 @@ typedef struct
     Uint8 rgucAccelX[2];          /* 21 */
     Uint8 rgucAccelY[2];          /* 23 */
     Uint8 rgucAccelZ[2];          /* 25 */
-    Uint8 rgucSensorTimestamp[4]; /* 27 - 32 bit little endian */
+    Uint8 rgucSensorTimestamp[2]; /* 27 - 16 bit little endian */
+    Uint8 ucBatteryLevel;         /* 29 */
+    Uint8 ucUnknown;              /* 30 */
     Uint8 ucTouchpadCounter1;     /* 31 - high bit clear + counter */
     Uint8 rgucTouchpadData1[3];   /* 32 - X/Y, 12 bits per axis */
     Uint8 ucTouchpadCounter2;     /* 35 - high bit clear + counter */
@@ -723,7 +725,7 @@ static void HIDAPI_DriverPS5_CheckPendingLEDReset(SDL_DriverPS5_Context *ctx)
 {
     SDL_bool led_reset_complete = SDL_FALSE;
 
-    if (ctx->enhanced_reports && ctx->sensors_supported) {
+    if (ctx->enhanced_reports && ctx->sensors_supported && !ctx->use_alternate_report) {
         const PS5StatePacketCommon_t *packet = &ctx->last_state.state;
 
         /* Check the timer to make sure the Bluetooth connection LED animation is complete */
@@ -1308,25 +1310,42 @@ static void HIDAPI_DriverPS5_HandleStatePacketCommon(SDL_Joystick *joystick, SDL
     SDL_SendJoystickAxis(timestamp, joystick, SDL_GAMEPAD_AXIS_RIGHTY, axis);
 
     if (ctx->report_sensors) {
-        Uint32 tick;
-        Uint32 delta;
         Uint64 sensor_timestamp;
         float data[3];
 
-        tick = LOAD32(packet->rgucSensorTimestamp[0],
-                      packet->rgucSensorTimestamp[1],
-                      packet->rgucSensorTimestamp[2],
-                      packet->rgucSensorTimestamp[3]);
-        if (ctx->last_tick < tick) {
-            delta = (tick - ctx->last_tick);
-        } else {
-            delta = (SDL_MAX_UINT32 - ctx->last_tick + tick + 1);
-        }
-        ctx->sensor_ticks += delta;
-        ctx->last_tick = tick;
+        if (ctx->use_alternate_report) {
+            /* 16-bit timestamp */
+            Uint32 delta;
+            Uint16 tick = LOAD16(packet->rgucSensorTimestamp[0],
+                                 packet->rgucSensorTimestamp[1]);
+            if (ctx->last_tick < tick) {
+                delta = (tick - ctx->last_tick);
+            } else {
+                delta = (SDL_MAX_UINT16 - ctx->last_tick + tick + 1);
+            }
+            ctx->last_tick = tick;
+            ctx->sensor_ticks += delta;
 
-        /* Sensor timestamp is in 0.33us units */
-        sensor_timestamp = (ctx->sensor_ticks * SDL_NS_PER_US) / 3;
+            /* Sensor timestamp is in 1us units */
+            sensor_timestamp = SDL_US_TO_NS(ctx->sensor_ticks);
+        } else {
+            /* 32-bit timestamp */
+            Uint32 delta;
+            Uint32 tick = LOAD32(packet->rgucSensorTimestamp[0],
+                                 packet->rgucSensorTimestamp[1],
+                                 packet->rgucSensorTimestamp[2],
+                                 packet->rgucSensorTimestamp[3]);
+            if (ctx->last_tick < tick) {
+                delta = (tick - ctx->last_tick);
+            } else {
+                delta = (SDL_MAX_UINT32 - ctx->last_tick + tick + 1);
+            }
+            ctx->last_tick = tick;
+            ctx->sensor_ticks += delta;
+
+            /* Sensor timestamp is in 0.33us units */
+            sensor_timestamp = (ctx->sensor_ticks * SDL_NS_PER_US) / 3;
+        }
 
         data[0] = HIDAPI_DriverPS5_ApplyCalibrationData(ctx, 0, LOAD16(packet->rgucGyroX[0], packet->rgucGyroX[1]));
         data[1] = HIDAPI_DriverPS5_ApplyCalibrationData(ctx, 1, LOAD16(packet->rgucGyroY[0], packet->rgucGyroY[1]));

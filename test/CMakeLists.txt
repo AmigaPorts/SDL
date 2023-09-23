@@ -230,7 +230,31 @@ elseif(HAVE_X11)
     target_link_libraries(testnative PRIVATE X11)
 endif()
 
-set(gamepad_images
+find_package(Python3)
+function(files2headers OUTPUT)
+    set(xxd "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/xxd.py")
+    set(inputs ${ARGN})
+    set(outputs )
+    foreach(input IN LISTS inputs)
+        get_filename_component(file_we "${input}" NAME_WE)
+        set(intermediate "${CMAKE_CURRENT_BINARY_DIR}/${file_we}.h")
+        set(output "${CMAKE_CURRENT_SOURCE_DIR}/${file_we}.h")
+        list(APPEND outputs "${output}")
+        if(Python3_FOUND AND Python3_VERSION VERSION_GREATER_EQUAL "3.2")
+            list(APPEND outputs  "${intermediate}")
+            # Don't add the 'output' header to the output, to avoid marking them as GENERATED
+            # (generated files are removed when running the CLEAN target)
+            add_custom_command(OUTPUT "${intermediate}"
+                COMMAND Python3::Interpreter "${xxd}" -i "${CMAKE_CURRENT_SOURCE_DIR}/${input}" "-o" "${intermediate}"
+                COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${intermediate}" "${output}"
+                DEPENDS "${xxd}" "${bmp}"
+            )
+        endif()
+    endforeach()
+    set(${OUTPUT} "${outputs}" PARENT_SCOPE)
+endfunction()
+
+files2headers(gamepad_image_headers
     gamepad_axis_arrow.bmp
     gamepad_axis.bmp
     gamepad_back.bmp
@@ -249,24 +273,7 @@ set(gamepad_images
     gamepad_front.bmp
     gamepad_touchpad.bmp
 )
-set(gamepad_image_headers)
-find_package(Python3)
-if(Python3_FOUND AND Python3_VERSION VERSION_GREATER_EQUAL "3.2")
-    set(xxd "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/xxd.py")
-    foreach(bmp ${gamepad_images})
-        get_filename_component(bmp_we "${bmp}" NAME_WE)
-        set(intermediate "${CMAKE_CURRENT_BINARY_DIR}/${bmp_we}.h")
-        set(final "${CMAKE_CURRENT_SOURCE_DIR}/${bmp_we}.h")
-        # Don't add the 'final' headers to the output, to avoid marking them as GENERATED
-        # (generated files are removed when running the CLEAN target)
-        add_custom_command(OUTPUT "${intermediate}"
-            COMMAND Python3::Interpreter "${xxd}" -i "${CMAKE_CURRENT_SOURCE_DIR}/${bmp}" "-o" "${intermediate}"
-            COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${intermediate}" "${final}"
-            DEPENDS "${xxd}" "${bmp}"
-        )
-        list(APPEND gamepad_image_headers "${intermediate}" "${final}")
-    endforeach()
-endif()
+files2headers(icon_bmp_header icon.bmp)
 
 add_sdl_test_executable(testaudio NEEDS_RESOURCES TESTUTILS SOURCES testaudio.c)
 add_sdl_test_executable(testfile NONINTERACTIVE SOURCES testfile.c)
@@ -296,6 +303,9 @@ add_sdl_test_executable(testoverlay NEEDS_RESOURCES TESTUTILS SOURCES testoverla
 add_sdl_test_executable(testplatform NONINTERACTIVE SOURCES testplatform.c)
 add_sdl_test_executable(testpower NONINTERACTIVE SOURCES testpower.c)
 add_sdl_test_executable(testfilesystem NONINTERACTIVE SOURCES testfilesystem.c)
+if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+    add_sdl_test_executable(testfilesystem_pre SOURCES testfilesystem_pre.c NONINTERACTIVE NONINTERACTIVE_TIMEOUT 60)
+endif()
 add_sdl_test_executable(testrendertarget NEEDS_RESOURCES TESTUTILS SOURCES testrendertarget.c)
 add_sdl_test_executable(testscale NEEDS_RESOURCES TESTUTILS SOURCES testscale.c)
 add_sdl_test_executable(testsem NONINTERACTIVE NONINTERACTIVE_ARGS 10 NONINTERACTIVE_TIMEOUT 30 SOURCES testsem.c)
@@ -303,7 +313,7 @@ add_sdl_test_executable(testsensor SOURCES testsensor.c)
 add_sdl_test_executable(testshader NEEDS_RESOURCES TESTUTILS SOURCES testshader.c)
 add_sdl_test_executable(testshape NEEDS_RESOURCES SOURCES testshape.c)
 add_sdl_test_executable(testsprite NEEDS_RESOURCES TESTUTILS SOURCES testsprite.c)
-add_sdl_test_executable(testspriteminimal NEEDS_RESOURCES TESTUTILS SOURCES testspriteminimal.c)
+add_sdl_test_executable(testspriteminimal SOURCES testspriteminimal.c ${icon_bmp_header})
 add_sdl_test_executable(teststreaming NEEDS_RESOURCES TESTUTILS SOURCES teststreaming.c)
 add_sdl_test_executable(testtimer NONINTERACTIVE NONINTERACTIVE_TIMEOUT 60 SOURCES testtimer.c)
 add_sdl_test_executable(testurl SOURCES testurl.c)
@@ -503,6 +513,10 @@ foreach(TEST ${SDL_TEST_EXECUTABLES})
         endif()
     endif()
 endforeach()
+
+if(TARGET testfilesystem_pre)
+    set_property(TEST testfilesystem APPEND PROPERTY DEPENDS testfilesystem_pre)
+endif()
 
 if(SDL_INSTALL_TESTS)
     if(RISCOS)

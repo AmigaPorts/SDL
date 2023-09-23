@@ -57,52 +57,6 @@
 static SDL_bool SDL_gamepads_initialized;
 static SDL_Gamepad *SDL_gamepads SDL_GUARDED_BY(SDL_joystick_lock) = NULL;
 
-typedef enum
-{
-    SDL_GAMEPAD_BINDTYPE_NONE = 0,
-    SDL_GAMEPAD_BINDTYPE_BUTTON,
-    SDL_GAMEPAD_BINDTYPE_AXIS,
-    SDL_GAMEPAD_BINDTYPE_HAT
-} SDL_GamepadBindingType;
-
-typedef struct
-{
-    SDL_GamepadBindingType inputType;
-    union
-    {
-        int button;
-
-        struct
-        {
-            int axis;
-            int axis_min;
-            int axis_max;
-        } axis;
-
-        struct
-        {
-            int hat;
-            int hat_mask;
-        } hat;
-
-    } input;
-
-    SDL_GamepadBindingType outputType;
-    union
-    {
-        SDL_GamepadButton button;
-
-        struct
-        {
-            SDL_GamepadAxis axis;
-            int axis_min;
-            int axis_max;
-        } axis;
-
-    } output;
-
-} SDL_GamepadBinding;
-
 /* our hard coded list of mapping support */
 typedef enum
 {
@@ -3178,6 +3132,45 @@ SDL_Gamepad *SDL_GetGamepadFromPlayerIndex(int player_index)
     SDL_UnlockJoysticks();
 
     return retval;
+}
+
+/*
+ * Get the SDL joystick layer bindings for this gamepad
+ */
+SDL_GamepadBinding **SDL_GetGamepadBindings(SDL_Gamepad *gamepad, int *count)
+{
+    SDL_GamepadBinding **bindings = NULL;
+
+    if (count) {
+        *count = 0;
+    }
+
+    SDL_LockJoysticks();
+    {
+        CHECK_GAMEPAD_MAGIC(gamepad, NULL);
+
+        size_t pointers_size = ((gamepad->num_bindings + 1) * sizeof(SDL_GamepadBinding *));
+        size_t elements_size = (gamepad->num_bindings * sizeof(SDL_GamepadBinding));
+        bindings = (SDL_GamepadBinding **)SDL_malloc(pointers_size + elements_size);
+        if (bindings) {
+            SDL_GamepadBinding *binding = (SDL_GamepadBinding *)((Uint8 *)bindings + pointers_size);
+            int i;
+            for (i = 0; i < gamepad->num_bindings; ++i, ++binding) {
+                bindings[i] = binding;
+                SDL_copyp(binding, &gamepad->bindings[i]);
+            }
+            bindings[i] = NULL;
+
+            if (count) {
+                *count = gamepad->num_bindings;
+            }
+        } else {
+            SDL_OutOfMemory();
+        }
+    }
+    SDL_UnlockJoysticks();
+
+    return bindings;
 }
 
 int SDL_RumbleGamepad(SDL_Gamepad *gamepad, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble, Uint32 duration_ms)

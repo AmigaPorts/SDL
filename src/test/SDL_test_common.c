@@ -147,8 +147,8 @@ SDLTest_CommonState *SDLTest_CommonCreateState(char **argv, Uint32 flags)
 }
 
 void SDLTest_CommonDestroyState(SDLTest_CommonState *state) {
-    SDLTest_LogAllocations();
     SDL_free(state);
+    SDLTest_LogAllocations();
 }
 
 #define SEARCHARG(dim)                  \
@@ -2046,6 +2046,8 @@ void SDLTest_CommonEvent(SDLTest_CommonState *state, SDL_Event *event, int *done
     {
         SDL_Window *window = SDL_GetWindowFromID(event->window.windowID);
         if (window) {
+            /* Clear cache to avoid stale textures */
+            SDLTest_CleanupTextDrawing();
             for (i = 0; i < state->num_windows; ++i) {
                 if (window == state->windows[i]) {
                     if (state->targets[i]) {
@@ -2435,7 +2437,6 @@ void SDLTest_CommonQuit(SDLTest_CommonState *state)
     common_usage_audio = NULL;
     common_usage_videoaudio = NULL;
 
-    SDL_free(state->windows);
     if (state->targets) {
         for (i = 0; i < state->num_windows; ++i) {
             if (state->targets[i]) {
@@ -2451,6 +2452,12 @@ void SDLTest_CommonQuit(SDLTest_CommonState *state)
             }
         }
         SDL_free(state->renderers);
+    }
+    if (state->windows) {
+        for (i = 0; i < state->num_windows; i++) {
+            SDL_DestroyWindow(state->windows[i]);
+        }
+        SDL_free(state->windows);
     }
     if (state->flags & SDL_INIT_VIDEO) {
         SDL_QuitSubSystem(SDL_INIT_VIDEO);

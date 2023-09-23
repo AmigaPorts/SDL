@@ -214,7 +214,11 @@ int main(int argc, char *argv[])
         MoveSprites(renderer, sprite);
     }
 
+    SDL_DestroyTexture(sprite);
     SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_free(positions);
+    SDL_free(velocities);
 
     quit(0);
 

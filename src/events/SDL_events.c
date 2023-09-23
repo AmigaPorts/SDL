@@ -418,7 +418,7 @@ static void SDL_LogEvent(const SDL_Event *event)
         break;
 #undef PRINT_FINGER_EVENT
 
-#define PRINT_DROP_EVENT(event) (void)SDL_snprintf(details, sizeof(details), " (file='%s' timestamp=%u windowid=%u)", event->drop.file, (uint)event->drop.timestamp, (uint)event->drop.windowID)
+#define PRINT_DROP_EVENT(event) (void)SDL_snprintf(details, sizeof(details), " (file='%s' timestamp=%u windowid=%u x=%f y=%f)", event->drop.file, (uint)event->drop.timestamp, (uint)event->drop.windowID, event->drop.x, event->drop.y)
         SDL_EVENT_CASE(SDL_EVENT_DROP_FILE)
         PRINT_DROP_EVENT(event);
         break;
@@ -431,6 +431,9 @@ static void SDL_LogEvent(const SDL_Event *event)
         SDL_EVENT_CASE(SDL_EVENT_DROP_COMPLETE)
         PRINT_DROP_EVENT(event);
         break;
+        SDL_EVENT_CASE(SDL_EVENT_DROP_POSITION)
+        PRINT_DROP_EVENT(event);
+        break;
 #undef PRINT_DROP_EVENT
 
 #define PRINT_AUDIODEV_EVENT(event) (void)SDL_snprintf(details, sizeof(details), " (timestamp=%u which=%u iscapture=%s)", (uint)event->adevice.timestamp, (uint)event->adevice.which, event->adevice.iscapture ? "true" : "false")
@@ -438,6 +441,9 @@ static void SDL_LogEvent(const SDL_Event *event)
         PRINT_AUDIODEV_EVENT(event);
         break;
         SDL_EVENT_CASE(SDL_EVENT_AUDIO_DEVICE_REMOVED)
+        PRINT_AUDIODEV_EVENT(event);
+        break;
+        SDL_EVENT_CASE(SDL_EVENT_AUDIO_DEVICE_FORMAT_CHANGED)
         PRINT_AUDIODEV_EVENT(event);
         break;
 #undef PRINT_AUDIODEV_EVENT

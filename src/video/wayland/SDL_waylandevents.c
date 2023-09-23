@@ -823,7 +823,7 @@ static void pointer_handle_axis(void *data, struct wl_pointer *pointer,
 {
     struct SDL_WaylandInput *input = data;
 
-    if (wl_seat_get_version(input->seat) >= 5) {
+    if (wl_seat_get_version(input->seat) >= WL_POINTER_FRAME_SINCE_VERSION) {
         input->pointer_curr_axis_info.timestamp_ns = Wayland_GetPointerTimestamp(input, time);
         pointer_handle_axis_common(input, AXIS_EVENT_CONTINUOUS, axis, value);
     } else {
@@ -1848,28 +1848,40 @@ static void data_device_handle_enter(void *data, struct wl_data_device *wl_data_
         data_device->drag_offer = wl_data_offer_get_user_data(id);
 
         /* TODO: SDL Support more mime types */
-        has_mime = Wayland_data_offer_has_mime(
-            data_device->drag_offer, FILE_MIME);
-
-        /* If drag_mime is NULL this will decline the offer */
-        wl_data_offer_accept(id, serial,
-                             (has_mime == SDL_TRUE) ? FILE_MIME : NULL);
+#ifdef SDL_USE_LIBDBUS
+        if (Wayland_data_offer_has_mime(data_device->drag_offer, FILE_PORTAL_MIME)) {
+            has_mime = SDL_TRUE;
+            wl_data_offer_accept(id, serial, FILE_PORTAL_MIME);
+        }
+#endif
+        if (Wayland_data_offer_has_mime(data_device->drag_offer, FILE_MIME)) {
+            has_mime = SDL_TRUE;
+            wl_data_offer_accept(id, serial, FILE_MIME);
+        }
 
         /* SDL only supports "copy" style drag and drop */
-        if (has_mime == SDL_TRUE) {
+        if (has_mime) {
             dnd_action = WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY;
+        } else {
+            /* drag_mime is NULL this will decline the offer */
+            wl_data_offer_accept(id, serial, NULL);
         }
-        if (wl_data_offer_get_version(data_device->drag_offer->offer) >= 3) {
+        if (wl_data_offer_get_version(data_device->drag_offer->offer) >=
+            WL_DATA_OFFER_SET_ACTIONS_SINCE_VERSION) {
             wl_data_offer_set_actions(data_device->drag_offer->offer,
                                       dnd_action, dnd_action);
         }
 
         /* find the current window */
-        if (surface && SDL_WAYLAND_own_surface(surface)) {
-           SDL_WindowData *window = (SDL_WindowData *)wl_surface_get_user_data(surface);
-           if (window) {
-              data_device->dnd_window = window->sdlwindow;
-           }
+        if (surface) {
+            if (SDL_WAYLAND_own_surface(surface)) {
+                SDL_WindowData *window = (SDL_WindowData *)wl_surface_get_user_data(surface);
+                if (window) {
+                    data_device->dnd_window = window->sdlwindow;
+                }
+            } else {
+                data_device->dnd_window = NULL;
+            }
         }
     }
 }
@@ -1877,11 +1889,10 @@ static void data_device_handle_enter(void *data, struct wl_data_device *wl_data_
 static void data_device_handle_leave(void *data, struct wl_data_device *wl_data_device)
 {
     SDL_WaylandDataDevice *data_device = data;
-    SDL_WaylandDataOffer *offer = NULL;
 
-    if (data_device->selection_offer != NULL) {
-        data_device->selection_offer = NULL;
-        Wayland_data_offer_destroy(offer);
+    if (data_device->drag_offer != NULL) {
+        Wayland_data_offer_destroy(data_device->drag_offer);
+        data_device->drag_offer = NULL;
     }
 }
 
@@ -1890,27 +1901,15 @@ static void data_device_handle_motion(void *data, struct wl_data_device *wl_data
 {
     SDL_WaylandDataDevice *data_device = data;
 
-    if (data_device->drag_offer != NULL) {
-        /* TODO: SDL Support more mime types */
-        size_t length;
-        void *buffer = Wayland_data_offer_receive(data_device->drag_offer,
-                                                  FILE_MIME, &length);
-        if (buffer) {
-            char *saveptr = NULL;
-            char *token = SDL_strtok_r((char *)buffer, "\r\n", &saveptr);
-            while (token != NULL) {
-                char *fn = Wayland_URIToLocal(token);
-                if (fn) {
-                    double dx;
-                    double dy;
-                    dx = wl_fixed_to_double(x);
-                    dy = wl_fixed_to_double(y);
-                    SDL_SendDropPosition(data_device->dnd_window, fn, (float)dx, (float)dy);
-                }
-                token = SDL_strtok_r(NULL, "\r\n", &saveptr);
-            }
-            SDL_free(buffer);
-        }
+    if (data_device->drag_offer != NULL && data_device->dnd_window) {
+        const float dx = (float)wl_fixed_to_double(x);
+        const float dy = (float)wl_fixed_to_double(y);
+
+        /* XXX: Send the filename here if the event system ever starts passing it though.
+         *      Any future implementation should cache the filenames, as otherwise this could
+         *      hammer the DBus interface hundreds or even thousands of times per second.
+         */
+        SDL_SendDropPosition(data_device->dnd_window, NULL, dx, dy);
     }
 }
 
@@ -2039,25 +2038,66 @@ static void data_device_handle_drop(void *data, struct wl_data_device *wl_data_d
 {
     SDL_WaylandDataDevice *data_device = data;
 
-    if (data_device->drag_offer != NULL) {
+    if (data_device->drag_offer != NULL && data_device->dnd_window) {
         /* TODO: SDL Support more mime types */
         size_t length;
-        void *buffer = Wayland_data_offer_receive(data_device->drag_offer,
-                                                  FILE_MIME, &length);
-        if (buffer) {
-            char *saveptr = NULL;
-            char *token = SDL_strtok_r((char *)buffer, "\r\n", &saveptr);
-            while (token != NULL) {
-                char *fn = Wayland_URIToLocal(token);
-                if (fn) {
-                    SDL_SendDropFile(data_device->dnd_window, fn);
+        SDL_bool drop_handled = SDL_FALSE;
+#ifdef SDL_USE_LIBDBUS
+        if (Wayland_data_offer_has_mime(
+            data_device->drag_offer, FILE_PORTAL_MIME)) {
+            void *buffer = Wayland_data_offer_receive(data_device->drag_offer,
+                                                      FILE_PORTAL_MIME, &length);
+            if (buffer) {
+                SDL_DBusContext *dbus = SDL_DBus_GetContext();
+                if (dbus) {
+                    int path_count = 0;
+                    char **paths = SDL_DBus_DocumentsPortalRetrieveFiles(buffer, &path_count);
+                    /* If dropped files contain a directory the list is empty */
+                    if (paths && path_count > 0) {
+                        for (int i = 0; i < path_count; i++) {
+                            SDL_SendDropFile(data_device->dnd_window, paths[i]);
+                        }
+                        dbus->free_string_array(paths);
+                        SDL_SendDropComplete(data_device->dnd_window);
+                        drop_handled = SDL_TRUE;
+                    }
                 }
-                token = SDL_strtok_r(NULL, "\r\n", &saveptr);
+                SDL_free(buffer);
             }
-            SDL_SendDropComplete(data_device->dnd_window);
-            SDL_free(buffer);
+        }
+#endif
+        /* If XDG document portal fails fallback.
+         * When running a flatpak sandbox this will most likely be a list of
+         * non paths that are not visible to the application
+         */
+        if (!drop_handled && Wayland_data_offer_has_mime(
+            data_device->drag_offer, FILE_MIME)) {
+            void *buffer = Wayland_data_offer_receive(data_device->drag_offer,
+                                                      FILE_MIME, &length);
+            if (buffer) {
+                char *saveptr = NULL;
+                char *token = SDL_strtok_r((char *)buffer, "\r\n", &saveptr);
+                while (token != NULL) {
+                    char *fn = Wayland_URIToLocal(token);
+                    if (fn) {
+                        SDL_SendDropFile(data_device->dnd_window, fn);
+                    }
+                    token = SDL_strtok_r(NULL, "\r\n", &saveptr);
+                }
+                SDL_SendDropComplete(data_device->dnd_window);
+                SDL_free(buffer);
+                drop_handled = SDL_TRUE;
+            }
+        }
+
+        if (drop_handled && wl_data_offer_get_version(data_device->drag_offer->offer) >=
+            WL_DATA_OFFER_FINISH_SINCE_VERSION) {
+            wl_data_offer_finish(data_device->drag_offer->offer);
         }
     }
+
+    Wayland_data_offer_destroy(data_device->drag_offer);
+    data_device->drag_offer = NULL;
 }
 
 static void data_device_handle_selection(void *data, struct wl_data_device *wl_data_device,
