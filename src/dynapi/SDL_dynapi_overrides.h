@@ -196,6 +196,7 @@
 #define SDL_GetGamepadAppleSFSymbolsNameForButton SDL_GetGamepadAppleSFSymbolsNameForButton_REAL
 #define SDL_GetGamepadAxis SDL_GetGamepadAxis_REAL
 #define SDL_GetGamepadAxisFromString SDL_GetGamepadAxisFromString_REAL
+#define SDL_GetGamepadBindings SDL_GetGamepadBindings_REAL
 #define SDL_GetGamepadButton SDL_GetGamepadButton_REAL
 #define SDL_GetGamepadButtonFromString SDL_GetGamepadButtonFromString_REAL
 #define SDL_GetGamepadFirmwareVersion SDL_GetGamepadFirmwareVersion_REAL
@@ -910,7 +911,7 @@
 #define SDL_LoadWAV SDL_LoadWAV_REAL
 #define SDL_PauseAudioDevice SDL_PauseAudioDevice_REAL
 #define SDL_ResumeAudioDevice SDL_ResumeAudioDevice_REAL
-#define SDL_IsAudioDevicePaused SDL_IsAudioDevicePaused_REAL
+#define SDL_AudioDevicePaused SDL_AudioDevicePaused_REAL
 #define SDL_GetAudioStreamDevice SDL_GetAudioStreamDevice_REAL
 #define SDL_ShowWindowSystemMenu SDL_ShowWindowSystemMenu_REAL
 #define SDL_ReadS16LE SDL_ReadS16LE_REAL
@@ -929,3 +930,5 @@
 #define SDL_SetWindowFocusable SDL_SetWindowFocusable_REAL
 #define SDL_GetAudioStreamFrequencyRatio SDL_GetAudioStreamFrequencyRatio_REAL
 #define SDL_SetAudioStreamFrequencyRatio SDL_SetAudioStreamFrequencyRatio_REAL
+#define SDL_SetAudioPostmixCallback SDL_SetAudioPostmixCallback_REAL
+#define SDL_GetAudioStreamQueued SDL_GetAudioStreamQueued_REAL

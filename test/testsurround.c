@@ -96,7 +96,7 @@ static SDL_bool is_lfe_channel(int channel_index, int channel_count)
     return (channel_count == 3 && channel_index == 2) || (channel_count >= 6 && channel_index == 3);
 }
 
-static void SDLCALL fill_buffer(void *userdata, SDL_AudioStream *stream, int len)
+static void SDLCALL fill_buffer(void *userdata, SDL_AudioStream *stream, int len, int totallen)
 {
     const int samples = len / sizeof(Sint16);
     Sint16 *buffer = NULL;
@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
         SDL_Log("Testing audio device: %s\n", devname);
         SDL_free(devname);
 
-        if (SDL_GetAudioDeviceFormat(devices[i], &spec) != 0) {
+        if (SDL_GetAudioDeviceFormat(devices[i], &spec, NULL) != 0) {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_GetAudioDeviceFormat() failed: %s\n", SDL_GetError());
             continue;
         }

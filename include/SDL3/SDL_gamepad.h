@@ -125,6 +125,53 @@ typedef enum
     SDL_GAMEPAD_AXIS_MAX
 } SDL_GamepadAxis;
 
+typedef enum
+{
+    SDL_GAMEPAD_BINDTYPE_NONE = 0,
+    SDL_GAMEPAD_BINDTYPE_BUTTON,
+    SDL_GAMEPAD_BINDTYPE_AXIS,
+    SDL_GAMEPAD_BINDTYPE_HAT
+} SDL_GamepadBindingType;
+
+typedef struct
+{
+    SDL_GamepadBindingType inputType;
+    union
+    {
+        int button;
+
+        struct
+        {
+            int axis;
+            int axis_min;
+            int axis_max;
+        } axis;
+
+        struct
+        {
+            int hat;
+            int hat_mask;
+        } hat;
+
+    } input;
+
+    SDL_GamepadBindingType outputType;
+    union
+    {
+        SDL_GamepadButton button;
+
+        struct
+        {
+            SDL_GamepadAxis axis;
+            int axis_min;
+            int axis_max;
+        } axis;
+
+    } output;
+
+} SDL_GamepadBinding;
+
+
 /**
  * Add support for gamepads that SDL is unaware of or change the binding of an
  * existing gamepad.
@@ -735,6 +782,19 @@ extern DECLSPEC void SDLCALL SDL_SetGamepadEventsEnabled(SDL_bool enabled);
  * \sa SDL_SetGamepadEventsEnabled
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_GamepadEventsEnabled(void);
+
+/**
+ * Get the SDL joystick layer bindings for a gamepad
+ *
+ * \param gamepad a gamepad
+ * \param count a pointer filled in with the number of bindings returned
+ * \returns a NULL terminated array of pointers to bindings which should be
+ *          freed with SDL_free(), or NULL on error; call SDL_GetError() for
+ *          more details.
+ *
+ * \since This function is available since SDL 3.0.0.
+ */
+extern DECLSPEC SDL_GamepadBinding **SDLCALL SDL_GetGamepadBindings(SDL_Gamepad *gamepad, int *count);
 
 /**
  * Manually pump gamepad updates if not using the loop.
