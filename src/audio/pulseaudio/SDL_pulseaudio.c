@@ -35,6 +35,10 @@
 #include "SDL_pulseaudio.h"
 #include "../../thread/SDL_systhread.h"
 
+#if (PA_PROTOCOL_VERSION < 28)
+typedef void (*pa_operation_notify_cb_t) (pa_operation *o, void *userdata);
+#endif
+
 /* should we include monitors in the device list? Set at SDL_Init time */
 static SDL_bool include_monitors = SDL_FALSE;
 
@@ -94,6 +98,7 @@ static int (*PULSEAUDIO_pa_stream_connect_playback)(pa_stream *, const char *,
                                                     const pa_buffer_attr *, pa_stream_flags_t, const pa_cvolume *, pa_stream *);
 static int (*PULSEAUDIO_pa_stream_connect_record)(pa_stream *, const char *,
                                                   const pa_buffer_attr *, pa_stream_flags_t);
+static const pa_buffer_attr *(*PULSEAUDIO_pa_stream_get_buffer_attr)(pa_stream *);
 static pa_stream_state_t (*PULSEAUDIO_pa_stream_get_state)(const pa_stream *);
 static size_t (*PULSEAUDIO_pa_stream_writable_size)(const pa_stream *);
 static size_t (*PULSEAUDIO_pa_stream_readable_size)(const pa_stream *);
@@ -188,10 +193,8 @@ static int load_pulseaudio_syms(void)
     SDL_PULSEAUDIO_SYM(pa_threaded_mainloop_wait);
     SDL_PULSEAUDIO_SYM(pa_threaded_mainloop_signal);
     SDL_PULSEAUDIO_SYM(pa_threaded_mainloop_free);
-    SDL_PULSEAUDIO_SYM(pa_threaded_mainloop_set_name);
     SDL_PULSEAUDIO_SYM(pa_operation_get_state);
     SDL_PULSEAUDIO_SYM(pa_operation_cancel);
-    SDL_PULSEAUDIO_SYM(pa_operation_set_state_callback);
     SDL_PULSEAUDIO_SYM(pa_operation_unref);
     SDL_PULSEAUDIO_SYM(pa_context_new);
     SDL_PULSEAUDIO_SYM(pa_context_set_state_callback);
@@ -209,6 +212,7 @@ static int load_pulseaudio_syms(void)
     SDL_PULSEAUDIO_SYM(pa_stream_set_state_callback);
     SDL_PULSEAUDIO_SYM(pa_stream_connect_playback);
     SDL_PULSEAUDIO_SYM(pa_stream_connect_record);
+    SDL_PULSEAUDIO_SYM(pa_stream_get_buffer_attr);
     SDL_PULSEAUDIO_SYM(pa_stream_get_state);
     SDL_PULSEAUDIO_SYM(pa_stream_writable_size);
     SDL_PULSEAUDIO_SYM(pa_stream_readable_size);
@@ -224,6 +228,21 @@ static int load_pulseaudio_syms(void)
     SDL_PULSEAUDIO_SYM(pa_stream_set_write_callback);
     SDL_PULSEAUDIO_SYM(pa_stream_set_read_callback);
     SDL_PULSEAUDIO_SYM(pa_context_get_server_info);
+
+    /* optional */
+#ifdef SDL_AUDIO_DRIVER_PULSEAUDIO_DYNAMIC
+    load_pulseaudio_sym("pa_operation_set_state_callback", (void **)(char *)&PULSEAUDIO_pa_operation_set_state_callback);  // needs pulseaudio 4.0
+    load_pulseaudio_sym("pa_threaded_mainloop_set_name", (void **)(char *)&PULSEAUDIO_pa_threaded_mainloop_set_name);  // needs pulseaudio 5.0
+#elif (PA_PROTOCOL_VERSION >= 29)
+    PULSEAUDIO_pa_operation_set_state_callback = pa_operation_set_state_callback;
+    PULSEAUDIO_pa_threaded_mainloop_set_name = pa_threaded_mainloop_set_name;
+#elif (PA_PROTOCOL_VERSION >= 28)
+    PULSEAUDIO_pa_operation_set_state_callback = pa_operation_set_state_callback;
+    PULSEAUDIO_pa_threaded_mainloop_set_name = NULL;
+#else
+    PULSEAUDIO_pa_operation_set_state_callback = NULL;
+    PULSEAUDIO_pa_threaded_mainloop_set_name = NULL;
+#endif
 
     return 0;
 }
@@ -270,7 +289,13 @@ static void WaitForPulseOperation(pa_operation *o)
     /* This checks for NO errors currently. Either fix that, check results elsewhere, or do things you don't care about. */
     SDL_assert(pulseaudio_threaded_mainloop != NULL);
     if (o) {
-        PULSEAUDIO_pa_operation_set_state_callback(o, OperationStateChangeCallback, NULL);
+        // note that if PULSEAUDIO_pa_operation_set_state_callback == NULL, then `o` must have a callback that will signal pulseaudio_threaded_mainloop.
+        // If not, on really old (earlier PulseAudio 4.0, from the year 2013!) installs, this call will block forever.
+        // On more modern installs, we won't ever block forever, and maybe be more efficient, thanks to pa_operation_set_state_callback.
+        // WARNING: at the time of this writing: the Steam Runtime is still on PulseAudio 1.1!
+        if (PULSEAUDIO_pa_operation_set_state_callback != NULL) {
+            PULSEAUDIO_pa_operation_set_state_callback(o, OperationStateChangeCallback, NULL);
+        }
         while (PULSEAUDIO_pa_operation_get_state(o) == PA_OPERATION_RUNNING) {
             PULSEAUDIO_pa_threaded_mainloop_wait(pulseaudio_threaded_mainloop);  /* this releases the lock and blocks on an internal condition variable. */
         }
@@ -310,7 +335,9 @@ static int ConnectToPulseServer(void)
         return SDL_SetError("pa_threaded_mainloop_new() failed");
     }
 
-    PULSEAUDIO_pa_threaded_mainloop_set_name(pulseaudio_threaded_mainloop, "PulseMainloop");
+    if (PULSEAUDIO_pa_threaded_mainloop_set_name) {
+        PULSEAUDIO_pa_threaded_mainloop_set_name(pulseaudio_threaded_mainloop, "PulseMainloop");
+    }
 
     if (PULSEAUDIO_pa_threaded_mainloop_start(pulseaudio_threaded_mainloop) < 0) {
         PULSEAUDIO_pa_threaded_mainloop_free(pulseaudio_threaded_mainloop);
@@ -375,7 +402,7 @@ static void PULSEAUDIO_WaitDevice(SDL_AudioDevice *device)
 
     PULSEAUDIO_pa_threaded_mainloop_lock(pulseaudio_threaded_mainloop);
 
-    while (!SDL_AtomicGet(&device->shutdown) && (h->bytes_requested < (device->buffer_size / 2))) {
+    while (!SDL_AtomicGet(&device->shutdown) && (h->bytes_requested == 0)) {
         /*printf("PULSEAUDIO WAIT IN WAITDEVICE!\n");*/
         PULSEAUDIO_pa_threaded_mainloop_wait(pulseaudio_threaded_mainloop);
 
@@ -651,7 +678,7 @@ static int PULSEAUDIO_OpenDevice(SDL_AudioDevice *device)
     paspec.rate = device->spec.freq;
 
     /* Reduced prebuffering compared to the defaults. */
-    paattr.fragsize = device->buffer_size;
+    paattr.fragsize = device->buffer_size;   // despite the name, this is only used for capture devices, according to PulseAudio docs!
     paattr.tlength = device->buffer_size;
     paattr.prebuf = -1;
     paattr.maxlength = -1;
@@ -704,6 +731,14 @@ static int PULSEAUDIO_OpenDevice(SDL_AudioDevice *device)
 
                 if (!PA_STREAM_IS_GOOD(state)) {
                     retval = SDL_SetError("Could not connect PulseAudio stream");
+                } else {
+                    const pa_buffer_attr *actual_bufattr = PULSEAUDIO_pa_stream_get_buffer_attr(h->stream);
+                    if (!actual_bufattr) {
+                        retval = SDL_SetError("Could not determine connected PulseAudio stream's buffer attributes");
+                    } else {
+                        device->buffer_size = (int) iscapture ? actual_bufattr->tlength : actual_bufattr->fragsize;
+                        device->sample_frames = device->buffer_size / SDL_AUDIO_FRAMESIZE(device->spec);
+                    }
                 }
             }
         }
