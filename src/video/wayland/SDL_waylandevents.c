@@ -279,7 +279,7 @@ static void keyboard_repeat_set(SDL_WaylandKeyboardRepeat *repeat_info, uint32_t
     repeat_info->next_repeat_ns = SDL_MS_TO_NS(repeat_info->repeat_delay_ms);
     repeat_info->scancode = scancode;
     if (has_text) {
-        SDL_memcpy(repeat_info->text, text, 8);
+        SDL_copyp(repeat_info->text, text);
     } else {
         repeat_info->text[0] = '\0';
     }
@@ -297,7 +297,7 @@ static uint32_t keyboard_repeat_get_key(SDL_WaylandKeyboardRepeat *repeat_info)
 static void keyboard_repeat_set_text(SDL_WaylandKeyboardRepeat *repeat_info, const char text[8])
 {
     if (repeat_info->is_initialized) {
-        SDL_memcpy(repeat_info->text, text, 8);
+        SDL_copyp(repeat_info->text, text);
     }
 }
 
@@ -2759,7 +2759,11 @@ void Wayland_display_destroy_input(SDL_VideoData *d)
             Wayland_data_offer_destroy(input->data_device->drag_offer);
         }
         if (input->data_device->data_device != NULL) {
-            wl_data_device_release(input->data_device->data_device);
+            if (wl_data_device_get_version(input->data_device->data_device) >= WL_DATA_DEVICE_RELEASE_SINCE_VERSION) {
+                wl_data_device_release(input->data_device->data_device);
+            } else {
+                wl_data_device_destroy(input->data_device->data_device);
+            }
         }
         SDL_free(input->data_device);
     }
@@ -2844,35 +2848,6 @@ void Wayland_display_destroy_input(SDL_VideoData *d)
 
     SDL_free(input);
     d->input = NULL;
-}
-
-/* !!! FIXME: just merge these into display_handle_global(). */
-void Wayland_display_add_relative_pointer_manager(SDL_VideoData *d, uint32_t id)
-{
-    d->relative_pointer_manager =
-        wl_registry_bind(d->registry, id,
-                         &zwp_relative_pointer_manager_v1_interface, 1);
-}
-
-void Wayland_display_destroy_relative_pointer_manager(SDL_VideoData *d)
-{
-    if (d->relative_pointer_manager) {
-        zwp_relative_pointer_manager_v1_destroy(d->relative_pointer_manager);
-    }
-}
-
-void Wayland_display_add_pointer_constraints(SDL_VideoData *d, uint32_t id)
-{
-    d->pointer_constraints =
-        wl_registry_bind(d->registry, id,
-                         &zwp_pointer_constraints_v1_interface, 1);
-}
-
-void Wayland_display_destroy_pointer_constraints(SDL_VideoData *d)
-{
-    if (d->pointer_constraints) {
-        zwp_pointer_constraints_v1_destroy(d->pointer_constraints);
-    }
 }
 
 static void relative_pointer_handle_relative_motion(void *data,
