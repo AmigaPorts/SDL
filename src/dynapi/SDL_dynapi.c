@@ -21,6 +21,7 @@
 
 #include "build_config/SDL_build_config.h"
 #include "SDL_dynapi.h"
+#include "SDL_dynapi_unsupported.h"
 
 #if SDL_DYNAMIC_API
 
@@ -521,6 +522,19 @@ static void SDL_InitDynamicAPI(void)
     #ifndef SDL_ATOMIC_DISABLED
     SDL_AtomicUnlock_REAL(&lock);
     #endif
+}
+
+#else /* SDL_DYNAMIC_API */
+
+#include <SDL3/SDL.h>
+
+Sint32 SDL_DYNAPI_entry(Uint32 apiver, void *table, Uint32 tablesize);
+Sint32 SDL_DYNAPI_entry(Uint32 apiver, void *table, Uint32 tablesize)
+{
+    (void)apiver;
+    (void)table;
+    (void)tablesize;
+    return -1; /* not compatible. */
 }
 
 #endif /* SDL_DYNAMIC_API */

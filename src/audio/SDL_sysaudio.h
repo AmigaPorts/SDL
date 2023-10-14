@@ -128,10 +128,10 @@ typedef struct SDL_AudioDriverImpl
     int (*OpenDevice)(SDL_AudioDevice *device);
     void (*ThreadInit)(SDL_AudioDevice *device);   // Called by audio thread at start
     void (*ThreadDeinit)(SDL_AudioDevice *device); // Called by audio thread at end
-    void (*WaitDevice)(SDL_AudioDevice *device);
+    int (*WaitDevice)(SDL_AudioDevice *device);
     int (*PlayDevice)(SDL_AudioDevice *device, const Uint8 *buffer, int buflen);  // buffer and buflen are always from GetDeviceBuf, passed here for convenience.
     Uint8 *(*GetDeviceBuf)(SDL_AudioDevice *device, int *buffer_size);
-    void (*WaitCaptureDevice)(SDL_AudioDevice *device);
+    int (*WaitCaptureDevice)(SDL_AudioDevice *device);
     int (*CaptureFromDevice)(SDL_AudioDevice *device, void *buffer, int buflen);
     void (*FlushCapture)(SDL_AudioDevice *device);
     void (*CloseDevice)(SDL_AudioDevice *device);
@@ -143,7 +143,6 @@ typedef struct SDL_AudioDriverImpl
     SDL_bool HasCaptureSupport;
     SDL_bool OnlyHasDefaultOutputDevice;
     SDL_bool OnlyHasDefaultCaptureDevice;
-    SDL_bool AllowsArbitraryDeviceNames;
 } SDL_AudioDriverImpl;
 
 typedef struct SDL_AudioDriver
@@ -157,6 +156,8 @@ typedef struct SDL_AudioDriver
     SDL_AudioStream *existing_streams;  // a list of all existing SDL_AudioStreams.
     SDL_AudioDeviceID default_output_device_id;
     SDL_AudioDeviceID default_capture_device_id;
+
+    // !!! FIXME: most (all?) of these don't have to be atomic.
     SDL_AtomicInt output_device_count;
     SDL_AtomicInt capture_device_count;
     SDL_AtomicInt last_device_instance_id;  // increments on each device add to provide unique instance IDs
@@ -168,6 +169,8 @@ struct SDL_AudioQueue; // forward decl.
 struct SDL_AudioStream
 {
     SDL_Mutex* lock;
+
+    SDL_PropertiesID props;
 
     SDL_AudioStreamCallback get_callback;
     void *get_callback_userdata;

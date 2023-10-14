@@ -35,9 +35,10 @@
 #define DISKDEFAULT_INFILE  "sdlaudio-in.raw"
 #define DISKENVR_IODELAY    "SDL_DISKAUDIODELAY"
 
-static void DISKAUDIO_WaitDevice(SDL_AudioDevice *device)
+static int DISKAUDIO_WaitDevice(SDL_AudioDevice *device)
 {
     SDL_Delay(device->hidden->io_delay);
+    return 0;
 }
 
 static int DISKAUDIO_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buffer_size)
@@ -160,7 +161,6 @@ static SDL_bool DISKAUDIO_Init(SDL_AudioDriverImpl *impl)
     impl->CloseDevice = DISKAUDIO_CloseDevice;
     impl->DetectDevices = DISKAUDIO_DetectDevices;
 
-    impl->AllowsArbitraryDeviceNames = SDL_TRUE;
     impl->HasCaptureSupport = SDL_TRUE;
 
     return SDL_TRUE;

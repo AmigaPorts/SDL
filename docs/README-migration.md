@@ -276,6 +276,8 @@ The intrinsics headers (mmintrin.h, etc.) have been moved to `<SDL3/SDL_intrin.h
 
 SDL_Has3DNow() has been removed; there is no replacement.
 
+SDL_HasRDTSC() has been removed; there is no replacement. Don't use the RDTSC opcode in modern times, use SDL_GetPerformanceCounter and SDL_GetPerformanceFrequency instead.
+
 SDL_SIMDAlloc(), SDL_SIMDRealloc(), and SDL_SIMDFree() have been removed. You can use SDL_aligned_alloc() and SDL_aligned_free() with SDL_SIMDGetAlignment() to get the same functionality.
 
 ## SDL_events.h
@@ -852,9 +854,11 @@ The following functions have been renamed:
 * SDL_RenderWindowToLogical() => SDL_RenderCoordinatesFromWindow()
 
 The following functions have been removed:
+* SDL_GetTextureUserData() - use SDL_GetTextureProperties() instead
 * SDL_RenderGetIntegerScale()
 * SDL_RenderSetIntegerScale() - this is now explicit with SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
 * SDL_RenderTargetSupported() - render targets are always supported
+* SDL_SetTextureUserData() - use SDL_GetTextureProperties() instead
 
 The following symbols have been renamed:
 * SDL_ScaleModeBest => SDL_SCALEMODE_BEST
@@ -1066,6 +1070,8 @@ The following functions have been renamed:
 
 ## SDL_surface.h
 
+The userdata member of SDL_Surface has been replaced with a more general properties interface, which can be queried with SDL_GetSurfaceProperties()
+
 Removed unused 'flags' parameter from SDL_ConvertSurface and SDL_ConvertSurfaceFormat.
 
 SDL_CreateRGBSurface() and SDL_CreateRGBSurfaceWithFormat() have been combined into a new function SDL_CreateSurface().
@@ -1272,6 +1278,8 @@ The following functions have been removed:
 * SDL_GetDisplayMode()
 * SDL_GetNumDisplayModes() - replaced with SDL_GetFullscreenDisplayModes()
 * SDL_GetNumVideoDisplays() - replaced with SDL_GetDisplays()
+* SDL_GetWindowData() - use SDL_GetWindowProperties() instead
+* SDL_SetWindowData() - use SDL_GetWindowProperties() instead
 
 SDL_Window id type is named SDL_WindowID
 

@@ -343,11 +343,12 @@ OS4_ThreadDeinit(SDL_AudioDevice *_this)
     dprintf("Called\n");
 }
 
-static void
+static int
 OS4_WaitDevice(SDL_AudioDevice *_this)
 {
     /* Dummy - OS4_PlayDevice handles the waiting */
     //dprintf("Called\n");
+    return 0;
 }
 
 #define SDL_FC  2
@@ -450,10 +451,11 @@ OS4_GetDeviceBuf(SDL_AudioDevice *_this, int *buffer_size)
     return _this->hidden->audioBuffer[_this->hidden->currentBuffer];
 }
 
-static void
+static int
 OS4_WaitCaptureDevice(SDL_AudioDevice *device)
 {
     dprintf("Called\n");
+    return 0;
 }
 
 #ifndef MIN
