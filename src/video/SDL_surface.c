@@ -23,6 +23,7 @@
 #include "SDL_sysvideo.h"
 #include "SDL_blit.h"
 #include "SDL_RLEaccel_c.h"
+#include "SDL_surface_pixel_impl.h"
 #include "SDL_pixels_c.h"
 #include "SDL_yuv_c.h"
 #include "../render/SDL_sysrender.h"
@@ -33,6 +34,12 @@ SDL_COMPILE_TIME_ASSERT(surface_size_assumptions,
                         sizeof(int) == sizeof(Sint32) && sizeof(size_t) >= sizeof(Sint32));
 
 SDL_COMPILE_TIME_ASSERT(can_indicate_overflow, SDL_SIZE_MAX > SDL_MAX_SINT32);
+
+int
+SDL_ReadSurfacePixel(SDL_Surface *surface, int x, int y, Uint8 *r, Uint8 *g, Uint8 *b, Uint8 *a)
+{
+    return SDL_ReadSurfacePixel_impl(surface, x, y, r, g, b, a);
+}
 
 /* Public routines */
 
@@ -204,9 +211,7 @@ SDL_Surface *SDL_CreateSurface(int width, int height, Uint32 format)
  * Create an RGB surface from an existing memory buffer using the given given
  * enum SDL_PIXELFORMAT_* format
  */
-SDL_Surface *SDL_CreateSurfaceFrom(void *pixels,
-                      int width, int height, int pitch,
-                      Uint32 format)
+SDL_Surface *SDL_CreateSurfaceFrom(void *pixels, int width, int height, int pitch, Uint32 format)
 {
     SDL_Surface *surface;
 
@@ -249,10 +254,23 @@ SDL_Surface *SDL_CreateSurfaceFrom(void *pixels,
     return surface;
 }
 
+SDL_PropertiesID SDL_GetSurfaceProperties(SDL_Surface *surface)
+{
+    if (surface == NULL) {
+        SDL_InvalidParamError("surface");
+        return 0;
+    }
+
+    if (surface->props == 0) {
+        surface->props = SDL_CreateProperties();
+    }
+    return surface->props;
+}
+
 int SDL_SetSurfacePalette(SDL_Surface *surface, SDL_Palette *palette)
 {
     if (surface == NULL) {
-        return SDL_InvalidParamError("SDL_SetSurfacePalette(): surface");
+        return SDL_InvalidParamError("surface");
     }
     if (SDL_SetPixelFormatPalette(surface->format, palette) < 0) {
         return -1;
@@ -1543,13 +1561,14 @@ void SDL_DestroySurface(SDL_Surface *surface)
     if (surface->flags & SDL_DONTFREE) {
         return;
     }
-    SDL_InvalidateMap(surface->map);
-
-    SDL_InvalidateAllBlitMap(surface);
-
     if (--surface->refcount > 0) {
         return;
     }
+
+    SDL_DestroyProperties(surface->props);
+    SDL_InvalidateMap(surface->map);
+    SDL_InvalidateAllBlitMap(surface);
+
     while (surface->locked > 0) {
         SDL_UnlockSurface(surface);
     }

@@ -58,7 +58,7 @@ static SDL_AtomicInt SDL_sensor_lock_pending;
 static int SDL_sensors_locked;
 static SDL_bool SDL_sensors_initialized;
 static SDL_Sensor *SDL_sensors SDL_GUARDED_BY(SDL_sensor_lock) = NULL;
-static SDL_AtomicInt SDL_last_sensor_instance_id SDL_GUARDED_BY(SDL_sensor_lock);
+static SDL_AtomicInt SDL_last_sensor_instance_id;
 static char SDL_sensor_magic;
 
 #define CHECK_SENSOR_MAGIC(sensor, retval)              \
@@ -394,6 +394,27 @@ SDL_Sensor *SDL_GetSensorFromInstanceID(SDL_SensorID instance_id)
 }
 
 /*
+ * Get the properties associated with a sensor.
+ */
+SDL_PropertiesID SDL_GetSensorProperties(SDL_Sensor *sensor)
+{
+    SDL_PropertiesID retval;
+
+    SDL_LockSensors();
+    {
+        CHECK_SENSOR_MAGIC(sensor, 0);
+
+        if (sensor->props == 0) {
+            sensor->props = SDL_CreateProperties();
+        }
+        retval = sensor->props;
+    }
+    SDL_UnlockSensors();
+
+    return retval;
+}
+
+/*
  * Get the friendly name of this sensor
  */
 const char *SDL_GetSensorName(SDL_Sensor *sensor)
@@ -499,6 +520,8 @@ void SDL_CloseSensor(SDL_Sensor *sensor)
             SDL_UnlockSensors();
             return;
         }
+
+        SDL_DestroyProperties(sensor->props);
 
         sensor->driver->Close(sensor);
         sensor->hwdata = NULL;

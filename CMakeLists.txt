@@ -423,7 +423,7 @@ if(WINDOWS_STORE)
   sdl_compile_options(PRIVATE "-ZW")
 endif()
 
-check_linker_flag(C "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/src/dynapi/SDL_dynapi.sym" HAVE_WL_VERSION_SCRIPT)
+check_linker_supports_version_file(HAVE_WL_VERSION_SCRIPT)
 if(HAVE_WL_VERSION_SCRIPT)
   sdl_shared_link_options("-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/src/dynapi/SDL_dynapi.sym")
 else()
@@ -3264,6 +3264,9 @@ if(NOT SDL_DISABLE_INSTALL)
       FRAMEWORK DESTINATION "."
       RESOURCE DESTINATION "${SDL_SDL_INSTALL_RESOURCEDIR}"
     )
+    if(MSVC)
+      install(FILES $<TARGET_PDB_FILE:SDL3-shared> DESTINATION "${CMAKE_INSTALL_BINDIR}" OPTIONAL)
+    endif()
   endif()
 
   if(SDL_STATIC)

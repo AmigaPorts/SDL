@@ -20,23 +20,21 @@
 */
 #include "SDL_internal.h"
 
-// !!! FIXME: Clean out the fprintf and printf calls, replace with SDL_Log
-
 #ifdef SDL_AUDIO_DRIVER_ALSA
 
 #ifndef SDL_ALSA_NON_BLOCKING
 #define SDL_ALSA_NON_BLOCKING 0
 #endif
 
-/* without the thread, you will detect devices on startup, but will not get further hotplug events. But that might be okay. */
+// without the thread, you will detect devices on startup, but will not get further hotplug events. But that might be okay.
 #ifndef SDL_ALSA_HOTPLUG_THREAD
 #define SDL_ALSA_HOTPLUG_THREAD 1
 #endif
 
-/* Allow access to a raw mixing buffer */
+// Allow access to a raw mixing buffer
 
 #include <sys/types.h>
-#include <signal.h> /* For kill() */
+#include <signal.h> // For kill()
 #include <string.h>
 
 #include "../SDL_audio_c.h"
@@ -99,14 +97,14 @@ static int load_alsa_sym(const char *fn, void **addr)
 {
     *addr = SDL_LoadFunction(alsa_handle, fn);
     if (*addr == NULL) {
-        /* Don't call SDL_SetError(): SDL_LoadFunction already did. */
+        // Don't call SDL_SetError(): SDL_LoadFunction already did.
         return 0;
     }
 
     return 1;
 }
 
-/* cast funcs to char* first, to please GCC's strict aliasing rules. */
+// cast funcs to char* first, to please GCC's strict aliasing rules.
 #define SDL_ALSA_SYM(x)                                 \
     if (!load_alsa_sym(#x, (void **)(char *)&ALSA_##x)) \
     return -1
@@ -180,7 +178,7 @@ static int LoadALSALibrary(void)
         alsa_handle = SDL_LoadObject(alsa_library);
         if (alsa_handle == NULL) {
             retval = -1;
-            /* Don't call SDL_SetError(): SDL_LoadObject already did. */
+            // Don't call SDL_SetError(): SDL_LoadObject already did.
         } else {
             retval = load_alsa_syms();
             if (retval < 0) {
@@ -203,14 +201,14 @@ static int LoadALSALibrary(void)
     return 0;
 }
 
-#endif /* SDL_AUDIO_DRIVER_ALSA_DYNAMIC */
+#endif // SDL_AUDIO_DRIVER_ALSA_DYNAMIC
 
 static const char *get_audio_device(void *handle, const int channels)
 {
     SDL_assert(handle != NULL);  // SDL2 used NULL to mean "default" but that's not true in SDL3.
 
     if (SDL_strcmp((const char *) handle, "default") == 0) {
-        const char *device = SDL_getenv("AUDIODEV"); /* Is there a standard variable name? */
+        const char *device = SDL_getenv("AUDIODEV"); // Is there a standard variable name?
         if (device != NULL) {
             return device;
         } else if (channels == 6) {
@@ -224,12 +222,11 @@ static const char *get_audio_device(void *handle, const int channels)
     return (const char *)handle;
 }
 
-/* !!! FIXME: is there a channel swizzler in alsalib instead? */
-/*
- * https://bugzilla.libsdl.org/show_bug.cgi?id=110
- * "For Linux ALSA, this is FL-FR-RL-RR-C-LFE
- *  and for Windows DirectX [and CoreAudio], this is FL-FR-C-LFE-RL-RR"
- */
+// !!! FIXME: is there a channel swizzler in alsalib instead?
+
+// https://bugzilla.libsdl.org/show_bug.cgi?id=110
+//  "For Linux ALSA, this is FL-FR-RL-RR-C-LFE
+//  and for Windows DirectX [and CoreAudio], this is FL-FR-C-LFE-RL-RR"
 #define SWIZ6(T)                                                                  \
     static void swizzle_alsa_channels_6_##T(void *buffer, const Uint32 bufferlen) \
     {                                                                             \
@@ -246,13 +243,13 @@ static const char *get_audio_device(void *handle, const int channels)
         }                                                                         \
     }
 
-/* !!! FIXME: is there a channel swizzler in alsalib instead? */
-/* !!! FIXME: this screams for a SIMD shuffle operation. */
-/*
- * https://docs.microsoft.com/en-us/windows-hardware/drivers/audio/mapping-stream-formats-to-speaker-configurations
- * For Linux ALSA, this appears to be FL-FR-RL-RR-C-LFE-SL-SR
- *  and for Windows DirectX [and CoreAudio], this is FL-FR-C-LFE-SL-SR-RL-RR"
- */
+
+// !!! FIXME: is there a channel swizzler in alsalib instead?
+// !!! FIXME: this screams for a SIMD shuffle operation.
+
+// https://docs.microsoft.com/en-us/windows-hardware/drivers/audio/mapping-stream-formats-to-speaker-configurations
+//  For Linux ALSA, this appears to be FL-FR-RL-RR-C-LFE-SL-SR
+//  and for Windows DirectX [and CoreAudio], this is FL-FR-C-LFE-SL-SR-RL-RR"
 #define SWIZ8(T)                                                                  \
     static void swizzle_alsa_channels_8_##T(void *buffer, const Uint32 bufferlen) \
     {                                                                             \
@@ -287,10 +284,8 @@ CHANNEL_SWIZZLE(SWIZ8)
 #undef SWIZ6
 #undef SWIZ8
 
-/*
- * Called right before feeding device->hidden->mixbuf to the hardware. Swizzle
- *  channels from Windows/Mac order to the format alsalib will want.
- */
+// Called right before feeding device->hidden->mixbuf to the hardware. Swizzle
+//  channels from Windows/Mac order to the format alsalib will want.
 static void swizzle_alsa_channels(SDL_AudioDevice *device, void *buffer, Uint32 bufferlen)
 {
     switch (device->spec.channels) {
@@ -324,74 +319,66 @@ static void swizzle_alsa_channels(SDL_AudioDevice *device, void *buffer, Uint32 
 }
 
 #ifdef SND_CHMAP_API_VERSION
-/* Some devices have the right channel map, no swizzling necessary */
+// Some devices have the right channel map, no swizzling necessary
 static void no_swizzle(SDL_AudioDevice *device, void *buffer, Uint32 bufferlen)
 {
 }
-#endif /* SND_CHMAP_API_VERSION */
+#endif // SND_CHMAP_API_VERSION
 
-/* This function waits until it is possible to write a full sound buffer */
-static void ALSA_WaitDevice(SDL_AudioDevice *device)
+// This function waits until it is possible to write a full sound buffer
+static int ALSA_WaitDevice(SDL_AudioDevice *device)
 {
-    const snd_pcm_sframes_t needed = (snd_pcm_sframes_t)device->sample_frames;
-    while (!SDL_AtomicGet(&device->shutdown)) {
-        const snd_pcm_sframes_t rc = ALSA_snd_pcm_avail(device->hidden->pcm_handle);
-        if (rc < 0 && rc != -EAGAIN) {
-            int status = rc;
+    const int fulldelay = (int) ((((Uint64) device->sample_frames) * 1000) / device->spec.freq);
+    const int delay = SDL_max(fulldelay, 10);
 
-            status = ALSA_snd_pcm_recover(device->hidden->pcm_handle, status, 0);
+    while (!SDL_AtomicGet(&device->shutdown)) {
+        const int rc = ALSA_snd_pcm_wait(device->hidden->pcm_handle, delay);
+        if (rc < 0 && (rc != -EAGAIN)) {
+            const int status = ALSA_snd_pcm_recover(device->hidden->pcm_handle, rc, 0);
             if (status < 0) {
-                /* Hmm, not much we can do - abort */
-                fprintf(stderr, "ALSA snd_pcm_avail failed (unrecoverable): %s\n",
-                        ALSA_snd_strerror(rc));
-                SDL_AudioDeviceDisconnected(device);
+                // Hmm, not much we can do - abort
+                SDL_LogError(SDL_LOG_CATEGORY_AUDIO, "ALSA: snd_pcm_wait failed (unrecoverable): %s", ALSA_snd_strerror(rc));
+                return -1;
             }
-            return;
-        } else if (rc < needed) {
-            const Uint32 delay = ((needed - (SDL_max(rc, 0))) * 1000) / device->spec.freq;
-            SDL_Delay(SDL_max(delay, 10));
-        } else {
-            break; /* ready to go! */
+            continue;
         }
+
+        if (rc > 0) {
+            break;  // ready to go!
+        }
+
+        // Timed out! Make sure we aren't shutting down and then wait again.
     }
+
+    return 0;
 }
 
 static int ALSA_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buflen)
 {
     SDL_assert(buffer == device->hidden->mixbuf);
-    Uint8 *sample_buf = device->hidden->mixbuf;
+    Uint8 *sample_buf = (Uint8 *) buffer;  // !!! FIXME: deal with this without casting away constness
     const int frame_size = SDL_AUDIO_FRAMESIZE(device->spec);
     snd_pcm_uframes_t frames_left = (snd_pcm_uframes_t) (buflen / frame_size);
 
     device->hidden->swizzle_func(device, sample_buf, frames_left);
 
     while ((frames_left > 0) && !SDL_AtomicGet(&device->shutdown)) {
-        int status = ALSA_snd_pcm_writei(device->hidden->pcm_handle,
-                                         sample_buf, frames_left);
-        if (status < 0) {
-            if (status == -EAGAIN) {
-                /* Apparently snd_pcm_recover() doesn't handle this case -
-                   does it assume snd_pcm_wait() above? */
-                SDL_Delay(1);
-                continue;
-            }
-            status = ALSA_snd_pcm_recover(device->hidden->pcm_handle, status, 0);
+        const int rc = ALSA_snd_pcm_writei(device->hidden->pcm_handle, sample_buf, frames_left);
+        //SDL_LogInfo(SDL_LOG_CATEGORY_AUDIO, "ALSA PLAYDEVICE: WROTE %d of %d bytes", (rc >= 0) ? ((int) (rc * frame_size)) : rc, (int) (frames_left * frame_size));
+        SDL_assert(rc != 0);  // assuming this can't happen if we used snd_pcm_wait and queried for available space.
+        if (rc < 0) {
+            SDL_assert(rc != -EAGAIN);  // assuming this can't happen if we used snd_pcm_wait and queried for available space. snd_pcm_recover won't handle it!
+            const int status = ALSA_snd_pcm_recover(device->hidden->pcm_handle, rc, 0);
             if (status < 0) {
-                /* Hmm, not much we can do - abort */
-                SDL_LogError(SDL_LOG_CATEGORY_AUDIO,
-                             "ALSA write failed (unrecoverable): %s",
-                             ALSA_snd_strerror(status));
+                // Hmm, not much we can do - abort
+                SDL_LogError(SDL_LOG_CATEGORY_AUDIO, "ALSA write failed (unrecoverable): %s", ALSA_snd_strerror(rc));
                 return -1;
             }
             continue;
-        } else if (status == 0) {
-            /* No frames were written (no available space in pcm device).
-               Allow other threads to catch up. */
-            SDL_Delay((frames_left / 2 * 1000) / device->spec.freq);
         }
 
-        sample_buf += status * frame_size;
-        frames_left -= status;
+        sample_buf += rc * frame_size;
+        frames_left -= rc;
     }
 
     return 0;
@@ -399,45 +386,54 @@ static int ALSA_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buf
 
 static Uint8 *ALSA_GetDeviceBuf(SDL_AudioDevice *device, int *buffer_size)
 {
+    snd_pcm_sframes_t rc = ALSA_snd_pcm_avail(device->hidden->pcm_handle);
+    if (rc <= 0) {
+        // Wait a bit and try again, maybe the hardware isn't quite ready yet?
+        SDL_Delay(1);
+
+        rc = ALSA_snd_pcm_avail(device->hidden->pcm_handle);
+        if (rc <= 0) {
+            // We'll catch it next time
+            *buffer_size = 0;
+            return NULL;
+        }
+    }
+
+    const int requested_frames = SDL_min(device->sample_frames, rc);
+    const int requested_bytes = requested_frames * SDL_AUDIO_FRAMESIZE(device->spec);
+    SDL_assert(requested_bytes <= *buffer_size);
+    //SDL_LogInfo(SDL_LOG_CATEGORY_AUDIO, "ALSA GETDEVICEBUF: NEED %d BYTES", requested_bytes);
+    *buffer_size = requested_bytes;
     return device->hidden->mixbuf;
 }
 
 static int ALSA_CaptureFromDevice(SDL_AudioDevice *device, void *buffer, int buflen)
 {
-    Uint8 *sample_buf = (Uint8 *)buffer;
     const int frame_size = SDL_AUDIO_FRAMESIZE(device->spec);
-    const int total_frames = buflen / frame_size;
-    snd_pcm_uframes_t frames_left = total_frames;
-
     SDL_assert((buflen % frame_size) == 0);
 
-    while ((frames_left > 0) && !SDL_AtomicGet(&device->shutdown)) {
-        int status = ALSA_snd_pcm_readi(device->hidden->pcm_handle,
-                                        sample_buf, frames_left);
+    const snd_pcm_sframes_t total_available = ALSA_snd_pcm_avail(device->hidden->pcm_handle);
+    const int total_frames = SDL_min(buflen / frame_size, total_available);
 
-        if (status == -EAGAIN) {
-            break;  // Can this even happen? Go back to WaitCaptureDevice, where the device lock isn't held.
-        } else if (status < 0) {
-            /*printf("ALSA: capture error %d\n", status);*/
-            status = ALSA_snd_pcm_recover(device->hidden->pcm_handle, status, 0);
-            if (status < 0) {
-                /* Hmm, not much we can do - abort */
-                SDL_LogError(SDL_LOG_CATEGORY_AUDIO,
-                             "ALSA read failed (unrecoverable): %s\n",
-                             ALSA_snd_strerror(status));
-                return -1;
-            }
-            break;  // Go back to WaitCaptureDevice, where the device lock isn't held.
+    const int rc = ALSA_snd_pcm_readi(device->hidden->pcm_handle, buffer, total_frames);
+
+    SDL_assert(rc != -EAGAIN);  // assuming this can't happen if we used snd_pcm_wait and queried for available space. snd_pcm_recover won't handle it!
+
+    if (rc < 0) {
+        const int status = ALSA_snd_pcm_recover(device->hidden->pcm_handle, rc, 0);
+        if (status < 0) {
+            // Hmm, not much we can do - abort
+            SDL_LogError(SDL_LOG_CATEGORY_AUDIO, "ALSA read failed (unrecoverable): %s", ALSA_snd_strerror(rc));
+            return -1;
         }
-
-        /*printf("ALSA: captured %d bytes\n", status * frame_size);*/
-        sample_buf += status * frame_size;
-        frames_left -= status;
+        return 0;  // go back to WaitDevice and try again.
+    } else if (rc > 0) {
+        device->hidden->swizzle_func(device, buffer, total_frames - rc);
     }
 
-    device->hidden->swizzle_func(device, buffer, total_frames - frames_left);
+    //SDL_LogInfo(SDL_LOG_CATEGORY_AUDIO, "ALSA: captured %d bytes", rc * frame_size);
 
-    return (total_frames - frames_left) * frame_size;
+    return rc * frame_size;
 }
 
 static void ALSA_FlushCapture(SDL_AudioDevice *device)
@@ -449,9 +445,7 @@ static void ALSA_CloseDevice(SDL_AudioDevice *device)
 {
     if (device->hidden) {
         if (device->hidden->pcm_handle) {
-            /* Wait for the submitted audio to drain
-               ALSA_snd_pcm_drop() can hang, so don't use that.
-             */
+            // Wait for the submitted audio to drain. ALSA_snd_pcm_drop() can hang, so don't use that.
             SDL_Delay(((device->sample_frames * 1000) / device->spec.freq) * 2);
             ALSA_snd_pcm_close(device->hidden->pcm_handle);
         }
@@ -467,11 +461,11 @@ static int ALSA_set_buffer_size(SDL_AudioDevice *device, snd_pcm_hw_params_t *pa
     snd_pcm_uframes_t persize;
     unsigned int periods;
 
-    /* Copy the hardware parameters for this setup */
+    // Copy the hardware parameters for this setup
     snd_pcm_hw_params_alloca(&hwparams);
     ALSA_snd_pcm_hw_params_copy(hwparams, params);
 
-    /* Attempt to match the period size to the requested buffer size */
+    // Attempt to match the period size to the requested buffer size
     persize = device->sample_frames;
     status = ALSA_snd_pcm_hw_params_set_period_size_near(
         device->hidden->pcm_handle, hwparams, &persize, NULL);
@@ -479,7 +473,7 @@ static int ALSA_set_buffer_size(SDL_AudioDevice *device, snd_pcm_hw_params_t *pa
         return -1;
     }
 
-    /* Need to at least double buffer */
+    // Need to at least double buffer
     periods = 2;
     status = ALSA_snd_pcm_hw_params_set_periods_min(
         device->hidden->pcm_handle, hwparams, &periods, NULL);
@@ -493,7 +487,7 @@ static int ALSA_set_buffer_size(SDL_AudioDevice *device, snd_pcm_hw_params_t *pa
         return -1;
     }
 
-    /* "set" the hardware with the desired parameters */
+    // "set" the hardware with the desired parameters
     status = ALSA_snd_pcm_hw_params(device->hidden->pcm_handle, hwparams);
     if (status < 0) {
         return -1;
@@ -501,14 +495,14 @@ static int ALSA_set_buffer_size(SDL_AudioDevice *device, snd_pcm_hw_params_t *pa
 
     device->sample_frames = persize;
 
-    /* This is useful for debugging */
+    // This is useful for debugging
     if (SDL_getenv("SDL_AUDIO_ALSA_DEBUG")) {
         snd_pcm_uframes_t bufsize;
 
         ALSA_snd_pcm_hw_params_get_buffer_size(hwparams, &bufsize);
 
         SDL_LogError(SDL_LOG_CATEGORY_AUDIO,
-                     "ALSA: period size = %ld, periods = %u, buffer size = %lu\n",
+                     "ALSA: period size = %ld, periods = %u, buffer size = %lu",
                      persize, periods, bufsize);
     }
 
@@ -520,14 +514,14 @@ static int ALSA_OpenDevice(SDL_AudioDevice *device)
     const SDL_bool iscapture = device->iscapture;
     int status = 0;
 
-    /* Initialize all variables that we clean on shutdown */
+    // Initialize all variables that we clean on shutdown
     device->hidden = (struct SDL_PrivateAudioData *)SDL_calloc(1, sizeof(*device->hidden));
     if (device->hidden == NULL) {
         return SDL_OutOfMemory();
     }
 
-    /* Open the audio device */
-    /* Name of device should depend on # channels in spec */
+    // Open the audio device
+    // Name of device should depend on # channels in spec
     snd_pcm_t *pcm_handle = NULL;
     status = ALSA_snd_pcm_open(&pcm_handle,
                                get_audio_device(device->handle, device->spec.channels),
@@ -540,7 +534,7 @@ static int ALSA_OpenDevice(SDL_AudioDevice *device)
 
     device->hidden->pcm_handle = pcm_handle;
 
-    /* Figure out what the hardware is capable of */
+    // Figure out what the hardware is capable of
     snd_pcm_hw_params_t *hwparams = NULL;
     snd_pcm_hw_params_alloca(&hwparams);
     status = ALSA_snd_pcm_hw_params_any(pcm_handle, hwparams);
@@ -548,14 +542,14 @@ static int ALSA_OpenDevice(SDL_AudioDevice *device)
         return SDL_SetError("ALSA: Couldn't get hardware config: %s", ALSA_snd_strerror(status));
     }
 
-    /* SDL only uses interleaved sample output */
+    // SDL only uses interleaved sample output
     status = ALSA_snd_pcm_hw_params_set_access(pcm_handle, hwparams,
                                                SND_PCM_ACCESS_RW_INTERLEAVED);
     if (status < 0) {
         return SDL_SetError("ALSA: Couldn't set interleaved access: %s", ALSA_snd_strerror(status));
     }
 
-    /* Try for a closest match on audio format */
+    // Try for a closest match on audio format
     snd_pcm_format_t format = 0;
     const SDL_AudioFormat *closefmts = SDL_ClosestAudioFormats(device->spec.format);
     SDL_AudioFormat test_format;
@@ -597,9 +591,8 @@ static int ALSA_OpenDevice(SDL_AudioDevice *device)
     }
     device->spec.format = test_format;
 
-    /* Validate number of channels and determine if swizzling is necessary
-     * Assume original swizzling, until proven otherwise.
-     */
+    // Validate number of channels and determine if swizzling is necessary.
+    //  Assume original swizzling, until proven otherwise.
     device->hidden->swizzle_func = swizzle_alsa_channels;
 #ifdef SND_CHMAP_API_VERSION
     snd_pcm_chmap_t *chmap = ALSA_snd_pcm_get_chmap(pcm_handle);
@@ -611,11 +604,11 @@ static int ALSA_OpenDevice(SDL_AudioDevice *device)
                 device->hidden->swizzle_func = no_swizzle;
             }
         }
-        free(chmap); /* This should NOT be SDL_free() */
+        free(chmap); // This should NOT be SDL_free()
     }
-#endif /* SND_CHMAP_API_VERSION */
+#endif // SND_CHMAP_API_VERSION
 
-    /* Set the number of channels */
+    // Set the number of channels
     status = ALSA_snd_pcm_hw_params_set_channels(pcm_handle, hwparams,
                                                  device->spec.channels);
     unsigned int channels = device->spec.channels;
@@ -627,7 +620,7 @@ static int ALSA_OpenDevice(SDL_AudioDevice *device)
         device->spec.channels = channels;
     }
 
-    /* Set the audio rate */
+    // Set the audio rate
     unsigned int rate = device->spec.freq;
     status = ALSA_snd_pcm_hw_params_set_rate_near(pcm_handle, hwparams,
                                                   &rate, NULL);
@@ -636,13 +629,13 @@ static int ALSA_OpenDevice(SDL_AudioDevice *device)
     }
     device->spec.freq = rate;
 
-    /* Set the buffer size, in samples */
+    // Set the buffer size, in samples
     status = ALSA_set_buffer_size(device, hwparams);
     if (status < 0) {
         return SDL_SetError("Couldn't set hardware audio parameters: %s", ALSA_snd_strerror(status));
     }
 
-    /* Set the software parameters */
+    // Set the software parameters
     snd_pcm_sw_params_t *swparams = NULL;
     snd_pcm_sw_params_alloca(&swparams);
     status = ALSA_snd_pcm_sw_params_current(pcm_handle, swparams);
@@ -683,8 +676,7 @@ static int ALSA_OpenDevice(SDL_AudioDevice *device)
 
     ALSA_snd_pcm_start(pcm_handle);
 
-    /* We're ready to rock and roll. :-) */
-    return 0;
+    return 0;  // We're ready to rock and roll. :-)
 }
 
 typedef struct ALSA_Device
@@ -705,10 +697,10 @@ static void add_device(const SDL_bool iscapture, const char *name, void *hint, A
         return;
     }
 
-    /* Not all alsa devices are enumerable via snd_device_name_get_hint
-       (i.e. bluetooth devices).  Therefore if hint is passed in to this
-       function as  NULL, assume name contains desc.
-       Make sure not to free the storage associated with desc in this case */
+    // Not all alsa devices are enumerable via snd_device_name_get_hint
+    //  (i.e. bluetooth devices).  Therefore if hint is passed in to this
+    //  function as NULL, assume name contains desc.
+    //  Make sure not to free the storage associated with desc in this case
     if (hint) {
         desc = ALSA_snd_device_name_get_hint(hint, "DESC");
         if (desc == NULL) {
@@ -721,32 +713,31 @@ static void add_device(const SDL_bool iscapture, const char *name, void *hint, A
 
     SDL_assert(name != NULL);
 
-    /* some strings have newlines, like "HDA NVidia, HDMI 0\nHDMI Audio Output".
-       just chop the extra lines off, this seems to get a reasonable device
-       name without extra details. */
+    // some strings have newlines, like "HDA NVidia, HDMI 0\nHDMI Audio Output".
+    //  just chop the extra lines off, this seems to get a reasonable device
+    //  name without extra details.
     ptr = SDL_strchr(desc, '\n');
     if (ptr != NULL) {
         *ptr = '\0';
     }
 
-    /*printf("ALSA: adding %s device '%s' (%s)\n", iscapture ? "capture" : "output", name, desc);*/
+    //SDL_LogInfo(SDL_LOG_CATEGORY_AUDIO, "ALSA: adding %s device '%s' (%s)", iscapture ? "capture" : "output", name, desc);
 
     handle = SDL_strdup(name);
     if (handle == NULL) {
         if (hint) {
-            free(desc); /* This should NOT be SDL_free() */
+            free(desc); // This should NOT be SDL_free()
         }
         SDL_free(dev);
         return;
     }
 
-    /* Note that spec is NULL, because we are required to open the device before
-     * acquiring the mix format, making this information inaccessible at
-     * enumeration time
-     */
+    // Note that spec is NULL, because we are required to open the device before
+    //  acquiring the mix format, making this information inaccessible at
+    //  enumeration time
     SDL_AddAudioDevice(iscapture, desc, NULL, handle);
     if (hint) {
-        free(desc); /* This should NOT be SDL_free() */
+        free(desc); // This should NOT be SDL_free()
     }
     dev->name = handle;
     dev->iscapture = iscapture;
@@ -774,19 +765,17 @@ static void ALSA_HotplugIteration(SDL_bool *has_default_output, SDL_bool *has_de
         unseen = hotplug_devices;
         seen = NULL;
 
-        /* Apparently there are several different ways that ALSA lists
-           actual hardware. It could be prefixed with "hw:" or "default:"
-           or "sysdefault:" and maybe others. Go through the list and see
-           if we can find a preferred prefix for the system. */
+        // Apparently there are several different ways that ALSA lists
+        //  actual hardware. It could be prefixed with "hw:" or "default:"
+        //  or "sysdefault:" and maybe others. Go through the list and see
+        //  if we can find a preferred prefix for the system.
         for (int i = 0; hints[i]; i++) {
             char *name = ALSA_snd_device_name_get_hint(hints[i], "NAME");
             if (name == NULL) {
                 continue;
             }
 
-            if (SDL_strcmp(name, "default") == 0 ||
-                SDL_strncmp(name, "default:", 8 ) == 0 ||
-                SDL_strncmp(name, "sysdefault:", 11 ) == 0 ) {
+            if (SDL_strcmp(name, "default") == 0) {
                 if (has_default < 0) {
                     has_default = i;
                 }
@@ -803,11 +792,11 @@ static void ALSA_HotplugIteration(SDL_bool *has_default_output, SDL_bool *has_de
                     }
                 }
 
-                free(name); /* This should NOT be SDL_free() */
+                free(name); // This should NOT be SDL_free()
             }
         }
 
-        /* look through the list of device names to find matches */
+        // look through the list of device names to find matches
         if (match || (has_default >= 0)) {  // did we find a device name prefix we like at all...?
             for (int i = 0; hints[i]; i++) {
                 char *name = ALSA_snd_device_name_get_hint(hints[i], "NAME");
@@ -872,18 +861,18 @@ static void ALSA_HotplugIteration(SDL_bool *has_default_output, SDL_bool *has_de
                     }
                 }
 
-                free(name); /* This should NOT be SDL_free() */
+                free(name); // This should NOT be SDL_free()
             }
         }
 
         ALSA_snd_device_name_free_hint(hints);
 
-        hotplug_devices = seen; /* now we have a known-good list of attached devices. */
+        hotplug_devices = seen; // now we have a known-good list of attached devices.
 
-        /* report anything still in unseen as removed. */
+        // report anything still in unseen as removed.
         ALSA_Device *next = NULL;
         for (ALSA_Device *dev = unseen; dev; dev = next) {
-            /*printf("ALSA: removing usb %s device '%s'\n", dev->iscapture ? "capture" : "output", dev->name);*/
+            //SDL_LogInfo(SDL_LOG_CATEGORY_AUDIO, "ALSA: removing %s device '%s'", dev->iscapture ? "capture" : "output", dev->name);
             next = dev->next;
             SDL_AudioDeviceDisconnected(SDL_FindPhysicalAudioDeviceByHandle(dev->name));
             SDL_free(dev->name);
@@ -901,13 +890,13 @@ static int SDLCALL ALSA_HotplugThread(void *arg)
     SDL_SetThreadPriority(SDL_THREAD_PRIORITY_LOW);
 
     while (!SDL_AtomicGet(&ALSA_hotplug_shutdown)) {
-        /* Block awhile before checking again, unless we're told to stop. */
+        // Block awhile before checking again, unless we're told to stop.
         const Uint64 ticks = SDL_GetTicks() + 5000;
         while (!SDL_AtomicGet(&ALSA_hotplug_shutdown) && SDL_GetTicks() < ticks) {
             SDL_Delay(100);
         }
 
-        ALSA_HotplugIteration(NULL, NULL); /* run the check. */
+        ALSA_HotplugIteration(NULL, NULL); // run the check.
     }
 
     return 0;
@@ -919,7 +908,7 @@ static void ALSA_DetectDevices(SDL_AudioDevice **default_output, SDL_AudioDevice
     // ALSA doesn't have a concept of a changeable default device, afaik, so we expose a generic default
     // device here. It's the best we can do at this level.
     SDL_bool has_default_output = SDL_FALSE, has_default_capture = SDL_FALSE;
-    ALSA_HotplugIteration(&has_default_output, &has_default_capture); // run once now before a thread continues to check. */
+    ALSA_HotplugIteration(&has_default_output, &has_default_capture); // run once now before a thread continues to check.
     if (has_default_output) {
         *default_output = SDL_AddAudioDevice(/*iscapture=*/SDL_FALSE, "ALSA default output device", NULL, SDL_strdup("default"));
     }
@@ -930,7 +919,7 @@ static void ALSA_DetectDevices(SDL_AudioDevice **default_output, SDL_AudioDevice
 #if SDL_ALSA_HOTPLUG_THREAD
     SDL_AtomicSet(&ALSA_hotplug_shutdown, 0);
     ALSA_hotplug_thread = SDL_CreateThread(ALSA_HotplugThread, "SDLHotplugALSA", NULL);
-    /* if the thread doesn't spin, oh well, you just don't get further hotplug events. */
+    // if the thread doesn't spin, oh well, you just don't get further hotplug events.
 #endif
 }
 
@@ -947,9 +936,9 @@ static void ALSA_Deinitialize(void)
     }
 #endif
 
-    /* Shutting down! Clean up any data we've gathered. */
+    // Shutting down! Clean up any data we've gathered.
     for (dev = hotplug_devices; dev; dev = next) {
-        /*printf("ALSA: at shutdown, removing %s device '%s'\n", dev->iscapture ? "capture" : "output", dev->name);*/
+        //SDL_LogInfo(SDL_LOG_CATEGORY_AUDIO, "ALSA: at shutdown, removing %s device '%s'", dev->iscapture ? "capture" : "output", dev->name);
         next = dev->next;
         SDL_free(dev->name);
         SDL_free(dev);
@@ -965,7 +954,6 @@ static SDL_bool ALSA_Init(SDL_AudioDriverImpl *impl)
         return SDL_FALSE;
     }
 
-    /* Set the function pointers */
     impl->DetectDevices = ALSA_DetectDevices;
     impl->OpenDevice = ALSA_OpenDevice;
     impl->WaitDevice = ALSA_WaitDevice;
@@ -979,11 +967,11 @@ static SDL_bool ALSA_Init(SDL_AudioDriverImpl *impl)
 
     impl->HasCaptureSupport = SDL_TRUE;
 
-    return SDL_TRUE; /* this audio target is available. */
+    return SDL_TRUE;
 }
 
 AudioBootStrap ALSA_bootstrap = {
     "alsa", "ALSA PCM audio", ALSA_Init, SDL_FALSE
 };
 
-#endif /* SDL_AUDIO_DRIVER_ALSA */
+#endif // SDL_AUDIO_DRIVER_ALSA

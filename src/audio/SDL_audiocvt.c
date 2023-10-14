@@ -404,10 +404,8 @@ static int UpdateAudioStreamInputSpec(SDL_AudioStream *stream, const SDL_AudioSp
 
 SDL_AudioStream *SDL_CreateAudioStream(const SDL_AudioSpec *src_spec, const SDL_AudioSpec *dst_spec)
 {
-    if (!SDL_WasInit(SDL_INIT_AUDIO)) {
-        SDL_SetError("Audio subsystem is not initialized");
-        return NULL;
-    }
+    SDL_ChooseAudioConverters();
+    SDL_SetupAudioResampler();
 
     SDL_AudioStream *retval = (SDL_AudioStream *)SDL_calloc(1, sizeof(SDL_AudioStream));
     if (retval == NULL) {
@@ -438,6 +436,18 @@ SDL_AudioStream *SDL_CreateAudioStream(const SDL_AudioSpec *src_spec, const SDL_
     }
 
     return retval;
+}
+
+SDL_PropertiesID SDL_GetAudioStreamProperties(SDL_AudioStream *stream)
+{
+    if (!stream) {
+        SDL_InvalidParamError("stream");
+        return 0;
+    }
+    if (stream->props == 0) {
+        stream->props = SDL_CreateProperties();
+    }
+    return stream->props;
 }
 
 int SDL_SetAudioStreamGetCallback(SDL_AudioStream *stream, SDL_AudioStreamCallback callback, void *userdata)
@@ -1163,12 +1173,16 @@ void SDL_DestroyAudioStream(SDL_AudioStream *stream)
         return;
     }
 
+    SDL_DestroyProperties(stream->props);
+
     OnAudioStreamDestroy(stream);
 
     const SDL_bool simplified = stream->simplified;
     if (simplified) {
-        SDL_assert(stream->bound_device->simplified);
-        SDL_CloseAudioDevice(stream->bound_device->instance_id);  // this will unbind the stream.
+        if (stream->bound_device) {
+            SDL_assert(stream->bound_device->simplified);
+            SDL_CloseAudioDevice(stream->bound_device->instance_id);  // this will unbind the stream.
+        }
     } else {
         SDL_UnbindAudioStream(stream);
     }

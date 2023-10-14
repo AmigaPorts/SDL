@@ -107,6 +107,7 @@ testautomation: testautomation.o \
 		      testautomation_mouse.o \
 		      testautomation_pixels.o \
 		      testautomation_platform.o \
+		      testautomation_properties.o \
 		      testautomation_rect.o \
 		      testautomation_render.o \
 		      testautomation_rwops.o \

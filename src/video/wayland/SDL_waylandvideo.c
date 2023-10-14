@@ -128,6 +128,14 @@ static SDL_VideoDevice *Wayland_CreateDevice(void)
     SDL_VideoData *data;
     struct wl_display *display;
 
+    /* Are we trying to connect to or are currently in a Wayland session? */
+    if (!SDL_getenv("WAYLAND_DISPLAY")) {
+        const char *session = SDL_getenv("XDG_SESSION_TYPE");
+        if (session && SDL_strcasecmp(session, "wayland") != 0) {
+            return NULL;
+        }
+    }
+
     if (!SDL_WAYLAND_LoadSymbols()) {
         return NULL;
     }
@@ -222,9 +230,6 @@ static SDL_VideoDevice *Wayland_CreateDevice(void)
     device->SetClipboardData = Wayland_SetClipboardData;
     device->GetClipboardData = Wayland_GetClipboardData;
     device->HasClipboardData = Wayland_HasClipboardData;
-    device->SetPrimarySelectionText = Wayland_SetPrimarySelectionText;
-    device->GetPrimarySelectionText = Wayland_GetPrimarySelectionText;
-    device->HasPrimarySelectionText = Wayland_HasPrimarySelectionText;
     device->StartTextInput = Wayland_StartTextInput;
     device->StopTextInput = Wayland_StopTextInput;
     device->SetTextInputRect = Wayland_SetTextInputRect;
@@ -903,6 +908,12 @@ int Wayland_VideoInit(SDL_VideoDevice *_this)
     WAYLAND_wl_display_flush(data->display);
 
     Wayland_InitKeyboard(_this);
+
+    if (data->primary_selection_device_manager) {
+        _this->SetPrimarySelectionText = Wayland_SetPrimarySelectionText;
+        _this->GetPrimarySelectionText = Wayland_GetPrimarySelectionText;
+        _this->HasPrimarySelectionText = Wayland_HasPrimarySelectionText;
+    }
 
     data->initializing = SDL_FALSE;
 

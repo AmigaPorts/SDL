@@ -1,6 +1,9 @@
 #
 # CMake script for building the SDL tests
 #
+
+include(CheckStructHasMember)
+
 if(SDL_TESTS_LINK_SHARED)
     set(sdl_name_component SDL3-shared)
 else()
@@ -180,6 +183,32 @@ endif()
 check_include_file(libudev.h HAVE_LIBUDEV_H)
 if(HAVE_LIBUDEV_H)
     add_definitions(-DHAVE_LIBUDEV_H)
+endif()
+
+set(FFmpeg_FIND_COMPONENTS AVCODEC AVFORMAT AVUTIL SWSCALE)
+include("${SDL3_SOURCE_DIR}/cmake/FindFFmpeg.cmake")
+if(FFmpeg_FOUND)
+    cmake_push_check_state()
+    list(APPEND CMAKE_REQUIRED_INCLUDES "${FFmpeg_AVUTIL_INCLUDE_DIRS}")
+    check_struct_has_member("AVFrame" "ch_layout" "libavutil/frame.h" LIBAVUTIL_AVFRAME_HAS_CH_LAYOUT)
+    cmake_pop_check_state()
+endif()
+if(FFmpeg_FOUND AND LIBAVUTIL_AVFRAME_HAS_CH_LAYOUT)
+    add_sdl_test_executable(testffmpeg NO_C90 SOURCES testffmpeg.c ${icon_bmp_header})
+    if(APPLE)
+        target_sources(testffmpeg PRIVATE testffmpeg_videotoolbox.m)
+        target_link_options(testffmpeg PRIVATE "-Wl,-framework,CoreFoundation" "-Wl,-framework,CoreVideo" "-Wl,-framework,Metal")
+    endif()
+    if(HAVE_OPENGLES_V2)
+        message(DEBUG "Enabling EGL support in testffmpeg")
+        target_compile_definitions(testffmpeg PRIVATE HAVE_EGL)
+        if(TARGET OpenGL::EGL)
+            target_link_libraries(testffmpeg PRIVATE OpenGL::EGL)
+        endif()
+    endif()
+    target_link_libraries(testffmpeg PRIVATE ${FFMPEG_LIBRARIES})
+else()
+    message(STATUS "Can't find ffmpeg 5.1.3 or newer, skipping testffmpeg")
 endif()
 
 add_sdl_test_executable(checkkeys SOURCES checkkeys.c)
@@ -528,6 +557,11 @@ if(SDL_INSTALL_TESTS)
             TARGETS ${SDL_TEST_EXECUTABLES}
             DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/installed-tests/SDL3
         )
+    endif()
+    if(MSVC)
+        foreach(test IN LISTS SDL_TEST_EXECUTABLES)
+            install(FILES $<TARGET_PDB_FILE:${test}> DESTINATION "${CMAKE_INSTALL_LIBEXECDIR}/installed-tests/SDL3" OPTIONAL)
+        endforeach()
     endif()
     install(
         FILES ${RESOURCE_FILES}

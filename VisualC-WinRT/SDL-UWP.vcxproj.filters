@@ -324,6 +324,9 @@
     <ClInclude Include="..\src\SDL_fatal.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\SDL_hashtable.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\src\SDL_hints_c.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -331,6 +334,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\SDL_log_c.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\SDL_properties_c.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\locale\SDL_syslocale.h">
@@ -492,6 +498,12 @@
     <ClCompile Include="..\src\audio\wasapi\SDL_wasapi_winrt.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\core\SDL_core_unsupported.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\core\SDL_runapp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\core\windows\SDL_windows.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -600,6 +612,9 @@
     <ClCompile Include="..\src\render\SDL_render.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\render\SDL_render_unsupported.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\render\SDL_yuv_sw.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -639,10 +654,22 @@
     <ClCompile Include="..\src\SDL_guid.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\SDL_hashtable.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\SDL_hints.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\SDL_list.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\SDL_log.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\SDL_utils.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\SDL_properties.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\locale\SDL_locale.c">
@@ -768,6 +795,9 @@
     <ClCompile Include="..\src\video\SDL_video.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\video\SDL_video_unsupported.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\video\winrt\SDL_winrtevents.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -793,12 +823,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\video\winrt\SDL_winrtgamebar.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\SDL_list.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\SDL_utils.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\haptic\windows\SDL_dinputhaptic.c">
