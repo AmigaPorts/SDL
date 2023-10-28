@@ -524,7 +524,6 @@ int SDL_VideoInit(const char *driver_name)
     pre_driver_error. */
     _this = video;
     _this->name = bootstrap[i]->name;
-    _this->next_object_id = 1;
     _this->thread = SDL_ThreadID();
 
     /* Set some very sane GL defaults */
@@ -671,7 +670,7 @@ SDL_DisplayID SDL_AddVideoDisplay(const SDL_VideoDisplay *display, SDL_bool send
     _this->displays = displays;
     _this->displays[_this->num_displays++] = new_display;
 
-    id = _this->next_object_id++;
+    id = SDL_GetNextObjectID();
     SDL_memcpy(new_display, display, sizeof(*new_display));
     new_display->id = id;
     new_display->device = _this;
@@ -696,12 +695,12 @@ SDL_DisplayID SDL_AddVideoDisplay(const SDL_VideoDisplay *display, SDL_bool send
     }
 
     if (send_event) {
-        SDL_SendDisplayEvent(new_display, SDL_EVENT_DISPLAY_CONNECTED, 0);
+        SDL_SendDisplayEvent(new_display, SDL_EVENT_DISPLAY_ADDED, 0);
     }
     return id;
 }
 
-void SDL_OnDisplayConnected(SDL_VideoDisplay *display)
+void SDL_OnDisplayAdded(SDL_VideoDisplay *display)
 {
     SDL_Window *window;
 
@@ -722,7 +721,7 @@ void SDL_DelVideoDisplay(SDL_DisplayID displayID, SDL_bool send_event)
     display = _this->displays[display_index];
 
     if (send_event) {
-        SDL_SendDisplayEvent(display, SDL_EVENT_DISPLAY_DISCONNECTED, 0);
+        SDL_SendDisplayEvent(display, SDL_EVENT_DISPLAY_REMOVED, 0);
     }
 
     SDL_free(display->name);
@@ -1998,7 +1997,7 @@ static SDL_Window *SDL_CreateWindowInternal(const char *title, int x, int y, int
         return NULL;
     }
     window->magic = &_this->window_magic;
-    window->id = _this->next_object_id++;
+    window->id = SDL_GetNextObjectID();
     window->windowed.x = window->x = x;
     window->windowed.y = window->y = y;
     window->windowed.w = window->w = w;
@@ -2164,7 +2163,7 @@ SDL_Window *SDL_CreateWindowFrom(const void *data)
         return NULL;
     }
     window->magic = &_this->window_magic;
-    window->id = _this->next_object_id++;
+    window->id = SDL_GetNextObjectID();
     window->flags = flags;
     window->is_destroying = SDL_FALSE;
     window->display_scale = 1.0f;
@@ -5018,6 +5017,8 @@ int SDL_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
         if (!*error) {
             SDL_SetError("No message system available");
         }
+    } else {
+        SDL_ClearError();
     }
 
     (void)SDL_AtomicDecRef(&SDL_messagebox_count);

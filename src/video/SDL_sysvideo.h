@@ -364,7 +364,6 @@ struct SDL_VideoDevice
     SDL_Window *windows;
     SDL_Window *grabbed_window;
     Uint8 window_magic;
-    SDL_WindowID next_object_id;
     Uint32 clipboard_sequence;
     SDL_ClipboardDataCallback clipboard_callback;
     SDL_ClipboardCleanupCallback clipboard_cleanup;
@@ -522,7 +521,7 @@ extern SDL_bool SDL_HasWindows(void);
 extern void SDL_RelativeToGlobalForWindow(SDL_Window *window, int rel_x, int rel_y, int *abs_x, int *abs_y);
 extern void SDL_GlobalToRelativeForWindow(SDL_Window *window, int abs_x, int abs_y, int *rel_x, int *rel_y);
 
-extern void SDL_OnDisplayConnected(SDL_VideoDisplay *display);
+extern void SDL_OnDisplayAdded(SDL_VideoDisplay *display);
 extern void SDL_OnWindowShown(SDL_Window *window);
 extern void SDL_OnWindowHidden(SDL_Window *window);
 extern void SDL_OnWindowMoved(SDL_Window *window);

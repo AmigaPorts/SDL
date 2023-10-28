@@ -75,7 +75,7 @@ struct Thing
         } poof;
         struct {
             SDL_AudioStream *stream;
-            int total_ticks;
+            int total_bytes;
             Uint64 next_level_update;
             Uint8 levels[5];
         } stream;
@@ -316,7 +316,9 @@ static void DestroyThing(Thing *thing)
         case THING_LOGDEV:
         case THING_LOGDEV_CAPTURE:
             SDL_CloseAudioDevice(thing->data.logdev.devid);
-            SDL_DestroyTexture(thing->data.logdev.visualizer);
+            if (state->renderers[0] != NULL) {
+                SDL_DestroyTexture(thing->data.logdev.visualizer);
+            }
             SDL_DestroyMutex(thing->data.logdev.postmix_lock);
             SDL_free(thing->data.logdev.postmix_buffer);
             break;
@@ -357,9 +359,10 @@ static void DrawOneThing(SDL_Renderer *renderer, Thing *thing)
     if (thing->scale != 1.0f) {
         const float centerx = thing->rect.x + (thing->rect.w / 2);
         const float centery = thing->rect.y + (thing->rect.h / 2);
-        SDL_assert(thing->texture != NULL);
-        dst.w = thing->texture->w * thing->scale;
-        dst.h = thing->texture->h * thing->scale;
+        const int w = thing->texture ? thing->texture->w : 128;
+        const int h = thing->texture ? thing->texture->h : 128;
+        dst.w = w * thing->scale;
+        dst.h = h * thing->scale;
         dst.x = centerx - (dst.w / 2);
         dst.y = centery - (dst.h / 2);
     }
@@ -416,11 +419,13 @@ static void DrawThings(SDL_Renderer *renderer)
 static void Draw(void)
 {
     SDL_Renderer *renderer = state->renderers[0];
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(renderer, 64, 0, 64, 255);
-    SDL_RenderClear(renderer);
-    DrawThings(renderer);
-    SDL_RenderPresent(renderer);
+    if (renderer) {  /* might be NULL if we're shutting down. */
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(renderer, 64, 0, 64, 255);
+        SDL_RenderClear(renderer);
+        DrawThings(renderer);
+        SDL_RenderPresent(renderer);
+    }
 }
 
 static void RepositionRowOfThings(const ThingType what, const float y)
@@ -552,13 +557,11 @@ static void StreamThing_ontick(Thing *thing, Uint64 now)
     /* are we playing? See if we're done, or update state. */
     if (thing->line_connected_to->what == THING_LOGDEV) {
         const int available = SDL_GetAudioStreamAvailable(thing->data.stream.stream);
-        SDL_AudioSpec spec;
-        if (!available || (SDL_GetAudioStreamFormat(thing->data.stream.stream, NULL, &spec) < 0)) {
+        if (!available) {
             DestroyThingInPoof(thing);
+            return;
         } else {
-            const int ticksleft = (int) ((((Uint64) (available / SDL_AUDIO_FRAMESIZE(spec))) * 1000) / spec.freq);
-            const float pct = thing->data.stream.total_ticks ? (((float) (ticksleft)) / ((float) thing->data.stream.total_ticks)) : 0.0f;
-            thing->progress = 1.0f - pct;
+            thing->progress = 1.0f - (thing->data.stream.total_bytes ? (((float) (available)) / ((float) thing->data.stream.total_bytes)) : 0.0f);
         }
     }
 
@@ -578,6 +581,9 @@ static void StreamThing_ondrag(Thing *thing, int button, float x, float y)
     if (button == SDL_BUTTON_RIGHT) {  /* this is kinda hacky, but use this to disconnect from a playing source. */
         if (thing->line_connected_to) {
             SDL_UnbindAudioStream(thing->data.stream.stream); /* unbind from current device */
+            if (thing->line_connected_to->what == THING_LOGDEV_CAPTURE) {
+                SDL_FlushAudioStream(thing->data.stream.stream);
+            }
             thing->line_connected_to = NULL;
         }
     }
@@ -592,16 +598,14 @@ static void StreamThing_ondrop(Thing *thing, int button, float x, float y)
             /* connect to a logical device! */
             SDL_Log("Binding audio stream ('%s') to logical device %u", thing->titlebar, (unsigned int) droppable_highlighted_thing->data.logdev.devid);
             if (thing->line_connected_to) {
-                const SDL_AudioSpec *spec = &droppable_highlighted_thing->data.logdev.spec;
                 SDL_UnbindAudioStream(thing->data.stream.stream); /* unbind from current device */
                 if (thing->line_connected_to->what == THING_LOGDEV_CAPTURE) {
                     SDL_FlushAudioStream(thing->data.stream.stream);
-                    thing->data.stream.total_ticks = (int) ((((Uint64) (SDL_GetAudioStreamAvailable(thing->data.stream.stream) / SDL_AUDIO_FRAMESIZE(*spec))) * 1000) / spec->freq);
                 }
             }
 
             SDL_BindAudioStream(droppable_highlighted_thing->data.logdev.devid, thing->data.stream.stream); /* bind to new device! */
-
+            thing->data.stream.total_bytes = SDL_GetAudioStreamAvailable(thing->data.stream.stream);
             thing->progress = 0.0f;  /* ontick will adjust this if we're on an output device.*/
             thing->data.stream.next_level_update = SDL_GetTicks() + 100;
             thing->line_connected_to = droppable_highlighted_thing;
@@ -639,7 +643,7 @@ static Thing *CreateStreamThing(const SDL_AudioSpec *spec, const Uint8 *buf, con
     if (buf && buflen) {
         SDL_PutAudioStreamData(thing->data.stream.stream, buf, (int) buflen);
         SDL_FlushAudioStream(thing->data.stream.stream);
-        thing->data.stream.total_ticks = (int) ((((Uint64) (SDL_GetAudioStreamAvailable(thing->data.stream.stream) / SDL_AUDIO_FRAMESIZE(*spec))) * 1000) / spec->freq);
+        thing->data.stream.total_bytes = SDL_GetAudioStreamAvailable(thing->data.stream.stream);
     }
     thing->ontick = StreamThing_ontick;
     thing->ondrag = StreamThing_ondrag;
@@ -730,7 +734,9 @@ static void LoadStockWavThings(void)
 static void DestroyTexture(Texture *tex)
 {
     if (tex) {
-        SDL_DestroyTexture(tex->texture);
+        if (state->renderers[0] != NULL) {  /* if the renderer went away, this pointer is already bogus. */
+            SDL_DestroyTexture(tex->texture);
+        }
         SDL_free(tex);
     }
 }

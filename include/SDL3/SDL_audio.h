@@ -660,7 +660,7 @@ extern DECLSPEC SDL_AudioDeviceID SDLCALL SDL_GetAudioStreamDevice(SDL_AudioStre
  *
  * \param src_spec The format details of the input audio
  * \param dst_spec The format details of the output audio
- * \returns 0 on success, or -1 on error.
+ * \returns a new audio stream on success, or NULL on failure.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1281,8 +1281,7 @@ extern DECLSPEC int SDLCALL SDL_SetAudioPostmixCallback(SDL_AudioDeviceID devid,
  * audio data allocated by the function is written to `audio_buf` and its
  * length in bytes to `audio_len`. The SDL_AudioSpec members `freq`,
  * `channels`, and `format` are set to the values of the audio data in the
- * buffer. The `samples` member is set to a sane default and all others are
- * set to zero.
+ * buffer.
  *
  * It's necessary to use SDL_free() to free the audio data returned in
  * `audio_buf` when it is no longer used.

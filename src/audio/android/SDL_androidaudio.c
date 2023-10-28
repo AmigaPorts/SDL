@@ -25,7 +25,6 @@
 // Output audio to Android (legacy interface)
 
 #include "../SDL_sysaudio.h"
-#include "../SDL_audio_c.h"
 #include "SDL_androidaudio.h"
 
 #include "../../core/android/SDL_android.h"
@@ -172,7 +171,7 @@ static SDL_bool ANDROIDAUDIO_Init(SDL_AudioDriverImpl *impl)
     // !!! FIXME: if on Android API < 24, DetectDevices and Deinitialize should be NULL and OnlyHasDefaultOutputDevice and OnlyHasDefaultCaptureDevice should be SDL_TRUE, since audio device enum and hotplug appears to require Android 7.0+.
     impl->ThreadInit = Android_AudioThreadInit;
     impl->DetectDevices = Android_StartAudioHotplug;
-    impl->Deinitialize = Android_StopAudioHotplug;
+    impl->DeinitializeStart = Android_StopAudioHotplug;
     impl->OpenDevice = ANDROIDAUDIO_OpenDevice;
     impl->PlayDevice = ANDROIDAUDIO_PlayDevice;
     impl->GetDeviceBuf = ANDROIDAUDIO_GetDeviceBuf;

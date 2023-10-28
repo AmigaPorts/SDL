@@ -24,6 +24,7 @@
 
 #include "SDL_events_c.h"
 #include "../SDL_hints_c.h"
+#include "../audio/SDL_audio_c.h"
 #include "../timer/SDL_timer_c.h"
 #ifndef SDL_JOYSTICK_DISABLED
 #include "../joystick/SDL_joystick_c.h"
@@ -222,8 +223,8 @@ static void SDL_LogEvent(const SDL_Event *event)
                            (uint)event->display.timestamp, (uint)event->display.displayID, name, (int)event->display.data1); \
         break
         SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_ORIENTATION);
-        SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_CONNECTED);
-        SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_DISCONNECTED);
+        SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_ADDED);
+        SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_REMOVED);
         SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_MOVED);
         SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_CONTENT_SCALE_CHANGED);
 #undef SDL_DISPLAYEVENT_CASE
@@ -860,6 +861,10 @@ static void SDL_PumpEventsInternal(SDL_bool push_sentinel)
     if (_this) {
         _this->PumpEvents(_this);
     }
+
+#ifndef SDL_AUDIO_DISABLED
+    SDL_UpdateAudio();
+#endif
 
 #ifndef SDL_SENSOR_DISABLED
     /* Check for sensor state change */

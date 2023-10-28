@@ -260,6 +260,7 @@ static SDL_GamepadType SDL_GetJoystickGameControllerProtocol(const char *name, U
         interface_protocol == XBONE_IFACE_PROTOCOL) {
 
         static const int SUPPORTED_VENDORS[] = {
+            0x03f0, /* HP */
             0x044f, /* Thrustmaster */
             0x045e, /* Microsoft */
             0x0738, /* Mad Catz */
@@ -790,7 +791,7 @@ SDL_bool HIDAPI_JoystickConnected(SDL_HIDAPI_Device *device, SDL_JoystickID *pJo
         }
     }
 
-    joystickID = SDL_GetNextJoystickInstanceID();
+    joystickID = SDL_GetNextObjectID();
     HIDAPI_AddJoystickInstanceToDevice(device, joystickID);
 
     for (i = 0; i < device->num_children; ++i) {
@@ -1439,6 +1440,12 @@ static int HIDAPI_JoystickOpen(SDL_Joystick *joystick, int device_index)
     device->driver->UpdateDevice(device);
     device->updating = SDL_FALSE;
     SDL_UnlockMutex(device->dev_lock);
+
+    /* UpdateDevice() may have called HIDAPI_JoystickDisconnected() if the device went away */
+    if (device->num_joysticks == 0) {
+        SDL_free(hwdata);
+        return SDL_SetError("HIDAPI device disconnected while opening");
+    }
 
     if (!device->driver->OpenJoystick(device, joystick)) {
         /* The open failed, mark this device as disconnected and update devices */

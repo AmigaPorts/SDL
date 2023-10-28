@@ -22,8 +22,6 @@
 #ifndef SDL_audio_c_h_
 #define SDL_audio_c_h_
 
-/* !!! FIXME: remove this header and have things just include SDL_sysaudio.h directly. */
-
-#include "SDL_sysaudio.h"
+extern void SDL_UpdateAudio(void);
 
 #endif /* SDL_audio_c_h_ */
