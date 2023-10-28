@@ -22,7 +22,7 @@
 
 #ifdef SDL_AUDIO_DRIVER_JACK
 
-#include "../SDL_audio_c.h"
+#include "../SDL_sysaudio.h"
 #include "SDL_jackaudio.h"
 #include "../../thread/SDL_systhread.h"
 
@@ -43,6 +43,8 @@ static const char *(*JACK_jack_port_name)(const jack_port_t *);
 static const char *(*JACK_jack_port_type)(const jack_port_t *);
 static int (*JACK_jack_connect)(jack_client_t *, const char *, const char *);
 static int (*JACK_jack_set_process_callback)(jack_client_t *, JackProcessCallback, void *);
+static int (*JACK_jack_set_sample_rate_callback)(jack_client_t *, JackSampleRateCallback, void *);
+static int (*JACK_jack_set_buffer_size_callback)(jack_client_t *, JackBufferSizeCallback, void *);
 
 static int load_jack_syms(void);
 
@@ -51,19 +53,19 @@ static int load_jack_syms(void);
 static const char *jack_library = SDL_AUDIO_DRIVER_JACK_DYNAMIC;
 static void *jack_handle = NULL;
 
-/* !!! FIXME: this is copy/pasted in several places now */
+// !!! FIXME: this is copy/pasted in several places now
 static int load_jack_sym(const char *fn, void **addr)
 {
     *addr = SDL_LoadFunction(jack_handle, fn);
     if (*addr == NULL) {
-        /* Don't call SDL_SetError(): SDL_LoadFunction already did. */
+        // Don't call SDL_SetError(): SDL_LoadFunction already did.
         return 0;
     }
 
     return 1;
 }
 
-/* cast funcs to char* first, to please GCC's strict aliasing rules. */
+// cast funcs to char* first, to please GCC's strict aliasing rules.
 #define SDL_JACK_SYM(x)                                 \
     if (!load_jack_sym(#x, (void **)(char *)&JACK_##x)) \
     return -1
@@ -83,7 +85,7 @@ static int LoadJackLibrary(void)
         jack_handle = SDL_LoadObject(jack_library);
         if (jack_handle == NULL) {
             retval = -1;
-            /* Don't call SDL_SetError(): SDL_LoadObject already did. */
+            // Don't call SDL_SetError(): SDL_LoadObject already did.
         } else {
             retval = load_jack_syms();
             if (retval < 0) {
@@ -108,7 +110,7 @@ static int LoadJackLibrary(void)
     return 0;
 }
 
-#endif /* SDL_AUDIO_DRIVER_JACK_DYNAMIC */
+#endif // SDL_AUDIO_DRIVER_JACK_DYNAMIC
 
 static int load_jack_syms(void)
 {
@@ -129,18 +131,41 @@ static int load_jack_syms(void)
     SDL_JACK_SYM(jack_port_type);
     SDL_JACK_SYM(jack_connect);
     SDL_JACK_SYM(jack_set_process_callback);
+    SDL_JACK_SYM(jack_set_sample_rate_callback);
+    SDL_JACK_SYM(jack_set_buffer_size_callback);
 
     return 0;
 }
 
-static void jackShutdownCallback(void *arg) /* JACK went away; device is lost. */
+static void jackShutdownCallback(void *arg) // JACK went away; device is lost.
 {
     SDL_AudioDeviceDisconnected((SDL_AudioDevice *)arg);
 }
 
-// !!! FIXME: implement and register these!
-// typedef int(* JackSampleRateCallback)(jack_nframes_t nframes, void *arg)
-// typedef int(* JackBufferSizeCallback)(jack_nframes_t nframes, void *arg)
+static int jackSampleRateCallback(jack_nframes_t nframes, void *arg)
+{
+    //SDL_Log("JACK Sample Rate Callback! %d", (int) nframes);
+    SDL_AudioDevice *device = (SDL_AudioDevice *) arg;
+    SDL_AudioSpec newspec;
+    SDL_copyp(&newspec, &device->spec);
+    newspec.freq = (int) nframes;
+    if (SDL_AudioDeviceFormatChanged(device, &newspec, device->sample_frames) < 0) {
+        SDL_AudioDeviceDisconnected(device);
+    }
+    return 0;
+}
+
+static int jackBufferSizeCallback(jack_nframes_t nframes, void *arg)
+{
+    //SDL_Log("JACK Buffer Size Callback! %d", (int) nframes);
+    SDL_AudioDevice *device = (SDL_AudioDevice *) arg;
+    SDL_AudioSpec newspec;
+    SDL_copyp(&newspec, &device->spec);
+    if (SDL_AudioDeviceFormatChanged(device, &newspec, (int) nframes) < 0) {
+        SDL_AudioDeviceDisconnected(device);
+    }
+    return 0;
+}
 
 static int jackProcessPlaybackCallback(jack_nframes_t nframes, void *arg)
 {
@@ -269,7 +294,7 @@ static int JACK_OpenDevice(SDL_AudioDevice *device)
     int ports = 0;
     int i;
 
-    /* Initialize all variables that we clean on shutdown */
+    // Initialize all variables that we clean on shutdown
     device->hidden = (struct SDL_PrivateAudioData *)SDL_calloc(1, sizeof(*device->hidden));
     if (device->hidden == NULL) {
         return SDL_OutOfMemory();
@@ -287,16 +312,16 @@ static int JACK_OpenDevice(SDL_AudioDevice *device)
     }
 
     while (devports[++ports]) {
-        /* spin to count devports */
+        // spin to count devports
     }
 
-    /* Filter out non-audio ports */
+    // Filter out non-audio ports
     audio_ports = SDL_calloc(ports, sizeof(*audio_ports));
     for (i = 0; i < ports; i++) {
         const jack_port_t *dport = JACK_jack_port_by_name(client, devports[i]);
         const char *type = JACK_jack_port_type(dport);
         const int len = SDL_strlen(type);
-        /* See if type ends with "audio" */
+        // See if type ends with "audio"
         if (len >= 5 && !SDL_memcmp(type + len - 5, "audio", 5)) {
             audio_ports[channels++] = i;
         }
@@ -306,9 +331,7 @@ static int JACK_OpenDevice(SDL_AudioDevice *device)
         return SDL_SetError("No physical JACK ports available");
     }
 
-    /* !!! FIXME: docs say about buffer size: "This size may change, clients that depend on it must register a bufsize_callback so they will be notified if it does." */
-
-    /* Jack pretty much demands what it wants. */
+    // Jack pretty much demands what it wants.
     device->spec.format = SDL_AUDIO_F32;
     device->spec.freq = JACK_jack_get_sample_rate(client);
     device->spec.channels = channels;
@@ -324,7 +347,7 @@ static int JACK_OpenDevice(SDL_AudioDevice *device)
         }
     }
 
-    /* Build SDL's ports, which we will connect to the device ports. */
+    // Build SDL's ports, which we will connect to the device ports.
     device->hidden->sdlports = (jack_port_t **)SDL_calloc(channels, sizeof(jack_port_t *));
     if (device->hidden->sdlports == NULL) {
         SDL_free(audio_ports);
@@ -341,7 +364,13 @@ static int JACK_OpenDevice(SDL_AudioDevice *device)
         }
     }
 
-    if (JACK_jack_set_process_callback(client, callback, device) != 0) {
+    if (JACK_jack_set_buffer_size_callback(client, jackBufferSizeCallback, device) != 0) {
+        SDL_free(audio_ports);
+        return SDL_SetError("JACK: Couldn't set buffer size callback");
+    } else if (JACK_jack_set_sample_rate_callback(client, jackSampleRateCallback, device) != 0) {
+        SDL_free(audio_ports);
+        return SDL_SetError("JACK: Couldn't set sample rate callback");
+    } else if (JACK_jack_set_process_callback(client, callback, device) != 0) {
         SDL_free(audio_ports);
         return SDL_SetError("JACK: Couldn't set process callback");
     }
@@ -353,7 +382,7 @@ static int JACK_OpenDevice(SDL_AudioDevice *device)
         return SDL_SetError("Failed to activate JACK client");
     }
 
-    /* once activated, we can connect all the ports. */
+    // once activated, we can connect all the ports.
     for (i = 0; i < channels; i++) {
         const char *sdlport = JACK_jack_port_name(device->hidden->sdlports[i]);
         const char *srcport = iscapture ? devports[audio_ports[i]] : sdlport;
@@ -364,11 +393,11 @@ static int JACK_OpenDevice(SDL_AudioDevice *device)
         }
     }
 
-    /* don't need these anymore. */
+    // don't need these anymore.
     JACK_jack_free(devports);
     SDL_free(audio_ports);
 
-    /* We're ready to rock and roll. :-) */
+    // We're ready to rock and roll. :-)
     return 0;
 }
 
@@ -382,7 +411,7 @@ static SDL_bool JACK_Init(SDL_AudioDriverImpl *impl)
     if (LoadJackLibrary() < 0) {
         return SDL_FALSE;
     } else {
-        /* Make sure a JACK server is running and available. */
+        // Make sure a JACK server is running and available.
         jack_status_t status;
         jack_client_t *client = JACK_jack_client_open("SDL", JackNoStartServer, &status, NULL);
         if (client == NULL) {
@@ -392,7 +421,6 @@ static SDL_bool JACK_Init(SDL_AudioDriverImpl *impl)
         JACK_jack_client_close(client);
     }
 
-    /* Set the function pointers */
     impl->OpenDevice = JACK_OpenDevice;
     impl->GetDeviceBuf = JACK_GetDeviceBuf;
     impl->PlayDevice = JACK_PlayDevice;
@@ -405,11 +433,11 @@ static SDL_bool JACK_Init(SDL_AudioDriverImpl *impl)
     impl->HasCaptureSupport = SDL_TRUE;
     impl->ProvidesOwnCallbackThread = SDL_TRUE;
 
-    return SDL_TRUE; /* this audio target is available. */
+    return SDL_TRUE;
 }
 
 AudioBootStrap JACK_bootstrap = {
     "jack", "JACK Audio Connection Kit", JACK_Init, SDL_FALSE
 };
 
-#endif /* SDL_AUDIO_DRIVER_JACK */
+#endif // SDL_AUDIO_DRIVER_JACK

@@ -707,6 +707,10 @@ The following functions have been renamed:
 
 ## SDL_mutex.h
 
+SDL_MUTEX_MAXWAIT has been removed; it suggested there was a maximum timeout one could outlive, instead of an infinite wait. Instead, pass a -1 to functions that accepted this symbol.
+
+SDL_LockMutex and SDL_UnlockMutex now return void; if the mutex is valid (including being a NULL pointer, which returns immediately), these functions never fail. If the mutex is invalid or the caller does something illegal, like unlock another thread's mutex, this is considered undefined behavior.
+
 The following functions have been renamed:
 * SDL_CondBroadcast() => SDL_BroadcastCondition()
 * SDL_CondSignal() => SDL_SignalCondition()
@@ -738,7 +742,7 @@ The following functions have been renamed:
 * SDL_PixelFormatEnumToMasks() => SDL_GetMasksForPixelFormatEnum()
 
 The following symbols have been renamed:
-* SDL_DISPLAYEVENT_DISCONNECTED => SDL_EVENT_DISPLAY_DISCONNECTED
+* SDL_DISPLAYEVENT_DISCONNECTED => SDL_EVENT_DISPLAY_REMOVED
 * SDL_DISPLAYEVENT_MOVED => SDL_EVENT_DISPLAY_MOVED
 * SDL_DISPLAYEVENT_ORIENTATION => SDL_EVENT_DISPLAY_ORIENTATION
 * SDL_WINDOWEVENT_CLOSE => SDL_EVENT_WINDOW_CLOSE_REQUESTED

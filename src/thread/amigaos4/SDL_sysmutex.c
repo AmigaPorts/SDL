@@ -74,20 +74,16 @@ SDL_DestroyMutex(SDL_Mutex * mutex)
     }
 }
 
-int
+void
 SDL_LockMutex(SDL_Mutex * mutex)
 {
-    if (mutex == NULL) {
-        return SDL_SetError("Passed a NULL mutex");
-    }
-
     //dprintf("Called\n");
 
-    IExec->MutexObtain(mutex->mtx);
+    if (mutex) {
+        IExec->MutexObtain(mutex->mtx);
 
-    //dprintf("Locked mutex %p\n", mutex);
-
-    return 0;
+        //dprintf("Locked mutex %p\n", mutex);
+    }
 }
 
 int
@@ -106,19 +102,14 @@ SDL_TryLockMutex(SDL_Mutex * mutex)
     return retval;
 }
 
-/* Unlock the mutex */
-int
+void
 SDL_UnlockMutex(SDL_Mutex * mutex)
 {
-    if (mutex == NULL) {
-        return SDL_SetError("Passed a NULL mutex");
-    }
-
     //dprintf("Unlocking mutex %p\n", mutex);
 
-    IExec->MutexRelease(mutex->mtx);
-
-    return 0;
+    if (mutex) {
+        IExec->MutexRelease(mutex->mtx);
+    }
 }
 
 #endif /* SDL_THREAD_AMIGAOS4 */

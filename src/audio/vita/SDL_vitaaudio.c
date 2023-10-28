@@ -26,7 +26,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "../SDL_audio_c.h"
 #include "../SDL_audiodev_c.h"
 #include "../SDL_sysaudio.h"
 #include "SDL_vitaaudio.h"
@@ -165,7 +164,7 @@ static void VITAAUD_CloseDevice(SDL_AudioDevice *device)
         }
 
         if (!device->iscapture && device->hidden->rawbuf != NULL) {
-            SDL_aligned_free(device->hidden->rawbuf); // this uses memalign(), not SDL_malloc().
+            SDL_aligned_free(device->hidden->rawbuf); // this uses SDL_aligned_alloc(), not SDL_malloc()
             device->hidden->rawbuf = NULL;
         }
         SDL_free(device->hidden);

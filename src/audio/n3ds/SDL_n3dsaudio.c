@@ -32,6 +32,7 @@
 static dspHookCookie dsp_hook;
 static SDL_AudioDevice *audio_device;
 
+// fully local functions related to the wavebufs / DSP, not the same as the `device->lock` SDL_Mutex!
 static SDL_INLINE void contextLock(SDL_AudioDevice *device)
 {
     LightLock_Lock(&device->hidden->lock);
@@ -252,7 +253,7 @@ static void N3DSAUDIO_CloseDevice(SDL_AudioDevice *device)
 
 static void N3DSAUDIO_ThreadInit(SDL_AudioDevice *device)
 {
-    s32 current_priority;
+    s32 current_priority = 0x30;
     svcGetThreadPriority(&current_priority, CUR_THREAD_HANDLE);
     current_priority--;
     // 0x18 is reserved for video, 0x30 is the default for main thread

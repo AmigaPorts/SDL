@@ -34,7 +34,6 @@
 #include <sys/audioio.h>
 
 #include "../../core/unix/SDL_poll.h"
-#include "../SDL_audio_c.h"
 #include "../SDL_audiodev_c.h"
 #include "SDL_netbsdaudio.h"
 
@@ -135,7 +134,7 @@ static int NETBSDAUDIO_WaitDevice(SDL_AudioDevice *device)
         } else if (iscapture && (remain < device->buffer_size)) {
             SDL_Delay(10);
         } else {
-            break; /* ready to go! */
+            break; // ready to go!
         }
     }
 

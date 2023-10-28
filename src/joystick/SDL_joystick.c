@@ -119,7 +119,6 @@ static SDL_bool SDL_joysticks_initialized;
 static SDL_bool SDL_joysticks_quitting;
 static SDL_bool SDL_joystick_being_added;
 static SDL_Joystick *SDL_joysticks SDL_GUARDED_BY(SDL_joystick_lock) = NULL;
-static SDL_AtomicInt SDL_last_joystick_instance_id;
 static int SDL_joystick_player_count SDL_GUARDED_BY(SDL_joystick_lock) = 0;
 static SDL_JoystickID *SDL_joystick_players SDL_GUARDED_BY(SDL_joystick_lock) = NULL;
 static SDL_bool SDL_joystick_allows_background_events = SDL_FALSE;
@@ -414,15 +413,6 @@ SDL_JoystickID *SDL_GetJoysticks(int *count)
     SDL_UnlockJoysticks();
 
     return joysticks;
-}
-
-/*
- * Return the next available joystick instance ID
- * This may be called by drivers from multiple threads, unprotected by any locks
- */
-SDL_JoystickID SDL_GetNextJoystickInstanceID(void)
-{
-    return SDL_AtomicIncRef(&SDL_last_joystick_instance_id) + 1;
 }
 
 /*
@@ -2694,6 +2684,10 @@ static SDL_bool SDL_IsJoystickProductWheel(Uint32 vidpid)
         MAKE_VIDPID(0x0eb7, 0x038e), /* Fanatec ClubSport Wheel Base V1 */
         MAKE_VIDPID(0x0eb7, 0x0e03), /* Fanatec CSL Elite Wheel Base */
         MAKE_VIDPID(0x11ff, 0x0511), /* DragonRise Inc. Wired Wheel (initial mode) (also known as PXN V900 (PS3), Superdrive SV-750, or a Genesis Seaborg 400) */
+        MAKE_VIDPID(0x2433, 0xf300), /* Asetek SimSports Invicta Wheelbase */
+        MAKE_VIDPID(0x2433, 0xf301), /* Asetek SimSports Forte Wheelbase */
+        MAKE_VIDPID(0x2433, 0xf303), /* Asetek SimSports La Prima Wheelbase */
+        MAKE_VIDPID(0x2433, 0xf306), /* Asetek SimSports Tony Kannan Wheelbase */
     };
     int i;
 

@@ -37,6 +37,7 @@ static const ERole SDL_IMMDevice_role = eConsole; /* !!! FIXME: should this be e
 
 /* This is global to the WASAPI target, to handle hotplug and default device lookup. */
 static IMMDeviceEnumerator *enumerator = NULL;
+static SDL_IMMDevice_callbacks immcallbacks;
 
 /* PropVariantInit() is an inline function/macro in PropIdl.h that calls the C runtime's memset() directly. Use ours instead, to avoid dependency. */
 #ifdef PropVariantInit
@@ -132,6 +133,18 @@ static SDL_AudioDevice *SDL_IMMDevice_Add(const SDL_bool iscapture, const char *
 
     // see if we already have this one first.
     SDL_AudioDevice *device = SDL_IMMDevice_FindByDevID(devid);
+    if (device) {
+        if (SDL_AtomicGet(&device->zombie)) {
+            // whoa, it came back! This can happen if you unplug and replug USB headphones while we're still keeping the SDL object alive.
+            // Kill this device's IMMDevice id; the device will go away when the app closes it, or maybe a new default device is chosen
+            // (possibly this reconnected device), so we just want to make sure IMMDevice doesn't try to find the old device by the existing ID string.
+            SDL_IMMDevice_HandleData *handle = (SDL_IMMDevice_HandleData *) device->handle;
+            SDL_free(handle->immdevice_id);
+            handle->immdevice_id = NULL;
+            device = NULL;  // add a new device, below.
+        }
+    }
+
     if (!device) {
         // handle is freed by SDL_IMMDevice_FreeDeviceHandle!
         SDL_IMMDevice_HandleData *handle = SDL_malloc(sizeof(SDL_IMMDevice_HandleData));
@@ -154,6 +167,10 @@ static SDL_AudioDevice *SDL_IMMDevice_Add(const SDL_bool iscapture, const char *
         spec.format = SDL_WaveFormatExToSDLFormat((WAVEFORMATEX *)fmt);
 
         device = SDL_AddAudioDevice(iscapture, devname, &spec, handle);
+        if (!device) {
+            SDL_free(handle->immdevice_id);
+            SDL_free(handle);
+        }
     }
 
     return device;
@@ -204,7 +221,7 @@ static ULONG STDMETHODCALLTYPE SDLMMNotificationClient_Release(IMMNotificationCl
 static HRESULT STDMETHODCALLTYPE SDLMMNotificationClient_OnDefaultDeviceChanged(IMMNotificationClient *iclient, EDataFlow flow, ERole role, LPCWSTR pwstrDeviceId)
 {
     if (role == SDL_IMMDevice_role) {
-        SDL_DefaultAudioDeviceChanged(SDL_IMMDevice_FindByDevID(pwstrDeviceId));
+        immcallbacks.default_audio_device_changed(SDL_IMMDevice_FindByDevID(pwstrDeviceId));
     }
     return S_OK;
 }
@@ -244,7 +261,7 @@ static HRESULT STDMETHODCALLTYPE SDLMMNotificationClient_OnDeviceStateChanged(IM
                         SDL_free(utf8dev);
                     }
                 } else {
-                    SDL_AudioDeviceDisconnected(SDL_IMMDevice_FindByDevID(pwstrDeviceId));
+                    immcallbacks.audio_device_disconnected(SDL_IMMDevice_FindByDevID(pwstrDeviceId));
                 }
             }
             IMMEndpoint_Release(endpoint);
@@ -273,7 +290,7 @@ static const IMMNotificationClientVtbl notification_client_vtbl = {
 
 static SDLMMNotificationClient notification_client = { &notification_client_vtbl, { 1 } };
 
-int SDL_IMMDevice_Init(void)
+int SDL_IMMDevice_Init(const SDL_IMMDevice_callbacks *callbacks)
 {
     HRESULT ret;
 
@@ -291,6 +308,20 @@ int SDL_IMMDevice_Init(void)
         WIN_CoUninitialize();
         return WIN_SetErrorFromHRESULT("IMMDevice CoCreateInstance(MMDeviceEnumerator)", ret);
     }
+
+    if (callbacks) {
+        SDL_copyp(&immcallbacks, callbacks);
+    } else {
+        SDL_zero(immcallbacks);
+    }
+
+    if (!immcallbacks.audio_device_disconnected) {
+        immcallbacks.audio_device_disconnected = SDL_AudioDeviceDisconnected;
+    }
+    if (!immcallbacks.default_audio_device_changed) {
+        immcallbacks.default_audio_device_changed = SDL_DefaultAudioDeviceChanged;
+    }
+
     return 0;
 }
 
@@ -301,6 +332,8 @@ void SDL_IMMDevice_Quit(void)
         IMMDeviceEnumerator_Release(enumerator);
         enumerator = NULL;
     }
+
+    SDL_zero(immcallbacks);
 
     WIN_CoUninitialize();
 }

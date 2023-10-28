@@ -42,7 +42,7 @@
 #include "SDL_assert_c.h"
 #include "SDL_log_c.h"
 #include "SDL_properties_c.h"
-#include "audio/SDL_audio_c.h"
+#include "audio/SDL_sysaudio.h"
 #include "video/SDL_video_c.h"
 #include "events/SDL_events_c.h"
 #include "haptic/SDL_haptic_c.h"
@@ -525,6 +525,20 @@ void SDL_Quit(void)
        Quit explicitly to avoid unfreed signals. */
     OS4_QUIT();
 #endif
+}
+
+/* Assume we can wrap SDL_AtomicInt values and cast to Uint32 */
+SDL_COMPILE_TIME_ASSERT(sizeof_object_id, sizeof(int) == sizeof(Uint32));
+
+Uint32 SDL_GetNextObjectID(void)
+{
+    static SDL_AtomicInt last_id;
+
+    Uint32 id = (Uint32)SDL_AtomicIncRef(&last_id) + 1;
+    if (id == 0) {
+        id = (Uint32)SDL_AtomicIncRef(&last_id) + 1;
+    }
+    return id;
 }
 
 /* Get the library version number */
