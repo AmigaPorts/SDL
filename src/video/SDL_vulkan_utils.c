@@ -148,7 +148,7 @@ VkExtensionProperties *SDL_Vulkan_CreateInstanceExtensionsList(
         retval = SDL_calloc(count, sizeof(VkExtensionProperties));
     }
 
-    if (retval == NULL) {
+    if (!retval) {
         SDL_OutOfMemory();
         return NULL;
     }
@@ -167,27 +167,6 @@ VkExtensionProperties *SDL_Vulkan_CreateInstanceExtensionsList(
     return retval;
 }
 
-SDL_bool SDL_Vulkan_GetInstanceExtensions_Helper(unsigned *userCount,
-                                                 const char **userNames,
-                                                 unsigned nameCount,
-                                                 const char *const *names)
-{
-    if (userNames) {
-        unsigned i;
-
-        if (*userCount < nameCount) {
-            SDL_SetError("Output array for SDL_Vulkan_GetInstanceExtensions needs to be at least %d big", nameCount);
-            return SDL_FALSE;
-        }
-
-        for (i = 0; i < nameCount; i++) {
-            userNames[i] = names[i];
-        }
-    }
-    *userCount = nameCount;
-    return SDL_TRUE;
-}
-
 /* Alpha modes, in order of preference */
 static const VkDisplayPlaneAlphaFlagBitsKHR alphaModes[4] = {
     VK_DISPLAY_PLANE_ALPHA_OPAQUE_BIT_KHR,
@@ -198,6 +177,7 @@ static const VkDisplayPlaneAlphaFlagBitsKHR alphaModes[4] = {
 
 SDL_bool SDL_Vulkan_Display_CreateSurface(void *vkGetInstanceProcAddr_,
                                           VkInstance instance,
+                                          const struct VkAllocationCallbacks *allocator,
                                           VkSurfaceKHR *surface)
 {
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr =
@@ -231,7 +211,7 @@ SDL_bool SDL_Vulkan_Display_CreateSurface(void *vkGetInstanceProcAddr_,
         goto error;
     }
     chosenDisplayId = SDL_getenv("SDL_VULKAN_DISPLAY");
-    if (chosenDisplayId != NULL) {
+    if (chosenDisplayId) {
         displayId = SDL_atoi(chosenDisplayId);
     }
 
@@ -248,7 +228,7 @@ SDL_bool SDL_Vulkan_Display_CreateSurface(void *vkGetInstanceProcAddr_,
     }
 
     physicalDevices = SDL_malloc(sizeof(VkPhysicalDevice) * physicalDeviceCount);
-    if (physicalDevices == NULL) {
+    if (!physicalDevices) {
         SDL_OutOfMemory();
         goto error;
     }
@@ -291,7 +271,7 @@ SDL_bool SDL_Vulkan_Display_CreateSurface(void *vkGetInstanceProcAddr_,
         }
 
         displayProperties = SDL_malloc(sizeof(VkDisplayPropertiesKHR) * displayPropertiesCount);
-        if (displayProperties == NULL) {
+        if (!displayProperties) {
             SDL_OutOfMemory();
             goto error;
         }
@@ -320,7 +300,7 @@ SDL_bool SDL_Vulkan_Display_CreateSurface(void *vkGetInstanceProcAddr_,
         SDL_LogDebug(SDL_LOG_CATEGORY_VIDEO, "vulkandisplay: Number of display modes: %u", displayModePropertiesCount);
 
         displayModeProperties = SDL_malloc(sizeof(VkDisplayModePropertiesKHR) * displayModePropertiesCount);
-        if (displayModeProperties == NULL) {
+        if (!displayModeProperties) {
             SDL_OutOfMemory();
             goto error;
         }
@@ -367,7 +347,7 @@ SDL_bool SDL_Vulkan_Display_CreateSurface(void *vkGetInstanceProcAddr_,
         SDL_LogDebug(SDL_LOG_CATEGORY_VIDEO, "vulkandisplay: Number of display planes: %u", displayPlanePropertiesCount);
 
         displayPlaneProperties = SDL_malloc(sizeof(VkDisplayPlanePropertiesKHR) * displayPlanePropertiesCount);
-        if (displayPlaneProperties == NULL) {
+        if (!displayPlaneProperties) {
             SDL_OutOfMemory();
             goto error;
         }
@@ -398,7 +378,7 @@ SDL_bool SDL_Vulkan_Display_CreateSurface(void *vkGetInstanceProcAddr_,
             SDL_LogDebug(SDL_LOG_CATEGORY_VIDEO, "vulkandisplay: Number of supported displays for plane %u: %u", i, planeSupportedDisplaysCount);
 
             planeSupportedDisplays = SDL_malloc(sizeof(VkDisplayKHR) * planeSupportedDisplaysCount);
-            if (planeSupportedDisplays == NULL) {
+            if (!planeSupportedDisplays) {
                 SDL_free(displayPlaneProperties);
                 SDL_OutOfMemory();
                 goto error;
@@ -480,7 +460,7 @@ SDL_bool SDL_Vulkan_Display_CreateSurface(void *vkGetInstanceProcAddr_,
     createInfo.transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
     createInfo.globalAlpha = 1.0f;
 
-    result = vkCreateDisplayPlaneSurfaceKHR(instance, &createInfo, NULL, surface);
+    result = vkCreateDisplayPlaneSurfaceKHR(instance, &createInfo, allocator, surface);
     if (result != VK_SUCCESS) {
         SDL_SetError("vkCreateDisplayPlaneSurfaceKHR failed: %s", SDL_Vulkan_GetResultString(result));
         return SDL_FALSE;

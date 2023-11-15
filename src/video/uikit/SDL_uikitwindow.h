@@ -26,7 +26,7 @@
 #import "SDL_uikitview.h"
 #import "SDL_uikitviewcontroller.h"
 
-extern int UIKit_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window);
+extern int UIKit_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props);
 extern void UIKit_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window);
 extern void UIKit_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window);
 extern void UIKit_HideWindow(SDL_VideoDevice *_this, SDL_Window *window);
@@ -37,9 +37,10 @@ extern void UIKit_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window,
 extern void UIKit_UpdatePointerLock(SDL_VideoDevice *_this, SDL_Window *window);
 extern void UIKit_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window);
 extern void UIKit_GetWindowSizeInPixels(SDL_VideoDevice *_this, SDL_Window *window, int *w, int *h);
-extern int UIKit_GetWindowWMInfo(SDL_VideoDevice *_this, SDL_Window *window, struct SDL_SysWMinfo *info);
 
 extern NSUInteger UIKit_GetSupportedOrientations(SDL_Window *window);
+
+#define SDL_METALVIEW_TAG 255
 
 @class UIWindow;
 

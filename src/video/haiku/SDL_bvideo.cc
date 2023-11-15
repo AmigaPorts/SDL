@@ -75,7 +75,6 @@ static SDL_VideoDevice * HAIKU_CreateDevice(void)
     device->PumpEvents = HAIKU_PumpEvents;
 
     device->CreateSDLWindow = HAIKU_CreateWindow;
-    device->CreateSDLWindowFrom = HAIKU_CreateWindowFrom;
     device->SetWindowTitle = HAIKU_SetWindowTitle;
     device->SetWindowPosition = HAIKU_SetWindowPosition;
     device->SetWindowSize = HAIKU_SetWindowSize;
@@ -91,7 +90,6 @@ static SDL_VideoDevice * HAIKU_CreateDevice(void)
     device->SetWindowMouseGrab = HAIKU_SetWindowMouseGrab;
     device->SetWindowMinimumSize = HAIKU_SetWindowMinimumSize;
     device->DestroyWindow = HAIKU_DestroyWindow;
-    device->GetWindowWMInfo = HAIKU_GetWindowWMInfo;
     device->CreateWindowFramebuffer = HAIKU_CreateWindowFramebuffer;
     device->UpdateWindowFramebuffer = HAIKU_UpdateWindowFramebuffer;
     device->DestroyWindowFramebuffer = HAIKU_DestroyWindowFramebuffer;
@@ -185,7 +183,7 @@ static SDL_Cursor * HAIKU_CreateCursor(SDL_Surface * surface, int hot_x, int hot
     SDL_Surface *converted;
 
     converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ARGB8888);
-    if (converted == NULL) {
+    if (!converted) {
         return NULL;
     }
 
@@ -207,7 +205,7 @@ static int HAIKU_ShowCursor(SDL_Cursor *cursor)
 {
 	SDL_Mouse *mouse = SDL_GetMouse();
 
-	if (mouse == NULL) {
+	if (!mouse) {
 		return 0;
 	}
 
@@ -226,7 +224,7 @@ static int HAIKU_ShowCursor(SDL_Cursor *cursor)
 static int HAIKU_SetRelativeMouseMode(SDL_bool enabled)
 {
     SDL_Window *window = SDL_GetMouseFocus();
-    if (window == NULL) {
+    if (!window) {
       return 0;
     }
 
@@ -246,7 +244,7 @@ static int HAIKU_SetRelativeMouseMode(SDL_bool enabled)
 static void HAIKU_MouseInit(SDL_VideoDevice *_this)
 {
 	SDL_Mouse *mouse = SDL_GetMouse();
-	if (mouse == NULL) {
+	if (!mouse) {
 		return;
 	}
 	mouse->CreateCursor = HAIKU_CreateCursor;

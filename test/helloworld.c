@@ -45,11 +45,11 @@ static SDL_bool eventLoopInner(void)
                     printf("Window event %d window %d\n", we->type, we->windowID);
                 }
                 break;
-#endif
+
 	    case SDL_EVENT_SYSWM:
                 printf("Sys WM event\n");
                 break;
-
+#endif
             case SDL_EVENT_KEY_DOWN:
                 {
                     SDL_KeyboardEvent * ke = (SDL_KeyboardEvent *)&e;

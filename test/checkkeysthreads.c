@@ -179,7 +179,7 @@ static void loop(void)
         switch (event.type) {
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP:
-            PrintKey(&event.key.keysym, (event.key.state == SDL_PRESSED) ? SDL_TRUE : SDL_FALSE, (event.key.repeat) ? SDL_TRUE : SDL_FALSE);
+            PrintKey(&event.key.keysym, (event.key.state == SDL_PRESSED), (event.key.repeat > 0));
             break;
         case SDL_EVENT_TEXT_EDITING:
             PrintText("EDIT", event.text.text);
@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, 0);
-    if (state == NULL) {
+    if (!state) {
         return 1;
     }
 
@@ -267,7 +267,7 @@ int main(int argc, char *argv[])
 
     /* Set 640x480 video mode */
     window = SDL_CreateWindow("CheckKeys Test", 640, 480, 0);
-    if (window == NULL) {
+    if (!window) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create 640x480 window: %s\n",
                      SDL_GetError());
         quit(2);

@@ -759,8 +759,16 @@ static EM_BOOL Emscripten_HandleTouch(int eventType, const EmscriptenTouchEvent 
         }
 
         id = touchEvent->touches[i].identifier;
-        x = touchEvent->touches[i].targetX / client_w;
-        y = touchEvent->touches[i].targetY / client_h;
+        if (client_w <= 1) {
+            x = 0.5f;
+        } else {
+            x = touchEvent->touches[i].targetX / (client_w - 1);
+        }
+        if (client_h <= 1) {
+            y = 0.5f;
+        } else {
+            y = touchEvent->touches[i].targetY / (client_h - 1);
+        }
 
         if (eventType == EMSCRIPTEN_EVENT_TOUCHSTART) {
             SDL_SendTouch(0, deviceId, id, window_data->window, SDL_TRUE, x, y, 1.0f);
@@ -956,7 +964,7 @@ void Emscripten_RegisterEventHandlers(SDL_WindowData *data)
 
     /* Keyboard events are awkward */
     keyElement = SDL_GetHint(SDL_HINT_EMSCRIPTEN_KEYBOARD_ELEMENT);
-    if (keyElement == NULL) {
+    if (!keyElement) {
         keyElement = EMSCRIPTEN_EVENT_TARGET_WINDOW;
     }
 
@@ -999,7 +1007,7 @@ void Emscripten_UnregisterEventHandlers(SDL_WindowData *data)
     emscripten_set_pointerlockchange_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, NULL, 0, NULL);
 
     target = SDL_GetHint(SDL_HINT_EMSCRIPTEN_KEYBOARD_ELEMENT);
-    if (target == NULL) {
+    if (!target) {
         target = EMSCRIPTEN_EVENT_TARGET_WINDOW;
     }
 

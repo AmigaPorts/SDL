@@ -651,7 +651,7 @@ OS4_HandleAppWindow(SDL_VideoDevice *_this, struct AppMessage * msg)
         if (IDOS->NameFromLock(msg->am_ArgList[i].wa_Lock, buf, sizeof(buf))) {
             if (IDOS->AddPart(buf, msg->am_ArgList[i].wa_Name, sizeof(buf))) {
                 dprintf("%s\n", buf);
-                SDL_SendDropFile(window, buf);
+                SDL_SendDropFile(window, buf, "TODO: file");
             }
         }
     }

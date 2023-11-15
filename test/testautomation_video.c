@@ -73,7 +73,7 @@ static void destroyVideoSuiteTestWindow(SDL_Window *window)
 /* Test case functions */
 
 /**
- * \brief Enable and disable screensaver while checking state
+ * Enable and disable screensaver while checking state
  */
 static int video_enableDisableScreensaver(void *arg)
 {
@@ -124,7 +124,7 @@ static int video_enableDisableScreensaver(void *arg)
 }
 
 /**
- * \brief Tests the functionality of the SDL_CreateWindow function using different sizes
+ * Tests the functionality of the SDL_CreateWindow function using different sizes
  */
 static int video_createWindowVariousSizes(void *arg)
 {
@@ -178,7 +178,7 @@ static int video_createWindowVariousSizes(void *arg)
 }
 
 /**
- * \brief Tests the functionality of the SDL_CreateWindow function using different flags
+ * Tests the functionality of the SDL_CreateWindow function using different flags
  */
 static int video_createWindowVariousFlags(void *arg)
 {
@@ -233,7 +233,7 @@ static int video_createWindowVariousFlags(void *arg)
             flags = SDL_WINDOW_MOUSE_FOCUS;
             break;
         case 12:
-            flags = SDL_WINDOW_FOREIGN;
+            flags = SDL_WINDOW_EXTERNAL;
             break;
         case 13:
             flags = SDL_WINDOW_KEYBOARD_GRABBED;
@@ -252,7 +252,7 @@ static int video_createWindowVariousFlags(void *arg)
 }
 
 /**
- * \brief Tests the functionality of the SDL_GetWindowFlags function
+ * Tests the functionality of the SDL_GetWindowFlags function
  */
 static int video_getWindowFlags(void *arg)
 {
@@ -279,7 +279,7 @@ static int video_getWindowFlags(void *arg)
 }
 
 /**
- * \brief Tests the functionality of the SDL_GetFullscreenDisplayModes function
+ * Tests the functionality of the SDL_GetFullscreenDisplayModes function
  */
 static int video_getFullscreenDisplayModes(void *arg)
 {
@@ -308,7 +308,7 @@ static int video_getFullscreenDisplayModes(void *arg)
 }
 
 /**
- * \brief Tests the functionality of the SDL_GetClosestFullscreenDisplayMode function against current resolution
+ * Tests the functionality of the SDL_GetClosestFullscreenDisplayMode function against current resolution
  */
 static int video_getClosestDisplayModeCurrentResolution(void *arg)
 {
@@ -358,7 +358,7 @@ static int video_getClosestDisplayModeCurrentResolution(void *arg)
 }
 
 /**
- * \brief Tests the functionality of the SDL_GetClosestFullscreenDisplayMode function against random resolution
+ * Tests the functionality of the SDL_GetClosestFullscreenDisplayMode function against random resolution
  */
 static int video_getClosestDisplayModeRandomResolution(void *arg)
 {
@@ -396,7 +396,7 @@ static int video_getClosestDisplayModeRandomResolution(void *arg)
 }
 
 /**
- * \brief Tests call to SDL_GetWindowFullscreenMode
+ * Tests call to SDL_GetWindowFullscreenMode
  *
  * \sa SDL_GetWindowFullscreenMode
  */
@@ -440,7 +440,7 @@ static void checkInvalidWindowError(void)
 }
 
 /**
- * \brief Tests call to SDL_GetWindowFullscreenMode with invalid input
+ * Tests call to SDL_GetWindowFullscreenMode with invalid input
  *
  * \sa SDL_GetWindowFullscreenMode
  */
@@ -528,7 +528,7 @@ static void setAndCheckWindowKeyboardGrabState(SDL_Window *window, SDL_bool desi
 }
 
 /**
- * \brief Tests keyboard and mouse grab support
+ * Tests keyboard and mouse grab support
  *
  * \sa SDL_GetWindowGrab
  * \sa SDL_SetWindowGrab
@@ -542,7 +542,7 @@ static int video_getSetWindowGrab(void *arg)
 
     /* Call against new test window */
     window = createVideoSuiteTestWindow(title);
-    if (window == NULL) {
+    if (!window) {
         return TEST_ABORTED;
     }
 
@@ -689,7 +689,7 @@ static int video_getSetWindowGrab(void *arg)
 }
 
 /**
- * \brief Tests call to SDL_GetWindowID and SDL_GetWindowFromID
+ * Tests call to SDL_GetWindowID and SDL_GetWindowFromID
  *
  * \sa SDL_GetWindowID
  * \sa SDL_SetWindowFromID
@@ -703,7 +703,7 @@ static int video_getWindowId(void *arg)
 
     /* Call against new test window */
     window = createVideoSuiteTestWindow(title);
-    if (window == NULL) {
+    if (!window) {
         return TEST_ABORTED;
     }
 
@@ -746,7 +746,7 @@ static int video_getWindowId(void *arg)
 }
 
 /**
- * \brief Tests call to SDL_GetWindowPixelFormat
+ * Tests call to SDL_GetWindowPixelFormat
  *
  * \sa SDL_GetWindowPixelFormat
  */
@@ -758,7 +758,7 @@ static int video_getWindowPixelFormat(void *arg)
 
     /* Call against new test window */
     window = createVideoSuiteTestWindow(title);
-    if (window == NULL) {
+    if (!window) {
         return TEST_ABORTED;
     }
 
@@ -812,7 +812,7 @@ static SDL_bool getSizeFromEvent(int *w, int *h)
 }
 
 /**
- * \brief Tests call to SDL_GetWindowPosition and SDL_SetWindowPosition
+ * Tests call to SDL_GetWindowPosition and SDL_SetWindowPosition
  *
  * \sa SDL_GetWindowPosition
  * \sa SDL_SetWindowPosition
@@ -828,7 +828,7 @@ static int video_getSetWindowPosition(void *arg)
 
     /* Call against new test window */
     window = createVideoSuiteTestWindow(title);
-    if (window == NULL) {
+    if (!window) {
         return TEST_ABORTED;
     }
 
@@ -973,7 +973,7 @@ static void checkInvalidParameterError(void)
 }
 
 /**
- * \brief Tests call to SDL_GetWindowSize and SDL_SetWindowSize
+ * Tests call to SDL_GetWindowSize and SDL_SetWindowSize
  *
  * \sa SDL_GetWindowSize
  * \sa SDL_SetWindowSize
@@ -1000,7 +1000,7 @@ static int video_getSetWindowSize(void *arg)
 
     /* Call against new test window */
     window = createVideoSuiteTestWindow(title);
-    if (window == NULL) {
+    if (!window) {
         return TEST_ABORTED;
     }
 
@@ -1158,7 +1158,7 @@ static int video_getSetWindowSize(void *arg)
 }
 
 /**
- * \brief Tests call to SDL_GetWindowMinimumSize and SDL_SetWindowMinimumSize
+ * Tests call to SDL_GetWindowMinimumSize and SDL_SetWindowMinimumSize
  *
  */
 static int video_getSetWindowMinimumSize(void *arg)
@@ -1183,7 +1183,7 @@ static int video_getSetWindowMinimumSize(void *arg)
 
     /* Call against new test window */
     window = createVideoSuiteTestWindow(title);
-    if (window == NULL) {
+    if (!window) {
         return TEST_ABORTED;
     }
 
@@ -1301,7 +1301,7 @@ static int video_getSetWindowMinimumSize(void *arg)
 }
 
 /**
- * \brief Tests call to SDL_GetWindowMaximumSize and SDL_SetWindowMaximumSize
+ * Tests call to SDL_GetWindowMaximumSize and SDL_SetWindowMaximumSize
  *
  */
 static int video_getSetWindowMaximumSize(void *arg)
@@ -1325,7 +1325,7 @@ static int video_getSetWindowMaximumSize(void *arg)
 
     /* Call against new test window */
     window = createVideoSuiteTestWindow(title);
-    if (window == NULL) {
+    if (!window) {
         return TEST_ABORTED;
     }
 
@@ -1439,7 +1439,7 @@ static int video_getSetWindowMaximumSize(void *arg)
 }
 
 /**
- * \brief Tests call to SDL_SetWindowData and SDL_GetWindowData
+ * Tests call to SDL_SetWindowData and SDL_GetWindowData
  *
  * \sa SDL_SetWindowData
  * \sa SDL_GetWindowData
@@ -1463,50 +1463,49 @@ static int video_getSetWindowData(void *arg)
 
     /* Call against new test window */
     window = createVideoSuiteTestWindow(title);
-    if (window == NULL) {
+    if (!window) {
         return TEST_ABORTED;
     }
 
     /* Create testdata */
     datasize = SDLTest_RandomIntegerInRange(1, 32);
     referenceUserdata = SDLTest_RandomAsciiStringOfSize(datasize);
-    if (referenceUserdata == NULL) {
+    if (!referenceUserdata) {
         returnValue = TEST_ABORTED;
         goto cleanup;
     }
     userdata = SDL_strdup(referenceUserdata);
-    if (userdata == NULL) {
+    if (!userdata) {
         returnValue = TEST_ABORTED;
         goto cleanup;
     }
     datasize = SDLTest_RandomIntegerInRange(1, 32);
     referenceUserdata2 = SDLTest_RandomAsciiStringOfSize(datasize);
-    if (referenceUserdata2 == NULL) {
+    if (!referenceUserdata2) {
         returnValue = TEST_ABORTED;
         goto cleanup;
     }
     userdata2 = SDL_strdup(referenceUserdata2);
-    if (userdata2 == NULL) {
+    if (!userdata2) {
         returnValue = TEST_ABORTED;
         goto cleanup;
     }
 
     /* Get non-existent data */
-    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), name);
+    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), name, NULL);
     SDLTest_AssertPass("Call to SDL_GetWindowData(..,%s)", name);
     SDLTest_AssertCheck(result == NULL, "Validate that result is NULL");
     SDLTest_AssertCheck(SDL_strcmp(referenceName, name) == 0, "Validate that name was not changed, expected: %s, got: %s", referenceName, name);
 
     /* Set data */
-    SDL_SetProperty(SDL_GetWindowProperties(window), name, userdata, NULL, NULL);
+    SDL_SetProperty(SDL_GetWindowProperties(window), name, userdata);
     SDLTest_AssertPass("Call to SDL_SetWindowData(...%s,%s)", name, userdata);
     SDLTest_AssertCheck(SDL_strcmp(referenceName, name) == 0, "Validate that name was not changed, expected: %s, got: %s", referenceName, name);
     SDLTest_AssertCheck(SDL_strcmp(referenceUserdata, userdata) == 0, "Validate that userdata was not changed, expected: %s, got: %s", referenceUserdata, userdata);
 
     /* Get data (twice) */
     for (iteration = 1; iteration <= 2; iteration++) {
-        result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window),
-                                          name);
+        result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), name, NULL);
         SDLTest_AssertPass("Call to SDL_GetWindowData(..,%s) [iteration %d]", name, iteration);
         SDLTest_AssertCheck(SDL_strcmp(referenceUserdata, result) == 0, "Validate that correct result was returned; expected: %s, got: %s", referenceUserdata, result);
         SDLTest_AssertCheck(SDL_strcmp(referenceName, name) == 0, "Validate that name was not changed, expected: %s, got: %s", referenceName, name);
@@ -1514,104 +1513,104 @@ static int video_getSetWindowData(void *arg)
 
     /* Set data again twice */
     for (iteration = 1; iteration <= 2; iteration++) {
-        SDL_SetProperty(SDL_GetWindowProperties(window), name, userdata, NULL, NULL);
+        SDL_SetProperty(SDL_GetWindowProperties(window), name, userdata);
         SDLTest_AssertPass("Call to SDL_SetWindowData(...%s,%s) [iteration %d]", name, userdata, iteration);
         SDLTest_AssertCheck(SDL_strcmp(referenceName, name) == 0, "Validate that name was not changed, expected: %s, got: %s", referenceName, name);
         SDLTest_AssertCheck(SDL_strcmp(referenceUserdata, userdata) == 0, "Validate that userdata was not changed, expected: %s, got: %s", referenceUserdata, userdata);
     }
 
     /* Get data again */
-    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), name);
+    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), name, NULL);
     SDLTest_AssertPass("Call to SDL_GetWindowData(..,%s) [again]", name);
     SDLTest_AssertCheck(SDL_strcmp(referenceUserdata, result) == 0, "Validate that correct result was returned; expected: %s, got: %s", referenceUserdata, result);
     SDLTest_AssertCheck(SDL_strcmp(referenceName, name) == 0, "Validate that name was not changed, expected: %s, got: %s", referenceName, name);
 
     /* Set data with new data */
-    SDL_SetProperty(SDL_GetWindowProperties(window), name, userdata2, NULL, NULL);
+    SDL_SetProperty(SDL_GetWindowProperties(window), name, userdata2);
     SDLTest_AssertPass("Call to SDL_SetWindowData(...%s,%s) [new userdata]", name, userdata2);
     SDLTest_AssertCheck(SDL_strcmp(referenceName, name) == 0, "Validate that name was not changed, expected: %s, got: %s", referenceName, name);
     SDLTest_AssertCheck(SDL_strcmp(referenceUserdata, userdata) == 0, "Validate that userdata was not changed, expected: %s, got: %s", referenceUserdata, userdata);
     SDLTest_AssertCheck(SDL_strcmp(referenceUserdata2, userdata2) == 0, "Validate that userdata2 was not changed, expected: %s, got: %s", referenceUserdata2, userdata2);
 
     /* Set data with new data again */
-    SDL_SetProperty(SDL_GetWindowProperties(window), name, userdata2, NULL, NULL);
+    SDL_SetProperty(SDL_GetWindowProperties(window), name, userdata2);
     SDLTest_AssertPass("Call to SDL_SetWindowData(...%s,%s) [new userdata again]", name, userdata2);
     SDLTest_AssertCheck(SDL_strcmp(referenceName, name) == 0, "Validate that name was not changed, expected: %s, got: %s", referenceName, name);
     SDLTest_AssertCheck(SDL_strcmp(referenceUserdata, userdata) == 0, "Validate that userdata was not changed, expected: %s, got: %s", referenceUserdata, userdata);
     SDLTest_AssertCheck(SDL_strcmp(referenceUserdata2, userdata2) == 0, "Validate that userdata2 was not changed, expected: %s, got: %s", referenceUserdata2, userdata2);
 
     /* Get new data */
-    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), name);
+    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), name, NULL);
     SDLTest_AssertPass("Call to SDL_GetWindowData(..,%s)", name);
     SDLTest_AssertCheck(SDL_strcmp(referenceUserdata2, result) == 0, "Validate that correct result was returned; expected: %s, got: %s", referenceUserdata2, result);
     SDLTest_AssertCheck(SDL_strcmp(referenceName, name) == 0, "Validate that name was not changed, expected: %s, got: %s", referenceName, name);
 
     /* Set data with NULL to clear */
-    SDL_SetProperty(SDL_GetWindowProperties(window), name, NULL, NULL, NULL);
+    SDL_SetProperty(SDL_GetWindowProperties(window), name, NULL);
     SDLTest_AssertPass("Call to SDL_SetWindowData(...%s,NULL)", name);
     SDLTest_AssertCheck(SDL_strcmp(referenceName, name) == 0, "Validate that name was not changed, expected: %s, got: %s", referenceName, name);
     SDLTest_AssertCheck(SDL_strcmp(referenceUserdata, userdata) == 0, "Validate that userdata was not changed, expected: %s, got: %s", referenceUserdata, userdata);
     SDLTest_AssertCheck(SDL_strcmp(referenceUserdata2, userdata2) == 0, "Validate that userdata2 was not changed, expected: %s, got: %s", referenceUserdata2, userdata2);
 
     /* Set data with NULL to clear again */
-    SDL_SetProperty(SDL_GetWindowProperties(window), name, NULL, NULL, NULL);
+    SDL_SetProperty(SDL_GetWindowProperties(window), name, NULL);
     SDLTest_AssertPass("Call to SDL_SetWindowData(...%s,NULL) [again]", name);
     SDLTest_AssertCheck(SDL_strcmp(referenceName, name) == 0, "Validate that name was not changed, expected: %s, got: %s", referenceName, name);
     SDLTest_AssertCheck(SDL_strcmp(referenceUserdata, userdata) == 0, "Validate that userdata was not changed, expected: %s, got: %s", referenceUserdata, userdata);
     SDLTest_AssertCheck(SDL_strcmp(referenceUserdata2, userdata2) == 0, "Validate that userdata2 was not changed, expected: %s, got: %s", referenceUserdata2, userdata2);
 
     /* Get non-existent data */
-    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), name);
+    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), name, NULL);
     SDLTest_AssertPass("Call to SDL_GetWindowData(..,%s)", name);
     SDLTest_AssertCheck(result == NULL, "Validate that result is NULL");
     SDLTest_AssertCheck(SDL_strcmp(referenceName, name) == 0, "Validate that name was not changed, expected: %s, got: %s", referenceName, name);
 
     /* Get non-existent data new name */
-    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), name2);
+    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), name2, NULL);
     SDLTest_AssertPass("Call to SDL_GetWindowData(..,%s)", name2);
     SDLTest_AssertCheck(result == NULL, "Validate that result is NULL");
     SDLTest_AssertCheck(SDL_strcmp(referenceName2, name2) == 0, "Validate that name2 was not changed, expected: %s, got: %s", referenceName2, name2);
 
     /* Set data (again) */
-    SDL_SetProperty(SDL_GetWindowProperties(window), name, userdata, NULL, NULL);
+    SDL_SetProperty(SDL_GetWindowProperties(window), name, userdata);
     SDLTest_AssertPass("Call to SDL_SetWindowData(...%s,%s) [again, after clear]", name, userdata);
     SDLTest_AssertCheck(SDL_strcmp(referenceName, name) == 0, "Validate that name was not changed, expected: %s, got: %s", referenceName, name);
     SDLTest_AssertCheck(SDL_strcmp(referenceUserdata, userdata) == 0, "Validate that userdata was not changed, expected: %s, got: %s", referenceUserdata, userdata);
 
     /* Get data (again) */
-    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), name);
+    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), name, NULL);
     SDLTest_AssertPass("Call to SDL_GetWindowData(..,%s) [again, after clear]", name);
     SDLTest_AssertCheck(SDL_strcmp(referenceUserdata, result) == 0, "Validate that correct result was returned; expected: %s, got: %s", referenceUserdata, result);
     SDLTest_AssertCheck(SDL_strcmp(referenceName, name) == 0, "Validate that name was not changed, expected: %s, got: %s", referenceName, name);
 
     /* Set data with NULL name, valid userdata */
-    SDL_SetProperty(SDL_GetWindowProperties(window), NULL, userdata, NULL, NULL);
+    SDL_SetProperty(SDL_GetWindowProperties(window), NULL, userdata);
     SDLTest_AssertPass("Call to SDL_SetWindowData(name=NULL)");
     checkInvalidParameterError();
 
     /* Set data with empty name, valid userdata */
-    SDL_SetProperty(SDL_GetWindowProperties(window), "", userdata, NULL, NULL);
+    SDL_SetProperty(SDL_GetWindowProperties(window), "", userdata);
     SDLTest_AssertPass("Call to SDL_SetWindowData(name='')");
     checkInvalidParameterError();
 
     /* Set data with NULL name, NULL userdata */
-    SDL_SetProperty(SDL_GetWindowProperties(window), NULL, NULL, NULL, NULL);
+    SDL_SetProperty(SDL_GetWindowProperties(window), NULL, NULL);
     SDLTest_AssertPass("Call to SDL_SetWindowData(name=NULL,userdata=NULL)");
     checkInvalidParameterError();
 
     /* Set data with empty name, NULL userdata */
-    SDL_SetProperty(SDL_GetWindowProperties(window), "", NULL, NULL, NULL);
+    SDL_SetProperty(SDL_GetWindowProperties(window), "", NULL);
     SDLTest_AssertPass("Call to SDL_SetWindowData(name='',userdata=NULL)");
     checkInvalidParameterError();
 
     /* Get data with NULL name */
-    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), NULL);
+    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), NULL, NULL);
     SDLTest_AssertPass("Call to SDL_GetWindowData(name=NULL)");
     SDLTest_AssertCheck(result == NULL, "Validate that result is NULL");
     checkInvalidParameterError();
 
     /* Get data with empty name */
-    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), "");
+    result = (char *)SDL_GetProperty(SDL_GetWindowProperties(window), "", NULL);
     SDLTest_AssertPass("Call to SDL_GetWindowData(name='')");
     SDLTest_AssertCheck(result == NULL, "Validate that result is NULL");
     checkInvalidParameterError();
@@ -1629,7 +1628,7 @@ cleanup:
 }
 
 /**
- * \brief Tests the functionality of the SDL_WINDOWPOS_CENTERED_DISPLAY along with SDL_WINDOW_FULLSCREEN.
+ * Tests the functionality of the SDL_WINDOWPOS_CENTERED_DISPLAY along with SDL_WINDOW_FULLSCREEN.
  *
  * Especially useful when run on a multi-monitor system with different DPI scales per monitor,
  * to test that the window size is maintained when moving between monitors.
@@ -1677,6 +1676,7 @@ static int video_setWindowCenteredOnDisplay(void *arg)
                 int currentDisplay;
                 int expectedDisplay;
                 SDL_Rect expectedDisplayRect;
+                SDL_PropertiesID props;
 
                 /* xVariation is the display we start on */
                 expectedDisplay = displays[xVariation % displayNum];
@@ -1688,7 +1688,14 @@ static int video_setWindowCenteredOnDisplay(void *arg)
                 expectedX = (expectedDisplayRect.x + ((expectedDisplayRect.w - w) / 2));
                 expectedY = (expectedDisplayRect.y + ((expectedDisplayRect.h - h) / 2));
 
-                window = SDL_CreateWindowWithPosition(title, x, y, w, h, 0);
+                props = SDL_CreateProperties();
+                SDL_SetStringProperty(props, "title", title);
+                SDL_SetNumberProperty(props, "x", x);
+                SDL_SetNumberProperty(props, "w", y);
+                SDL_SetNumberProperty(props, "width", w);
+                SDL_SetNumberProperty(props, "height", h);
+                window = SDL_CreateWindowWithProperties(props);
+                SDL_DestroyProperties(props);
                 SDLTest_AssertPass("Call to SDL_CreateWindow('Title',%d,%d,%d,%d,SHOWN)", x, y, w, h);
                 SDLTest_AssertCheck(window != NULL, "Validate that returned window struct is not NULL");
 

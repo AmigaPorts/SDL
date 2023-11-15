@@ -145,8 +145,9 @@ static SDL_bool CreateWindowAndRenderer(Uint32 window_flags, const char *driver)
 #endif
 
 #ifdef __WIN32__
-    d3d11_device = SDL_GetRenderD3D11Device(renderer);
+    d3d11_device = (ID3D11Device *)SDL_GetProperty(SDL_GetRendererProperties(renderer), "SDL.renderer.d3d11.device", NULL);
     if (d3d11_device) {
+        ID3D11Device_AddRef(d3d11_device);
         ID3D11Device_GetImmediateContext(d3d11_device, &d3d11_context);
     }
 #endif
@@ -456,14 +457,14 @@ static SDL_bool GetTextureForMemoryFrame(AVFrame *frame, SDL_Texture **texture)
     case SDL_PIXELFORMAT_UNKNOWN:
     {
         SDL_PropertiesID props = SDL_GetTextureProperties(*texture);
-        struct SwsContextContainer *sws_container = (struct SwsContextContainer *)SDL_GetProperty(props, SWS_CONTEXT_CONTAINER_PROPERTY);
+        struct SwsContextContainer *sws_container = (struct SwsContextContainer *)SDL_GetProperty(props, SWS_CONTEXT_CONTAINER_PROPERTY, NULL);
         if (!sws_container) {
             sws_container = (struct SwsContextContainer *)SDL_calloc(1, sizeof(*sws_container));
             if (!sws_container) {
                 SDL_OutOfMemory();
                 return SDL_FALSE;
             }
-            SDL_SetProperty(props, SWS_CONTEXT_CONTAINER_PROPERTY, sws_container, FreeSwsContextContainer, NULL);
+            SDL_SetPropertyWithCleanup(props, SWS_CONTEXT_CONTAINER_PROPERTY, sws_container, FreeSwsContextContainer, NULL);
         }
         sws_container->context = sws_getCachedContext(sws_container->context, frame->width, frame->height, frame->format, frame->width, frame->height, AV_PIX_FMT_BGRA, SWS_POINT, NULL, NULL, NULL);
         if (sws_container->context) {
@@ -624,20 +625,12 @@ static SDL_bool GetTextureForD3D11Frame(AVFrame *frame, SDL_Texture **texture)
         }
     }
 
-    IDXGIResource *dxgi_resource = SDL_GetTextureDXGIResource(*texture);
-    if (!dxgi_resource) {
-        return SDL_FALSE;
-    }
-
-    ID3D11Resource *dx11_resource = NULL;
-    HRESULT result = IDXGIResource_QueryInterface(dxgi_resource, &SDL_IID_ID3D11Resource, (void **)&dx11_resource);
-    IDXGIResource_Release(dxgi_resource);
-    if (FAILED(result)) {
-        SDL_SetError("Couldn't get texture ID3D11Resource interface: 0x%x", result);
+    ID3D11Resource *dx11_resource = SDL_GetProperty(SDL_GetTextureProperties(*texture), "SDL.texture.d3d11.texture", NULL);
+    if (!dx11_resource) {
+        SDL_SetError("Couldn't get texture ID3D11Resource interface");
         return SDL_FALSE;
     }
     ID3D11DeviceContext_CopySubresourceRegion(d3d11_context, dx11_resource, 0, 0, 0, 0, (ID3D11Resource *)pTexture, iSliceIndex, NULL);
-    ID3D11Resource_Release(dx11_resource);
 
     return SDL_TRUE;
 #else
@@ -999,7 +992,7 @@ int main(int argc, char *argv[])
     /* Create the sprite */
     sprite = CreateTexture(renderer, icon_bmp, icon_bmp_len, &sprite_w, &sprite_h);
 
-    if (sprite == NULL) {
+    if (!sprite) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create texture (%s)", SDL_GetError());
         return_code = 3;
         goto quit;
@@ -1008,7 +1001,7 @@ int main(int argc, char *argv[])
     /* Allocate memory for the sprite info */
     positions = (SDL_FRect *)SDL_malloc(num_sprites * sizeof(*positions));
     velocities = (SDL_FRect *)SDL_malloc(num_sprites * sizeof(*velocities));
-    if (positions == NULL || velocities == NULL) {
+    if (!positions || !velocities) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Out of memory!\n");
         return_code = 3;
         goto quit;

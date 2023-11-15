@@ -35,7 +35,6 @@
 
 #include "SDL_androidvulkan.h"
 
-#include <SDL3/SDL_syswm.h>
 
 int Android_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
 {
@@ -49,10 +48,10 @@ int Android_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
     }
 
     /* Load the Vulkan loader library */
-    if (path == NULL) {
+    if (!path) {
         path = SDL_getenv("SDL_VULKAN_LIBRARY");
     }
-    if (path == NULL) {
+    if (!path) {
         path = "libvulkan.so";
     }
     _this->vulkan_config.loader_handle = SDL_LoadObject(path);
@@ -77,7 +76,7 @@ int Android_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
         (PFN_vkEnumerateInstanceExtensionProperties)
             _this->vulkan_config.vkEnumerateInstanceExtensionProperties,
         &extensionCount);
-    if (extensions == NULL) {
+    if (!extensions) {
         goto fail;
     }
     for (i = 0; i < extensionCount; i++) {
@@ -111,25 +110,22 @@ void Android_Vulkan_UnloadLibrary(SDL_VideoDevice *_this)
     }
 }
 
-SDL_bool Android_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this,
-                                              unsigned *count,
-                                              const char **names)
+char const* const* Android_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this,
+                                              Uint32 *count)
 {
     static const char *const extensionsForAndroid[] = {
         VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_ANDROID_SURFACE_EXTENSION_NAME
     };
-    if (!_this->vulkan_config.loader_handle) {
-        SDL_SetError("Vulkan is not loaded");
-        return SDL_FALSE;
+    if(count) {
+        *count = SDL_arraysize(extensionsForAndroid);
     }
-    return SDL_Vulkan_GetInstanceExtensions_Helper(
-        count, names, SDL_arraysize(extensionsForAndroid),
-        extensionsForAndroid);
+    return extensionsForAndroid;
 }
 
 SDL_bool Android_Vulkan_CreateSurface(SDL_VideoDevice *_this,
                                       SDL_Window *window,
                                       VkInstance instance,
+                                      const struct VkAllocationCallbacks *allocator,
                                       VkSurfaceKHR *surface)
 {
     SDL_WindowData *windowData = window->driverdata;
@@ -157,8 +153,7 @@ SDL_bool Android_Vulkan_CreateSurface(SDL_VideoDevice *_this,
     createInfo.pNext = NULL;
     createInfo.flags = 0;
     createInfo.window = windowData->native_window;
-    result = vkCreateAndroidSurfaceKHR(instance, &createInfo,
-                                       NULL, surface);
+    result = vkCreateAndroidSurfaceKHR(instance, &createInfo, allocator, surface);
     if (result != VK_SUCCESS) {
         SDL_SetError("vkCreateAndroidSurfaceKHR failed: %s",
                      SDL_Vulkan_GetResultString(result));

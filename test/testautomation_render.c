@@ -76,13 +76,13 @@ static void InitCreateRenderer(void *arg)
  */
 static void CleanupDestroyRenderer(void *arg)
 {
-    if (renderer != NULL) {
+    if (renderer) {
         SDL_DestroyRenderer(renderer);
         renderer = NULL;
         SDLTest_AssertPass("SDL_DestroyRenderer()");
     }
 
-    if (window != NULL) {
+    if (window) {
         SDL_DestroyWindow(window);
         window = NULL;
         SDLTest_AssertPass("SDL_DestroyWindow");
@@ -90,7 +90,7 @@ static void CleanupDestroyRenderer(void *arg)
 }
 
 /**
- * \brief Tests call to SDL_GetNumRenderDrivers
+ * Tests call to SDL_GetNumRenderDrivers
  *
  * \sa SDL_GetNumRenderDrivers
  */
@@ -103,7 +103,7 @@ static int render_testGetNumRenderDrivers(void *arg)
 }
 
 /**
- * \brief Tests the SDL primitives for rendering.
+ * Tests the SDL primitives for rendering.
  *
  * \sa SDL_SetRenderDrawColor
  * \sa SDL_RenderFillRect
@@ -190,7 +190,7 @@ static int render_testPrimitives(void *arg)
 }
 
 /**
- * \brief Tests the SDL primitives with alpha for rendering.
+ * Tests the SDL primitives with alpha for rendering.
  *
  * \sa SDL_SetRenderDrawColor
  * \sa SDL_SetRenderDrawBlendMode
@@ -333,7 +333,7 @@ static int render_testPrimitivesBlend(void *arg)
 }
 
 /**
- * \brief Tests some blitting routines.
+ * Tests some blitting routines.
  *
  * \sa SDL_RenderTexture
  * \sa SDL_DestroyTexture
@@ -400,7 +400,7 @@ static int render_testBlit(void *arg)
 }
 
 /**
- * \brief Blits doing color tests.
+ * Blits doing color tests.
  *
  * \sa SDL_SetTextureColorMod
  * \sa SDL_RenderTexture
@@ -474,7 +474,7 @@ static int render_testBlitColor(void *arg)
 }
 
 /**
- * \brief Tests blitting with alpha.
+ * Tests blitting with alpha.
  *
  * \sa SDL_SetTextureAlphaMod
  * \sa SDL_RenderTexture
@@ -551,7 +551,7 @@ static int render_testBlitAlpha(void *arg)
 }
 
 /**
- * \brief Tests a blend mode.
+ * Tests a blend mode.
  *
  * \sa SDL_SetTextureBlendMode
  * \sa SDL_RenderTexture
@@ -602,7 +602,7 @@ testBlitBlendMode(SDL_Texture *tface, int mode)
 }
 
 /**
- * \brief Tests some more blitting routines.
+ * Tests some more blitting routines.
  *
  * \sa SDL_SetTextureColorMod
  * \sa SDL_SetTextureAlphaMod
@@ -759,7 +759,7 @@ static int render_testBlitBlend(void *arg)
 }
 
 /**
- * \brief Test viewport
+ * Test viewport
  */
 static int render_testViewport(void *arg)
 {
@@ -816,7 +816,7 @@ static int render_testViewport(void *arg)
 }
 
 /**
- * \brief Test logical size
+ * Test logical size
  */
 static int render_testLogicalSize(void *arg)
 {
@@ -926,7 +926,7 @@ static int render_testLogicalSize(void *arg)
 /* Helper functions */
 
 /**
- * \brief Checks to see if functionality is supported. Helper function.
+ * Checks to see if functionality is supported. Helper function.
  */
 static int
 isSupported(int code)
@@ -935,7 +935,7 @@ isSupported(int code)
 }
 
 /**
- * \brief Test to see if we can vary the draw color. Helper function.
+ * Test to see if we can vary the draw color. Helper function.
  *
  * \sa SDL_SetRenderDrawColor
  * \sa SDL_GetRenderDrawColor
@@ -976,7 +976,7 @@ hasDrawColor(void)
 }
 
 /**
- * \brief Test to see if we can vary the blend mode. Helper function.
+ * Test to see if we can vary the blend mode. Helper function.
  *
  * \sa SDL_SetRenderDrawBlendMode
  * \sa SDL_GetRenderDrawBlendMode
@@ -1043,7 +1043,7 @@ hasBlendModes(void)
 }
 
 /**
- * \brief Loads the test image 'Face' as texture. Helper function.
+ * Loads the test image 'Face' as texture. Helper function.
  *
  * \sa SDL_CreateTextureFromSurface
  */
@@ -1054,12 +1054,12 @@ loadTestFace(void)
     SDL_Texture *tface;
 
     face = SDLTest_ImageFace();
-    if (face == NULL) {
+    if (!face) {
         return NULL;
     }
 
     tface = SDL_CreateTextureFromSurface(renderer, face);
-    if (tface == NULL) {
+    if (!tface) {
         SDLTest_LogError("SDL_CreateTextureFromSurface() failed with error: %s", SDL_GetError());
     }
 
@@ -1069,7 +1069,7 @@ loadTestFace(void)
 }
 
 /**
- * \brief Test to see if can set texture color mode. Helper function.
+ * Test to see if can set texture color mode. Helper function.
  *
  * \sa SDL_SetTextureColorMod
  * \sa SDL_GetTextureColorMod
@@ -1085,7 +1085,7 @@ hasTexColor(void)
 
     /* Get test face. */
     tface = loadTestFace();
-    if (tface == NULL) {
+    if (!tface) {
         return 0;
     }
 
@@ -1112,7 +1112,7 @@ hasTexColor(void)
 }
 
 /**
- * \brief Test to see if we can vary the alpha of the texture. Helper function.
+ * Test to see if we can vary the alpha of the texture. Helper function.
  *
  * \sa SDL_SetTextureAlphaMod
  * \sa SDL_GetTextureAlphaMod
@@ -1128,7 +1128,7 @@ hasTexAlpha(void)
 
     /* Get test face. */
     tface = loadTestFace();
-    if (tface == NULL) {
+    if (!tface) {
         return 0;
     }
 
@@ -1155,7 +1155,7 @@ hasTexAlpha(void)
 }
 
 /**
- * \brief Compares screen pixels with image pixels. Helper function.
+ * Compares screen pixels with image pixels. Helper function.
  *
  * \param referenceSurface Image to compare against.
  * \param allowable_error allowed difference from the reference image
@@ -1200,7 +1200,7 @@ compare(SDL_Surface *referenceSurface, int allowable_error)
 }
 
 /**
- * \brief Clears the screen. Helper function.
+ * Clears the screen. Helper function.
  *
  * \sa SDL_SetRenderDrawColor
  * \sa SDL_RenderClear

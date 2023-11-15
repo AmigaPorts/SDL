@@ -115,7 +115,7 @@ void SDL_UnlockSensors(void)
 
 SDL_bool SDL_SensorsLocked(void)
 {
-    return (SDL_sensors_locked > 0) ? SDL_TRUE : SDL_FALSE;
+    return (SDL_sensors_locked > 0);
 }
 
 void SDL_AssertSensorsLocked(void)
@@ -329,7 +329,7 @@ SDL_Sensor *SDL_OpenSensor(SDL_SensorID instance_id)
 
     /* Create and initialize the sensor */
     sensor = (SDL_Sensor *)SDL_calloc(sizeof(*sensor), 1);
-    if (sensor == NULL) {
+    if (!sensor) {
         SDL_OutOfMemory();
         SDL_UnlockSensors();
         return NULL;

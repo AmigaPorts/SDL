@@ -25,7 +25,7 @@
 #include "../SDL_sysvideo.h"
 #include "SDL_nullframebuffer_c.h"
 
-#define DUMMY_SURFACE "_SDL_DummySurface"
+#define DUMMY_SURFACE "SDL.internal.window.surface"
 
 static void CleanupSurface(void *userdata, void *value)
 {
@@ -43,12 +43,12 @@ int SDL_DUMMY_CreateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window *window
     /* Create a new framebuffer */
     SDL_GetWindowSizeInPixels(window, &w, &h);
     surface = SDL_CreateSurface(w, h, surface_format);
-    if (surface == NULL) {
+    if (!surface) {
         return -1;
     }
 
     /* Save the info and return! */
-    SDL_SetProperty(SDL_GetWindowProperties(window), DUMMY_SURFACE, surface, CleanupSurface, NULL);
+    SDL_SetPropertyWithCleanup(SDL_GetWindowProperties(window), DUMMY_SURFACE, surface, CleanupSurface, NULL);
     *format = surface_format;
     *pixels = surface->pixels;
     *pitch = surface->pitch;
@@ -60,8 +60,8 @@ int SDL_DUMMY_UpdateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window *window
     static int frame_number;
     SDL_Surface *surface;
 
-    surface = (SDL_Surface *)SDL_GetProperty(SDL_GetWindowProperties(window), DUMMY_SURFACE);
-    if (surface == NULL) {
+    surface = (SDL_Surface *)SDL_GetProperty(SDL_GetWindowProperties(window), DUMMY_SURFACE, NULL);
+    if (!surface) {
         return SDL_SetError("Couldn't find dummy surface for window");
     }
 

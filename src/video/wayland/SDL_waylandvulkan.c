@@ -36,8 +36,6 @@
 #include "../SDL_vulkan_internal.h"
 #include "SDL_waylandvulkan.h"
 
-#include <SDL3/SDL_syswm.h>
-
 #ifdef __OpenBSD__
 #define DEFAULT_VULKAN "libvulkan.so"
 #else
@@ -56,10 +54,10 @@ int Wayland_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
     }
 
     /* Load the Vulkan loader library */
-    if (path == NULL) {
+    if (!path) {
         path = SDL_getenv("SDL_VULKAN_LIBRARY");
     }
-    if (path == NULL) {
+    if (!path) {
         path = DEFAULT_VULKAN;
     }
     _this->vulkan_config.loader_handle = SDL_LoadObject(path);
@@ -84,7 +82,7 @@ int Wayland_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
         (PFN_vkEnumerateInstanceExtensionProperties)
             _this->vulkan_config.vkEnumerateInstanceExtensionProperties,
         &extensionCount);
-    if (extensions == NULL) {
+    if (!extensions) {
         goto fail;
     }
     for (i = 0; i < extensionCount; i++) {
@@ -118,25 +116,23 @@ void Wayland_Vulkan_UnloadLibrary(SDL_VideoDevice *_this)
     }
 }
 
-SDL_bool Wayland_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this,
-                                              unsigned *count,
-                                              const char **names)
+char const* const* Wayland_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this, Uint32 *count)
 {
     static const char *const extensionsForWayland[] = {
         VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME
     };
-    if (!_this->vulkan_config.loader_handle) {
-        SDL_SetError("Vulkan is not loaded");
-        return SDL_FALSE;
+
+    if (count) {
+        *count = SDL_arraysize(extensionsForWayland);
     }
-    return SDL_Vulkan_GetInstanceExtensions_Helper(
-        count, names, SDL_arraysize(extensionsForWayland),
-        extensionsForWayland);
+
+    return extensionsForWayland;
 }
 
 SDL_bool Wayland_Vulkan_CreateSurface(SDL_VideoDevice *_this,
                                       SDL_Window *window,
                                       VkInstance instance,
+                                      const struct VkAllocationCallbacks *allocator,
                                       VkSurfaceKHR *surface)
 {
     SDL_WindowData *windowData = window->driverdata;
@@ -165,8 +161,7 @@ SDL_bool Wayland_Vulkan_CreateSurface(SDL_VideoDevice *_this,
     createInfo.flags = 0;
     createInfo.display = windowData->waylandData->display;
     createInfo.surface = windowData->surface;
-    result = vkCreateWaylandSurfaceKHR(instance, &createInfo,
-                                       NULL, surface);
+    result = vkCreateWaylandSurfaceKHR(instance, &createInfo, allocator, surface);
     if (result != VK_SUCCESS) {
         SDL_SetError("vkCreateWaylandSurfaceKHR failed: %s",
                      SDL_Vulkan_GetResultString(result));

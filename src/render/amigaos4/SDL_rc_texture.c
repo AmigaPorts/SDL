@@ -45,7 +45,7 @@ OS4_IsBlendModeSupported(SDL_BlendMode mode)
 }
 
 int
-OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture)
+OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture, SDL_PropertiesID create_props /* TODO: */)
 {
     int bpp;
     Uint32 Rmask, Gmask, Bmask, Amask;

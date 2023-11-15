@@ -248,7 +248,7 @@ OS4_SetWindowShape(SDL_WindowShaper * shaper, SDL_Surface * shape, SDL_WindowSha
         }
 
         if (data->bitmap) {
-            SDL_CalculateShapeBitmap(shaper->mode, shape, data->bitmap, 1);
+            SDL_CalculateShapeBitmap(shaper->mode, shape, data->bitmap, 1, 0);
 
             data->sysbm = OS4_MakeAlphaBitMap(data->bitmap, shape->w, shape->h);
             if (!data->sysbm) {

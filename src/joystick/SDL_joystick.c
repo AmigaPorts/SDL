@@ -184,7 +184,7 @@ void SDL_UnlockJoysticks(void)
 
 SDL_bool SDL_JoysticksLocked(void)
 {
-    return (SDL_joysticks_locked > 0) ? SDL_TRUE : SDL_FALSE;
+    return (SDL_joysticks_locked > 0);
 }
 
 void SDL_AssertJoysticksLocked(void)
@@ -272,7 +272,7 @@ static SDL_bool SDL_SetJoystickIDForPlayerIndex(int player_index, SDL_JoystickID
 
     if (player_index >= SDL_joystick_player_count) {
         SDL_JoystickID *new_players = (SDL_JoystickID *)SDL_realloc(SDL_joystick_players, (player_index + 1) * sizeof(*SDL_joystick_players));
-        if (new_players == NULL) {
+        if (!new_players) {
             SDL_OutOfMemory();
             return SDL_FALSE;
         }
@@ -450,7 +450,7 @@ const char *SDL_GetJoystickInstancePath(SDL_JoystickID instance_id)
     SDL_UnlockJoysticks();
 
     /* FIXME: Really we should reference count this path so it doesn't go away after unlock */
-    if (path == NULL) {
+    if (!path) {
         SDL_Unsupported();
     }
     return path;
@@ -757,7 +757,7 @@ SDL_Joystick *SDL_OpenJoystick(SDL_JoystickID instance_id)
 
     /* Create and initialize the joystick */
     joystick = (SDL_Joystick *)SDL_calloc(sizeof(*joystick), 1);
-    if (joystick == NULL) {
+    if (!joystick) {
         SDL_OutOfMemory();
         SDL_UnlockJoysticks();
         return NULL;
@@ -2133,6 +2133,7 @@ char *SDL_CreateJoystickName(Uint16 vendor, Uint16 product, const char *vendor_n
         { "HORI CO.,LTD", "HORI" },
         { "HORI CO.,LTD.", "HORI" },
         { "Mad Catz Inc.", "Mad Catz" },
+        { "Nintendo Co., Ltd.", "Nintendo" },
         { "NVIDIA Corporation ", "" },
         { "Performance Designed Products", "PDP" },
         { "QANBA USA, LLC", "Qanba" },
@@ -2148,10 +2149,10 @@ char *SDL_CreateJoystickName(Uint16 vendor, Uint16 product, const char *vendor_n
         return SDL_strdup(custom_name);
     }
 
-    if (vendor_name == NULL) {
+    if (!vendor_name) {
         vendor_name = "";
     }
-    if (product_name == NULL) {
+    if (!product_name) {
         product_name = "";
     }
 
@@ -2194,7 +2195,7 @@ char *SDL_CreateJoystickName(Uint16 vendor, Uint16 product, const char *vendor_n
         default:
             len = (6 + 1 + 6 + 1);
             name = (char *)SDL_malloc(len);
-            if (name != NULL) {
+            if (name) {
                 (void)SDL_snprintf(name, len, "0x%.4x/0x%.4x", vendor, product);
             }
             break;
@@ -2203,7 +2204,7 @@ char *SDL_CreateJoystickName(Uint16 vendor, Uint16 product, const char *vendor_n
         name = SDL_strdup("Controller");
     }
 
-    if (name == NULL) {
+    if (!name) {
         return NULL;
     }
 
@@ -2267,7 +2268,7 @@ SDL_JoystickGUID SDL_CreateJoystickGUID(Uint16 bus, Uint16 vendor, Uint16 produc
 
     SDL_zero(guid);
 
-    if (name == NULL) {
+    if (!name) {
         name = "";
     }
 
@@ -2370,6 +2371,10 @@ SDL_GamepadType SDL_GetGamepadTypeFromVIDPID(Uint16 vendor, Uint16 product, cons
 
     } else if (vendor == USB_VENDOR_NINTENDO && product == USB_PRODUCT_NINTENDO_SWITCH_JOYCON_PAIR) {
         type = SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR;
+
+    } else if (forUI && SDL_IsJoystickGameCube(vendor, product)) {
+        /* We don't have a type for the Nintendo GameCube controller */
+        type = SDL_GAMEPAD_TYPE_STANDARD;
 
     } else {
         switch (GuessControllerType(vendor, product)) {
@@ -2482,6 +2487,12 @@ SDL_bool SDL_IsJoystickXboxSeriesX(Uint16 vendor_id, Uint16 product_id)
             return SDL_TRUE;
         }
     }
+    if (vendor_id == USB_VENDOR_HP) {
+        if (product_id == USB_PRODUCT_XBOX_SERIES_X_HP_HYPERX ||
+            product_id == USB_PRODUCT_XBOX_SERIES_X_HP_HYPERX_RGB) {
+            return SDL_TRUE;
+        }
+    }
     if (vendor_id == USB_VENDOR_RAZER) {
         if (product_id == USB_PRODUCT_RAZER_WOLVERINE_V2 ||
             product_id == USB_PRODUCT_RAZER_WOLVERINE_V2_CHROMA) {
@@ -2500,7 +2511,8 @@ SDL_bool SDL_IsJoystickXboxSeriesX(Uint16 vendor_id, Uint16 product_id)
         }
     }
     if (vendor_id == USB_VENDOR_8BITDO) {
-        if (product_id == USB_PRODUCT_8BITDO_XBOX_CONTROLLER) {
+        if (product_id == USB_PRODUCT_8BITDO_XBOX_CONTROLLER1 ||
+            product_id == USB_PRODUCT_8BITDO_XBOX_CONTROLLER2) {
             return SDL_TRUE;
         }
     }
@@ -2589,6 +2601,23 @@ SDL_bool SDL_IsJoystickNintendoSwitchJoyConGrip(Uint16 vendor_id, Uint16 product
 SDL_bool SDL_IsJoystickNintendoSwitchJoyConPair(Uint16 vendor_id, Uint16 product_id)
 {
     return vendor_id == USB_VENDOR_NINTENDO && product_id == USB_PRODUCT_NINTENDO_SWITCH_JOYCON_PAIR;
+}
+
+SDL_bool SDL_IsJoystickGameCube(Uint16 vendor_id, Uint16 product_id)
+{
+    static Uint32 gamecube_formfactor[] = {
+        MAKE_VIDPID(0x0e6f, 0x0185), /* PDP Wired Fight Pad Pro for Nintendo Switch */
+        MAKE_VIDPID(0x20d6, 0xa711), /* PowerA Wired Controller Nintendo GameCube Style */
+    };
+    Uint32 id = MAKE_VIDPID(vendor_id, product_id);
+    int i;
+
+    for (i = 0; i < SDL_arraysize(gamecube_formfactor); ++i) {
+        if (id == gamecube_formfactor[i]) {
+            return SDL_TRUE;
+        }
+    }
+    return SDL_FALSE;
 }
 
 SDL_bool SDL_IsJoystickAmazonLunaController(Uint16 vendor_id, Uint16 product_id)
@@ -2969,6 +2998,7 @@ SDL_bool SDL_ShouldIgnoreJoystick(const char *name, SDL_JoystickGUID guid)
     };
 
     static Uint32 rog_chakram_list[] = {
+        MAKE_VIDPID(0x0b05, 0x1906), /* ROG Pugio II */
         MAKE_VIDPID(0x0b05, 0x1958), /* ROG Chakram Core Mouse */
         MAKE_VIDPID(0x0b05, 0x18e3), /* ROG Chakram (wired) Mouse */
         MAKE_VIDPID(0x0b05, 0x18e5), /* ROG Chakram (wireless) Mouse */
@@ -3363,7 +3393,7 @@ void SDL_LoadVIDPIDListFromHint(const char *hint, SDL_vidpid_list *list)
         spot = (char *)hint;
     }
 
-    if (spot == NULL) {
+    if (!spot) {
         return;
     }
 
@@ -3371,7 +3401,7 @@ void SDL_LoadVIDPIDListFromHint(const char *hint, SDL_vidpid_list *list)
         entry = (Uint16)SDL_strtol(spot, &spot, 0);
         entry <<= 16;
         spot = SDL_strstr(spot, "0x");
-        if (spot == NULL) {
+        if (!spot) {
             break;
         }
         entry |= (Uint16)SDL_strtol(spot, &spot, 0);
@@ -3379,7 +3409,7 @@ void SDL_LoadVIDPIDListFromHint(const char *hint, SDL_vidpid_list *list)
         if (list->num_entries == list->max_entries) {
             int max_entries = list->max_entries + 16;
             Uint32 *entries = (Uint32 *)SDL_realloc(list->entries, max_entries * sizeof(*list->entries));
-            if (entries == NULL) {
+            if (!entries) {
                 /* Out of memory, go with what we have already */
                 break;
             }

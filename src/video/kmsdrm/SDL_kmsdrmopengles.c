@@ -96,6 +96,13 @@ int KMSDRM_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window)
        even if you do async flips. */
     uint32_t flip_flags = DRM_MODE_PAGE_FLIP_EVENT;
 
+    /* Skip the swap if we've switched away to another VT */
+    if (windata->egl_surface == EGL_NO_SURFACE) {
+        /* Wait a bit, throttling to ~100 FPS */
+        SDL_Delay(10);
+        return 0;
+    }
+
     /* Recreate the GBM / EGL surfaces if the display mode has changed */
     if (windata->egl_surface_dirty) {
         KMSDRM_CreateSurfaces(_this, window);
@@ -116,7 +123,7 @@ int KMSDRM_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window)
 
     windata->bo = windata->next_bo;
 
-    /* Mark a buffer to becume the next front buffer.
+    /* Mark a buffer to become the next front buffer.
        This won't happen until pagelip completes. */
     if (!(_this->egl_data->eglSwapBuffers(_this->egl_data->egl_display,
                                           windata->egl_surface))) {
@@ -135,7 +142,7 @@ int KMSDRM_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window)
 
     /* Get an actual usable fb for the next front buffer. */
     fb_info = KMSDRM_FBFromBO(_this, windata->next_bo);
-    if (fb_info == NULL) {
+    if (!fb_info) {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not get a framebuffer");
         return 0;
     }

@@ -57,10 +57,10 @@ int X11_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
     }
 
     /* Load the Vulkan loader library */
-    if (path == NULL) {
+    if (!path) {
         path = SDL_getenv("SDL_VULKAN_LIBRARY");
     }
-    if (path == NULL) {
+    if (!path) {
         path = DEFAULT_VULKAN;
     }
     _this->vulkan_config.loader_handle = SDL_LoadObject(path);
@@ -84,7 +84,7 @@ int X11_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
         (PFN_vkEnumerateInstanceExtensionProperties)
             _this->vulkan_config.vkEnumerateInstanceExtensionProperties,
         &extensionCount);
-    if (extensions == NULL) {
+    if (!extensions) {
         goto fail;
     }
     for (i = 0; i < extensionCount; i++) {
@@ -108,7 +108,7 @@ int X11_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
         goto fail;
     } else {
         const char *libX11XCBLibraryName = SDL_getenv("SDL_X11_XCB_LIBRARY");
-        if (libX11XCBLibraryName == NULL) {
+        if (!libX11XCBLibraryName) {
             libX11XCBLibraryName = "libX11-xcb.so";
         }
         videoData->vulkan_xlib_xcb_library = SDL_LoadObject(libX11XCBLibraryName);
@@ -142,35 +142,35 @@ void X11_Vulkan_UnloadLibrary(SDL_VideoDevice *_this)
     }
 }
 
-SDL_bool X11_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this,
-                                          unsigned *count,
-                                          const char **names)
+char const* const* X11_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this,
+                                          Uint32 *count)
 {
     SDL_VideoData *videoData = _this->driverdata;
-    if (!_this->vulkan_config.loader_handle) {
-        SDL_SetError("Vulkan is not loaded");
-        return SDL_FALSE;
-    }
     if (videoData->vulkan_xlib_xcb_library) {
         static const char *const extensionsForXCB[] = {
             VK_KHR_SURFACE_EXTENSION_NAME,
             VK_KHR_XCB_SURFACE_EXTENSION_NAME,
         };
-        return SDL_Vulkan_GetInstanceExtensions_Helper(
-            count, names, SDL_arraysize(extensionsForXCB), extensionsForXCB);
+        if(count) {
+            *count = SDL_arraysize(extensionsForXCB);
+        }
+        return extensionsForXCB;
     } else {
         static const char *const extensionsForXlib[] = {
             VK_KHR_SURFACE_EXTENSION_NAME,
             VK_KHR_XLIB_SURFACE_EXTENSION_NAME,
         };
-        return SDL_Vulkan_GetInstanceExtensions_Helper(
-            count, names, SDL_arraysize(extensionsForXlib), extensionsForXlib);
+        if(count) {
+            *count = SDL_arraysize(extensionsForXlib);
+        }
+        return extensionsForXlib;
     }
 }
 
 SDL_bool X11_Vulkan_CreateSurface(SDL_VideoDevice *_this,
                                   SDL_Window *window,
                                   VkInstance instance,
+                                  const struct VkAllocationCallbacks *allocator,
                                   VkSurfaceKHR *surface)
 {
     SDL_VideoData *videoData = _this->driverdata;
@@ -200,8 +200,7 @@ SDL_bool X11_Vulkan_CreateSurface(SDL_VideoDevice *_this,
             return SDL_FALSE;
         }
         createInfo.window = (xcb_window_t)windowData->xwindow;
-        result = vkCreateXcbSurfaceKHR(instance, &createInfo,
-                                       NULL, surface);
+        result = vkCreateXcbSurfaceKHR(instance, &createInfo, allocator, surface);
         if (result != VK_SUCCESS) {
             SDL_SetError("vkCreateXcbSurfaceKHR failed: %s", SDL_Vulkan_GetResultString(result));
             return SDL_FALSE;
@@ -222,8 +221,7 @@ SDL_bool X11_Vulkan_CreateSurface(SDL_VideoDevice *_this,
         createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
         createInfo.dpy = videoData->display;
         createInfo.window = (xcb_window_t)windowData->xwindow;
-        result = vkCreateXlibSurfaceKHR(instance, &createInfo,
-                                        NULL, surface);
+        result = vkCreateXlibSurfaceKHR(instance, &createInfo, allocator, surface);
         if (result != VK_SUCCESS) {
             SDL_SetError("vkCreateXlibSurfaceKHR failed: %s", SDL_Vulkan_GetResultString(result));
             return SDL_FALSE;

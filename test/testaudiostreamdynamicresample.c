@@ -158,7 +158,7 @@ static void skip_audio(float amount)
     num_frames = (int)(new_spec.freq * ((speed * amount) / 100.0f));
     buf = SDL_malloc(num_frames);
 
-    if (buf != NULL) {
+    if (buf) {
         retval = SDL_GetAudioStreamData(stream, buf, num_frames);
         SDL_free(buf);
     }
@@ -233,9 +233,9 @@ static void loop(void)
                     SDL_PauseAudioDevice(state->audio_id);
                 }
             } else if (sym == SDLK_w) {
-                auto_loop = auto_loop ? SDL_FALSE : SDL_TRUE;
+                auto_loop = !auto_loop;
             } else if (sym == SDLK_e) {
-                auto_flush = auto_flush ? SDL_FALSE : SDL_TRUE;
+                auto_flush = !auto_flush;
             } else if (sym == SDLK_a) {
                 SDL_ClearAudioStream(stream);
                 SDL_Log("Cleared audio stream");
@@ -374,7 +374,7 @@ int main(int argc, char *argv[])
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_AUDIO | SDL_INIT_VIDEO);
-    if (state == NULL) {
+    if (!state) {
         return 1;
     }
 

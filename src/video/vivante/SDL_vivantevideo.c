@@ -26,8 +26,6 @@
 #include "../SDL_sysvideo.h"
 #include "../../events/SDL_events_c.h"
 
-#include <SDL3/SDL_syswm.h>
-
 #ifdef SDL_INPUT_LINUXEV
 #include "../../core/linux/SDL_evdev.h"
 #endif
@@ -50,14 +48,14 @@ static SDL_VideoDevice *VIVANTE_Create()
 
     /* Initialize SDL_VideoDevice structure */
     device = (SDL_VideoDevice *)SDL_calloc(1, sizeof(SDL_VideoDevice));
-    if (device == NULL) {
+    if (!device) {
         SDL_OutOfMemory();
         return NULL;
     }
 
     /* Initialize internal data */
     data = (SDL_VideoData *)SDL_calloc(1, sizeof(SDL_VideoData));
-    if (data == NULL) {
+    if (!data) {
         SDL_OutOfMemory();
         SDL_free(device);
         return NULL;
@@ -81,7 +79,6 @@ static SDL_VideoDevice *VIVANTE_Create()
     device->ShowWindow = VIVANTE_ShowWindow;
     device->HideWindow = VIVANTE_HideWindow;
     device->DestroyWindow = VIVANTE_DestroyWindow;
-    device->GetWindowWMInfo = VIVANTE_GetWindowWMInfo;
 
 #ifdef SDL_VIDEO_OPENGL_EGL
     device->GL_LoadLibrary = VIVANTE_GLES_LoadLibrary;
@@ -127,7 +124,7 @@ static int VIVANTE_AddVideoDisplays(SDL_VideoDevice *_this)
     unsigned long pixels = 0;
 
     data = (SDL_DisplayData *)SDL_calloc(1, sizeof(SDL_DisplayData));
-    if (data == NULL) {
+    if (!data) {
         return SDL_OutOfMemory();
     }
 
@@ -241,7 +238,7 @@ void VIVANTE_VideoQuit(SDL_VideoDevice *_this)
 #endif
 }
 
-int VIVANTE_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window)
+int VIVANTE_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props)
 {
     SDL_VideoData *videodata = _this->driverdata;
     SDL_DisplayData *displaydata;
@@ -251,12 +248,15 @@ int VIVANTE_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window)
 
     /* Allocate window internal data */
     data = (SDL_WindowData *)SDL_calloc(1, sizeof(SDL_WindowData));
-    if (data == NULL) {
+    if (!data) {
         return SDL_OutOfMemory();
     }
 
     /* Setup driver data for this window */
     window->driverdata = data;
+
+    SDL_PropertiesID props = SDL_GetWindowProperties(window);
+    SDL_SetProperty(props, "SDL.window.vivante.display", displaydata->native_display);
 
 #ifdef SDL_VIDEO_DRIVER_VIVANTE_VDK
     data->native_window = vdkCreateWindow(displaydata->native_display, window->x, window->y, window->w, window->h);
@@ -266,6 +266,7 @@ int VIVANTE_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window)
     if (!data->native_window) {
         return SDL_SetError("VIVANTE: Can't create native window");
     }
+    SDL_SetProperty(props, "SDL.window.vivante.window", data->native_window);
 
 #ifdef SDL_VIDEO_OPENGL_EGL
     if (window->flags & SDL_WINDOW_OPENGL) {
@@ -276,6 +277,7 @@ int VIVANTE_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window)
     } else {
         data->egl_surface = EGL_NO_SURFACE;
     }
+    SDL_SetProperty(props, "SDL.window.vivante.surface", data->egl_surface);
 #endif
 
     /* Window has been successfully created */
@@ -345,20 +347,6 @@ void VIVANTE_HideWindow(SDL_VideoDevice *_this, SDL_Window *window)
 #endif
     SDL_SetMouseFocus(NULL);
     SDL_SetKeyboardFocus(NULL);
-}
-
-/*****************************************************************************/
-/* SDL Window Manager function                                               */
-/*****************************************************************************/
-int VIVANTE_GetWindowWMInfo(SDL_VideoDevice *_this, SDL_Window *window, struct SDL_SysWMinfo *info)
-{
-    SDL_WindowData *data = window->driverdata;
-    SDL_DisplayData *displaydata = SDL_GetDisplayDriverData(SDL_GetPrimaryDisplay());
-
-    info->subsystem = SDL_SYSWM_VIVANTE;
-    info->info.vivante.display = displaydata->native_display;
-    info->info.vivante.window = data->native_window;
-    return 0;
 }
 
 /*****************************************************************************/
