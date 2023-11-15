@@ -28,8 +28,6 @@
 #include "../../events/SDL_mouse_c.h"
 #include "../../events/SDL_keyboard_c.h"
 
-#include <SDL3/SDL_syswm.h>
-
 /* PSP declarations */
 #include "SDL_pspvideo.h"
 #include "SDL_pspevents_c.h"
@@ -53,21 +51,21 @@ static SDL_VideoDevice *PSP_Create()
 
     /* Initialize SDL_VideoDevice structure */
     device = (SDL_VideoDevice *)SDL_calloc(1, sizeof(SDL_VideoDevice));
-    if (device == NULL) {
+    if (!device) {
         SDL_OutOfMemory();
         return NULL;
     }
 
     /* Initialize internal PSP specific data */
     phdata = (SDL_VideoData *)SDL_calloc(1, sizeof(SDL_VideoData));
-    if (phdata == NULL) {
+    if (!phdata) {
         SDL_OutOfMemory();
         SDL_free(device);
         return NULL;
     }
 
     gldata = (SDL_GLDriverData *)SDL_calloc(1, sizeof(SDL_GLDriverData));
-    if (gldata == NULL) {
+    if (!gldata) {
         SDL_OutOfMemory();
         SDL_free(device);
         SDL_free(phdata);
@@ -91,7 +89,6 @@ static SDL_VideoDevice *PSP_Create()
     device->GetDisplayModes = PSP_GetDisplayModes;
     device->SetDisplayMode = PSP_SetDisplayMode;
     device->CreateSDLWindow = PSP_CreateWindow;
-    device->CreateSDLWindowFrom = PSP_CreateWindowFrom;
     device->SetWindowTitle = PSP_SetWindowTitle;
     device->SetWindowPosition = PSP_SetWindowPosition;
     device->SetWindowSize = PSP_SetWindowSize;
@@ -188,13 +185,13 @@ int PSP_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_Di
         }                                      \
     } while (0)
 
-int PSP_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window)
+int PSP_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props)
 {
     SDL_WindowData *wdata;
 
     /* Allocate window internal data */
     wdata = (SDL_WindowData *)SDL_calloc(1, sizeof(SDL_WindowData));
-    if (wdata == NULL) {
+    if (!wdata) {
         return SDL_OutOfMemory();
     }
 
@@ -205,11 +202,6 @@ int PSP_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window)
 
     /* Window has been successfully created */
     return 0;
-}
-
-int PSP_CreateWindowFrom(SDL_VideoDevice *_this, SDL_Window *window, const void *data)
-{
-    return SDL_Unsupported();
 }
 
 void PSP_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window)

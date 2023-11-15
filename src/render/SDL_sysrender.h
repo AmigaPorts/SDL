@@ -44,6 +44,8 @@ typedef struct SDL_DRect
 /* The SDL 2D rendering system */
 
 typedef struct SDL_RenderDriver SDL_RenderDriver;
+extern char SDL_renderer_magic;
+extern char SDL_texture_magic;
 
 /* Rendering view state */
 typedef struct SDL_RenderViewState
@@ -65,7 +67,6 @@ struct SDL_Texture
     int access;                 /**< SDL_TextureAccess */
     int w;                      /**< The width of the texture */
     int h;                      /**< The height of the texture */
-    int modMode;                /**< The texture modulation mode */
     SDL_BlendMode blendMode;    /**< The texture blend mode */
     SDL_ScaleMode scaleMode;    /**< The texture scale mode */
     SDL_Color color;            /**< Texture modulation values */
@@ -159,7 +160,7 @@ struct SDL_Renderer
     void (*WindowEvent)(SDL_Renderer *renderer, const SDL_WindowEvent *event);
     int (*GetOutputSize)(SDL_Renderer *renderer, int *w, int *h);
     SDL_bool (*SupportsBlendMode)(SDL_Renderer *renderer, SDL_BlendMode blendMode);
-    int (*CreateTexture)(SDL_Renderer *renderer, SDL_Texture *texture);
+    int (*CreateTexture)(SDL_Renderer *renderer, SDL_Texture *texture, SDL_PropertiesID create_props);
     int (*QueueSetViewport)(SDL_Renderer *renderer, SDL_RenderCommand *cmd);
     int (*QueueSetDrawColor)(SDL_Renderer *renderer, SDL_RenderCommand *cmd);
     int (*QueueDrawPoints)(SDL_Renderer *renderer, SDL_RenderCommand *cmd, const SDL_FPoint *points,
@@ -212,8 +213,6 @@ struct SDL_Renderer
 
     void *(*GetMetalLayer)(SDL_Renderer *renderer);
     void *(*GetMetalCommandEncoder)(SDL_Renderer *renderer);
-
-    IDXGIResource *(*GetTextureDXGIResource)(SDL_Texture *texture);
 
     /* The current renderer info */
     SDL_RendererInfo info;
@@ -281,7 +280,7 @@ struct SDL_Renderer
 /* Define the SDL render driver structure */
 struct SDL_RenderDriver
 {
-    SDL_Renderer *(*CreateRenderer)(SDL_Window *window, Uint32 flags);
+    SDL_Renderer *(*CreateRenderer)(SDL_Window *window, SDL_PropertiesID props);
 
     /* Info about the renderer capabilities */
     SDL_RendererInfo info;

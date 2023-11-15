@@ -693,7 +693,7 @@ static void IME_SetupAPI(SDL_VideoData *videodata)
     }
 
     hime = SDL_LoadObject(ime_file);
-    if (hime == NULL) {
+    if (!hime) {
         return;
     }
 
@@ -735,7 +735,7 @@ static void IME_UpdateInputLocale(SDL_VideoData *videodata)
     }
 
     videodata->ime_hkl = hklnext;
-    videodata->ime_candvertical = (PRIMLANG() == LANG_KOREAN || LANG() == LANG_CHS) ? SDL_FALSE : SDL_TRUE;
+    videodata->ime_candvertical = (PRIMLANG() != LANG_KOREAN && LANG() != LANG_CHS);
 }
 
 static void IME_ClearComposition(SDL_VideoData *videodata)
@@ -766,7 +766,7 @@ static SDL_bool IME_IsTextInputShown(SDL_VideoData *videodata)
         return SDL_FALSE;
     }
 
-    return videodata->ime_uicontext != 0 ? SDL_TRUE : SDL_FALSE;
+    return videodata->ime_uicontext != 0;
 }
 
 static void IME_GetCompositionString(SDL_VideoData *videodata, HIMC himc, DWORD string)
@@ -776,7 +776,7 @@ static void IME_GetCompositionString(SDL_VideoData *videodata, HIMC himc, DWORD 
 
     length = ImmGetCompositionStringW(himc, string, NULL, 0);
     if (length > 0 && videodata->ime_composition_length < length) {
-        if (videodata->ime_composition != NULL) {
+        if (videodata->ime_composition) {
             SDL_free(videodata->ime_composition);
         }
 
@@ -968,11 +968,11 @@ static int IME_ShowCandidateList(SDL_VideoData *videodata)
 
     videodata->ime_candcount = 0;
     candidates = SDL_realloc(videodata->ime_candidates, MAX_CANDSIZE);
-    if (candidates != NULL) {
+    if (candidates) {
         videodata->ime_candidates = (WCHAR *)candidates;
     }
 
-    if (videodata->ime_candidates == NULL) {
+    if (!videodata->ime_candidates) {
         return -1;
     }
 
@@ -1186,7 +1186,7 @@ TSFSink_Release(TSFSink *sink)
 
 STDMETHODIMP UIElementSink_QueryInterface(TSFSink *sink, REFIID riid, PVOID *ppv)
 {
-    if (ppv == NULL) {
+    if (!ppv) {
         return E_INVALIDARG;
     }
 
@@ -1223,7 +1223,7 @@ STDMETHODIMP UIElementSink_BeginUIElement(TSFSink *sink, DWORD dwUIElementId, BO
     ITfReadingInformationUIElement *preading = 0;
     ITfCandidateListUIElement *pcandlist = 0;
     SDL_VideoData *videodata = (SDL_VideoData *)sink->data;
-    if (element == NULL) {
+    if (!element) {
         return E_INVALIDARG;
     }
 
@@ -1248,7 +1248,7 @@ STDMETHODIMP UIElementSink_UpdateUIElement(TSFSink *sink, DWORD dwUIElementId)
     ITfReadingInformationUIElement *preading = 0;
     ITfCandidateListUIElement *pcandlist = 0;
     SDL_VideoData *videodata = (SDL_VideoData *)sink->data;
-    if (element == NULL) {
+    if (!element) {
         return E_INVALIDARG;
     }
 
@@ -1274,7 +1274,7 @@ STDMETHODIMP UIElementSink_EndUIElement(TSFSink *sink, DWORD dwUIElementId)
     ITfReadingInformationUIElement *preading = 0;
     ITfCandidateListUIElement *pcandlist = 0;
     SDL_VideoData *videodata = (SDL_VideoData *)sink->data;
-    if (element == NULL) {
+    if (!element) {
         return E_INVALIDARG;
     }
 
@@ -1296,7 +1296,7 @@ STDMETHODIMP UIElementSink_EndUIElement(TSFSink *sink, DWORD dwUIElementId)
 
 STDMETHODIMP IPPASink_QueryInterface(TSFSink *sink, REFIID riid, PVOID *ppv)
 {
-    if (ppv == NULL) {
+    if (!ppv) {
         return E_INVALIDARG;
     }
 

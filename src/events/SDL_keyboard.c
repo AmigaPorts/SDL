@@ -778,7 +778,7 @@ int SDL_SetKeyboardFocus(SDL_Window *window)
         }
     }
 
-    if (keyboard->focus && window == NULL) {
+    if (keyboard->focus && !window) {
         /* We won't get anymore keyboard messages, so reset keyboard state */
         SDL_ResetKeyboard();
     }
@@ -1071,19 +1071,18 @@ int SDL_SendKeyboardText(const char *text)
     posted = 0;
     if (SDL_EventEnabled(SDL_EVENT_TEXT_INPUT)) {
         SDL_Event event;
-        size_t pos = 0, advance, length = SDL_strlen(text);
-
         event.type = SDL_EVENT_TEXT_INPUT;
         event.common.timestamp = 0;
         event.text.windowID = keyboard->focus ? keyboard->focus->id : 0;
-        while (pos < length) {
-            advance = SDL_utf8strlcpy(event.text.text, text + pos, SDL_arraysize(event.text.text));
-            if (!advance) {
-                break;
-            }
-            pos += advance;
-            posted |= (SDL_PushEvent(&event) > 0);
+
+        size_t size = SDL_strlen(text) + 1;
+        event.text.text = (char *)SDL_AllocateEventMemory(size);
+        if (!event.text.text) {
+            return 0;
         }
+        SDL_memcpy(event.text.text, text, size);
+
+        posted = (SDL_PushEvent(&event) > 0);
     }
     return posted;
 }
@@ -1098,22 +1097,18 @@ int SDL_SendEditingText(const char *text, int start, int length)
     if (SDL_EventEnabled(SDL_EVENT_TEXT_EDITING)) {
         SDL_Event event;
 
-        if (SDL_GetHintBoolean(SDL_HINT_IME_SUPPORT_EXTENDED_TEXT, SDL_FALSE) &&
-            SDL_strlen(text) >= SDL_arraysize(event.text.text)) {
-            event.type = SDL_EVENT_TEXT_EDITING_EXT;
-            event.common.timestamp = 0;
-            event.editExt.windowID = keyboard->focus ? keyboard->focus->id : 0;
-            event.editExt.text = text ? SDL_strdup(text) : NULL;
-            event.editExt.start = start;
-            event.editExt.length = length;
-        } else {
-            event.type = SDL_EVENT_TEXT_EDITING;
-            event.common.timestamp = 0;
-            event.edit.windowID = keyboard->focus ? keyboard->focus->id : 0;
-            event.edit.start = start;
-            event.edit.length = length;
-            SDL_utf8strlcpy(event.edit.text, text, SDL_arraysize(event.edit.text));
+        event.type = SDL_EVENT_TEXT_EDITING;
+        event.common.timestamp = 0;
+        event.edit.windowID = keyboard->focus ? keyboard->focus->id : 0;
+        event.edit.start = start;
+        event.edit.length = length;
+
+        size_t size = SDL_strlen(text) + 1;
+        event.edit.text = (char *)SDL_AllocateEventMemory(size);
+        if (!event.edit.text) {
+            return 0;
         }
+        SDL_memcpy(event.edit.text, text, size);
 
         posted = (SDL_PushEvent(&event) > 0);
     }
@@ -1204,7 +1199,7 @@ const char *SDL_GetScancodeName(SDL_Scancode scancode)
     }
 
     name = SDL_scancode_names[scancode];
-    if (name != NULL) {
+    if (name) {
         return name;
     }
 
@@ -1215,7 +1210,7 @@ SDL_Scancode SDL_GetScancodeFromName(const char *name)
 {
     int i;
 
-    if (name == NULL || !*name) {
+    if (!name || !*name) {
         SDL_InvalidParamError("name");
         return SDL_SCANCODE_UNKNOWN;
     }
@@ -1275,7 +1270,7 @@ SDL_Keycode SDL_GetKeyFromName(const char *name)
     SDL_Keycode key;
 
     /* Check input */
-    if (name == NULL) {
+    if (!name) {
         return SDLK_UNKNOWN;
     }
 

@@ -41,7 +41,6 @@
 #include "SDL_os4mouse.h"
 #include "SDL_os4events.h"
 
-#include "SDL_syswm.h"
 #include "SDL_timer.h"
 
 #include "../../events/SDL_keyboard_c.h"
@@ -473,7 +472,7 @@ OS4_CreateSystemWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDis
 }
 
 int
-OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window)
+OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID props)
 {
     struct Window *syswin = NULL;
 
@@ -500,6 +499,7 @@ OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window)
     return 0;
 }
 
+// TODO
 int
 OS4_CreateWindowFrom(SDL_VideoDevice *_this, SDL_Window * window, const void * data)
 {
@@ -728,9 +728,11 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
         dprintf("Trying to set '%s' into %s mode\n", window->title,
             fullscreen ? "fullscreen" : "window");
 
+	/* TODO:
         if (window->flags & SDL_WINDOW_FOREIGN) {
             dprintf("Native window '%s' (%p), mode change ignored\n", window->title, data->syswin);
-        } else {
+        } else */
+	{
 
             int oldWidth = 0;
             int oldHeight = 0;
@@ -851,16 +853,16 @@ OS4_DestroyWindow(SDL_VideoDevice *_this, SDL_Window * window)
     }
 
     if (data->syswin) {
-        if (!(window->flags & SDL_WINDOW_FOREIGN)) {
+        /*if (!(window->flags & SDL_WINDOW_FOREIGN))*/ {
 
             if (SDL_IsShapedWindow(window)) {
                 OS4_DestroyShape(_this, window);
             }
 
             OS4_CloseWindow(_this, window);
-        } else {
+        } /*else { TODO:
             dprintf("Ignored for native window\n");
-        }
+        } */
     }
 
     if (window->flags & SDL_WINDOW_OPENGL) {
@@ -871,6 +873,7 @@ OS4_DestroyWindow(SDL_VideoDevice *_this, SDL_Window * window)
     window->driverdata = NULL;
 }
 
+/* TODO: implement properties and remove
 int
 OS4_GetWindowWMInfo(SDL_VideoDevice *_this, SDL_Window * window, struct SDL_SysWMinfo * info)
 {
@@ -892,6 +895,7 @@ OS4_GetWindowWMInfo(SDL_VideoDevice *_this, SDL_Window * window, struct SDL_SysW
         return -1;
     }
 }
+*/
 
 int
 OS4_SetWindowHitTest(SDL_Window * window, SDL_bool enabled)
@@ -1128,11 +1132,12 @@ OS4_UniconifyWindow(SDL_VideoDevice *_this, SDL_Window * window)
 static void
 OS4_RecreateWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
+/* TODO:
     if (window->flags & SDL_WINDOW_FOREIGN) {
         dprintf("Cannot modify native window '%s'\n", window->title);
         return;
     }
-
+*/
     SDL_WindowData *data = window->driverdata;
 
     if (data->syswin) {

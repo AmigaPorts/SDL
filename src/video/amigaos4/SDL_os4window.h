@@ -60,8 +60,7 @@ struct SDL_WindowData
 extern void OS4_GetWindowSize(SDL_VideoDevice *this, struct Window * window, int * width, int * height);
 extern void OS4_WaitForResize(SDL_VideoDevice *this, SDL_Window * window, int * width, int * height);
 
-extern int OS4_CreateWindow(SDL_VideoDevice *this, SDL_Window * window);
-extern int OS4_CreateWindowFrom(SDL_VideoDevice *this, SDL_Window * window, const void *data);
+extern int OS4_CreateWindow(SDL_VideoDevice *this, SDL_Window * window, SDL_PropertiesID id);
 extern void OS4_SetWindowTitle(SDL_VideoDevice *this, SDL_Window * window);
 //extern void OS4_SetWindowIcon(SDL_VideoDevice *this, SDL_Window * window, SDL_Surface * icon);
 extern void OS4_SetWindowBox(SDL_VideoDevice *this, SDL_Window * window);
@@ -90,7 +89,6 @@ extern void OS4_SetWindowMouseGrab(SDL_VideoDevice *this, SDL_Window * window, S
 //extern void OS4_SetWindowKeyboardGrab(SDL_VideoDevice *this, SDL_Window * window, SDL_bool grabbed);
 
 extern void OS4_DestroyWindow(SDL_VideoDevice *this, SDL_Window * window);
-extern int OS4_GetWindowWMInfo(SDL_VideoDevice *this, SDL_Window * window, struct SDL_SysWMinfo *info);
 
 //extern void OS4_OnWindowEnter(SDL_VideoDevice *this, SDL_Window * window);
 extern int OS4_FlashWindow(SDL_VideoDevice *this, SDL_Window * window, SDL_FlashOperation operation);

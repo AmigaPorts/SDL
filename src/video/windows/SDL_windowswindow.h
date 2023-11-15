@@ -45,7 +45,6 @@ struct SDL_WindowData
     HBITMAP hbm;
     WNDPROC wndproc;
     HHOOK keyboard_hook;
-    SDL_bool created;
     WPARAM mouse_button_flags;
     LPARAM last_pointer_update;
     WCHAR high_surrogate;
@@ -75,8 +74,7 @@ struct SDL_WindowData
     UINT copybits_flag;
 };
 
-extern int WIN_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window);
-extern int WIN_CreateWindowFrom(SDL_VideoDevice *_this, SDL_Window *window, const void *data);
+extern int WIN_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props);
 extern void WIN_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window);
 extern int WIN_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surface *icon);
 extern int WIN_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window *window);
@@ -100,7 +98,6 @@ extern void WIN_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window);
 extern void WIN_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
 extern void WIN_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
 extern void WIN_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window);
-extern int WIN_GetWindowWMInfo(SDL_VideoDevice *_this, SDL_Window *window, struct SDL_SysWMinfo *info);
 extern void WIN_OnWindowEnter(SDL_VideoDevice *_this, SDL_Window *window);
 extern void WIN_UpdateClipCursor(SDL_Window *window);
 extern int WIN_SetWindowHitTest(SDL_Window *window, SDL_bool enabled);

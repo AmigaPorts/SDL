@@ -35,12 +35,12 @@
 
 int VIVANTE_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path);
 void VIVANTE_Vulkan_UnloadLibrary(SDL_VideoDevice *_this);
-SDL_bool VIVANTE_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this,
-                                              unsigned *count,
-                                              const char **names);
+char const* const* VIVANTE_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this,
+                                              Uint32 *count);
 SDL_bool VIVANTE_Vulkan_CreateSurface(SDL_VideoDevice *_this,
                                       SDL_Window *window,
                                       VkInstance instance,
+                                      const struct VkAllocationCallbacks *allocator,
                                       VkSurfaceKHR *surface);
 
 #endif

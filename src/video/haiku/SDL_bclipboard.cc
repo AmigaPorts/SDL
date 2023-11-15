@@ -64,7 +64,7 @@ char *HAIKU_GetClipboardText(SDL_VideoDevice *_this) {
         be_clipboard->Unlock();
     }
 
-    if (text == NULL) {
+    if (!text) {
         result = SDL_strdup("");
     } else {
         /* Copy the data and pass on to SDL */
@@ -79,7 +79,7 @@ SDL_bool HAIKU_HasClipboardText(SDL_VideoDevice *_this) {
     SDL_bool result = SDL_FALSE;
     char *text = HAIKU_GetClipboardText(_this);
     if (text) {
-        result = text[0] != '\0' ? SDL_TRUE : SDL_FALSE;
+        result = (text[0] != '\0');
         SDL_free(text);
     }
     return result;

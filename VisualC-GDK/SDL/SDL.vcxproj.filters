@@ -175,6 +175,12 @@
     <Filter Include="video\gdk">
       <UniqueIdentifier>{3ad16a8a-0ed8-439c-a771-383af2e2867f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="main">
+      <UniqueIdentifier>{00002ddb6c5ea921181bf32d50e40000}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="main\generic">
+      <UniqueIdentifier>{00000a808f8ba6b489985f82a4e80000}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\SDL3\SDL_begin_code.h">
@@ -294,6 +300,9 @@
     <ClInclude Include="..\..\include\SDL3\SDL_opengles2_khrplatform.h">
       <Filter>API Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\include\SDL3\SDL_pen.h">
+      <Filter>API Headers</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\include\SDL3\SDL_pixels.h">
       <Filter>API Headers</Filter>
     </ClInclude>
@@ -340,9 +349,6 @@
       <Filter>API Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\SDL3\SDL_system.h">
-      <Filter>API Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\include\SDL3\SDL_syswm.h">
       <Filter>API Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\SDL3\SDL_test.h">
@@ -398,6 +404,9 @@
     </ClInclude>
     <ClInclude Include="..\..\include\SDL3\SDL_vulkan.h">
       <Filter>API Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\main\SDL_main_callbacks.h">
+      <Filter>main</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\SDL_error_c.h" />
     <ClInclude Include="..\..\src\SDL_hashtable.h" />
@@ -846,6 +855,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\audio\wasapi\SDL_wasapi.c" />
+    <ClCompile Include="..\..\src\main\generic\SDL_sysmain_callbacks.c">
+      <Filter>main\generic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\main\SDL_main_callbacks.c">
+      <Filter>main</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\SDL.c" />
     <ClCompile Include="..\..\src\SDL_assert.c" />
     <ClCompile Include="..\..\src\SDL_error.c" />
@@ -926,6 +941,9 @@
       <Filter>events</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\events\SDL_mouse.c">
+      <Filter>events</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\events\SDL_pen.c">
       <Filter>events</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\events\SDL_quit.c">
@@ -1388,6 +1406,9 @@
     <ClCompile Include="..\..\src\stdlib\SDL_mslibc.c">
       <Filter>stdlib</Filter>
     </ClCompile>
+    <MASM Include="..\..\src\stdlib\SDL_mslibc_x64.asm">
+      <Filter>stdlib</Filter>
+    </MASM>
     <ClCompile Include="..\..\src\core\gdk\SDL_gdk.cpp">
       <Filter>core\gdk</Filter>
     </ClCompile>

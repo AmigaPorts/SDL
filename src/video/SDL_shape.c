@@ -28,13 +28,13 @@ SDL_Window *SDL_CreateShapedWindow(const char *title, int w, int h, Uint32 flags
 {
     SDL_Window *result = NULL;
     result = SDL_CreateWindow(title, w, h, (flags | SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIDDEN) & (~SDL_WINDOW_FULLSCREEN) & (~SDL_WINDOW_RESIZABLE));
-    if (result != NULL) {
+    if (result) {
         if (SDL_GetVideoDevice()->shape_driver.CreateShaper == NULL) {
             SDL_DestroyWindow(result);
             return NULL;
         }
         result->shaper = SDL_GetVideoDevice()->shape_driver.CreateShaper(result);
-        if (result->shaper != NULL) {
+        if (result->shaper) {
             result->shaper->mode.mode = ShapeModeDefault;
             result->shaper->mode.parameters.binarizationCutoff = 1;
             result->shaper->hasshape = SDL_FALSE;
@@ -52,17 +52,18 @@ SDL_bool SDL_IsShapedWindow(const SDL_Window *window)
     if (window == NULL) {
         return SDL_FALSE;
     }
-    return (SDL_bool)(window->shaper != NULL);
+    return (window->shaper != NULL);
 }
 
-/* REQUIRES that bitmap point to a w-by-h bitmap with ppb pixels-per-byte. */
-void SDL_CalculateShapeBitmap(SDL_WindowShapeMode mode, SDL_Surface *shape, Uint8 *bitmap, Uint8 ppb)
+/* REQUIRES that bitmap point to a w-by-h bitmap with ppb pixels-per-byte and alignBytes scan line alignment. */
+void SDL_CalculateShapeBitmap(SDL_WindowShapeMode mode, SDL_Surface *shape, Uint8* bitmap, Uint8 ppb, Uint8 alignBytes)
 {
     int x = 0;
     int y = 0;
     Uint8 r = 0, g = 0, b = 0, alpha = 0;
     Uint32 mask_value = 0;
-    size_t bytes_per_scanline = (size_t)(shape->w + (ppb - 1)) / ppb;
+    int bytes_per_scanline;
+
     Uint8 *bitmap_scanline;
     SDL_Color key;
 
@@ -76,6 +77,9 @@ void SDL_CalculateShapeBitmap(SDL_WindowShapeMode mode, SDL_Surface *shape, Uint
     if (SDL_MUSTLOCK(shape)) {
         SDL_LockSurface(shape);
     }
+
+    bytes_per_scanline = (shape->w + (ppb - 1)) / ppb;
+    bytes_per_scanline = (bytes_per_scanline + (alignBytes - 1)) & ~(alignBytes - 1);
 
     SDL_memset(bitmap, 0, shape->h * bytes_per_scanline);
 
@@ -120,7 +124,7 @@ static SDL_ShapeTree *RecursivelyCalculateShapeTree(SDL_WindowShapeMode mode, SD
     SDL_ShapeTree *result = (SDL_ShapeTree *)SDL_malloc(sizeof(SDL_ShapeTree));
     SDL_Rect next = { 0, 0, 0, 0 };
 
-    if (result == NULL) {
+    if (!result) {
         SDL_OutOfMemory();
         return NULL;
     }
@@ -132,17 +136,17 @@ static SDL_ShapeTree *RecursivelyCalculateShapeTree(SDL_WindowShapeMode mode, SD
             }
             switch (mode.mode) {
             case (ShapeModeDefault):
-                pixel_opaque = (a >= 1 ? SDL_TRUE : SDL_FALSE);
+                pixel_opaque = (a >= 1);
                 break;
             case (ShapeModeBinarizeAlpha):
-                pixel_opaque = (a >= mode.parameters.binarizationCutoff ? SDL_TRUE : SDL_FALSE);
+                pixel_opaque = (a >= mode.parameters.binarizationCutoff);
                 break;
             case (ShapeModeReverseBinarizeAlpha):
-                pixel_opaque = (a <= mode.parameters.binarizationCutoff ? SDL_TRUE : SDL_FALSE);
+                pixel_opaque = (a <= mode.parameters.binarizationCutoff);
                 break;
             case (ShapeModeColorKey):
                 key = mode.parameters.colorKey;
-                pixel_opaque = ((key.r != r || key.g != g || key.b != b) ? SDL_TRUE : SDL_FALSE);
+                pixel_opaque = (key.r != r || key.g != g || key.b != b);
                 break;
             }
             if (last_opaque == -1) {
@@ -235,16 +239,16 @@ int SDL_SetWindowShape(SDL_Window *window, SDL_Surface *shape, SDL_WindowShapeMo
     SDL_VideoDevice *_this = SDL_GetVideoDevice();
     int result;
 
-    if (window == NULL || !SDL_IsShapedWindow(window)) {
+    if (!window || !SDL_IsShapedWindow(window)) {
         /* The window given was not a shapeable window. */
         return SDL_NONSHAPEABLE_WINDOW;
     }
-    if (shape == NULL) {
+    if (!shape) {
         /* Invalid shape argument. */
         return SDL_INVALID_SHAPE_ARGUMENT;
     }
 
-    if (shape_mode != NULL) {
+    if (shape_mode) {
         window->shaper->mode = *shape_mode;
     }
     result = _this->shape_driver.SetWindowShape(window->shaper, shape, shape_mode);
@@ -257,7 +261,7 @@ int SDL_SetWindowShape(SDL_Window *window, SDL_Surface *shape, SDL_WindowShapeMo
 
 static SDL_bool SDL_WindowHasAShape(SDL_Window *window)
 {
-    if (window == NULL || !SDL_IsShapedWindow(window)) {
+    if (!window || !SDL_IsShapedWindow(window)) {
         return SDL_FALSE;
     }
     return window->shaper->hasshape;
@@ -265,8 +269,8 @@ static SDL_bool SDL_WindowHasAShape(SDL_Window *window)
 
 int SDL_GetShapedWindowMode(SDL_Window *window, SDL_WindowShapeMode *shape_mode)
 {
-    if (window != NULL && SDL_IsShapedWindow(window)) {
-        if (shape_mode == NULL) {
+    if (window && SDL_IsShapedWindow(window)) {
+        if (!shape_mode) {
             if (SDL_WindowHasAShape(window)) {
                 return 0; /* The window given has a shape. */
             } else {

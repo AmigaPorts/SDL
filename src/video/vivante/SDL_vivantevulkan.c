@@ -33,7 +33,6 @@
 #include "SDL_vivantevideo.h"
 
 #include "SDL_vivantevulkan.h"
-#include <SDL3/SDL_syswm.h>
 
 int VIVANTE_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
 {
@@ -47,10 +46,10 @@ int VIVANTE_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
     }
 
     /* Load the Vulkan loader library */
-    if (path == NULL) {
+    if (!path) {
         path = SDL_getenv("SDL_VULKAN_LIBRARY");
     }
-    if (path == NULL) {
+    if (!path) {
         /* If no path set, try Vivante fb vulkan driver explicitly */
         path = "libvulkan-fb.so";
         _this->vulkan_config.loader_handle = SDL_LoadObject(path);
@@ -84,7 +83,7 @@ int VIVANTE_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
         (PFN_vkEnumerateInstanceExtensionProperties)
             _this->vulkan_config.vkEnumerateInstanceExtensionProperties,
         &extensionCount);
-    if (extensions == NULL) {
+    if (!extensions) {
         goto fail;
     }
     for (i = 0; i < extensionCount; i++) {
@@ -118,32 +117,29 @@ void VIVANTE_Vulkan_UnloadLibrary(SDL_VideoDevice *_this)
     }
 }
 
-SDL_bool VIVANTE_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this,
-                                              unsigned *count,
-                                              const char **names)
+char const* const* VIVANTE_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this,
+                                              Uint32 *count)
 {
     static const char *const extensionsForVivante[] = {
         VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_DISPLAY_EXTENSION_NAME
     };
-    if (!_this->vulkan_config.loader_handle) {
-        SDL_SetError("Vulkan is not loaded");
-        return SDL_FALSE;
+    if(count) {
+        *count = SDL_arraysize(extensionsForVivante);
     }
-    return SDL_Vulkan_GetInstanceExtensions_Helper(
-        count, names, SDL_arraysize(extensionsForVivante),
-        extensionsForVivante);
+    return extensionsForVivante;
 }
 
 SDL_bool VIVANTE_Vulkan_CreateSurface(SDL_VideoDevice *_this,
                                       SDL_Window *window,
                                       VkInstance instance,
+                                      const struct VkAllocationCallbacks *allocator,
                                       VkSurfaceKHR *surface)
 {
     if (!_this->vulkan_config.loader_handle) {
         SDL_SetError("Vulkan is not loaded");
         return SDL_FALSE;
     }
-    return SDL_Vulkan_Display_CreateSurface(_this->vulkan_config.vkGetInstanceProcAddr, instance, surface);
+    return SDL_Vulkan_Display_CreateSurface(_this->vulkan_config.vkGetInstanceProcAddr, instance, allocator, surface);
 }
 
 #endif

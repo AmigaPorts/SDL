@@ -84,8 +84,7 @@ struct SDL_WindowData
 extern void X11_SetNetWMState(SDL_VideoDevice *_this, Window xwindow, Uint32 flags);
 extern Uint32 X11_GetNetWMState(SDL_VideoDevice *_this, SDL_Window *window, Window xwindow);
 
-extern int X11_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window);
-extern int X11_CreateWindowFrom(SDL_VideoDevice *_this, SDL_Window *window, const void *data);
+extern int X11_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props);
 extern char *X11_GetWindowTitle(SDL_VideoDevice *_this, Window xwindow);
 extern void X11_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window);
 extern int X11_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surface *icon);
@@ -111,7 +110,6 @@ extern void *X11_GetWindowICCProfile(SDL_VideoDevice *_this, SDL_Window *window,
 extern void X11_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
 extern void X11_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
 extern void X11_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window);
-extern int X11_GetWindowWMInfo(SDL_VideoDevice *_this, SDL_Window *window, struct SDL_SysWMinfo *info);
 extern int X11_SetWindowHitTest(SDL_Window *window, SDL_bool enabled);
 extern void X11_AcceptDragAndDrop(SDL_Window *window, SDL_bool accept);
 extern int X11_FlashWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_FlashOperation operation);

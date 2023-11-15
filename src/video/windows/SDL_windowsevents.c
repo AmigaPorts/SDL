@@ -28,8 +28,7 @@
 #include "../../events/SDL_events_c.h"
 #include "../../events/SDL_touch_c.h"
 #include "../../events/scancodes_windows.h"
-
-#include <SDL3/SDL_syswm.h>
+#include "../../main/SDL_main_callbacks.h"
 
 /* Dropfile support */
 #include <shellapi.h>
@@ -106,6 +105,10 @@
 #endif
 #ifndef IS_SURROGATE_PAIR
 #define IS_SURROGATE_PAIR(h, l) (IS_HIGH_SURROGATE(h) && IS_LOW_SURROGATE(l))
+#endif
+
+#ifndef USER_TIMER_MINIMUM
+#define USER_TIMER_MINIMUM 0x0000000A
 #endif
 
 /* Used to compare Windows message timestamps */
@@ -225,7 +228,7 @@ static SDL_Scancode VKeytoScancode(WPARAM vkey)
     case VK_BROWSER_HOME:
         return SDL_SCANCODE_AC_HOME;
     case VK_VOLUME_MUTE:
-        return SDL_SCANCODE_AUDIOMUTE;
+        return SDL_SCANCODE_MUTE;
     case VK_VOLUME_DOWN:
         return SDL_SCANCODE_VOLUMEDOWN;
     case VK_VOLUME_UP:
@@ -486,8 +489,8 @@ static void WIN_UpdateFocus(SDL_Window *window, SDL_bool expect_focus)
 {
     SDL_WindowData *data = window->driverdata;
     HWND hwnd = data->hwnd;
-    SDL_bool had_focus = (SDL_GetKeyboardFocus() == window) ? SDL_TRUE : SDL_FALSE;
-    SDL_bool has_focus = (GetForegroundWindow() == hwnd) ? SDL_TRUE : SDL_FALSE;
+    SDL_bool had_focus = (SDL_GetKeyboardFocus() == window);
+    SDL_bool has_focus = (GetForegroundWindow() == hwnd);
 
     if (had_focus == has_focus || has_focus != expect_focus) {
         return;
@@ -715,28 +718,15 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     SDL_WindowData *data;
     LRESULT returnCode = -1;
 
-    /* Send a SDL_EVENT_SYSWM if the application wants them */
-    if (SDL_EventEnabled(SDL_EVENT_SYSWM)) {
-        SDL_SysWMmsg wmmsg;
-
-        wmmsg.version = SDL_SYSWM_CURRENT_VERSION;
-        wmmsg.subsystem = SDL_SYSWM_WINDOWS;
-        wmmsg.msg.win.hwnd = hwnd;
-        wmmsg.msg.win.msg = msg;
-        wmmsg.msg.win.wParam = wParam;
-        wmmsg.msg.win.lParam = lParam;
-        SDL_SendSysWMEvent(&wmmsg);
-    }
-
     /* Get the window data for the window */
     data = WIN_GetWindowDataFromHWND(hwnd);
 #if !defined(__XBOXONE__) && !defined(__XBOXSERIES__)
-    if (data == NULL) {
+    if (!data) {
         /* Fallback */
         data = (SDL_WindowData *)GetProp(hwnd, TEXT("SDL_WindowData"));
     }
 #endif
-    if (data == NULL) {
+    if (!data) {
         return CallWindowProc(DefWindowProc, hwnd, msg, wParam, lParam);
     }
 
@@ -1290,12 +1280,37 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
 
         /* Update the position of any child windows */
-        for (win = data->window->first_child; win != NULL; win = win->next_sibling) {
+        for (win = data->window->first_child; win; win = win->next_sibling) {
             /* Don't update hidden child windows, their relative position doesn't change */
             if (!(win->flags & SDL_WINDOW_HIDDEN)) {
                 WIN_SetWindowPositionInternal(win, SWP_NOCOPYBITS | SWP_NOACTIVATE);
             }
         }
+    } break;
+
+    case WM_ENTERSIZEMOVE:
+    case WM_ENTERMENULOOP:
+    {
+        SetTimer(hwnd, (UINT_PTR)SDL_IterateMainCallbacks, USER_TIMER_MINIMUM, NULL);
+    } break;
+
+    case WM_TIMER:
+    {
+        if (wParam == (UINT_PTR)SDL_IterateMainCallbacks) {
+            if (SDL_HasMainCallbacks()) {
+                SDL_IterateMainCallbacks(SDL_FALSE);
+            } else {
+                // Send an expose event so the application can redraw
+                SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_EXPOSED, 0, 0);
+            }
+            return 0;
+        }
+    } break;
+
+    case WM_EXITSIZEMOVE:
+    case WM_EXITMENULOOP:
+    {
+        KillTimer(hwnd, (UINT_PTR)SDL_IterateMainCallbacks);
     } break;
 
     case WM_SIZE:
@@ -1419,6 +1434,8 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
                 for (i = 0; i < num_inputs; ++i) {
                     PTOUCHINPUT input = &inputs[i];
+                    const int w = (rect.right - rect.left);
+                    const int h = (rect.right - rect.left);
 
                     const SDL_TouchID touchId = (SDL_TouchID)((size_t)input->hSource);
 
@@ -1430,8 +1447,16 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                     }
 
                     /* Get the normalized coordinates for the window */
-                    x = (float)(input->x - rect.left) / (rect.right - rect.left);
-                    y = (float)(input->y - rect.top) / (rect.bottom - rect.top);
+                    if (w <= 1) {
+                        x = 0.5f;
+                    } else {
+                        x = (float)(input->x - rect.left) / (w - 1);
+                    }
+                    if (h <= 1) {
+                        y = 0.5f;
+                    } else {
+                        y = (float)(input->y - rect.top) / (h - 1);
+                    }
 
                     /* FIXME: Should we use the input->dwTime field for the tick source of the timestamp? */
                     if (input->dwFlags & TOUCHEVENTF_DOWN) {
@@ -1478,7 +1503,7 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             if (buffer) {
                 if (DragQueryFile(drop, i, buffer, size)) {
                     char *file = WIN_StringToUTF8(buffer);
-                    SDL_SendDropFile(data->window, file);
+                    SDL_SendDropFile(data->window, NULL, file);
                     SDL_free(file);
                 }
                 SDL_small_free(buffer, isstack);
@@ -1758,8 +1783,10 @@ static void WIN_UpdateMouseCapture()
                 SDL_MouseID mouseID = SDL_GetMouse()->mouseID;
 
                 SDL_SendMouseMotion(WIN_GetEventTimestamp(), data->window, mouseID, 0, (float)cursorPos.x, (float)cursorPos.y);
-                SDL_SendMouseButton(WIN_GetEventTimestamp(), data->window, mouseID, GetAsyncKeyState(VK_LBUTTON) & 0x8000 ? SDL_PRESSED : SDL_RELEASED, !swapButtons ? SDL_BUTTON_LEFT : SDL_BUTTON_RIGHT);
-                SDL_SendMouseButton(WIN_GetEventTimestamp(), data->window, mouseID, GetAsyncKeyState(VK_RBUTTON) & 0x8000 ? SDL_PRESSED : SDL_RELEASED, !swapButtons ? SDL_BUTTON_RIGHT : SDL_BUTTON_LEFT);
+                SDL_SendMouseButton(WIN_GetEventTimestamp(), data->window, mouseID, GetAsyncKeyState(VK_LBUTTON) & 0x8000 ? SDL_PRESSED : SDL_RELEASED,
+                                    !swapButtons ? SDL_BUTTON_LEFT : SDL_BUTTON_RIGHT);
+                SDL_SendMouseButton(WIN_GetEventTimestamp(), data->window, mouseID, GetAsyncKeyState(VK_RBUTTON) & 0x8000 ? SDL_PRESSED : SDL_RELEASED,
+                                    !swapButtons ? SDL_BUTTON_RIGHT : SDL_BUTTON_LEFT);
                 SDL_SendMouseButton(WIN_GetEventTimestamp(), data->window, mouseID, GetAsyncKeyState(VK_MBUTTON) & 0x8000 ? SDL_PRESSED : SDL_RELEASED, SDL_BUTTON_MIDDLE);
                 SDL_SendMouseButton(WIN_GetEventTimestamp(), data->window, mouseID, GetAsyncKeyState(VK_XBUTTON1) & 0x8000 ? SDL_PRESSED : SDL_RELEASED, SDL_BUTTON_X1);
                 SDL_SendMouseButton(WIN_GetEventTimestamp(), data->window, mouseID, GetAsyncKeyState(VK_XBUTTON2) & 0x8000 ? SDL_PRESSED : SDL_RELEASED, SDL_BUTTON_X2);
@@ -1795,11 +1822,13 @@ int WIN_WaitEventTimeout(SDL_VideoDevice *_this, Sint64 timeoutNS)
             message_result = GetMessage(&msg, 0, 0, 0);
         }
         if (message_result) {
-            if (msg.message == WM_TIMER && msg.hwnd == NULL && msg.wParam == timer_id) {
+            if (msg.message == WM_TIMER && !msg.hwnd && msg.wParam == timer_id) {
                 return 0;
             }
             if (g_WindowsMessageHook) {
-                g_WindowsMessageHook(g_WindowsMessageHookData, msg.hwnd, msg.message, msg.wParam, msg.lParam);
+                if (!g_WindowsMessageHook(g_WindowsMessageHookData, &msg)) {
+                    return 1;
+                }
             }
             /* Always translate the message in case it's a non-SDL window (e.g. with Qt integration) */
             TranslateMessage(&msg);
@@ -1835,7 +1864,9 @@ void WIN_PumpEvents(SDL_VideoDevice *_this)
 
         while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
             if (g_WindowsMessageHook) {
-                g_WindowsMessageHook(g_WindowsMessageHookData, msg.hwnd, msg.message, msg.wParam, msg.lParam);
+                if (!g_WindowsMessageHook(g_WindowsMessageHookData, &msg)) {
+                    continue;
+                }
             }
 
 #if !defined(__XBOXONE__) && !defined(__XBOXSERIES__)
@@ -1890,7 +1921,7 @@ void WIN_PumpEvents(SDL_VideoDevice *_this)
        not grabbing the keyboard. Note: If we *are* grabbing the keyboard, GetKeyState()
        will return inaccurate results for VK_LWIN and VK_RWIN but we don't need it anyway. */
     focusWindow = SDL_GetKeyboardFocus();
-    if (focusWindow == NULL || !(focusWindow->flags & SDL_WINDOW_KEYBOARD_GRABBED)) {
+    if (!focusWindow || !(focusWindow->flags & SDL_WINDOW_KEYBOARD_GRABBED)) {
         if ((keystate[SDL_SCANCODE_LGUI] == SDL_PRESSED) && !(GetKeyState(VK_LWIN) & 0x8000)) {
             SDL_SendKeyboardKey(0, SDL_RELEASED, SDL_SCANCODE_LGUI);
         }
@@ -1944,8 +1975,8 @@ int SDL_RegisterApp(const char *name, Uint32 style, void *hInst)
         ++app_registered;
         return 0;
     }
-    SDL_assert(SDL_Appname == NULL);
-    if (name == NULL) {
+    SDL_assert(!SDL_Appname);
+    if (!name) {
         name = "SDL_app";
 #if defined(CS_BYTEALIGNCLIENT) || defined(CS_OWNDC)
         style = (CS_BYTEALIGNCLIENT | CS_OWNDC);

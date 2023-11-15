@@ -26,8 +26,6 @@
 #include "SDL_BWin.h"
 #include <new>
 
-#include <SDL3/SDL_syswm.h>
-
 /* Define a path to window's BWIN data */
 #ifdef __cplusplus
 extern "C" {
@@ -67,7 +65,7 @@ static int _InitWindow(SDL_VideoDevice *_this, SDL_Window *window) {
     }
 
     SDL_BWin *bwin = new(std::nothrow) SDL_BWin(bounds, look, flags);
-    if (bwin == NULL) {
+    if (!bwin) {
         return -1;
     }
 
@@ -78,46 +76,13 @@ static int _InitWindow(SDL_VideoDevice *_this, SDL_Window *window) {
     return 0;
 }
 
-int HAIKU_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window) {
+int HAIKU_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props) {
     if (_InitWindow(_this, window) < 0) {
         return -1;
     }
 
     /* Start window loop */
     _ToBeWin(window)->Show();
-    return 0;
-}
-
-int HAIKU_CreateWindowFrom(SDL_VideoDevice *_this, SDL_Window * window, const void *data) {
-
-    SDL_BWin *otherBWin = (SDL_BWin*)data;
-    if (!otherBWin->LockLooper()) {
-        return -1;
-    }
-
-    /* Create the new window and initialize its members */
-    window->x = (int)otherBWin->Frame().left;
-    window->y = (int)otherBWin->Frame().top;
-    window->w = (int)otherBWin->Frame().Width();
-    window->h = (int)otherBWin->Frame().Height();
-
-    /* Set SDL flags */
-    if (!(otherBWin->Flags() & B_NOT_RESIZABLE)) {
-        window->flags |= SDL_WINDOW_RESIZABLE;
-    }
-
-    /* If we are out of memory, return the error code */
-    if (_InitWindow(_this, window) < 0) {
-        return -1;
-    }
-
-    /* TODO: Add any other SDL-supported window attributes here */
-    _ToBeWin(window)->SetTitle(otherBWin->Title());
-
-    /* Start window loop and unlock the other window */
-    _ToBeWin(window)->Show();
-
-    otherBWin->UnlockLooper();
     return 0;
 }
 
@@ -210,13 +175,6 @@ void HAIKU_DestroyWindow(SDL_VideoDevice *_this, SDL_Window * window) {
     _ToBeWin(window)->Quit();
     window->driverdata = NULL;
 }
-
-int HAIKU_GetWindowWMInfo(SDL_VideoDevice *_this, SDL_Window *window, struct SDL_SysWMinfo *info)
-{
-    info->subsystem = SDL_SYSWM_HAIKU;
-    return 0;
-}
-
 
 #ifdef __cplusplus
 }

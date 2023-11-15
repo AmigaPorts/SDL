@@ -25,17 +25,15 @@
 #include "../SDL_sysvideo.h"
 #include "../../events/SDL_mouse_c.h"
 
-#include <SDL3/SDL_syswm.h>
-
 #include "SDL_riscosvideo.h"
 #include "SDL_riscoswindow.h"
 
-int RISCOS_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window)
+int RISCOS_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props)
 {
     SDL_WindowData *driverdata;
 
     driverdata = (SDL_WindowData *)SDL_calloc(1, sizeof(*driverdata));
-    if (driverdata == NULL) {
+    if (!driverdata) {
         return SDL_OutOfMemory();
     }
     driverdata->window = window;
@@ -53,18 +51,12 @@ void RISCOS_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
     SDL_WindowData *driverdata = window->driverdata;
 
-    if (driverdata == NULL) {
+    if (!driverdata) {
         return;
     }
 
     SDL_free(driverdata);
     window->driverdata = NULL;
-}
-
-int RISCOS_GetWindowWMInfo(SDL_VideoDevice *_this, SDL_Window *window, struct SDL_SysWMinfo *info)
-{
-    info->subsystem = SDL_SYSWM_RISCOS;
-    return 0;
 }
 
 #endif /* SDL_VIDEO_DRIVER_RISCOS */

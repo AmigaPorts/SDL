@@ -114,7 +114,7 @@ static SDL_bool HIDAPI_DriverShield_InitDevice(SDL_HIDAPI_Device *device)
     SDL_DriverShield_Context *ctx;
 
     ctx = (SDL_DriverShield_Context *)SDL_calloc(1, sizeof(*ctx));
-    if (ctx == NULL) {
+    if (!ctx) {
         SDL_OutOfMemory();
         return SDL_FALSE;
     }
@@ -333,10 +333,10 @@ static void HIDAPI_DriverShield_HandleStatePacketV103(SDL_Joystick *joystick, SD
     }
 
     if (ctx->last_state[1] != data[1]) {
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_A, (data[1] & 0x01) ? SDL_PRESSED : SDL_RELEASED);
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_B, (data[1] & 0x02) ? SDL_PRESSED : SDL_RELEASED);
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_X, (data[1] & 0x04) ? SDL_PRESSED : SDL_RELEASED);
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_Y, (data[1] & 0x08) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_SOUTH, (data[1] & 0x01) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_EAST, (data[1] & 0x02) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_WEST, (data[1] & 0x04) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_NORTH, (data[1] & 0x08) ? SDL_PRESSED : SDL_RELEASED);
         SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, (data[1] & 0x10) ? SDL_PRESSED : SDL_RELEASED);
         SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, (data[1] & 0x20) ? SDL_PRESSED : SDL_RELEASED);
         SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_LEFT_STICK, (data[1] & 0x40) ? SDL_PRESSED : SDL_RELEASED);
@@ -435,10 +435,10 @@ static void HIDAPI_DriverShield_HandleStatePacketV104(SDL_Joystick *joystick, SD
     }
 
     if (ctx->last_state[3] != data[3]) {
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_A, (data[3] & 0x01) ? SDL_PRESSED : SDL_RELEASED);
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_B, (data[3] & 0x02) ? SDL_PRESSED : SDL_RELEASED);
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_X, (data[3] & 0x04) ? SDL_PRESSED : SDL_RELEASED);
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_Y, (data[3] & 0x08) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_SOUTH, (data[3] & 0x01) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_EAST, (data[3] & 0x02) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_WEST, (data[3] & 0x04) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_NORTH, (data[3] & 0x08) ? SDL_PRESSED : SDL_RELEASED);
         SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, (data[3] & 0x10) ? SDL_PRESSED : SDL_RELEASED);
         SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, (data[3] & 0x20) ? SDL_PRESSED : SDL_RELEASED);
         SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_LEFT_STICK, (data[3] & 0x40) ? SDL_PRESSED : SDL_RELEASED);
@@ -489,7 +489,7 @@ static SDL_bool HIDAPI_DriverShield_UpdateDevice(SDL_HIDAPI_Device *device)
         /* Byte 0 is HID report ID */
         switch (data[0]) {
         case k_ShieldReportIdControllerState:
-            if (joystick == NULL) {
+            if (!joystick) {
                 break;
             }
             if (size == 16) {
@@ -499,7 +499,7 @@ static SDL_bool HIDAPI_DriverShield_UpdateDevice(SDL_HIDAPI_Device *device)
             }
             break;
         case k_ShieldReportIdControllerTouch:
-            if (joystick == NULL) {
+            if (!joystick) {
                 break;
             }
             HIDAPI_DriverShield_HandleTouchPacketV103(joystick, ctx, data, size);

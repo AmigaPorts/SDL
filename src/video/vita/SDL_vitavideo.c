@@ -28,8 +28,6 @@
 #include "../../events/SDL_mouse_c.h"
 #include "../../events/SDL_keyboard_c.h"
 
-#include <SDL3/SDL_syswm.h>
-
 /* VITA declarations */
 #include <psp2/kernel/processmgr.h>
 #include "SDL_vitavideo.h"
@@ -69,14 +67,14 @@ static SDL_VideoDevice *VITA_Create()
 #endif
     /* Initialize SDL_VideoDevice structure */
     device = (SDL_VideoDevice *)SDL_calloc(1, sizeof(SDL_VideoDevice));
-    if (device == NULL) {
+    if (!device) {
         SDL_OutOfMemory();
         return NULL;
     }
 
     /* Initialize internal VITA specific data */
     phdata = (SDL_VideoData *)SDL_calloc(1, sizeof(SDL_VideoData));
-    if (phdata == NULL) {
+    if (!phdata) {
         SDL_OutOfMemory();
         SDL_free(device);
         return NULL;
@@ -84,7 +82,7 @@ static SDL_VideoDevice *VITA_Create()
 #ifdef SDL_VIDEO_VITA_PIB
 
     gldata = (SDL_GLDriverData *)SDL_calloc(1, sizeof(SDL_GLDriverData));
-    if (gldata == NULL) {
+    if (!gldata) {
         SDL_OutOfMemory();
         SDL_free(device);
         SDL_free(phdata);
@@ -107,7 +105,6 @@ static SDL_VideoDevice *VITA_Create()
     device->VideoInit = VITA_VideoInit;
     device->VideoQuit = VITA_VideoQuit;
     device->CreateSDLWindow = VITA_CreateWindow;
-    device->CreateSDLWindowFrom = VITA_CreateWindowFrom;
     device->SetWindowTitle = VITA_SetWindowTitle;
     device->SetWindowPosition = VITA_SetWindowPosition;
     device->SetWindowSize = VITA_SetWindowSize;
@@ -221,7 +218,7 @@ void VITA_VideoQuit(SDL_VideoDevice *_this)
     VITA_QuitTouch();
 }
 
-int VITA_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window)
+int VITA_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props)
 {
     SDL_WindowData *wdata;
 #ifdef SDL_VIDEO_VITA_PVR
@@ -233,7 +230,7 @@ int VITA_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window)
 
     /* Allocate window internal data */
     wdata = (SDL_WindowData *)SDL_calloc(1, sizeof(SDL_WindowData));
-    if (wdata == NULL) {
+    if (!wdata) {
         return SDL_OutOfMemory();
     }
 
@@ -241,7 +238,7 @@ int VITA_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window)
     window->driverdata = wdata;
 
     // Vita can only have one window
-    if (Vita_Window != NULL) {
+    if (Vita_Window) {
         return SDL_SetError("Only one window supported");
     }
 
@@ -293,11 +290,6 @@ int VITA_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window)
 
     /* Window has been successfully created */
     return 0;
-}
-
-int VITA_CreateWindowFrom(SDL_VideoDevice *_this, SDL_Window *window, const void *data)
-{
-    return -1;
 }
 
 void VITA_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window)

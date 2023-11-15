@@ -105,6 +105,7 @@ testautomation: testautomation.o \
 		      testautomation_main.o \
 		      testautomation_math.o \
 		      testautomation_mouse.o \
+		      testautomation_pen.o \
 		      testautomation_pixels.o \
 		      testautomation_platform.o \
 		      testautomation_properties.o \
@@ -113,8 +114,8 @@ testautomation: testautomation.o \
 		      testautomation_rwops.o \
 		      testautomation_sdltest.o \
 		      testautomation_stdlib.o \
+		      testautomation_subsystems.o \
 		      testautomation_surface.o \
-		      testautomation_syswm.o \
 		      testautomation_timer.o \
 		      testautomation_video.o
 	$(CC) -o $@ $^ $(LIBS) 

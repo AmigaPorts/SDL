@@ -90,7 +90,6 @@ static SDL_VideoDevice *Cocoa_CreateDevice(void)
         device->SuspendScreenSaver = Cocoa_SuspendScreenSaver;
 
         device->CreateSDLWindow = Cocoa_CreateWindow;
-        device->CreateSDLWindowFrom = Cocoa_CreateWindowFrom;
         device->SetWindowTitle = Cocoa_SetWindowTitle;
         device->SetWindowIcon = Cocoa_SetWindowIcon;
         device->SetWindowPosition = Cocoa_SetWindowPosition;
@@ -115,7 +114,6 @@ static SDL_VideoDevice *Cocoa_CreateDevice(void)
         device->SetWindowMouseGrab = Cocoa_SetWindowMouseGrab;
         device->SetWindowKeyboardGrab = Cocoa_SetWindowKeyboardGrab;
         device->DestroyWindow = Cocoa_DestroyWindow;
-        device->GetWindowWMInfo = Cocoa_GetWindowWMInfo;
         device->SetWindowHitTest = Cocoa_SetWindowHitTest;
         device->AcceptDragAndDrop = Cocoa_AcceptDragAndDrop;
         device->FlashWindow = Cocoa_FlashWindow;

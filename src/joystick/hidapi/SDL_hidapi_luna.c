@@ -72,7 +72,7 @@ static SDL_bool HIDAPI_DriverLuna_InitDevice(SDL_HIDAPI_Device *device)
     SDL_DriverLuna_Context *ctx;
 
     ctx = (SDL_DriverLuna_Context *)SDL_calloc(1, sizeof(*ctx));
-    if (ctx == NULL) {
+    if (!ctx) {
         SDL_OutOfMemory();
         return SDL_FALSE;
     }
@@ -169,10 +169,10 @@ static void HIDAPI_DriverLuna_HandleUSBStatePacket(SDL_Joystick *joystick, SDL_D
     Uint64 timestamp = SDL_GetTicksNS();
 
     if (ctx->last_state[1] != data[1]) {
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_A, (data[1] & 0x01) ? SDL_PRESSED : SDL_RELEASED);
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_B, (data[1] & 0x02) ? SDL_PRESSED : SDL_RELEASED);
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_X, (data[1] & 0x04) ? SDL_PRESSED : SDL_RELEASED);
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_Y, (data[1] & 0x08) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_SOUTH, (data[1] & 0x01) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_EAST, (data[1] & 0x02) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_WEST, (data[1] & 0x04) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_NORTH, (data[1] & 0x08) ? SDL_PRESSED : SDL_RELEASED);
         SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, (data[1] & 0x10) ? SDL_PRESSED : SDL_RELEASED);
         SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, (data[1] & 0x20) ? SDL_PRESSED : SDL_RELEASED);
         SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_BACK, (data[1] & 0x40) ? SDL_PRESSED : SDL_RELEASED);
@@ -332,10 +332,10 @@ static void HIDAPI_DriverLuna_HandleBluetoothStatePacket(SDL_Joystick *joystick,
     }
 
     if (ctx->last_state[14] != data[14]) {
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_A, (data[14] & 0x01) ? SDL_PRESSED : SDL_RELEASED);
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_B, (data[14] & 0x02) ? SDL_PRESSED : SDL_RELEASED);
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_X, (data[14] & 0x08) ? SDL_PRESSED : SDL_RELEASED);
-        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_Y, (data[14] & 0x10) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_SOUTH, (data[14] & 0x01) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_EAST, (data[14] & 0x02) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_WEST, (data[14] & 0x08) ? SDL_PRESSED : SDL_RELEASED);
+        SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_NORTH, (data[14] & 0x10) ? SDL_PRESSED : SDL_RELEASED);
         SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, (data[14] & 0x40) ? SDL_PRESSED : SDL_RELEASED);
         SDL_SendJoystickButton(timestamp, joystick, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, (data[14] & 0x80) ? SDL_PRESSED : SDL_RELEASED);
     }
@@ -393,7 +393,7 @@ static SDL_bool HIDAPI_DriverLuna_UpdateDevice(SDL_HIDAPI_Device *device)
 #ifdef DEBUG_LUNA_PROTOCOL
         HIDAPI_DumpPacket("Amazon Luna packet: size = %d", data, size);
 #endif
-        if (joystick == NULL) {
+        if (!joystick) {
             continue;
         }
 

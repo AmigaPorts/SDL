@@ -59,6 +59,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -329,6 +330,7 @@
     <ClInclude Include="..\..\include\SDL3\SDL_opengles2_gl2ext.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_opengles2_gl2platform.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_opengles2_khrplatform.h" />
+    <ClInclude Include="..\..\include\SDL3\SDL_pen.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_pixels.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_platform.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_platform_defines.h" />
@@ -344,7 +346,6 @@
     <ClInclude Include="..\..\include\SDL3\SDL_stdinc.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_surface.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_system.h" />
-    <ClInclude Include="..\..\include\SDL3\SDL_syswm.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_test.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_test_assert.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_test_common.h" />
@@ -417,6 +418,7 @@
     <ClInclude Include="..\..\src\libm\math_libm.h" />
     <ClInclude Include="..\..\src\libm\math_private.h" />
     <ClInclude Include="..\..\src\locale\SDL_syslocale.h" />
+    <ClInclude Include="..\..\src\main\SDL_main_callbacks.h" />
     <ClInclude Include="..\..\src\misc\SDL_sysurl.h" />
     <ClInclude Include="..\..\src\power\SDL_syspower.h" />
     <ClInclude Include="..\..\src\render\direct3d11\SDL_shaders_d3d11.h" />
@@ -467,6 +469,8 @@
       <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='Debug|Gaming.Desktop.x64'">$(IntDir)$(TargetName)_cpp.pch</PrecompiledHeaderOutputFile>
       <PrecompiledHeaderOutputFile Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Desktop.x64'">$(IntDir)$(TargetName)_cpp.pch</PrecompiledHeaderOutputFile>
     </ClCompile>
+    <ClCompile Include="..\..\src\main\generic\SDL_sysmain_callbacks.c" />
+    <ClCompile Include="..\..\src\main\SDL_main_callbacks.c" />
     <ClCompile Include="..\..\src\SDL_guid.c" />
     <ClInclude Include="..\..\src\SDL_hashtable.h" />
     <ClInclude Include="..\..\src\SDL_hints_c.h" />
@@ -583,6 +587,7 @@
     <ClCompile Include="..\..\src\events\SDL_events.c" />
     <ClCompile Include="..\..\src\events\SDL_keyboard.c" />
     <ClCompile Include="..\..\src\events\SDL_mouse.c" />
+    <ClCompile Include="..\..\src\events\SDL_pen.c" />
     <ClCompile Include="..\..\src\events\SDL_quit.c" />
     <ClCompile Include="..\..\src\events\SDL_touch.c" />
     <ClCompile Include="..\..\src\events\SDL_windowevents.c" />
@@ -729,6 +734,9 @@
     <ClCompile Include="..\..\src\stdlib\SDL_iconv.c" />
     <ClCompile Include="..\..\src\stdlib\SDL_malloc.c" />
     <ClCompile Include="..\..\src\stdlib\SDL_mslibc.c" />
+    <MASM Condition="'$(Platform)'=='x64'" Include="..\..\src\stdlib\SDL_mslibc_x64.asm" >
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </MASM>
     <ClCompile Include="..\..\src\stdlib\SDL_qsort.c" />
     <ClCompile Include="..\..\src\stdlib\SDL_stdlib.c" />
     <ClCompile Include="..\..\src\stdlib\SDL_string.c" />
@@ -793,5 +801,6 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
   </ImportGroup>
 </Project>

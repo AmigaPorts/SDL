@@ -34,7 +34,7 @@ typedef struct
     Uint8 *rambuf; /* Work buffer for color modulation */
 } OS4_TextureData;
 
-extern int OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture);
+extern int OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture, SDL_PropertiesID create_props);
 
 extern int OS4_SetTextureColorMod(SDL_Renderer * renderer,
                                  SDL_Texture * texture);

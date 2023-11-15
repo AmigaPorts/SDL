@@ -193,10 +193,18 @@ SDL_X11_SYM(void,XkbFreeKeyboard,(XkbDescPtr a,unsigned int b, Bool c),(a,b,c),)
 SDL_X11_SYM(Bool,XkbSetDetectableAutoRepeat,(Display* a, Bool b, Bool* c),(a,b,c),return)
 #endif
 
+/* XKeycodeToKeysym is a deprecated function */
+#if (defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 #if NeedWidePrototypes
 SDL_X11_SYM(KeySym,XKeycodeToKeysym,(Display* a,unsigned int b,int c),(a,b,c),return)
 #else
 SDL_X11_SYM(KeySym,XKeycodeToKeysym,(Display* a,KeyCode b,int c),(a,b,c),return)
+#endif
+#if (defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))) || defined(__clang__)
+#pragma GCC diagnostic pop
 #endif
 
 #ifdef X_HAVE_UTF8_STRING
@@ -281,6 +289,7 @@ SDL_X11_SYM(Status,XIQueryVersion,(Display *a,int *b,int *c),(a,b,c),return)
 SDL_X11_SYM(XIEventMask*,XIGetSelectedEvents,(Display *a,Window b,int *c),(a,b,c),return)
 SDL_X11_SYM(Bool,XIGetClientPointer,(Display *a,Window b,int *c),(a,b,c),return)
 SDL_X11_SYM(Bool,XIWarpPointer,(Display *a,int b,Window c,Window d,double e,double f,int g,int h,double i,double j),(a,b,c,d,e,f,g,h,i,j),return)
+SDL_X11_SYM(Status,XIGetProperty,(Display *a,int b,Atom c,long d,long e,Bool f, Atom g, Atom *h, int *i, unsigned long *j, unsigned long *k, unsigned char **l),(a,b,c,d,e,f,g,h,i,j,k,l),return);
 #endif
 
 /* XRandR support */

@@ -215,7 +215,7 @@ static void Wayland_DBusInitCursorProperties(SDL_VideoData *vdata)
     SDL_DBusContext *dbus = SDL_DBus_GetContext();
     SDL_bool add_filter = SDL_FALSE;
 
-    if (dbus == NULL) {
+    if (!dbus) {
         return;
     }
 
@@ -279,7 +279,7 @@ static SDL_bool wayland_get_system_cursor(SDL_VideoData *vdata, Wayland_CursorDa
     }
     /* First, find the appropriate theme based on the current scale... */
     focus = SDL_GetMouse()->focus;
-    if (focus == NULL) {
+    if (!focus) {
         /* Nothing to see here, bail. */
         return SDL_FALSE;
     }
@@ -294,15 +294,16 @@ static SDL_bool wayland_get_system_cursor(SDL_VideoData *vdata, Wayland_CursorDa
             break;
         }
     }
-    if (theme == NULL) {
+    if (!theme) {
         const char *xcursor_theme = dbus_cursor_theme;
 
-        vdata->cursor_themes = SDL_realloc(vdata->cursor_themes,
-                                           sizeof(SDL_WaylandCursorTheme) * (vdata->num_cursor_themes + 1));
-        if (vdata->cursor_themes == NULL) {
+        SDL_WaylandCursorTheme *new_cursor_themes = SDL_realloc(vdata->cursor_themes,
+                                                                sizeof(SDL_WaylandCursorTheme) * (vdata->num_cursor_themes + 1));
+        if (!new_cursor_themes) {
             SDL_OutOfMemory();
             return SDL_FALSE;
         }
+        vdata->cursor_themes = new_cursor_themes;
 
         /* Fallback envvar if the DBus properties don't exist */
         if (!xcursor_theme) {
@@ -382,7 +383,7 @@ static int wayland_create_tmp_file(off_t size)
     int fd;
 
     xdg_path = SDL_getenv("XDG_RUNTIME_DIR");
-    if (xdg_path == NULL) {
+    if (!xdg_path) {
         return -1;
     }
 
@@ -469,7 +470,7 @@ static SDL_Cursor *Wayland_CreateCursor(SDL_Surface *surface, int hot_x, int hot
         SDL_VideoDevice *vd = SDL_GetVideoDevice();
         SDL_VideoData *wd = vd->driverdata;
         Wayland_CursorData *data = SDL_calloc(1, sizeof(Wayland_CursorData));
-        if (data == NULL) {
+        if (!data) {
             SDL_OutOfMemory();
             SDL_free(cursor);
             return NULL;
@@ -513,7 +514,7 @@ static SDL_Cursor *Wayland_CreateSystemCursor(SDL_SystemCursor id)
     cursor = SDL_calloc(1, sizeof(*cursor));
     if (cursor) {
         Wayland_CursorData *cdata = SDL_calloc(1, sizeof(Wayland_CursorData));
-        if (cdata == NULL) {
+        if (!cdata) {
             SDL_OutOfMemory();
             SDL_free(cursor);
             return NULL;
@@ -556,7 +557,7 @@ static void Wayland_FreeCursorData(Wayland_CursorData *d)
 
 static void Wayland_FreeCursor(SDL_Cursor *cursor)
 {
-    if (cursor == NULL) {
+    if (!cursor) {
         return;
     }
 
@@ -580,7 +581,7 @@ static int Wayland_ShowCursor(SDL_Cursor *cursor)
     struct wl_pointer *pointer = d->pointer;
     float scale = 1.0f;
 
-    if (pointer == NULL) {
+    if (!pointer) {
         return -1;
     }
 
@@ -588,7 +589,7 @@ static int Wayland_ShowCursor(SDL_Cursor *cursor)
         Wayland_CursorData *data = cursor->driverdata;
 
         /* TODO: High-DPI custom cursors? -flibit */
-        if (data->shm_data == NULL) {
+        if (!data->shm_data) {
             if (!wayland_get_system_cursor(d, data, &scale)) {
                 return -1;
             }

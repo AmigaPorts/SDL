@@ -34,8 +34,6 @@
 #include "SDL_kmsdrmdyn.h"
 #include "SDL_kmsdrmvulkan.h"
 
-#include <SDL3/SDL_syswm.h>
-
 #include <sys/ioctl.h>
 
 #ifdef __OpenBSD__
@@ -57,10 +55,10 @@ int KMSDRM_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
     }
 
     /* Load the Vulkan library */
-    if (path == NULL) {
+    if (!path) {
         path = SDL_getenv("SDL_VULKAN_LIBRARY");
     }
-    if (path == NULL) {
+    if (!path) {
         path = DEFAULT_VULKAN;
     }
 
@@ -94,7 +92,7 @@ int KMSDRM_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
             _this->vulkan_config.vkEnumerateInstanceExtensionProperties,
         &extensionCount);
 
-    if (extensions == NULL) {
+    if (!extensions) {
         goto fail;
     }
 
@@ -142,20 +140,14 @@ void KMSDRM_Vulkan_UnloadLibrary(SDL_VideoDevice *_this)
 /* members of the VkInstanceCreateInfo struct passed to              */
 /* vkCreateInstance().                                               */
 /*********************************************************************/
-SDL_bool KMSDRM_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this,
-                                             unsigned *count,
-                                             const char **names)
+char const* const* KMSDRM_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this,
+                                             Uint32 *count)
 {
     static const char *const extensionsForKMSDRM[] = {
         VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_DISPLAY_EXTENSION_NAME
     };
-    if (!_this->vulkan_config.loader_handle) {
-        SDL_SetError("Vulkan is not loaded");
-        return SDL_FALSE;
-    }
-    return SDL_Vulkan_GetInstanceExtensions_Helper(
-        count, names, SDL_arraysize(extensionsForKMSDRM),
-        extensionsForKMSDRM);
+    if(count) { *count = SDL_arraysize(extensionsForKMSDRM); }
+    return extensionsForKMSDRM;
 }
 
 /***********************************************************************/
@@ -169,6 +161,7 @@ SDL_bool KMSDRM_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this,
 SDL_bool KMSDRM_Vulkan_CreateSurface(SDL_VideoDevice *_this,
                                      SDL_Window *window,
                                      VkInstance instance,
+                                     const struct VkAllocationCallbacks *allocator,
                                      VkSurfaceKHR *surface)
 {
     VkPhysicalDevice gpu = NULL;
@@ -482,7 +475,7 @@ SDL_bool KMSDRM_Vulkan_CreateSurface(SDL_VideoDevice *_this,
     display_plane_surface_create_info.alphaMode = alpha_mode;
     result = vkCreateDisplayPlaneSurfaceKHR(instance,
                                             &display_plane_surface_create_info,
-                                            NULL,
+                                            allocator,
                                             surface);
     if (result != VK_SUCCESS) {
         SDL_SetError("vkCreateDisplayPlaneSurfaceKHR failed: %s",

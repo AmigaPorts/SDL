@@ -405,7 +405,6 @@ OS4_SetFunctionPointers(SDL_VideoDevice * device)
     device->SetDisplayMode = OS4_SetDisplayMode;
 
     device->CreateSDLWindow = OS4_CreateWindow;
-    device->CreateSDLWindowFrom = OS4_CreateWindowFrom;
     device->SetWindowTitle = OS4_SetWindowTitle;
     //device->SetWindowIcon = OS4_SetWindowIcon;
     device->SetWindowPosition = OS4_SetWindowPosition;
@@ -450,8 +449,6 @@ OS4_SetFunctionPointers(SDL_VideoDevice * device)
     device->shape_driver.CreateShaper = OS4_CreateShaper;
     device->shape_driver.SetWindowShape = OS4_SetWindowShape;
     //device->shape_driver.ResizeWindowShape = OS4_ResizeWindowShape; // TODO
-
-    device->GetWindowWMInfo = OS4_GetWindowWMInfo;
 
     device->GL_LoadLibrary = OS4_LoadGlLibrary;
     OS4_SetMiniGLFunctions(device);

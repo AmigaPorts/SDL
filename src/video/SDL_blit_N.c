@@ -971,7 +971,7 @@ static void Blit_XRGB8888_index8(SDL_BlitInfo *info)
     dstskip = info->dst_skip;
     map = info->table;
 
-    if (map == NULL) {
+    if (!map) {
         while (height--) {
 #ifdef USE_DUFFS_LOOP
             /* *INDENT-OFF* */ /* clang-format off */
@@ -1085,7 +1085,7 @@ static void Blit_RGB101010_index8(SDL_BlitInfo *info)
     dstskip = info->dst_skip;
     map = info->table;
 
-    if (map == NULL) {
+    if (!map) {
         while (height--) {
 #ifdef USE_DUFFS_LOOP
             /* *INDENT-OFF* */ /* clang-format off */
@@ -2109,7 +2109,7 @@ static void BlitNto1(SDL_BlitInfo *info)
     srcfmt = info->src_fmt;
     srcbpp = srcfmt->BytesPerPixel;
 
-    if (map == NULL) {
+    if (!map) {
         while (height--) {
 #ifdef USE_DUFFS_LOOP
             /* *INDENT-OFF* */ /* clang-format off */
@@ -2327,8 +2327,8 @@ static void BlitNtoN(SDL_BlitInfo *info)
 #if HAVE_FAST_WRITE_INT8
     /* Blit with permutation: 4->4 */
     if (srcbpp == 4 && dstbpp == 4 &&
-        srcfmt->format != SDL_PIXELFORMAT_ARGB2101010 &&
-        dstfmt->format != SDL_PIXELFORMAT_ARGB2101010) {
+        !SDL_ISPIXELFORMAT_10BIT(srcfmt->format) &&
+        !SDL_ISPIXELFORMAT_10BIT(dstfmt->format)) {
 
         /* Find the appropriate permutation */
         int alpha_channel, p0, p1, p2, p3;
@@ -2356,7 +2356,7 @@ static void BlitNtoN(SDL_BlitInfo *info)
 
     /* Blit with permutation: 4->3 */
     if (srcbpp == 4 && dstbpp == 3 &&
-        srcfmt->format != SDL_PIXELFORMAT_ARGB2101010) {
+        !SDL_ISPIXELFORMAT_10BIT(srcfmt->format)) {
 
         /* Find the appropriate permutation */
         int p0, p1, p2, p3;
@@ -2382,7 +2382,7 @@ static void BlitNtoN(SDL_BlitInfo *info)
 #if HAVE_FAST_WRITE_INT8
     /* Blit with permutation: 3->4 */
     if (srcbpp == 3 && dstbpp == 4 &&
-        dstfmt->format != SDL_PIXELFORMAT_ARGB2101010) {
+        !SDL_ISPIXELFORMAT_10BIT(dstfmt->format)) {
 
         /* Find the appropriate permutation */
         int alpha_channel, p0, p1, p2, p3;
@@ -2445,8 +2445,8 @@ static void BlitNtoNCopyAlpha(SDL_BlitInfo *info)
 #if HAVE_FAST_WRITE_INT8
     /* Blit with permutation: 4->4 */
     if (srcbpp == 4 && dstbpp == 4 &&
-        srcfmt->format != SDL_PIXELFORMAT_ARGB2101010 &&
-        dstfmt->format != SDL_PIXELFORMAT_ARGB2101010) {
+        !SDL_ISPIXELFORMAT_10BIT(srcfmt->format) &&
+        !SDL_ISPIXELFORMAT_10BIT(dstfmt->format)) {
 
         /* Find the appropriate permutation */
         int p0, p1, p2, p3;
@@ -2505,7 +2505,7 @@ static void BlitNto1Key(SDL_BlitInfo *info)
     srcbpp = srcfmt->BytesPerPixel;
     ckey &= rgbmask;
 
-    if (palmap == NULL) {
+    if (!palmap) {
         while (height--) {
             /* *INDENT-OFF* */ /* clang-format off */
             DUFFS_LOOP(
@@ -2651,8 +2651,8 @@ static void BlitNtoNKey(SDL_BlitInfo *info)
 #if HAVE_FAST_WRITE_INT8
     /* Blit with permutation: 4->4 */
     if (srcbpp == 4 && dstbpp == 4 &&
-        srcfmt->format != SDL_PIXELFORMAT_ARGB2101010 &&
-        dstfmt->format != SDL_PIXELFORMAT_ARGB2101010) {
+        !SDL_ISPIXELFORMAT_10BIT(srcfmt->format) &&
+        !SDL_ISPIXELFORMAT_10BIT(dstfmt->format)) {
 
         /* Find the appropriate permutation */
         int alpha_channel, p0, p1, p2, p3;
@@ -2760,7 +2760,7 @@ static void BlitNtoNKey(SDL_BlitInfo *info)
 
     /* Blit with permutation: 4->3 */
     if (srcbpp == 4 && dstbpp == 3 &&
-        srcfmt->format != SDL_PIXELFORMAT_ARGB2101010) {
+        !SDL_ISPIXELFORMAT_10BIT(srcfmt->format)) {
 
         /* Find the appropriate permutation */
         int p0, p1, p2, p3;
@@ -2789,7 +2789,7 @@ static void BlitNtoNKey(SDL_BlitInfo *info)
 #if HAVE_FAST_WRITE_INT8
     /* Blit with permutation: 3->4 */
     if (srcbpp == 3 && dstbpp == 4 &&
-        dstfmt->format != SDL_PIXELFORMAT_ARGB2101010) {
+        !SDL_ISPIXELFORMAT_10BIT(dstfmt->format)) {
 
 #if SDL_BYTEORDER == SDL_LIL_ENDIAN
         Uint8 k0 = ckey & 0xFF;
@@ -2909,8 +2909,8 @@ static void BlitNtoNKeyCopyAlpha(SDL_BlitInfo *info)
 #if HAVE_FAST_WRITE_INT8
     /* Blit with permutation: 4->4 */
     if (srcbpp == 4 && dstbpp == 4 &&
-        srcfmt->format != SDL_PIXELFORMAT_ARGB2101010 &&
-        dstfmt->format != SDL_PIXELFORMAT_ARGB2101010) {
+        !SDL_ISPIXELFORMAT_10BIT(srcfmt->format) &&
+        !SDL_ISPIXELFORMAT_10BIT(dstfmt->format)) {
 
         /* Find the appropriate permutation */
         int p0, p1, p2, p3;

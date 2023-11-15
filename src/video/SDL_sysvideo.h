@@ -146,11 +146,10 @@ struct SDL_VideoDisplay
 
     SDL_VideoDevice *device;
 
+    SDL_PropertiesID props;
+
     SDL_DisplayData *driverdata;
 };
-
-/* Forward declaration */
-struct SDL_SysWMinfo;
 
 /* Video device flags */
 typedef enum
@@ -223,8 +222,7 @@ struct SDL_VideoDevice
     /*
      * Window functions
      */
-    int (*CreateSDLWindow)(SDL_VideoDevice *_this, SDL_Window *window);
-    int (*CreateSDLWindowFrom)(SDL_VideoDevice *_this, SDL_Window *window, const void *data);
+    int (*CreateSDLWindow)(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props);
     void (*SetWindowTitle)(SDL_VideoDevice *_this, SDL_Window *window);
     int (*SetWindowIcon)(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surface *icon);
     int (*SetWindowPosition)(SDL_VideoDevice *_this, SDL_Window *window);
@@ -265,9 +263,6 @@ struct SDL_VideoDevice
      */
     SDL_ShapeDriver shape_driver;
 
-    /* Get some platform dependent window information */
-    int (*GetWindowWMInfo)(SDL_VideoDevice *_this, SDL_Window *window, struct SDL_SysWMinfo *info);
-
     /* * * */
     /*
      * OpenGL support
@@ -290,8 +285,8 @@ struct SDL_VideoDevice
      */
     int (*Vulkan_LoadLibrary)(SDL_VideoDevice *_this, const char *path);
     void (*Vulkan_UnloadLibrary)(SDL_VideoDevice *_this);
-    SDL_bool (*Vulkan_GetInstanceExtensions)(SDL_VideoDevice *_this, unsigned *count, const char **names);
-    SDL_bool (*Vulkan_CreateSurface)(SDL_VideoDevice *_this, SDL_Window *window, VkInstance instance, VkSurfaceKHR *surface);
+    char const* const* (*Vulkan_GetInstanceExtensions)(SDL_VideoDevice *_this, Uint32 *count);
+    SDL_bool (*Vulkan_CreateSurface)(SDL_VideoDevice *_this, SDL_Window *window, VkInstance instance, const struct VkAllocationCallbacks *allocator, VkSurfaceKHR *surface);
 
     /* * * */
     /*
