@@ -185,6 +185,10 @@ OS4_SetupWindowData(SDL_VideoDevice *_this, SDL_Window * sdlwin, struct Window *
 
         sdlwin->w = width;
         sdlwin->h = height;
+
+        SDL_PropertiesID props = SDL_GetWindowProperties(sdlwin);
+        //SDL_SetProperty(props, "SDL.window.amigaos4.screen", screen); TODO: set or not?
+        SDL_SetProperty(props, "SDL.window.amigaos4.window", data->syswin);
     }
 
     return 0;
@@ -472,50 +476,44 @@ OS4_CreateSystemWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDis
 }
 
 int
-OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID props)
+OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID create_props)
 {
-    struct Window *syswin = NULL;
+    struct Window *syswin = (struct Window *)SDL_GetProperty(create_props, "amigaos4.window",
+                                                             SDL_GetProperty(create_props, "sdl2-compat.external_window", NULL));
 
-    if (OS4_IsFullscreen(window)) {
-        // We may not have the screen opened yet, so let's wait that SDL calls us back with
-        // SDL_SetWindowFullscreen() and open the window then.
-        dprintf("Open fullscreen window with delay\n");
-    } else {
-        if (!(syswin = OS4_CreateSystemWindow(_this, window, NULL))) {
-            return SDL_SetError("Failed to create system window");
+    dprintf("amigaos4.window %p\n", syswin);
+
+    if (syswin) {
+        window->flags |= SDL_WINDOW_EXTERNAL;
+
+        if (syswin->Title && SDL_strlen(syswin->Title)) {
+            window->title = SDL_strdup(syswin->Title);
         }
+
+        if (OS4_SetupWindowData(_this, window, syswin) < 0) {
+            return -1;
+        }
+    } else {
+        if (OS4_IsFullscreen(window)) {
+            // We may not have the screen opened yet, so let's wait that SDL calls us back with
+            // SDL_SetWindowFullscreen() and open the window then.
+            dprintf("Open fullscreen window with delay\n");
+        } else {
+            if (!(syswin = OS4_CreateSystemWindow(_this, window, NULL))) {
+                return SDL_SetError("Failed to create system window");
+            }
+        }
+
+        if (OS4_SetupWindowData(_this, window, syswin) < 0) {
+            // There is no AppWindow in this scenario
+            OS4_CloseSystemWindow(_this, syswin);
+
+            return SDL_SetError("Failed to setup window data");
+        }
+
+        OS4_CreateIconifyGadgetForWindow(_this, window);
+        OS4_CreateAppWindow(_this, window);
     }
-
-    if (OS4_SetupWindowData(_this, window, syswin) < 0) {
-        // There is no AppWindow in this scenario
-        OS4_CloseSystemWindow(_this, syswin);
-
-        return SDL_SetError("Failed to setup window data");
-    }
-
-    OS4_CreateIconifyGadgetForWindow(_this, window);
-    OS4_CreateAppWindow(_this, window);
-
-    return 0;
-}
-
-// TODO
-int
-OS4_CreateWindowFrom(SDL_VideoDevice *_this, SDL_Window * window, const void * data)
-{
-    struct Window *syswin = (struct Window *) data;
-
-    dprintf("Called for native window %p (flags 0x%X)\n", data, window->flags);
-
-    if (syswin->Title && SDL_strlen(syswin->Title)) {
-        window->title = SDL_strdup(syswin->Title);
-    }
-
-    if (OS4_SetupWindowData(_this, window, syswin) < 0) {
-        return -1;
-    }
-
-    // TODO: OpenGL, (fullscreen may not be applicable here?)
 
     return 0;
 }
@@ -728,12 +726,9 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
         dprintf("Trying to set '%s' into %s mode\n", window->title,
             fullscreen ? "fullscreen" : "window");
 
-	/* TODO:
-        if (window->flags & SDL_WINDOW_FOREIGN) {
+        if (window->flags & SDL_WINDOW_EXTERNAL) {
             dprintf("Native window '%s' (%p), mode change ignored\n", window->title, data->syswin);
-        } else */
-	{
-
+        } else {
             int oldWidth = 0;
             int oldHeight = 0;
 
@@ -853,16 +848,15 @@ OS4_DestroyWindow(SDL_VideoDevice *_this, SDL_Window * window)
     }
 
     if (data->syswin) {
-        /*if (!(window->flags & SDL_WINDOW_FOREIGN))*/ {
-
+        if (!(window->flags & SDL_WINDOW_EXTERNAL)) {
             if (SDL_IsShapedWindow(window)) {
                 OS4_DestroyShape(_this, window);
             }
 
             OS4_CloseWindow(_this, window);
-        } /*else { TODO:
+        } else {
             dprintf("Ignored for native window\n");
-        } */
+        }
     }
 
     if (window->flags & SDL_WINDOW_OPENGL) {
@@ -872,30 +866,6 @@ OS4_DestroyWindow(SDL_VideoDevice *_this, SDL_Window * window)
     SDL_free(data);
     window->driverdata = NULL;
 }
-
-/* TODO: implement properties and remove
-int
-OS4_GetWindowWMInfo(SDL_VideoDevice *_this, SDL_Window * window, struct SDL_SysWMinfo * info)
-{
-    if (info->version == SDL_SYSWM_CURRENT_VERSION) {
-        struct Window *syswin = ((SDL_WindowData *) window->driverdata)->syswin;
-
-        info->subsystem = SDL_SYSWM_AMIGAOS4;
-        info->info.os4.window = syswin;
-
-        dprintf("Window pointer %p\n", syswin);
-
-        return 0;
-    } else {
-        dprintf("Version %d doesn't match with %d\n",
-            info->version, SDL_SYSWM_CURRENT_VERSION);
-
-        SDL_SetError("Bad SYSWM version");
-
-        return -1;
-    }
-}
-*/
 
 int
 OS4_SetWindowHitTest(SDL_Window * window, SDL_bool enabled)
@@ -1132,12 +1102,11 @@ OS4_UniconifyWindow(SDL_VideoDevice *_this, SDL_Window * window)
 static void
 OS4_RecreateWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
-/* TODO:
-    if (window->flags & SDL_WINDOW_FOREIGN) {
+    if (window->flags & SDL_WINDOW_EXTERNAL) {
         dprintf("Cannot modify native window '%s'\n", window->title);
         return;
     }
-*/
+
     SDL_WindowData *data = window->driverdata;
 
     if (data->syswin) {

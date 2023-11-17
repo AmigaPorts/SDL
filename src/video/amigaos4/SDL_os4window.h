@@ -60,7 +60,7 @@ struct SDL_WindowData
 extern void OS4_GetWindowSize(SDL_VideoDevice *this, struct Window * window, int * width, int * height);
 extern void OS4_WaitForResize(SDL_VideoDevice *this, SDL_Window * window, int * width, int * height);
 
-extern int OS4_CreateWindow(SDL_VideoDevice *this, SDL_Window * window, SDL_PropertiesID id);
+extern int OS4_CreateWindow(SDL_VideoDevice *this, SDL_Window * window, SDL_PropertiesID create_props);
 extern void OS4_SetWindowTitle(SDL_VideoDevice *this, SDL_Window * window);
 //extern void OS4_SetWindowIcon(SDL_VideoDevice *this, SDL_Window * window, SDL_Surface * icon);
 extern void OS4_SetWindowBox(SDL_VideoDevice *this, SDL_Window * window);

@@ -621,8 +621,6 @@ OS4_RenderPresent(SDL_Renderer * renderer)
     //Uint32 s = SDL_GetTicks();
 
     if (window && source) {
-        OS4_RenderData *data = (OS4_RenderData *)renderer->driverdata;
-
         // TODO: should we take viewport into account?
 
         SDL_WindowData *windowdata = (SDL_WindowData *)window->driverdata;
@@ -636,7 +634,7 @@ OS4_RenderPresent(SDL_Renderer * renderer)
 
             //dprintf("target %p\n", data->target);
 
-            if (data->vsyncEnabled) {
+            if (renderer->info.flags & SDL_RENDERER_PRESENTVSYNC) {
                 IGraphics->WaitTOF();
             }
 
@@ -1078,22 +1076,24 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
 static int
 OS4_SetVSync(SDL_Renderer * renderer, int vsync)
 {
-    OS4_RenderData *data = renderer->driverdata;
-
     dprintf("VSYNC %d\n", vsync);
 
-    data->vsyncEnabled = vsync;
+    if (vsync > 0) {
+        renderer->info.flags |= SDL_RENDERER_PRESENTVSYNC;
+    } else {
+        renderer->info.flags &= ~SDL_RENDERER_PRESENTVSYNC;
+    }
 
     return 0;
 }
 
 SDL_Renderer *
-OS4_CreateRenderer(SDL_Window * window, Uint32 flags)
+OS4_CreateRenderer(SDL_Window * window, SDL_PropertiesID create_props)
 {
     SDL_Renderer *renderer;
     OS4_RenderData *data;
 
-    dprintf("Creating renderer for '%s' (flags 0x%x)\n", window->title, flags);
+    dprintf("Creating renderer for '%s'\n", window->title);
 
     renderer = (SDL_Renderer *) SDL_calloc(1, sizeof(*renderer));
     if (!renderer) {
@@ -1135,9 +1135,13 @@ OS4_CreateRenderer(SDL_Window * window, Uint32 flags)
 
     IGraphics->InitRastPort(&data->rastport);
 
-    data->vsyncEnabled = flags & SDL_RENDERER_PRESENTVSYNC;
+    int vsyncEnabled = SDL_GetBooleanProperty(create_props, "present_vsync", SDL_FALSE);
 
-    dprintf("VSYNC: %s\n", data->vsyncEnabled ? "on" : "off");
+    dprintf("VSYNC: %s\n", vsyncEnabled ? "on" : "off");
+
+    if (vsyncEnabled) {
+        renderer->info.flags |= SDL_RENDERER_PRESENTVSYNC;
+    }
 
     return renderer;
 }

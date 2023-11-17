@@ -38,8 +38,6 @@ typedef struct
     SDL_bool cliprect_enabled;
 
     SDL_Rect viewport;
-
-    SDL_bool vsyncEnabled;
 } OS4_RenderData;
 
 extern struct BitMap * OS4_ActivateRenderer(SDL_Renderer * renderer);
