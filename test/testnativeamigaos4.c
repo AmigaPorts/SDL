@@ -26,7 +26,7 @@ static void *CreateWindowAmigaOS4(int w, int h);
 static void DestroyWindowAmigaOS4(void *window);
 
 NativeWindowFactory AmigaOS4WindowFactory = {
-    "os4",
+    "amigaos4",
     CreateWindowAmigaOS4,
     DestroyWindowAmigaOS4
 };

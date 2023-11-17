@@ -50,10 +50,10 @@ static SDLTest_CommonState *state;
 static void
 quit(int rc)
 {
-    SDL_Quit();
     if (native_window && factory) {
         factory->DestroyNativeWindow(native_window);
     }
+    SDL_Quit();
     SDLTest_CommonDestroyState(state);
     /* Let 'main()' return normally */
     if (rc != 0) {
