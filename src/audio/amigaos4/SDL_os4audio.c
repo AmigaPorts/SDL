@@ -177,7 +177,7 @@ OS4_CloseDevice(SDL_AudioDevice *_this)
 {
     OS4AudioData *os4data = _this->hidden;
 
-    dprintf("Called\n");
+    dprintf("Called for device %p\n", _this);
 
     OS4_CloseAhiDevice(os4data);
 
@@ -209,6 +209,8 @@ OS4_DetectDevices(SDL_AudioDevice **default_output, SDL_AudioDevice **default_ca
 
     *default_output = SDL_AddAudioDevice(/*iscapture=*/SDL_FALSE, "AHI default output device", &output, SDL_strdup("default"));
     *default_capture = SDL_AddAudioDevice(/*iscapture=*/SDL_TRUE, "AHI default capture device", &capture, SDL_strdup("default"));
+
+    dprintf("Default_output device %p, default_capture device %p\n", *default_output, *default_capture);
 }
 
 static int
@@ -217,7 +219,7 @@ OS4_OpenDevice(SDL_AudioDevice *_this)
     int result = 0;
     OS4AudioData *os4data = NULL;
 
-    dprintf("Called\n");
+    dprintf("Called for device %p\n", _this);
 
     _this->hidden = (OS4AudioData *) SDL_malloc(sizeof(OS4AudioData));
 
@@ -322,7 +324,7 @@ OS4_ThreadInit(SDL_AudioDevice *_this)
 {
     OS4AudioData *os4data = _this->hidden;
 
-    dprintf("Called\n");
+    dprintf("Called for device %p\n", _this);
 
     /* Signal must be opened in the task which is using it (player) */
     if (!OS4_OpenAhiDevice(os4data)) {
@@ -340,7 +342,7 @@ OS4_ThreadInit(SDL_AudioDevice *_this)
 static void
 OS4_ThreadDeinit(SDL_AudioDevice *_this)
 {
-    dprintf("Called\n");
+    dprintf("Called for device %p\n", _this);
 }
 
 static int
@@ -440,7 +442,7 @@ OS4_PlayDevice(SDL_AudioDevice *_this, const Uint8 *buffer, int buflen)
 static Uint8 *
 OS4_GetDeviceBuf(SDL_AudioDevice *_this, int *buffer_size)
 {
-    //dprintf("Called\n");
+    //dprintf("Called for device %p\n", _this);
 
     if (buffer_size) {
         OS4AudioData *os4data = _this->hidden;
@@ -454,7 +456,7 @@ OS4_GetDeviceBuf(SDL_AudioDevice *_this, int *buffer_size)
 static int
 OS4_WaitCaptureDevice(SDL_AudioDevice *device)
 {
-    dprintf("Called\n");
+    dprintf("Called for device %p\n", device);
     return 0;
 }
 
@@ -475,7 +477,7 @@ OS4_CaptureFromDevice(SDL_AudioDevice *_this, void * buffer, int buflen)
     void *completedBuffer;
     int current;
 
-    //dprintf("Called %p, %d\n", buffer, buflen);
+    //dprintf("Called for device %p, buffer %p, buflen %d, spec %p\n", _this, buffer, buflen, spec);
 
     if (!os4data->deviceOpen) {
         dprintf("Device is not open\n");
@@ -484,11 +486,9 @@ OS4_CaptureFromDevice(SDL_AudioDevice *_this, void * buffer, int buflen)
 
     now = SDL_GetTicks();
     current = os4data->currentBuffer;
-
     request = os4data->ahiRequest[0];
 
-    if ((now - os4data->lastCaptureTicks) > RESTART_CAPTURE_THRESHOLD) {
-
+    if (os4data->lastCaptureTicks == 0 || (now - os4data->lastCaptureTicks) > RESTART_CAPTURE_THRESHOLD) {
         if (os4data->requestSent) {
             IExec->WaitIO((struct IORequest *)request);
         }
@@ -511,7 +511,9 @@ OS4_CaptureFromDevice(SDL_AudioDevice *_this, void * buffer, int buflen)
         current = OS4_SwapBuffer(current);
     } else {
         /* Wait for the previous request completion */
-        IExec->WaitIO((struct IORequest *)request);
+        if (os4data->requestSent) {
+            IExec->WaitIO((struct IORequest *)request);
+        }
     }
 
     OS4_FillCaptureRequest(
@@ -553,6 +555,12 @@ OS4_FreeDeviceHandle(SDL_AudioDevice *device)
 }
 
 static void
+OS4_DeinitializeStart(void)
+{
+    dprintf("Called\n");
+}
+
+static void
 OS4_Deinitialize(void)
 {
     dprintf("Called\n");
@@ -581,11 +589,13 @@ OS4_Init(SDL_AudioDriverImpl * impl)
     impl->FlushCapture = OS4_FlushCapture;
     impl->CloseDevice = OS4_CloseDevice;
     impl->FreeDeviceHandle = OS4_FreeDeviceHandle;
+    impl->DeinitializeStart = OS4_DeinitializeStart;
     impl->Deinitialize = OS4_Deinitialize;
 
-    impl->HasCaptureSupport = 1;
-    impl->OnlyHasDefaultOutputDevice = 1;
-    impl->OnlyHasDefaultCaptureDevice = 1;
+    impl->ProvidesOwnCallbackThread = SDL_FALSE;
+    impl->HasCaptureSupport = SDL_TRUE;
+    impl->OnlyHasDefaultOutputDevice = SDL_TRUE;
+    impl->OnlyHasDefaultCaptureDevice = SDL_TRUE;
 
     return SDL_TRUE;
 }
