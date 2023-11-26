@@ -444,11 +444,9 @@ OS4_CaptureFromDevice(_THIS, void * buffer, int buflen)
 
     now = SDL_GetTicks();
     current = os4data->currentBuffer;
-
     request = os4data->ahiRequest[0];
 
-    if ((now - os4data->lastCaptureTicks) > RESTART_CAPTURE_THRESHOLD) {
-
+    if (os4data->lastCaptureTicks == 0 || (now - os4data->lastCaptureTicks) > RESTART_CAPTURE_THRESHOLD) {
         if (os4data->requestSent) {
             IExec->WaitIO((struct IORequest *)request);
         }
@@ -471,7 +469,9 @@ OS4_CaptureFromDevice(_THIS, void * buffer, int buflen)
         current = OS4_SwapBuffer(current);
     } else {
         /* Wait for the previous request completion */
-        IExec->WaitIO((struct IORequest *)request);
+        if (os4data->requestSent) {
+            IExec->WaitIO((struct IORequest *)request);
+        }
     }
 
     OS4_FillCaptureRequest(
@@ -526,14 +526,14 @@ OS4_Init(SDL_AudioDriverImpl * impl)
     // impl->FreeDeviceHandle
     // impl->Deinitialize
 
-    impl->HasCaptureSupport = 1;
-    impl->OnlyHasDefaultOutputDevice = 1;
-    impl->OnlyHasDefaultCaptureDevice = 1;
+    impl->HasCaptureSupport = SDL_TRUE;
+    impl->OnlyHasDefaultOutputDevice = SDL_TRUE;
+    impl->OnlyHasDefaultCaptureDevice = SDL_TRUE;
 
     return SDL_TRUE;
 }
 
 AudioBootStrap AMIGAOS4AUDIO_bootstrap = {
-   DRIVER_NAME, "AmigaOS4 AHI audio", OS4_Init, 0
+   DRIVER_NAME, "AmigaOS4 AHI audio", OS4_Init, SDL_FALSE
 };
 #endif
