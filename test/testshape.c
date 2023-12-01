@@ -17,6 +17,36 @@
 
 #define SHAPED_WINDOW_DIMENSION 640
 
+/** An enum denoting the specific type of contents present in an SDL_WindowShapeParams union. */
+typedef enum
+{
+    /** The default mode, a binarized alpha cutoff of 1. */
+    ShapeModeDefault,
+    /** A binarized alpha cutoff with a given integer value. */
+    ShapeModeBinarizeAlpha,
+    /** A binarized alpha cutoff with a given integer value, but with the opposite comparison. */
+    ShapeModeReverseBinarizeAlpha,
+    /** A color key is applied. */
+    ShapeModeColorKey
+} WindowShapeMode;
+
+/** A union containing parameters for shaped windows. */
+typedef union
+{
+    /** A cutoff alpha value for binarization of the window shape's alpha channel. */
+    Uint8 binarizationCutoff;
+    SDL_Color colorKey;
+} SDL_WindowShapeParams;
+
+/** A struct that tags the SDL_WindowShapeParams union with an enum describing the type of its contents. */
+typedef struct SDL_WindowShapeMode
+{
+    /** The mode of these window-shape parameters. */
+    WindowShapeMode mode;
+    /** Window-shape parameters. */
+    SDL_WindowShapeParams parameters;
+} SDL_WindowShapeMode;
+
 typedef struct LoadedPicture
 {
     SDL_Surface *surface;
@@ -114,7 +144,7 @@ static int SDL3_SetWindowShape(SDL_Window *window, SDL_Surface *shape, SDL_Windo
     g_bitmap_h = shape->h;
     g_bitmap = (Uint8*) SDL_malloc(shape->w * shape->h);
     if (!g_bitmap) {
-        return SDL_OutOfMemory();
+        return -1;
     }
 
     SDL_CalculateShapeBitmap(*shape_mode, shape, g_bitmap, 1);

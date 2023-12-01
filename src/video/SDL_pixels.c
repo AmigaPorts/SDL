@@ -89,6 +89,8 @@ const char *SDL_GetPixelFormatName(Uint32 format)
 
         CASE(SDL_PIXELFORMAT_INDEX1LSB)
         CASE(SDL_PIXELFORMAT_INDEX1MSB)
+        CASE(SDL_PIXELFORMAT_INDEX2LSB)
+        CASE(SDL_PIXELFORMAT_INDEX2MSB)
         CASE(SDL_PIXELFORMAT_INDEX4LSB)
         CASE(SDL_PIXELFORMAT_INDEX4MSB)
         CASE(SDL_PIXELFORMAT_INDEX8)
@@ -309,6 +311,9 @@ Uint32 SDL_GetPixelFormatEnumForMasks(int bpp, Uint32 Rmask, Uint32 Gmask, Uint3
     case 1:
         /* SDL defaults to MSB ordering */
         return SDL_PIXELFORMAT_INDEX1MSB;
+    case 2:
+        /* SDL defaults to MSB ordering */
+        return SDL_PIXELFORMAT_INDEX2MSB;
     case 4:
         /* SDL defaults to MSB ordering */
         return SDL_PIXELFORMAT_INDEX4MSB;
@@ -560,7 +565,6 @@ SDL_PixelFormat *SDL_CreatePixelFormat(Uint32 pixel_format)
     format = SDL_malloc(sizeof(*format));
     if (!format) {
         SDL_AtomicUnlock(&formats_lock);
-        SDL_OutOfMemory();
         return NULL;
     }
     if (SDL_InitFormat(format, pixel_format) < 0) {
@@ -700,14 +704,12 @@ SDL_Palette *SDL_CreatePalette(int ncolors)
 
     palette = (SDL_Palette *)SDL_malloc(sizeof(*palette));
     if (!palette) {
-        SDL_OutOfMemory();
         return NULL;
     }
     palette->colors =
         (SDL_Color *)SDL_malloc(ncolors * sizeof(*palette->colors));
     if (!palette->colors) {
         SDL_free(palette);
-        SDL_OutOfMemory();
         return NULL;
     }
     palette->ncolors = ncolors;
@@ -984,7 +986,6 @@ static Uint8 *Map1to1(SDL_Palette *src, SDL_Palette *dst, int *identical)
     }
     map = (Uint8 *)SDL_calloc(256, sizeof(Uint8));
     if (!map) {
-        SDL_OutOfMemory();
         return NULL;
     }
     for (i = 0; i < src->ncolors; ++i) {
@@ -1007,7 +1008,6 @@ static Uint8 *Map1toN(SDL_PixelFormat *src, Uint8 Rmod, Uint8 Gmod, Uint8 Bmod, 
     bpp = ((dst->BytesPerPixel == 3) ? 4 : dst->BytesPerPixel);
     map = (Uint8 *)SDL_calloc(256, bpp);
     if (!map) {
-        SDL_OutOfMemory();
         return NULL;
     }
 
@@ -1043,7 +1043,6 @@ SDL_BlitMap *SDL_AllocBlitMap(void)
     /* Allocate the empty map */
     map = (SDL_BlitMap *)SDL_calloc(1, sizeof(*map));
     if (!map) {
-        SDL_OutOfMemory();
         return NULL;
     }
     map->info.r = 0xFF;

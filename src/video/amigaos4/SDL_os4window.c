@@ -34,7 +34,6 @@
 #include <unistd.h>
 
 #include "SDL_os4video.h"
-#include "SDL_os4shape.h"
 #include "SDL_os4window.h"
 #include "SDL_os4modes.h"
 #include "SDL_os4opengl.h"
@@ -549,10 +548,6 @@ OS4_SetWindowBox(SDL_VideoDevice *_this, SDL_Window * window)
             dprintf("SetWindowAttrs() returned %d\n", ret);
         }
 
-        if (SDL_IsShapedWindow(window)) {
-            OS4_ResizeWindowShape(window);
-        }
-
         if (data->glContext) {
             OS4_ResizeGlContext(_this, window);
         }
@@ -849,10 +844,6 @@ OS4_DestroyWindow(SDL_VideoDevice *_this, SDL_Window * window)
 
     if (data->syswin) {
         if (!(window->flags & SDL_WINDOW_EXTERNAL)) {
-            if (SDL_IsShapedWindow(window)) {
-                OS4_DestroyShape(_this, window);
-            }
-
             OS4_CloseWindow(_this, window);
         } else {
             dprintf("Ignored for native window\n");

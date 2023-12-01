@@ -52,21 +52,18 @@ static SDL_VideoDevice *PSP_Create()
     /* Initialize SDL_VideoDevice structure */
     device = (SDL_VideoDevice *)SDL_calloc(1, sizeof(SDL_VideoDevice));
     if (!device) {
-        SDL_OutOfMemory();
         return NULL;
     }
 
     /* Initialize internal PSP specific data */
     phdata = (SDL_VideoData *)SDL_calloc(1, sizeof(SDL_VideoData));
     if (!phdata) {
-        SDL_OutOfMemory();
         SDL_free(device);
         return NULL;
     }
 
     gldata = (SDL_GLDriverData *)SDL_calloc(1, sizeof(SDL_GLDriverData));
     if (!gldata) {
-        SDL_OutOfMemory();
         SDL_free(device);
         SDL_free(phdata);
         return NULL;
@@ -131,6 +128,10 @@ int PSP_VideoInit(SDL_VideoDevice *_this)
 {
     SDL_DisplayMode mode;
 
+    if (PSP_EventInit(_this) == -1) {
+        return -1;  /* error string would already be set */
+    }
+
     SDL_zero(mode);
     mode.w = 480;
     mode.h = 272;
@@ -147,6 +148,7 @@ int PSP_VideoInit(SDL_VideoDevice *_this)
 
 void PSP_VideoQuit(SDL_VideoDevice *_this)
 {
+    PSP_EventQuit(_this);
 }
 
 int PSP_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay *display)
@@ -192,7 +194,7 @@ int PSP_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesI
     /* Allocate window internal data */
     wdata = (SDL_WindowData *)SDL_calloc(1, sizeof(SDL_WindowData));
     if (!wdata) {
-        return SDL_OutOfMemory();
+        return -1;
     }
 
     /* Setup driver data for this window */

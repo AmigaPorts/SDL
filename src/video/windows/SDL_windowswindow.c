@@ -33,7 +33,6 @@
 
 #include "SDL_windowsvideo.h"
 #include "SDL_windowswindow.h"
-#include "SDL_windowsshape.h"
 
 /* Dropfile support */
 #include <shellapi.h>
@@ -284,7 +283,7 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwnd
     /* Allocate the window data */
     data = (SDL_WindowData *)SDL_calloc(1, sizeof(*data));
     if (!data) {
-        return SDL_OutOfMemory();
+        return -1;
     }
     data->window = window;
     data->hwnd = hwnd;
@@ -1158,8 +1157,6 @@ void *WIN_GetWindowICCProfile(SDL_VideoDevice *_this, SDL_Window *window, size_t
             SDL_SetError("Could not open ICC profile");
         }
         SDL_free(filename_utf8);
-    } else {
-        SDL_OutOfMemory();
     }
     return iccProfileData;
 }
@@ -1230,18 +1227,6 @@ void WIN_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_b
 
 void WIN_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
-    if (window->shaper) {
-        SDL_ShapeData *shapedata = (SDL_ShapeData *)window->shaper->driverdata;
-        if (shapedata) {
-            if (shapedata->mask_tree) {
-                SDL_FreeShapeTree(&shapedata->mask_tree);
-            }
-            SDL_free(shapedata);
-        }
-        SDL_free(window->shaper);
-        window->shaper = NULL;
-    }
-
     CleanupWindowData(_this, window);
 }
 

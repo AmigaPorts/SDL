@@ -31,7 +31,6 @@
 
 #include "SDL_x11video.h"
 #include "SDL_x11mouse.h"
-#include "SDL_x11shape.h"
 #include "SDL_x11xinput2.h"
 #include "SDL_x11xfixes.h"
 
@@ -313,10 +312,11 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, Window w)
     /* Allocate the window data */
     data = (SDL_WindowData *)SDL_calloc(1, sizeof(*data));
     if (!data) {
-        return SDL_OutOfMemory();
+        return -1;
     }
     data->window = window;
     data->xwindow = w;
+    data->hit_test_result = SDL_HITTEST_NORMAL;
 
 #ifdef X_HAVE_UTF8_STRING
     if (SDL_X11_HAVE_UTF8 && videodata->im) {
@@ -337,7 +337,7 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, Window w)
         SDL_WindowData ** new_windowlist = (SDL_WindowData **)SDL_realloc(windowlist, (numwindows + 1) * sizeof(*windowlist));
         if (!new_windowlist) {
             SDL_free(data);
-            return SDL_OutOfMemory();
+            return -1;
         }
         windowlist = new_windowlist;
         windowlist[numwindows] = data;
@@ -543,7 +543,7 @@ int X11_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesI
         /* OK, we got a colormap, now fill it in as best as we can */
         colorcells = SDL_malloc(visual->map_entries * sizeof(XColor));
         if (!colorcells) {
-            return SDL_OutOfMemory();
+            return -1;
         }
         ncolors = visual->map_entries;
         rmax = 0xffff;
@@ -971,7 +971,7 @@ int X11_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surface *i
         propdata = SDL_malloc(propsize * sizeof(long));
 
         if (!propdata) {
-            return SDL_OutOfMemory();
+            return -1;
         }
 
         X11_XSync(display, False);
@@ -1723,7 +1723,6 @@ void *X11_GetWindowICCProfile(SDL_VideoDevice *_this, SDL_Window *window, size_t
 
     ret_icc_profile_data = SDL_malloc(real_nitems);
     if (!ret_icc_profile_data) {
-        SDL_OutOfMemory();
         return NULL;
     }
 
@@ -1819,16 +1818,6 @@ void X11_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_b
 void X11_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
     SDL_WindowData *data = window->driverdata;
-
-    if (window->shaper) {
-        SDL_ShapeData *shapedata = (SDL_ShapeData *)window->shaper->driverdata;
-        if (shapedata) {
-            SDL_free(shapedata->bitmap);
-            SDL_free(shapedata);
-        }
-        SDL_free(window->shaper);
-        window->shaper = NULL;
-    }
 
     if (data) {
         SDL_VideoData *videodata = data->videodata;

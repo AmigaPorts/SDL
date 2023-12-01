@@ -46,7 +46,6 @@
 #include "SDL_os4mouse.h"
 #include "SDL_os4opengl.h"
 #include "SDL_os4opengles2.h"
-#include "SDL_os4shape.h"
 #include "SDL_os4messagebox.h"
 #include "SDL_os4modes.h"
 #include "SDL_os4keyboard.h"
@@ -445,10 +444,6 @@ OS4_SetFunctionPointers(SDL_VideoDevice * device)
 
     //device->OnWindowEnter = OS4_OnWindowEnter;
     device->FlashWindow = OS4_FlashWindow;
-
-    device->shape_driver.CreateShaper = OS4_CreateShaper;
-    device->shape_driver.SetWindowShape = OS4_SetWindowShape;
-    //device->shape_driver.ResizeWindowShape = OS4_ResizeWindowShape; // TODO
 
     device->GL_LoadLibrary = OS4_LoadGlLibrary;
     OS4_SetMiniGLFunctions(device);

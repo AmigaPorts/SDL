@@ -69,7 +69,7 @@ enum EGadgetID
 {
     GID_DriverList = 1,
     GID_VsyncList,
-    GID_BatchingList,
+    //GID_BatchingList,
     GID_ScaleQualityList,
     //GID_LogicalSizeModeList,
     GID_ScreenSaverList,
@@ -112,6 +112,7 @@ static const struct OptionName vsyncNames[] =
     { NULL, NULL, NULL }
 };
 
+/*
 static const struct OptionName batchingNames[] =
 {
     { "default", NULL, NULL },
@@ -119,6 +120,7 @@ static const struct OptionName batchingNames[] =
     { "disabled", "0", NULL },
     { NULL, NULL, NULL }
 };
+*/
 
 static const struct OptionName scaleQualityNames[] =
 {
@@ -159,7 +161,7 @@ struct Variable
 
 static struct Variable driverVar = { GID_DriverList, 0, SDL_HINT_RENDER_DRIVER, "", NULL, NULL, driverNames };
 static struct Variable vsyncVar = { GID_VsyncList, 0, SDL_HINT_RENDER_VSYNC, "", NULL, NULL, vsyncNames };
-static struct Variable batchingVar = { GID_BatchingList, 0, SDL_HINT_RENDER_BATCHING, "", NULL, NULL, batchingNames };
+//static struct Variable batchingVar = { GID_BatchingList, 0, SDL_HINT_RENDER_BATCHING, "", NULL, NULL, batchingNames };
 static struct Variable scaleQualityVar = { GID_ScaleQualityList, 0, SDL_HINT_RENDER_SCALE_QUALITY, "", NULL, NULL, scaleQualityNames };
 //static struct Variable logicalSizeModeVar = { GID_LogicalSizeModeList, 0, SDL_HINT_RENDER_LOGICAL_SIZE_MODE, "", NULL, NULL, logicalSizeModeNames };
 static struct Variable screenSaverVar = { GID_ScreenSaverList, 0, SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "", NULL, NULL, screenSaverNames };
@@ -236,7 +238,7 @@ LoadVariables()
 {
     LoadVariable(&driverVar);
     LoadVariable(&vsyncVar);
-    LoadVariable(&batchingVar);
+    //LoadVariable(&batchingVar);
     LoadVariable(&scaleQualityVar);
     //LoadVariable(&logicalSizeModeVar);
     LoadVariable(&screenSaverVar);
@@ -257,7 +259,7 @@ SaveVariables()
 {
     SaveOrDeleteVariable(&driverVar);
     SaveOrDeleteVariable(&vsyncVar);
-    SaveOrDeleteVariable(&batchingVar);
+    //SaveOrDeleteVariable(&batchingVar);
     SaveOrDeleteVariable(&scaleQualityVar);
     //SaveOrDeleteVariable(&logicalSizeModeVar);
     SaveOrDeleteVariable(&screenSaverVar);
@@ -422,6 +424,7 @@ CreateVsyncButtons()
         "Synchronize display update to monitor refresh rate");
 }
 
+/*
 static Object*
 CreateBatchingButtons()
 {
@@ -429,6 +432,7 @@ CreateBatchingButtons()
         "Batching may improve drawing speed if application does many operations per frame "
         "and SDL2 is able to combine those");
 }
+*/
 
 static Object*
 CreateScaleQualityButtons()
@@ -519,8 +523,8 @@ CreateRendererLayout()
                 CHILD_Label, CreateLabel("_Driver"),
                 LAYOUT_AddChild, CreateVsyncButtons(),
                 CHILD_Label, CreateLabel("_Vertical Sync"),
-                LAYOUT_AddChild, CreateBatchingButtons(),
-                CHILD_Label, CreateLabel("_Batching Mode"),
+                //LAYOUT_AddChild, CreateBatchingButtons(),
+                //CHILD_Label, CreateLabel("_Batching Mode"),
                 LAYOUT_AddChild, CreateScaleQualityButtons(),
                 CHILD_Label, CreateLabel("Scale _Quality"),
                 //LAYOUT_AddChild, CreateLogicalSizeModeButtons(),
@@ -814,9 +818,9 @@ HandleGadgets(enum EGadgetID gid)
         case GID_VsyncList:
             ReadSelection(&vsyncVar);
             break;
-        case GID_BatchingList:
-            ReadSelection(&batchingVar);
-            break;
+        //case GID_BatchingList:
+        //    ReadSelection(&batchingVar);
+        //    break;
         case GID_ScaleQualityList:
             ReadSelection(&scaleQualityVar);
             break;
@@ -833,7 +837,7 @@ HandleGadgets(enum EGadgetID gid)
         case GID_ResetButton:
             ResetSelection(&driverVar);
             ResetSelection(&vsyncVar);
-            ResetSelection(&batchingVar);
+            //ResetSelection(&batchingVar);
             ResetSelection(&scaleQualityVar);
             //ResetSelection(&logicalSizeModeVar);
             ResetSelection(&screenSaverVar);
@@ -936,7 +940,7 @@ main(int argc, char** argv)
 
         PurgeChooserList(driverVar.list);
         PurgeChooserList(vsyncVar.list);
-        PurgeChooserList(batchingVar.list);
+        //PurgeChooserList(batchingVar.list);
         PurgeChooserList(scaleQualityVar.list);
         //PurgeChooserList(logicalSizeModeVar.list);
         PurgeChooserList(screenSaverVar.list);

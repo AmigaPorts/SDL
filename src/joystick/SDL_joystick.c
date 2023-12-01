@@ -273,7 +273,6 @@ static SDL_bool SDL_SetJoystickIDForPlayerIndex(int player_index, SDL_JoystickID
     if (player_index >= SDL_joystick_player_count) {
         SDL_JoystickID *new_players = (SDL_JoystickID *)SDL_realloc(SDL_joystick_players, (player_index + 1) * sizeof(*SDL_joystick_players));
         if (!new_players) {
-            SDL_OutOfMemory();
             return SDL_FALSE;
         }
 
@@ -406,8 +405,6 @@ SDL_JoystickID *SDL_GetJoysticks(int *count)
             if (count) {
                 *count = 0;
             }
-
-            SDL_OutOfMemory();
         }
     }
     SDL_UnlockJoysticks();
@@ -758,7 +755,6 @@ SDL_Joystick *SDL_OpenJoystick(SDL_JoystickID instance_id)
     /* Create and initialize the joystick */
     joystick = (SDL_Joystick *)SDL_calloc(sizeof(*joystick), 1);
     if (!joystick) {
-        SDL_OutOfMemory();
         SDL_UnlockJoysticks();
         return NULL;
     }
@@ -801,7 +797,6 @@ SDL_Joystick *SDL_OpenJoystick(SDL_JoystickID instance_id)
         joystick->buttons = (Uint8 *)SDL_calloc(joystick->nbuttons, sizeof(Uint8));
     }
     if (((joystick->naxes > 0) && !joystick->axes) || ((joystick->nhats > 0) && !joystick->hats) || ((joystick->nbuttons > 0) && !joystick->buttons)) {
-        SDL_OutOfMemory();
         SDL_CloseJoystick(joystick);
         SDL_UnlockJoysticks();
         return NULL;
@@ -2439,6 +2434,22 @@ SDL_GamepadType SDL_GetGamepadTypeFromGUID(SDL_JoystickGUID guid, const char *na
     return type;
 }
 
+SDL_bool SDL_JoystickGUIDUsesVersion(SDL_JoystickGUID guid)
+{
+    Uint16 vendor, product;
+
+    if (SDL_IsJoystickMFI(guid)) {
+        /* The version bits are used as button capability mask */
+        return SDL_FALSE;
+    }
+
+    SDL_GetJoystickGUIDInfo(guid, &vendor, &product, NULL, NULL);
+    if (vendor && product) {
+        return SDL_TRUE;
+    }
+    return SDL_FALSE;
+}
+
 SDL_bool SDL_IsJoystickXboxOne(Uint16 vendor_id, Uint16 product_id)
 {
     EControllerType eType = GuessControllerType(vendor_id, product_id);
@@ -2657,6 +2668,11 @@ SDL_bool SDL_IsJoystickWGI(SDL_JoystickGUID guid)
 SDL_bool SDL_IsJoystickHIDAPI(SDL_JoystickGUID guid)
 {
     return (guid.data[14] == 'h') ? SDL_TRUE : SDL_FALSE;
+}
+
+SDL_bool SDL_IsJoystickMFI(SDL_JoystickGUID guid)
+{
+    return (guid.data[14] == 'm') ? SDL_TRUE : SDL_FALSE;
 }
 
 SDL_bool SDL_IsJoystickRAWINPUT(SDL_JoystickGUID guid)

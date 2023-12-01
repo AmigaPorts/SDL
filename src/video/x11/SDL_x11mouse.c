@@ -31,6 +31,8 @@
 /* FIXME: Find a better place to put this... */
 static Cursor x11_empty_cursor = None;
 
+static SDL_Cursor *sys_cursors[SDL_HITTEST_RESIZE_LEFT + 1];
+
 static Display *GetDisplay(void)
 {
     return SDL_GetVideoDevice()->driverdata->display;
@@ -67,14 +69,10 @@ static void X11_DestroyEmptyCursor(void)
 
 static SDL_Cursor *X11_CreateDefaultCursor(void)
 {
-    SDL_Cursor *cursor;
-
-    cursor = SDL_calloc(1, sizeof(*cursor));
+    SDL_Cursor *cursor = SDL_calloc(1, sizeof(*cursor));
     if (cursor) {
         /* None is used to indicate the default cursor */
         cursor->driverdata = (void *)(uintptr_t)None;
-    } else {
-        SDL_OutOfMemory();
     }
 
     return cursor;
@@ -122,14 +120,12 @@ static Cursor X11_CreatePixmapCursor(SDL_Surface *surface, int hot_x, int hot_y)
 
     data_bits = SDL_calloc(1, surface->h * width_bytes);
     if (!data_bits) {
-        SDL_OutOfMemory();
         return None;
     }
 
     mask_bits = SDL_calloc(1, surface->h * width_bytes);
     if (!mask_bits) {
         SDL_free(data_bits);
-        SDL_OutOfMemory();
         return None;
     }
 
@@ -198,9 +194,7 @@ static Cursor X11_CreatePixmapCursor(SDL_Surface *surface, int hot_x, int hot_y)
 
 static SDL_Cursor *X11_CreateCursor(SDL_Surface *surface, int hot_x, int hot_y)
 {
-    SDL_Cursor *cursor;
-
-    cursor = SDL_calloc(1, sizeof(*cursor));
+    SDL_Cursor *cursor = SDL_calloc(1, sizeof(*cursor));
     if (cursor) {
         Cursor x11_cursor = None;
 
@@ -213,8 +207,6 @@ static SDL_Cursor *X11_CreateCursor(SDL_Surface *surface, int hot_x, int hot_y)
             x11_cursor = X11_CreatePixmapCursor(surface, hot_x, hot_y);
         }
         cursor->driverdata = (void *)(uintptr_t)x11_cursor;
-    } else {
-        SDL_OutOfMemory();
     }
 
     return cursor;
@@ -267,6 +259,30 @@ static SDL_Cursor *X11_CreateSystemCursor(SDL_SystemCursor id)
     case SDL_SYSTEM_CURSOR_HAND:
         shape = XC_hand2;
         break;
+    case SDL_SYSTEM_CURSOR_WINDOW_TOPLEFT:
+        shape = XC_top_left_corner;
+        break;
+    case SDL_SYSTEM_CURSOR_WINDOW_TOP:
+        shape = XC_top_side;
+        break;
+    case SDL_SYSTEM_CURSOR_WINDOW_TOPRIGHT:
+        shape = XC_top_right_corner;
+        break;
+    case SDL_SYSTEM_CURSOR_WINDOW_RIGHT:
+        shape = XC_right_side;
+        break;
+    case SDL_SYSTEM_CURSOR_WINDOW_BOTTOMRIGHT:
+        shape = XC_bottom_right_corner;
+        break;
+    case SDL_SYSTEM_CURSOR_WINDOW_BOTTOM:
+        shape = XC_bottom_side;
+        break;
+    case SDL_SYSTEM_CURSOR_WINDOW_BOTTOMLEFT:
+        shape = XC_bottom_left_corner;
+        break;
+    case SDL_SYSTEM_CURSOR_WINDOW_LEFT:
+        shape = XC_left_side;
+        break;
     }
 
     cursor = SDL_calloc(1, sizeof(*cursor));
@@ -276,8 +292,6 @@ static SDL_Cursor *X11_CreateSystemCursor(SDL_SystemCursor id)
         x11_cursor = X11_XCreateFontCursor(GetDisplay(), shape);
 
         cursor->driverdata = (void *)(uintptr_t)x11_cursor;
-    } else {
-        SDL_OutOfMemory();
     }
 
     return cursor;
@@ -472,6 +486,23 @@ void X11_InitMouse(SDL_VideoDevice *_this)
     mouse->CaptureMouse = X11_CaptureMouse;
     mouse->GetGlobalMouseState = X11_GetGlobalMouseState;
 
+    SDL_HitTestResult r = SDL_HITTEST_NORMAL;
+    while (r <= SDL_HITTEST_RESIZE_LEFT) {
+        switch (r) {
+        case SDL_HITTEST_NORMAL: sys_cursors[r] = X11_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW); break;
+        case SDL_HITTEST_DRAGGABLE: sys_cursors[r] = X11_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW); break;
+        case SDL_HITTEST_RESIZE_TOPLEFT: sys_cursors[r] = X11_CreateSystemCursor(SDL_SYSTEM_CURSOR_WINDOW_TOPLEFT); break;
+        case SDL_HITTEST_RESIZE_TOP: sys_cursors[r] = X11_CreateSystemCursor(SDL_SYSTEM_CURSOR_WINDOW_TOP); break;
+        case SDL_HITTEST_RESIZE_TOPRIGHT: sys_cursors[r] = X11_CreateSystemCursor(SDL_SYSTEM_CURSOR_WINDOW_TOPRIGHT); break;
+        case SDL_HITTEST_RESIZE_RIGHT: sys_cursors[r] = X11_CreateSystemCursor(SDL_SYSTEM_CURSOR_WINDOW_RIGHT); break;
+        case SDL_HITTEST_RESIZE_BOTTOMRIGHT: sys_cursors[r] = X11_CreateSystemCursor(SDL_SYSTEM_CURSOR_WINDOW_BOTTOMRIGHT); break;
+        case SDL_HITTEST_RESIZE_BOTTOM: sys_cursors[r] = X11_CreateSystemCursor(SDL_SYSTEM_CURSOR_WINDOW_BOTTOM); break;
+        case SDL_HITTEST_RESIZE_BOTTOMLEFT: sys_cursors[r] = X11_CreateSystemCursor(SDL_SYSTEM_CURSOR_WINDOW_BOTTOMLEFT); break;
+        case SDL_HITTEST_RESIZE_LEFT: sys_cursors[r] = X11_CreateSystemCursor(SDL_SYSTEM_CURSOR_WINDOW_LEFT); break;
+        }
+        r++;
+    }
+
     SDL_SetDefaultCursor(X11_CreateDefaultCursor());
 }
 
@@ -488,6 +519,15 @@ void X11_QuitMouse(SDL_VideoDevice *_this)
     data->mouse_device_info = NULL;
 
     X11_DestroyEmptyCursor();
+}
+
+void X11_SetHitTestCursor(SDL_HitTestResult rc)
+{
+    if (rc == SDL_HITTEST_NORMAL || rc == SDL_HITTEST_DRAGGABLE) {
+        SDL_SetCursor(NULL);
+    } else {
+        X11_ShowCursor(sys_cursors[rc]);
+    }
 }
 
 #endif /* SDL_VIDEO_DRIVER_X11 */

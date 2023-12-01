@@ -23,8 +23,6 @@
 #ifdef SDL_VIDEO_DRIVER_WINDOWS
 
 #include "SDL_windowsvideo.h"
-#include "SDL_windowsshape.h"
-#include "SDL_vkeys.h"
 #include "../../events/SDL_events_c.h"
 #include "../../events/SDL_touch_c.h"
 #include "../../events/scancodes_windows.h"
@@ -100,12 +98,6 @@
 #ifndef IS_HIGH_SURROGATE
 #define IS_HIGH_SURROGATE(x) (((x) >= 0xd800) && ((x) <= 0xdbff))
 #endif
-#ifndef IS_LOW_SURROGATE
-#define IS_LOW_SURROGATE(x) (((x) >= 0xdc00) && ((x) <= 0xdfff))
-#endif
-#ifndef IS_SURROGATE_PAIR
-#define IS_SURROGATE_PAIR(h, l) (IS_HIGH_SURROGATE(h) && IS_LOW_SURROGATE(l))
-#endif
 
 #ifndef USER_TIMER_MINIMUM
 #define USER_TIMER_MINIMUM 0x0000000A
@@ -153,202 +145,38 @@ static Uint64 WIN_GetEventTimestamp()
     return timestamp;
 }
 
-static SDL_Scancode VKeytoScancodeFallback(WPARAM vkey)
-{
-    switch (vkey) {
-    case VK_LEFT:
-        return SDL_SCANCODE_LEFT;
-    case VK_UP:
-        return SDL_SCANCODE_UP;
-    case VK_RIGHT:
-        return SDL_SCANCODE_RIGHT;
-    case VK_DOWN:
-        return SDL_SCANCODE_DOWN;
-
-    default:
-        return SDL_SCANCODE_UNKNOWN;
-    }
-}
-
-static SDL_Scancode VKeytoScancode(WPARAM vkey)
-{
-    switch (vkey) {
-    case VK_MODECHANGE:
-        return SDL_SCANCODE_MODE;
-    case VK_SELECT:
-        return SDL_SCANCODE_SELECT;
-    case VK_EXECUTE:
-        return SDL_SCANCODE_EXECUTE;
-    case VK_HELP:
-        return SDL_SCANCODE_HELP;
-    case VK_PAUSE:
-        return SDL_SCANCODE_PAUSE;
-    case VK_NUMLOCK:
-        return SDL_SCANCODE_NUMLOCKCLEAR;
-
-    case VK_F13:
-        return SDL_SCANCODE_F13;
-    case VK_F14:
-        return SDL_SCANCODE_F14;
-    case VK_F15:
-        return SDL_SCANCODE_F15;
-    case VK_F16:
-        return SDL_SCANCODE_F16;
-    case VK_F17:
-        return SDL_SCANCODE_F17;
-    case VK_F18:
-        return SDL_SCANCODE_F18;
-    case VK_F19:
-        return SDL_SCANCODE_F19;
-    case VK_F20:
-        return SDL_SCANCODE_F20;
-    case VK_F21:
-        return SDL_SCANCODE_F21;
-    case VK_F22:
-        return SDL_SCANCODE_F22;
-    case VK_F23:
-        return SDL_SCANCODE_F23;
-    case VK_F24:
-        return SDL_SCANCODE_F24;
-
-    case VK_OEM_NEC_EQUAL:
-        return SDL_SCANCODE_KP_EQUALS;
-    case VK_BROWSER_BACK:
-        return SDL_SCANCODE_AC_BACK;
-    case VK_BROWSER_FORWARD:
-        return SDL_SCANCODE_AC_FORWARD;
-    case VK_BROWSER_REFRESH:
-        return SDL_SCANCODE_AC_REFRESH;
-    case VK_BROWSER_STOP:
-        return SDL_SCANCODE_AC_STOP;
-    case VK_BROWSER_SEARCH:
-        return SDL_SCANCODE_AC_SEARCH;
-    case VK_BROWSER_FAVORITES:
-        return SDL_SCANCODE_AC_BOOKMARKS;
-    case VK_BROWSER_HOME:
-        return SDL_SCANCODE_AC_HOME;
-    case VK_VOLUME_MUTE:
-        return SDL_SCANCODE_MUTE;
-    case VK_VOLUME_DOWN:
-        return SDL_SCANCODE_VOLUMEDOWN;
-    case VK_VOLUME_UP:
-        return SDL_SCANCODE_VOLUMEUP;
-
-    case VK_MEDIA_NEXT_TRACK:
-        return SDL_SCANCODE_AUDIONEXT;
-    case VK_MEDIA_PREV_TRACK:
-        return SDL_SCANCODE_AUDIOPREV;
-    case VK_MEDIA_STOP:
-        return SDL_SCANCODE_AUDIOSTOP;
-    case VK_MEDIA_PLAY_PAUSE:
-        return SDL_SCANCODE_AUDIOPLAY;
-    case VK_LAUNCH_MAIL:
-        return SDL_SCANCODE_MAIL;
-    case VK_LAUNCH_MEDIA_SELECT:
-        return SDL_SCANCODE_MEDIASELECT;
-
-    case VK_OEM_102:
-        return SDL_SCANCODE_NONUSBACKSLASH;
-
-    case VK_ATTN:
-        return SDL_SCANCODE_SYSREQ;
-    case VK_CRSEL:
-        return SDL_SCANCODE_CRSEL;
-    case VK_EXSEL:
-        return SDL_SCANCODE_EXSEL;
-    case VK_OEM_CLEAR:
-        return SDL_SCANCODE_CLEAR;
-
-    case VK_LAUNCH_APP1:
-        return SDL_SCANCODE_APP1;
-    case VK_LAUNCH_APP2:
-        return SDL_SCANCODE_APP2;
-
-    default:
-        return SDL_SCANCODE_UNKNOWN;
-    }
-}
-
 static SDL_Scancode WindowsScanCodeToSDLScanCode(LPARAM lParam, WPARAM wParam)
 {
     SDL_Scancode code;
-    int nScanCode = (lParam >> 16) & 0xFF;
-    SDL_bool bIsExtended = (lParam & (1 << 24)) != 0;
+    Uint8 index;
+    Uint16 keyFlags = HIWORD(lParam);
+    Uint16 scanCode = LOBYTE(keyFlags);
 
-    code = VKeytoScancode(wParam);
+    /* On-Screen Keyboard can send wrong scan codes with high-order bit set (key break code).
+     * Strip high-order bit. */
+    scanCode &= ~0x80;
 
-    if (code == SDL_SCANCODE_UNKNOWN && nScanCode <= 127) {
-        code = windows_scancode_table[nScanCode];
+    if (scanCode != 0) {
+        if ((keyFlags & KF_EXTENDED) == KF_EXTENDED) {
+            scanCode = MAKEWORD(scanCode, 0xe0);
+        }
+    } else {
+        Uint16 vkCode = LOWORD(wParam);
 
-        if (bIsExtended) {
-            switch (code) {
-            case SDL_SCANCODE_RETURN:
-                code = SDL_SCANCODE_KP_ENTER;
-                break;
-            case SDL_SCANCODE_LALT:
-                code = SDL_SCANCODE_RALT;
-                break;
-            case SDL_SCANCODE_LCTRL:
-                code = SDL_SCANCODE_RCTRL;
-                break;
-            case SDL_SCANCODE_SLASH:
-                code = SDL_SCANCODE_KP_DIVIDE;
-                break;
-            case SDL_SCANCODE_CAPSLOCK:
-                code = SDL_SCANCODE_KP_PLUS;
-                break;
-            default:
-                break;
-            }
-        } else {
-            switch (code) {
-            case SDL_SCANCODE_HOME:
-                code = SDL_SCANCODE_KP_7;
-                break;
-            case SDL_SCANCODE_UP:
-                code = SDL_SCANCODE_KP_8;
-                break;
-            case SDL_SCANCODE_PAGEUP:
-                code = SDL_SCANCODE_KP_9;
-                break;
-            case SDL_SCANCODE_LEFT:
-                code = SDL_SCANCODE_KP_4;
-                break;
-            case SDL_SCANCODE_RIGHT:
-                code = SDL_SCANCODE_KP_6;
-                break;
-            case SDL_SCANCODE_END:
-                code = SDL_SCANCODE_KP_1;
-                break;
-            case SDL_SCANCODE_DOWN:
-                code = SDL_SCANCODE_KP_2;
-                break;
-            case SDL_SCANCODE_PAGEDOWN:
-                code = SDL_SCANCODE_KP_3;
-                break;
-            case SDL_SCANCODE_INSERT:
-                code = SDL_SCANCODE_KP_0;
-                break;
-            case SDL_SCANCODE_DELETE:
-                code = SDL_SCANCODE_KP_PERIOD;
-                break;
-            case SDL_SCANCODE_PRINTSCREEN:
-                code = SDL_SCANCODE_KP_MULTIPLY;
-                break;
-            default:
-                break;
-            }
+        /* Windows may not report scan codes for some buttons (multimedia buttons etc).
+         * Get scan code from the VK code.*/
+        scanCode = LOWORD(MapVirtualKey(vkCode, MAPVK_VK_TO_VSC_EX));
+
+        /* Pause/Break key have a special scan code with 0xe1 prefix.
+         * Use Pause scan code that is used in Win32. */
+        if (scanCode == 0xe11d) {
+            scanCode = 0xe046;
         }
     }
 
-    /* The on-screen keyboard can generate VK_LEFT and VK_RIGHT events without a scancode
-     * value set, however we cannot simply map these in VKeytoScancode() or we will be
-     * incorrectly handling the arrow keys on the number pad when NumLock is disabled
-     * (which also generate VK_LEFT, VK_RIGHT, etc in that scenario). Instead, we'll only
-     * map them if none of the above special number pad mappings applied. */
-    if (code == SDL_SCANCODE_UNKNOWN) {
-        code = VKeytoScancodeFallback(wParam);
-    }
+    /* Pack scan code into one byte to make the index. */
+    index = LOBYTE(scanCode) | (HIBYTE(scanCode) ? 0x80 : 0x00);
+    code = windows_scancode_table[index];
 
     return code;
 }
@@ -559,39 +387,6 @@ static void WIN_UpdateFocus(SDL_Window *window, SDL_bool expect_focus)
     }
 }
 #endif /*!defined(__XBOXONE__) && !defined(__XBOXSERIES__)*/
-
-static BOOL WIN_ConvertUTF32toUTF8(UINT32 codepoint, char *text)
-{
-    if (codepoint <= 0x7F) {
-        text[0] = (char)codepoint;
-        text[1] = '\0';
-    } else if (codepoint <= 0x7FF) {
-        text[0] = 0xC0 | (char)((codepoint >> 6) & 0x1F);
-        text[1] = 0x80 | (char)(codepoint & 0x3F);
-        text[2] = '\0';
-    } else if (codepoint <= 0xFFFF) {
-        text[0] = 0xE0 | (char)((codepoint >> 12) & 0x0F);
-        text[1] = 0x80 | (char)((codepoint >> 6) & 0x3F);
-        text[2] = 0x80 | (char)(codepoint & 0x3F);
-        text[3] = '\0';
-    } else if (codepoint <= 0x10FFFF) {
-        text[0] = 0xF0 | (char)((codepoint >> 18) & 0x0F);
-        text[1] = 0x80 | (char)((codepoint >> 12) & 0x3F);
-        text[2] = 0x80 | (char)((codepoint >> 6) & 0x3F);
-        text[3] = 0x80 | (char)(codepoint & 0x3F);
-        text[4] = '\0';
-    } else {
-        return SDL_FALSE;
-    }
-    return SDL_TRUE;
-}
-
-static BOOL WIN_ConvertUTF16toUTF8(UINT32 high_surrogate, UINT32 low_surrogate, char *text)
-{
-    const UINT32 SURROGATE_OFFSET = 0x10000U - (0xD800 << 10) - 0xDC00;
-    const UINT32 codepoint = (high_surrogate << 10) + low_surrogate + SURROGATE_OFFSET;
-    return WIN_ConvertUTF32toUTF8(codepoint, text);
-}
 
 static SDL_bool ShouldGenerateWindowCloseOnAltF4(void)
 {
@@ -873,7 +668,7 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         if (inp.header.dwType == RIM_TYPEMOUSE) {
             SDL_MouseID mouseID;
             RAWMOUSE *rawmouse;
-            if (SDL_GetNumTouchDevices() > 0 &&
+            if (SDL_TouchDevicesAvailable() &&
                 (GetMouseMessageSource() == SDL_MOUSE_EVENT_SOURCE_TOUCH || (GetMessageExtraInfo() & 0x82) == 0x82)) {
                 break;
             }
@@ -1051,7 +846,7 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             returnCode = 1;
         } else {
             char text[5];
-            if (WIN_ConvertUTF32toUTF8((UINT32)wParam, text)) {
+            if (SDL_UCS4ToUTF8((Uint32)wParam, text) != text) {
                 SDL_SendKeyboardText(text);
             }
             returnCode = 0;
@@ -1059,31 +854,27 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_CHAR:
-        /* When a user enters a Unicode code point defined in the Basic Multilingual Plane, Windows sends a WM_CHAR
-           message with the code point encoded as UTF-16. When a user enters a Unicode code point from a Supplementary
-           Plane, Windows sends the code point in two separate WM_CHAR messages: The first message includes the UTF-16
-           High Surrogate and the second the UTF-16 Low Surrogate. The High and Low Surrogates cannot be individually
-           converted to valid UTF-8, therefore, we must save the High Surrogate from the first WM_CHAR message and
-           concatenate it with the Low Surrogate from the second WM_CHAR message. At that point, we have a valid
-           UTF-16 surrogate pair ready to re-encode as UTF-8. */
+        /* Characters outside Unicode Basic Multilingual Plane (BMP)
+         * are coded as so called "surrogate pair" in two separate UTF-16 character events.
+         * Cache high surrogate until next character event. */
         if (IS_HIGH_SURROGATE(wParam)) {
             data->high_surrogate = (WCHAR)wParam;
-        } else if (IS_SURROGATE_PAIR(data->high_surrogate, wParam)) {
-            /* The code point is in a Supplementary Plane.
-               Here wParam is the Low Surrogate. */
-            char text[5];
-            if (WIN_ConvertUTF16toUTF8((UINT32)data->high_surrogate, (UINT32)wParam, text)) {
-                SDL_SendKeyboardText(text);
-            }
-            data->high_surrogate = 0;
         } else {
-            /* The code point is in the Basic Multilingual Plane.
-               It's numerically equal to UTF-32. */
-            char text[5];
-            if (WIN_ConvertUTF32toUTF8((UINT32)wParam, text)) {
-                SDL_SendKeyboardText(text);
+            WCHAR utf16[] = {
+                data->high_surrogate ? data->high_surrogate : (WCHAR)wParam,
+                data->high_surrogate ? (WCHAR)wParam : L'\0',
+                L'\0'
+            };
+
+            char utf8[5];
+            int result = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, utf16, -1, utf8, sizeof(utf8), NULL, NULL);
+            if (result > 0) {
+                SDL_SendKeyboardText(utf8);
             }
+
+            data->high_surrogate = L'\0';
         }
+
         returnCode = 0;
         break;
 

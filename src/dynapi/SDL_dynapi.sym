@@ -57,7 +57,6 @@ SDL3_0.0.0 {
     SDL_CreateRWLock;
     SDL_CreateRenderer;
     SDL_CreateSemaphore;
-    SDL_CreateShapedWindow;
     SDL_CreateSoftwareRenderer;
     SDL_CreateSurface;
     SDL_CreateSurfaceFrom;
@@ -108,6 +107,7 @@ SDL3_0.0.0 {
     SDL_FlashWindow;
     SDL_FlushEvent;
     SDL_FlushEvents;
+    SDL_FlushRenderer;
     SDL_GDKGetTaskQueue;
     SDL_GDKSuspendComplete;
     SDL_GL_BindTexture;
@@ -189,7 +189,6 @@ SDL3_0.0.0 {
     SDL_GetGamepadJoystick;
     SDL_GetGamepadMapping;
     SDL_GetGamepadMappingForGUID;
-    SDL_GetGamepadMappingForIndex;
     SDL_GetGamepadName;
     SDL_GetGamepadPath;
     SDL_GetGamepadPlayerIndex;
@@ -250,14 +249,12 @@ SDL3_0.0.0 {
     SDL_GetMouseState;
     SDL_GetNaturalDisplayOrientation;
     SDL_GetNumAllocations;
-    SDL_GetNumGamepadMappings;
     SDL_GetNumGamepadTouchpadFingers;
     SDL_GetNumGamepadTouchpads;
     SDL_GetNumJoystickAxes;
     SDL_GetNumJoystickButtons;
     SDL_GetNumJoystickHats;
     SDL_GetNumRenderDrivers;
-    SDL_GetNumTouchDevices;
     SDL_GetNumTouchFingers;
     SDL_GetNumVideoDrivers;
     SDL_GetOriginalMemoryFunctions;
@@ -314,7 +311,6 @@ SDL3_0.0.0 {
     SDL_GetSensorNonPortableType;
     SDL_GetSensorType;
     SDL_GetSensors;
-    SDL_GetShapedWindowMode;
     SDL_GetSurfaceAlphaMod;
     SDL_GetSurfaceBlendMode;
     SDL_GetSurfaceClipRect;
@@ -331,10 +327,8 @@ SDL3_0.0.0 {
     SDL_GetThreadName;
     SDL_GetTicks;
     SDL_GetTicksNS;
-    SDL_GetTouchDevice;
     SDL_GetTouchDeviceType;
     SDL_GetTouchFinger;
-    SDL_GetTouchName;
     SDL_GetVersion;
     SDL_GetVideoDriver;
     SDL_GetWindowBordersSize;
@@ -420,7 +414,6 @@ SDL3_0.0.0 {
     SDL_IsDeXMode;
     SDL_IsGamepad;
     SDL_IsJoystickVirtual;
-    SDL_IsShapedWindow;
     SDL_IsTablet;
     SDL_JoystickConnected;
     SDL_JoystickEventsEnabled;
@@ -515,7 +508,6 @@ SDL3_0.0.0 {
     SDL_RenderCoordinatesToWindow;
     SDL_RenderFillRect;
     SDL_RenderFillRects;
-    SDL_RenderFlush;
     SDL_RenderGeometry;
     SDL_RenderGeometryRaw;
     SDL_RenderLine;
@@ -612,7 +604,6 @@ SDL3_0.0.0 {
     SDL_SetWindowOpacity;
     SDL_SetWindowPosition;
     SDL_SetWindowResizable;
-    SDL_SetWindowShape;
     SDL_SetWindowSize;
     SDL_SetWindowTitle;
     SDL_SetWindowsMessageHook;
@@ -967,6 +958,9 @@ SDL3_0.0.0 {
     SDL_GetBooleanProperty;
     SDL_CreateTextureWithProperties;
     SDL_CreateRendererWithProperties;
+    SDL_GetGamepadMappings;
+    SDL_GetTouchDevices;
+    SDL_GetTouchDeviceName;
     # extra symbols go here (don't modify this line)
   local: *;
 };

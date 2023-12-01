@@ -30,7 +30,6 @@
 #include <workbench/startup.h>
 
 #include "SDL_os4video.h"
-#include "SDL_os4shape.h"
 #include "SDL_os4mouse.h"
 #include "SDL_os4window.h"
 #include "SDL_os4events.h"
@@ -538,10 +537,6 @@ OS4_HandleResize(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
                 SDL_SendWindowEvent(sdlwin, SDL_EVENT_WINDOW_RESIZED,
                     imsg->Width,
                     imsg->Height);
-
-                if (SDL_IsShapedWindow(sdlwin)) {
-                    OS4_ResizeWindowShape(sdlwin);
-                }
 
                 if (data->glContext /*sdlwin->flags & SDL_WINDOW_OPENGL*/ ) {
                     OS4_ResizeGlContext(_this, sdlwin);

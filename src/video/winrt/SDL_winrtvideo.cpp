@@ -109,13 +109,11 @@ static SDL_VideoDevice *WINRT_CreateDevice(void)
     /* Initialize all variables that we clean on shutdown */
     device = (SDL_VideoDevice *)SDL_calloc(1, sizeof(SDL_VideoDevice));
     if (!device) {
-        SDL_OutOfMemory();
         return 0;
     }
 
     data = (SDL_VideoData *)SDL_calloc(1, sizeof(SDL_VideoData));
     if (!data) {
-        SDL_OutOfMemory();
         SDL_free(device);
         return 0;
     }
@@ -321,7 +319,6 @@ static int WINRT_AddDisplaysForOutput(SDL_VideoDevice *_this, IDXGIAdapter1 *dxg
 
         dxgiModes = (DXGI_MODE_DESC *)SDL_calloc(numModes, sizeof(DXGI_MODE_DESC));
         if (!dxgiModes) {
-            SDL_OutOfMemory();
             goto done;
         }
 
@@ -595,6 +592,7 @@ int WINRT_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Propertie
     }
     window->driverdata = data;
     data->sdlWindow = window;
+    data->high_surrogate = L'\0';
 
     /* To note, when XAML support is enabled, access to the CoreWindow will not
        be possible, at least not via the SDL/XAML thread.  Attempts to access it
