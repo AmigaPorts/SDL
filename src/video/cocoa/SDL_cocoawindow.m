@@ -36,7 +36,6 @@
 #include "../../events/SDL_dropevents_c.h"
 
 #include "SDL_cocoavideo.h"
-#include "SDL_cocoashape.h"
 #include "SDL_cocoamouse.h"
 #include "SDL_cocoaopengl.h"
 #include "SDL_cocoaopengles.h"
@@ -2459,7 +2458,6 @@ void *Cocoa_GetWindowICCProfile(SDL_VideoDevice *_this, SDL_Window *window, size
 
         retIccProfileData = SDL_malloc([iccProfileData length]);
         if (!retIccProfileData) {
-            SDL_OutOfMemory();
             return NULL;
         }
 
@@ -2563,12 +2561,6 @@ void Cocoa_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
             }
 
 #endif /* SDL_VIDEO_OPENGL */
-
-            if (window->shaper) {
-                CFBridgingRelease(window->shaper->driverdata);
-                SDL_free(window->shaper);
-                window->shaper = NULL;
-            }
         }
         window->driverdata = NULL;
     }

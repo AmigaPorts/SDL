@@ -30,10 +30,16 @@
 #include <dmaKit.h>
 #include <gsToolkit.h>
 
+#ifdef HAVE_GCC_DIAGNOSTIC_PRAGMA
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+#endif
+
 #include <gsInline.h>
+
+#ifdef HAVE_GCC_DIAGNOSTIC_PRAGMA
 #pragma GCC diagnostic pop
+#endif
 
 /* turn black GS Screen */
 #define GS_BLACK GS_SETREG_RGBA(0x00, 0x00, 0x00, 0x80)
@@ -105,7 +111,7 @@ static int PS2_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SDL_P
     GSTEXTURE *ps2_tex = (GSTEXTURE *)SDL_calloc(1, sizeof(GSTEXTURE));
 
     if (!ps2_tex) {
-        return SDL_OutOfMemory();
+        return -1;
     }
 
     ps2_tex->Width = texture->w;
@@ -115,7 +121,7 @@ static int PS2_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SDL_P
 
     if (!ps2_tex->Mem) {
         SDL_free(ps2_tex);
-        return SDL_OutOfMemory();
+        return -1;
     }
 
     texture->driverdata = ps2_tex;
@@ -440,6 +446,11 @@ int PS2_RenderPoints(SDL_Renderer *renderer, void *vertices, SDL_RenderCommand *
     return 0;
 }
 
+static void PS2_InvalidateCachedState(SDL_Renderer *renderer)
+{
+    /* currently this doesn't do anything. If this needs to do something (and someone is mixing their own rendering calls in!), update this. */
+}
+
 static int PS2_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, void *vertices, size_t vertsize)
 {
     while (cmd) {
@@ -584,14 +595,12 @@ static SDL_Renderer *PS2_CreateRenderer(SDL_Window *window, SDL_PropertiesID cre
 
     renderer = (SDL_Renderer *)SDL_calloc(1, sizeof(*renderer));
     if (!renderer) {
-        SDL_OutOfMemory();
         return NULL;
     }
 
     data = (PS2_RenderData *)SDL_calloc(1, sizeof(*data));
     if (!data) {
         PS2_DestroyRenderer(renderer);
-        SDL_OutOfMemory();
         return NULL;
     }
 
@@ -650,6 +659,7 @@ static SDL_Renderer *PS2_CreateRenderer(SDL_Window *window, SDL_PropertiesID cre
     renderer->QueueDrawPoints = PS2_QueueDrawPoints;
     renderer->QueueDrawLines = PS2_QueueDrawPoints;
     renderer->QueueGeometry = PS2_QueueGeometry;
+    renderer->InvalidateCachedState = PS2_InvalidateCachedState;
     renderer->RunCommandQueue = PS2_RunCommandQueue;
     renderer->RenderReadPixels = PS2_RenderReadPixels;
     renderer->RenderPresent = PS2_RenderPresent;

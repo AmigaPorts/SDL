@@ -157,6 +157,7 @@ SDL_bool HIDAPI_SupportsPlaystationDetection(Uint16 vendor, Uint16 product)
     case USB_VENDOR_MADCATZ:
         return SDL_TRUE;
     case USB_VENDOR_NACON:
+    case USB_VENDOR_NACON_ALT:
         return SDL_TRUE;
     case USB_VENDOR_PDP:
         return SDL_TRUE;
@@ -1434,7 +1435,7 @@ static int HIDAPI_JoystickOpen(SDL_Joystick *joystick, int device_index)
 
     hwdata = (struct joystick_hwdata *)SDL_calloc(1, sizeof(*hwdata));
     if (!hwdata) {
-        return SDL_OutOfMemory();
+        return -1;
     }
     hwdata->device = device;
 

@@ -220,6 +220,12 @@ if(VITA OR PSP OR PS2 OR N3DS OR RISCOS)
   set(SDL_LOADSO_DEFAULT OFF)
 endif()
 
+if((RISCOS OR UNIX_SYS) AND NOT (LINUX OR NETBSD OR OPENBSD))
+  set(SDL_OSS_DEFAULT ON)
+else()
+  set(SDL_OSS_DEFAULT OFF)
+endif()
+
 if(SDL_SHARED_DEFAULT AND SDL_STATIC_DEFAULT AND SDL_SHARED_AVAILABLE)
   if(DEFINED BUILD_SHARED_LIBS)
     # When defined, use BUILD_SHARED_LIBS as default
@@ -295,6 +301,7 @@ dep_option(SDL_LASX                "Use LASX assembly routines" ON "SDL_ASSEMBLY
 
 set_option(SDL_LIBC                "Use the system C library" ${SDL_LIBC_DEFAULT})
 set_option(SDL_SYSTEM_ICONV        "Use iconv() from system-installed libraries" ${SDL_SYSTEM_ICONV_DEFAULT})
+set_option(SDL_LIBICONV            "Prefer iconv() from libiconv, if available, over libc version" OFF)
 set_option(SDL_GCC_ATOMICS         "Use gcc builtin atomics" ${SDL_GCC_ATOMICS_DEFAULT})
 dep_option(SDL_DBUS                "Enable D-Bus support" ON ${UNIX_SYS} OFF)
 set_option(SDL_DISKAUDIO           "Support the disk writer audio driver" ON)
@@ -305,7 +312,7 @@ dep_option(SDL_OPENGL              "Include OpenGL support" ON "NOT VISIONOS" OF
 dep_option(SDL_OPENGLES            "Include OpenGL ES support" ON "NOT VISIONOS" OFF)
 set_option(SDL_PTHREADS            "Use POSIX threads for multi-threading" ${SDL_PTHREADS_DEFAULT})
 dep_option(SDL_PTHREADS_SEM        "Use pthread semaphores" ON "SDL_PTHREADS" OFF)
-dep_option(SDL_OSS                 "Support the OSS audio API" ON "UNIX_SYS OR RISCOS" OFF)
+dep_option(SDL_OSS                 "Support the OSS audio API" ${SDL_OSS_DEFAULT} "UNIX_SYS OR RISCOS" OFF)
 set_option(SDL_ALSA                "Support the ALSA audio API" ${UNIX_SYS})
 dep_option(SDL_ALSA_SHARED         "Dynamically load ALSA audio support" ON "SDL_ALSA" OFF)
 set_option(SDL_JACK                "Support the JACK audio API" ${UNIX_SYS})
@@ -1099,24 +1106,31 @@ if(SDL_LIBC)
     check_symbol_exists(poll "poll.h" HAVE_POLL)
 
     if(SDL_SYSTEM_ICONV)
-      check_library_exists(iconv iconv_open "" HAVE_LIBICONV)
-      if(HAVE_LIBICONV)
-        find_package(Iconv)
-        if(Iconv_FOUND AND NOT Iconv_IS_BUILT_IN)
-          set(HAVE_ICONV 1)
-          set(HAVE_SYSTEM_ICONV TRUE)
-          pkg_check_modules(PC_ICONV iconv)
-          if(PC_ICONV_FOUND)
-            sdl_link_dependency(iconv LIBS Iconv::Iconv CMAKE_MODULE Iconv PKG_CONFIG_SPECS iconv)
-          else()
-            sdl_link_dependency(iconv LIBS Iconv::Iconv CMAKE_MODULE Iconv PKG_CONFIG_LIBS iconv)
-          endif()
-        endif()
-      else()
-        check_library_exists(c iconv_open "" HAVE_BUILTIN_ICONV)
-        if(HAVE_BUILTIN_ICONV)
-          set(HAVE_ICONV 1)
-          set(HAVE_SYSTEM_ICONV TRUE)
+      check_c_source_compiles("
+        #define LIBICONV_PLUG 1 /* in case libiconv header is in include path */
+        #include <stddef.h>
+        #include <iconv.h>
+        int main(int argc, char **argv) {
+            return !iconv_open(NULL,NULL);
+        }" ICONV_IN_LIBC)
+
+      cmake_push_check_state()
+      list(APPEND CMAKE_REQUIRED_LIBRARIES iconv)
+      check_c_source_compiles("
+        #include <stddef.h>
+        #include <iconv.h>
+        int main(int argc, char **argv) {
+            return !iconv_open(NULL,NULL);
+        }" ICONV_IN_LIBICONV)
+      cmake_pop_check_state()
+
+      if(ICONV_IN_LIBC OR ICONV_IN_LIBICONV)
+        set(HAVE_ICONV 1)
+        set(HAVE_SYSTEM_ICONV TRUE)
+        if(ICONV_IN_LIBICONV AND (SDL_LIBICONV OR (NOT ICONV_IN_LIBC)))
+          sdl_link_dependency(iconv LIBS iconv)
+          set(SDL_USE_LIBICONV 1)
+          set(HAVE_LIBICONV TRUE)
         endif()
       endif()
     endif()
@@ -1350,6 +1364,10 @@ if(ANDROID)
         VERSION "${SDL3_VERSION}"
       )
       set_property(TARGET SDL3-jar PROPERTY OUTPUT "${SDL3_BINARY_DIR}/SDL3-${SDL3_VERSION}.jar")
+      add_library(SDL3__Jar INTERFACE)
+      add_library(SDL3::Jar ALIAS SDL3__Jar)
+      get_property(sdl3_jar_location TARGET SDL3-jar PROPERTY JAR_FILE)
+      set_property(TARGET SDL3__Jar PROPERTY JAR_FILE "${sdl3_jar_location}")
       set(javasourcesjar "${SDL3_BINARY_DIR}/SDL3-${SDL3_VERSION}-sources.jar")
       string(REGEX REPLACE "${android_java_sources_root}/" "" sdl_relative_java_sources "${SDL_JAVA_SOURCES}")
       add_custom_command(
@@ -1578,7 +1596,7 @@ elseif(UNIX AND NOT APPLE AND NOT RISCOS AND NOT HAIKU)
         set(SDL_USE_IME 1)
       endif()
 
-      if(FREEBSD AND NOT HAVE_INOTIFY)
+      if((FREEBSD OR NETBSD) AND NOT HAVE_INOTIFY)
         set(LibInotify_PKG_CONFIG_SPEC libinotify)
         pkg_check_modules(PC_LIBINOTIFY IMPORTED_TARGET ${LibInotify_PKG_CONFIG_SPEC})
         if(PC_LIBINOTIFY_FOUND)
@@ -1622,6 +1640,13 @@ elseif(UNIX AND NOT APPLE AND NOT RISCOS AND NOT HAIKU)
 
     if(HAVE_INPUT_KBIO)
       sdl_sources("${SDL3_SOURCE_DIR}/src/core/freebsd/SDL_evdev_kbd_freebsd.c")
+    endif()
+
+    if(HAVE_INPUT_WSCONS)
+      sdl_sources(
+        "${SDL3_SOURCE_DIR}/src/core/openbsd/SDL_wscons_kbd.c"
+        "${SDL3_SOURCE_DIR}/src/core/openbsd/SDL_wscons_mouse.c"
+      )
     endif()
 
     # Always compiled for Linux, unconditionally:
@@ -3285,6 +3310,7 @@ sdl_cmake_config_find_pkg_config_commands(SDL_TEST_FIND_PKG_CONFIG_COMMANDS
 
 include(CMakePackageConfigHelpers)
 configure_package_config_file(cmake/SDL3Config.cmake.in SDL3Config.cmake
+  NO_SET_AND_CHECK_MACRO
   PATH_VARS CMAKE_INSTALL_PREFIX
   INSTALL_DESTINATION "${SDL_SDL_INSTALL_CMAKEDIR}"
 )
@@ -3414,10 +3440,19 @@ if(NOT SDL_DISABLE_INSTALL)
   endif()
 
   if(ANDROID)
-    set(SDL_INSTALL_JAVADIR "${CMAKE_INSTALL_DATAROOTDIR}/java" CACHE PATH "Path where to install java clases + java sources")
     if(TARGET SDL3-jar)
-      install(FILES "${SDL3_BINARY_DIR}/SDL3.jar"  "${SDL3_BINARY_DIR}/SDL3-${SDL3_VERSION}.jar"
+      set(SDL_INSTALL_JAVADIR "${CMAKE_INSTALL_DATAROOTDIR}/java" CACHE PATH "Path where to install java clases + java sources")
+      install(FILES $<TARGET_PROPERTY:SDL3-jar,INSTALL_FILES>
         DESTINATION "${SDL_INSTALL_JAVADIR}/SDL3")
+      configure_package_config_file(cmake/SDL3jarTargets.cmake.in SDL3jarTargets.cmake
+        INSTALL_DESTINATION "${SDL_SDL_INSTALL_CMAKEDIR}"
+        PATH_VARS SDL_INSTALL_JAVADIR
+        NO_CHECK_REQUIRED_COMPONENTS_MACRO
+        INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}"
+      )
+      install(FILES "${CMAKE_CURRENT_BINARY_DIR}/SDL3jarTargets.cmake"
+        DESTINATION "${SDL_SDL_INSTALL_CMAKEDIR}"
+      )
     endif()
     if(TARGET SDL3-javasources)
       install(FILES  "${SDL3_BINARY_DIR}/SDL3-${SDL3_VERSION}-sources.jar"

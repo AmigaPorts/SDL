@@ -231,7 +231,7 @@ static OSStatus DeviceListChangedNotification(AudioObjectID systemObj, UInt32 nu
 static OSStatus DefaultAudioDeviceChangedNotification(AudioObjectID inObjectID, const AudioObjectPropertyAddress *addr)
 {
     AudioDeviceID devid;
-    Uint32 size = sizeof(devid);
+    UInt32 size = sizeof(devid);
     if (AudioObjectGetPropertyData(inObjectID, addr, 0, NULL, &size, &devid) == noErr) {
         SDL_DefaultAudioDeviceChanged(SDL_FindPhysicalAudioDeviceByHandle((void *)((size_t)devid)));
     }
@@ -769,7 +769,7 @@ static int PrepareAudioQueue(SDL_AudioDevice *device)
     device->hidden->numAudioBuffers = numAudioBuffers;
     device->hidden->audioBuffer = SDL_calloc(numAudioBuffers, sizeof(AudioQueueBufferRef));
     if (device->hidden->audioBuffer == NULL) {
-        return SDL_OutOfMemory();
+        return -1;
     }
 
     #if DEBUG_COREAUDIO
@@ -833,7 +833,7 @@ static int COREAUDIO_OpenDevice(SDL_AudioDevice *device)
     // Initialize all variables that we clean on shutdown
     device->hidden = (struct SDL_PrivateAudioData *)SDL_calloc(1, sizeof(*device->hidden));
     if (device->hidden == NULL) {
-        return SDL_OutOfMemory();
+        return -1;
     }
 
     #ifndef MACOSX_COREAUDIO

@@ -27,7 +27,6 @@
 #endif
 
 #include "SDL_cocoavideo.h"
-#include "SDL_cocoashape.h"
 #include "SDL_cocoavulkan.h"
 #include "SDL_cocoametalview.h"
 #include "SDL_cocoaopengles.h"
@@ -69,7 +68,6 @@ static SDL_VideoDevice *Cocoa_CreateDevice(void)
             data = nil;
         }
         if (!data) {
-            SDL_OutOfMemory();
             SDL_free(device);
             return NULL;
         }
@@ -118,9 +116,6 @@ static SDL_VideoDevice *Cocoa_CreateDevice(void)
         device->AcceptDragAndDrop = Cocoa_AcceptDragAndDrop;
         device->FlashWindow = Cocoa_FlashWindow;
         device->SetWindowFocusable = Cocoa_SetWindowFocusable;
-
-        device->shape_driver.CreateShaper = Cocoa_CreateShaper;
-        device->shape_driver.SetWindowShape = Cocoa_SetWindowShape;
 
 #ifdef SDL_VIDEO_OPENGL_CGL
         device->GL_LoadLibrary = Cocoa_GL_LoadLibrary;

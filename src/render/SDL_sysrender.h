@@ -179,6 +179,7 @@ struct SDL_Renderer
                          int num_vertices, const void *indices, int num_indices, int size_indices,
                          float scale_x, float scale_y);
 
+    void (*InvalidateCachedState)(SDL_Renderer *renderer);
     int (*RunCommandQueue)(SDL_Renderer *renderer, SDL_RenderCommand *cmd, void *vertices, size_t vertsize);
     int (*UpdateTexture)(SDL_Renderer *renderer, SDL_Texture *texture,
                          const SDL_Rect *rect, const void *pixels,
@@ -254,8 +255,6 @@ struct SDL_Renderer
     SDL_Color color;         /**< Color for drawing operations values */
     SDL_BlendMode blendMode; /**< The drawing blend mode */
 
-    SDL_bool always_batch;
-    SDL_bool batching;
     SDL_RenderCommand *render_commands;
     SDL_RenderCommand *render_commands_tail;
     SDL_RenderCommand *render_commands_pool;

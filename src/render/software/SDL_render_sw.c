@@ -658,6 +658,12 @@ static void SetDrawState(SDL_Surface *surface, SW_DrawStateCache *drawstate)
     }
 }
 
+static void SW_InvalidateCachedState(SDL_Renderer *renderer)
+{
+    /* SW_DrawStateCache only lives during SW_RunCommandQueue, so nothing to do here! */
+}
+
+
 static int SW_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, void *vertices, size_t vertsize)
 {
     SDL_Surface *surface = SW_ActivateRenderer(renderer);
@@ -1105,14 +1111,12 @@ SDL_Renderer *SW_CreateRendererForSurface(SDL_Surface *surface)
 
     renderer = (SDL_Renderer *)SDL_calloc(1, sizeof(*renderer));
     if (!renderer) {
-        SDL_OutOfMemory();
         return NULL;
     }
 
     data = (SW_RenderData *)SDL_calloc(1, sizeof(*data));
     if (!data) {
         SW_DestroyRenderer(renderer);
-        SDL_OutOfMemory();
         return NULL;
     }
     data->surface = surface;
@@ -1134,6 +1138,7 @@ SDL_Renderer *SW_CreateRendererForSurface(SDL_Surface *surface)
     renderer->QueueCopy = SW_QueueCopy;
     renderer->QueueCopyEx = SW_QueueCopyEx;
     renderer->QueueGeometry = SW_QueueGeometry;
+    renderer->InvalidateCachedState = SW_InvalidateCachedState;
     renderer->RunCommandQueue = SW_RunCommandQueue;
     renderer->RenderReadPixels = SW_RenderReadPixels;
     renderer->RenderPresent = SW_RenderPresent;

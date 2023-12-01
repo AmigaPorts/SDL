@@ -72,7 +72,12 @@ init_color_cursor(const char *file)
     SDL_Surface *surface = SDL_LoadBMP(file);
     if (surface) {
         if (surface->format->palette) {
-            SDL_SetSurfaceColorKey(surface, 1, *(Uint8 *)surface->pixels);
+            const Uint8 bpp = surface->format->BitsPerPixel;
+            const Uint8 mask = (1 << bpp) - 1;
+            if (SDL_PIXELORDER(surface->format->format) == SDL_BITMAPORDER_4321)
+                SDL_SetSurfaceColorKey(surface, 1, (*(Uint8 *)surface->pixels) & mask);
+            else
+                SDL_SetSurfaceColorKey(surface, 1, ((*(Uint8 *)surface->pixels) >> (8 - bpp)) & mask);
         } else {
             switch (surface->format->BitsPerPixel) {
             case 15:
@@ -209,6 +214,30 @@ static void loop(void)
                     break;
                 case SDL_SYSTEM_CURSOR_HAND:
                     SDL_Log("Hand");
+                    break;
+                case SDL_SYSTEM_CURSOR_WINDOW_TOPLEFT:
+                    SDL_Log("Window resize top-left");
+                    break;
+                case SDL_SYSTEM_CURSOR_WINDOW_TOP:
+                    SDL_Log("Window resize top");
+                    break;
+                case SDL_SYSTEM_CURSOR_WINDOW_TOPRIGHT:
+                    SDL_Log("Window resize top-right");
+                    break;
+                case SDL_SYSTEM_CURSOR_WINDOW_RIGHT:
+                    SDL_Log("Window resize right");
+                    break;
+                case SDL_SYSTEM_CURSOR_WINDOW_BOTTOMRIGHT:
+                    SDL_Log("Window resize bottom-right");
+                    break;
+                case SDL_SYSTEM_CURSOR_WINDOW_BOTTOM:
+                    SDL_Log("Window resize bottom");
+                    break;
+                case SDL_SYSTEM_CURSOR_WINDOW_BOTTOMLEFT:
+                    SDL_Log("Window resize bottom-left");
+                    break;
+                case SDL_SYSTEM_CURSOR_WINDOW_LEFT:
+                    SDL_Log("Window resize left");
                     break;
                 default:
                     SDL_Log("UNKNOWN CURSOR TYPE, FIX THIS PROGRAM.");

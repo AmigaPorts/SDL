@@ -188,6 +188,30 @@ static SDL_Cursor *Cocoa_CreateSystemCursor(SDL_SystemCursor id)
         case SDL_SYSTEM_CURSOR_HAND:
             nscursor = [NSCursor pointingHandCursor];
             break;
+        case SDL_SYSTEM_CURSOR_WINDOW_TOPLEFT:
+            nscursor = LoadHiddenSystemCursor(@"resizenorthwestsoutheast", @selector(closedHandCursor));
+            break;
+        case SDL_SYSTEM_CURSOR_WINDOW_TOP:
+            nscursor = LoadHiddenSystemCursor(@"resizenorthsouth", @selector(resizeUpDownCursor));
+            break;
+        case SDL_SYSTEM_CURSOR_WINDOW_TOPRIGHT:
+            nscursor = LoadHiddenSystemCursor(@"resizenortheastsouthwest", @selector(closedHandCursor));
+            break;
+        case SDL_SYSTEM_CURSOR_WINDOW_RIGHT:
+            nscursor = LoadHiddenSystemCursor(@"resizeeastwest", @selector(resizeLeftRightCursor));
+            break;
+        case SDL_SYSTEM_CURSOR_WINDOW_BOTTOMRIGHT:
+            nscursor = LoadHiddenSystemCursor(@"resizenorthwestsoutheast", @selector(closedHandCursor));
+            break;
+        case SDL_SYSTEM_CURSOR_WINDOW_BOTTOM:
+            nscursor = LoadHiddenSystemCursor(@"resizenorthsouth", @selector(resizeUpDownCursor));
+            break;
+        case SDL_SYSTEM_CURSOR_WINDOW_BOTTOMLEFT:
+            nscursor = LoadHiddenSystemCursor(@"resizenortheastsouthwest", @selector(closedHandCursor));
+            break;
+        case SDL_SYSTEM_CURSOR_WINDOW_LEFT:
+            nscursor = LoadHiddenSystemCursor(@"resizeeastwest", @selector(resizeLeftRightCursor));
+            break;
         default:
             SDL_assert(!"Unknown system cursor");
             return NULL;
@@ -369,7 +393,7 @@ int Cocoa_InitMouse(SDL_VideoDevice *_this)
     SDL_Mouse *mouse = SDL_GetMouse();
     SDL_MouseData *driverdata = (SDL_MouseData *)SDL_calloc(1, sizeof(SDL_MouseData));
     if (driverdata == NULL) {
-        return SDL_OutOfMemory();
+        return -1;
     }
 
     mouse->driverdata = driverdata;

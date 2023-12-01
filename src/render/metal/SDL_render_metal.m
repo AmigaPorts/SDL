@@ -339,7 +339,6 @@ static id<MTLRenderPipelineState> MakePipelineState(METAL_RenderData *data, META
         return (__bridge id<MTLRenderPipelineState>)pipeline.pipe;
     } else {
         CFBridgingRelease(pipeline.pipe);
-        SDL_OutOfMemory();
         return NULL;
     }
 }
@@ -401,7 +400,6 @@ static METAL_ShaderPipelines *ChooseShaderPipelines(METAL_RenderData *data, MTLP
     allpipelines = SDL_realloc(allpipelines, (count + 1) * sizeof(METAL_ShaderPipelines));
 
     if (allpipelines == NULL) {
-        SDL_OutOfMemory();
         return NULL;
     }
 
@@ -1310,6 +1308,11 @@ static SDL_bool SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand *cm
     return SDL_TRUE;
 }
 
+static void METAL_InvalidateCachedState(SDL_Renderer *renderer)
+{
+    // METAL_DrawStateCache only exists during a run of METAL_RunCommandQueue, so there's nothing to invalidate!
+}
+
 static int METAL_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, void *vertices, size_t vertsize)
 {
     @autoreleasepool {
@@ -1502,7 +1505,7 @@ static int METAL_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rect *rect,
         temp_pitch = rect->w * 4UL;
         temp_pixels = SDL_malloc(temp_pitch * rect->h);
         if (!temp_pixels) {
-            return SDL_OutOfMemory();
+            return -1;
         }
 
         [mtltexture getBytes:temp_pixels bytesPerRow:temp_pitch fromRegion:mtlregion mipmapLevel:0];
@@ -1742,7 +1745,6 @@ static SDL_Renderer *METAL_CreateRenderer(SDL_Window *window, SDL_PropertiesID c
 
         renderer = (SDL_Renderer *)SDL_calloc(1, sizeof(*renderer));
         if (!renderer) {
-            SDL_OutOfMemory();
             return NULL;
         }
 
@@ -1905,6 +1907,7 @@ static SDL_Renderer *METAL_CreateRenderer(SDL_Window *window, SDL_PropertiesID c
         renderer->QueueDrawPoints = METAL_QueueDrawPoints;
         renderer->QueueDrawLines = METAL_QueueDrawLines;
         renderer->QueueGeometry = METAL_QueueGeometry;
+        renderer->InvalidateCachedState = METAL_InvalidateCachedState;
         renderer->RunCommandQueue = METAL_RunCommandQueue;
         renderer->RenderReadPixels = METAL_RenderReadPixels;
         renderer->RenderPresent = METAL_RenderPresent;
@@ -1916,8 +1919,6 @@ static SDL_Renderer *METAL_CreateRenderer(SDL_Window *window, SDL_PropertiesID c
 
         renderer->info = METAL_RenderDriver.info;
         renderer->info.flags = SDL_RENDERER_ACCELERATED;
-
-        renderer->always_batch = SDL_TRUE;
 
 #if (defined(__MACOS__) && defined(MAC_OS_X_VERSION_10_13)) || TARGET_OS_MACCATALYST
         if (@available(macOS 10.13, *)) {

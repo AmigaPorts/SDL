@@ -209,7 +209,7 @@ OS4_SetTextureColorMod(SDL_Renderer * renderer, SDL_Texture * texture)
         texturedata->b = texture->color.b;
 
         /* Workaround: color modulation cannot be batched due to texture manipulation */
-        SDL_RenderFlush(renderer);
+        SDL_FlushRenderer(renderer);
     }
 
     return 0;

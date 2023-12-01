@@ -103,7 +103,6 @@ SDLTest_CommonState *SDLTest_CommonCreateState(char **argv, Uint32 flags)
 
     state = (SDLTest_CommonState *)SDL_calloc(1, sizeof(*state));
     if (!state) {
-        SDL_OutOfMemory();
         return NULL;
     }
 
@@ -228,7 +227,6 @@ int SDLTest_CommonArg(SDLTest_CommonState *state, int index)
             }
             state->renderdriver = argv[index];
             SDL_SetHint(SDL_HINT_RENDER_DRIVER, state->renderdriver);
-            SDL_SetHint(SDL_HINT_RENDER_BATCHING, "1");
             return 2;
         }
         if (SDL_strcasecmp(argv[index], "--gldebug") == 0) {
@@ -862,6 +860,82 @@ static void SDLTest_PrintWindowFlags(char *text, size_t maxlen, Uint32 flags)
     }
 }
 
+static void SDLTest_PrintModStateFlag(char *text, size_t maxlen, SDL_Keymod flag)
+{
+    switch (flag) {
+    case SDL_KMOD_LSHIFT:
+        SDL_snprintfcat(text, maxlen, "LSHIFT");
+        break;
+    case SDL_KMOD_RSHIFT:
+        SDL_snprintfcat(text, maxlen, "RSHIFT");
+        break;
+    case SDL_KMOD_LCTRL:
+        SDL_snprintfcat(text, maxlen, "LCTRL");
+        break;
+    case SDL_KMOD_RCTRL:
+        SDL_snprintfcat(text, maxlen, "RCTRL");
+        break;
+    case SDL_KMOD_LALT:
+        SDL_snprintfcat(text, maxlen, "LALT");
+        break;
+    case SDL_KMOD_RALT:
+        SDL_snprintfcat(text, maxlen, "RALT");
+        break;
+    case SDL_KMOD_LGUI:
+        SDL_snprintfcat(text, maxlen, "LGUI");
+        break;
+    case SDL_KMOD_RGUI:
+        SDL_snprintfcat(text, maxlen, "RGUI");
+        break;
+    case SDL_KMOD_NUM:
+        SDL_snprintfcat(text, maxlen, "NUM");
+        break;
+    case SDL_KMOD_CAPS:
+        SDL_snprintfcat(text, maxlen, "CAPS");
+        break;
+    case SDL_KMOD_MODE:
+        SDL_snprintfcat(text, maxlen, "MODE");
+        break;
+    case SDL_KMOD_SCROLL:
+        SDL_snprintfcat(text, maxlen, "SCROLL");
+        break;
+    default:
+        SDL_snprintfcat(text, maxlen, "0x%8.8x", (unsigned int) flag);
+        break;
+    }
+}
+
+static void SDLTest_PrintModState(char *text, size_t maxlen, SDL_Keymod keymod)
+{
+    const SDL_Keymod kmod_flags[] = {
+        SDL_KMOD_LSHIFT,
+        SDL_KMOD_RSHIFT,
+        SDL_KMOD_LCTRL,
+        SDL_KMOD_RCTRL,
+        SDL_KMOD_LALT,
+        SDL_KMOD_RALT,
+        SDL_KMOD_LGUI,
+        SDL_KMOD_RGUI,
+        SDL_KMOD_NUM,
+        SDL_KMOD_CAPS,
+        SDL_KMOD_MODE,
+        SDL_KMOD_SCROLL
+    };
+
+    int i;
+    int count = 0;
+    for (i = 0; i < SDL_arraysize(kmod_flags); ++i) {
+        const SDL_Keymod flag = kmod_flags[i];
+        if ((keymod & flag) == flag) {
+            if (count > 0) {
+                SDL_snprintfcat(text, maxlen, " | ");
+            }
+            SDLTest_PrintModStateFlag(text, maxlen, flag);
+            ++count;
+        }
+    }
+}
+
 static void SDLTest_PrintButtonMask(char *text, size_t maxlen, Uint32 flags)
 {
     int i;
@@ -907,6 +981,12 @@ static void SDLTest_PrintPixelFormat(char *text, size_t maxlen, Uint32 format)
         break;
     case SDL_PIXELFORMAT_INDEX1MSB:
         SDL_snprintfcat(text, maxlen, "Index1MSB");
+        break;
+    case SDL_PIXELFORMAT_INDEX2LSB:
+        SDL_snprintfcat(text, maxlen, "Index2LSB");
+        break;
+    case SDL_PIXELFORMAT_INDEX2MSB:
+        SDL_snprintfcat(text, maxlen, "Index2MSB");
         break;
     case SDL_PIXELFORMAT_INDEX4LSB:
         SDL_snprintfcat(text, maxlen, "Index4LSB");
@@ -1661,20 +1741,28 @@ static void SDLTest_PrintEvent(const SDL_Event *event)
     case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
         SDL_Log("SDL EVENT: Window %" SDL_PRIu32 " display scale changed to %d%%", event->window.windowID, (int)(SDL_GetWindowDisplayScale(SDL_GetWindowFromID(event->window.windowID)) * 100.0f));
         break;
+    case SDL_EVENT_WINDOW_OCCLUDED:
+        SDL_Log("SDL EVENT: Window %" SDL_PRIu32 " occluded", event->window.windowID);
+        break;
     case SDL_EVENT_KEY_DOWN:
-        SDL_Log("SDL EVENT: Keyboard: key pressed  in window %" SDL_PRIu32 ": scancode 0x%08X = %s, keycode 0x%08" SDL_PRIX32 " = %s",
+    case SDL_EVENT_KEY_UP: {
+        char modstr[64];
+        if (event->key.keysym.mod) {
+            modstr[0] = '\0';
+            SDLTest_PrintModState(modstr, sizeof (modstr), event->key.keysym.mod);
+        } else {
+            SDL_strlcpy(modstr, "NONE", sizeof (modstr));
+        }
+
+        SDL_Log("SDL EVENT: Keyboard: key %s in window %" SDL_PRIu32 ": scancode 0x%08X = %s, keycode 0x%08" SDL_PRIX32 " = %s, mods = %s",
+                (event->type == SDL_EVENT_KEY_DOWN) ? "pressed" : "released",
                 event->key.windowID,
                 event->key.keysym.scancode,
                 SDL_GetScancodeName(event->key.keysym.scancode),
-                event->key.keysym.sym, SDL_GetKeyName(event->key.keysym.sym));
+                event->key.keysym.sym, SDL_GetKeyName(event->key.keysym.sym),
+                modstr);
         break;
-    case SDL_EVENT_KEY_UP:
-        SDL_Log("SDL EVENT: Keyboard: key released in window %" SDL_PRIu32 ": scancode 0x%08X = %s, keycode 0x%08" SDL_PRIX32 " = %s",
-                event->key.windowID,
-                event->key.keysym.scancode,
-                SDL_GetScancodeName(event->key.keysym.scancode),
-                event->key.keysym.sym, SDL_GetKeyName(event->key.keysym.sym));
-        break;
+    }
     case SDL_EVENT_TEXT_EDITING:
         SDL_Log("SDL EVENT: Keyboard: text editing \"%s\" in window %" SDL_PRIu32,
                 event->edit.text, event->edit.windowID);
@@ -2653,6 +2741,19 @@ void SDLTest_CommonDrawWindowInfo(SDL_Renderer *renderer, SDL_Window *window, fl
     (void)SDL_snprintf(text, sizeof(text), "SDL_GetGlobalMouseState: %g,%g ", fx, fy);
     SDLTest_PrintButtonMask(text, sizeof(text), flags);
     SDLTest_DrawString(renderer, 0.0f, textY, text);
+    textY += lineHeight;
+
+    /* Keyboard */
+
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDLTest_DrawString(renderer, 0, textY, "-- Keyboard --");
+    textY += lineHeight;
+
+    SDL_SetRenderDrawColor(renderer, 170, 170, 170, 255);
+
+    (void)SDL_snprintf(text, sizeof(text), "SDL_GetModState: ");
+    SDLTest_PrintModState(text, sizeof(text), SDL_GetModState());
+    SDLTest_DrawString(renderer, 0, textY, text);
     textY += lineHeight;
 
     if (usedHeight) {

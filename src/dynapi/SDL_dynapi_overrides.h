@@ -81,7 +81,6 @@
 #define SDL_CreateRWLock SDL_CreateRWLock_REAL
 #define SDL_CreateRenderer SDL_CreateRenderer_REAL
 #define SDL_CreateSemaphore SDL_CreateSemaphore_REAL
-#define SDL_CreateShapedWindow SDL_CreateShapedWindow_REAL
 #define SDL_CreateSoftwareRenderer SDL_CreateSoftwareRenderer_REAL
 #define SDL_CreateSurface SDL_CreateSurface_REAL
 #define SDL_CreateSurfaceFrom SDL_CreateSurfaceFrom_REAL
@@ -132,6 +131,7 @@
 #define SDL_FlashWindow SDL_FlashWindow_REAL
 #define SDL_FlushEvent SDL_FlushEvent_REAL
 #define SDL_FlushEvents SDL_FlushEvents_REAL
+#define SDL_FlushRenderer SDL_FlushRenderer_REAL
 #define SDL_GDKGetTaskQueue SDL_GDKGetTaskQueue_REAL
 #define SDL_GDKSuspendComplete  SDL_GDKSuspendComplete_REAL
 #define SDL_GL_BindTexture SDL_GL_BindTexture_REAL
@@ -213,7 +213,6 @@
 #define SDL_GetGamepadJoystick SDL_GetGamepadJoystick_REAL
 #define SDL_GetGamepadMapping SDL_GetGamepadMapping_REAL
 #define SDL_GetGamepadMappingForGUID SDL_GetGamepadMappingForGUID_REAL
-#define SDL_GetGamepadMappingForIndex SDL_GetGamepadMappingForIndex_REAL
 #define SDL_GetGamepadName SDL_GetGamepadName_REAL
 #define SDL_GetGamepadPath SDL_GetGamepadPath_REAL
 #define SDL_GetGamepadPlayerIndex SDL_GetGamepadPlayerIndex_REAL
@@ -274,14 +273,12 @@
 #define SDL_GetMouseState SDL_GetMouseState_REAL
 #define SDL_GetNaturalDisplayOrientation SDL_GetNaturalDisplayOrientation_REAL
 #define SDL_GetNumAllocations SDL_GetNumAllocations_REAL
-#define SDL_GetNumGamepadMappings SDL_GetNumGamepadMappings_REAL
 #define SDL_GetNumGamepadTouchpadFingers SDL_GetNumGamepadTouchpadFingers_REAL
 #define SDL_GetNumGamepadTouchpads SDL_GetNumGamepadTouchpads_REAL
 #define SDL_GetNumJoystickAxes SDL_GetNumJoystickAxes_REAL
 #define SDL_GetNumJoystickButtons SDL_GetNumJoystickButtons_REAL
 #define SDL_GetNumJoystickHats SDL_GetNumJoystickHats_REAL
 #define SDL_GetNumRenderDrivers SDL_GetNumRenderDrivers_REAL
-#define SDL_GetNumTouchDevices SDL_GetNumTouchDevices_REAL
 #define SDL_GetNumTouchFingers SDL_GetNumTouchFingers_REAL
 #define SDL_GetNumVideoDrivers SDL_GetNumVideoDrivers_REAL
 #define SDL_GetOriginalMemoryFunctions SDL_GetOriginalMemoryFunctions_REAL
@@ -338,7 +335,6 @@
 #define SDL_GetSensorNonPortableType SDL_GetSensorNonPortableType_REAL
 #define SDL_GetSensorType SDL_GetSensorType_REAL
 #define SDL_GetSensors SDL_GetSensors_REAL
-#define SDL_GetShapedWindowMode SDL_GetShapedWindowMode_REAL
 #define SDL_GetSurfaceAlphaMod SDL_GetSurfaceAlphaMod_REAL
 #define SDL_GetSurfaceBlendMode SDL_GetSurfaceBlendMode_REAL
 #define SDL_GetSurfaceClipRect SDL_GetSurfaceClipRect_REAL
@@ -355,10 +351,8 @@
 #define SDL_GetThreadName SDL_GetThreadName_REAL
 #define SDL_GetTicks SDL_GetTicks_REAL
 #define SDL_GetTicksNS SDL_GetTicksNS_REAL
-#define SDL_GetTouchDevice SDL_GetTouchDevice_REAL
 #define SDL_GetTouchDeviceType SDL_GetTouchDeviceType_REAL
 #define SDL_GetTouchFinger SDL_GetTouchFinger_REAL
-#define SDL_GetTouchName SDL_GetTouchName_REAL
 #define SDL_GetVersion SDL_GetVersion_REAL
 #define SDL_GetVideoDriver SDL_GetVideoDriver_REAL
 #define SDL_GetWindowBordersSize SDL_GetWindowBordersSize_REAL
@@ -444,7 +438,6 @@
 #define SDL_IsDeXMode   SDL_IsDeXMode_REAL
 #define SDL_IsGamepad SDL_IsGamepad_REAL
 #define SDL_IsJoystickVirtual SDL_IsJoystickVirtual_REAL
-#define SDL_IsShapedWindow SDL_IsShapedWindow_REAL
 #define SDL_IsTablet SDL_IsTablet_REAL
 #define SDL_JoystickConnected SDL_JoystickConnected_REAL
 #define SDL_JoystickEventsEnabled SDL_JoystickEventsEnabled_REAL
@@ -539,7 +532,6 @@
 #define SDL_RenderCoordinatesToWindow SDL_RenderCoordinatesToWindow_REAL
 #define SDL_RenderFillRect SDL_RenderFillRect_REAL
 #define SDL_RenderFillRects SDL_RenderFillRects_REAL
-#define SDL_RenderFlush SDL_RenderFlush_REAL
 #define SDL_RenderGeometry SDL_RenderGeometry_REAL
 #define SDL_RenderGeometryRaw SDL_RenderGeometryRaw_REAL
 #define SDL_RenderLine SDL_RenderLine_REAL
@@ -635,7 +627,6 @@
 #define SDL_SetWindowOpacity SDL_SetWindowOpacity_REAL
 #define SDL_SetWindowPosition SDL_SetWindowPosition_REAL
 #define SDL_SetWindowResizable SDL_SetWindowResizable_REAL
-#define SDL_SetWindowShape SDL_SetWindowShape_REAL
 #define SDL_SetWindowSize SDL_SetWindowSize_REAL
 #define SDL_SetWindowTitle SDL_SetWindowTitle_REAL
 #define SDL_SetWindowsMessageHook   SDL_SetWindowsMessageHook_REAL
@@ -992,3 +983,6 @@
 #define SDL_GetBooleanProperty SDL_GetBooleanProperty_REAL
 #define SDL_CreateTextureWithProperties SDL_CreateTextureWithProperties_REAL
 #define SDL_CreateRendererWithProperties SDL_CreateRendererWithProperties_REAL
+#define SDL_GetGamepadMappings SDL_GetGamepadMappings_REAL
+#define SDL_GetTouchDevices SDL_GetTouchDevices_REAL
+#define SDL_GetTouchDeviceName SDL_GetTouchDeviceName_REAL
