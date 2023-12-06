@@ -163,7 +163,6 @@ OS4_FindWindow(SDL_VideoDevice *_this, struct Window * syswin)
     SDL_Window *sdlwin;
 
     for (sdlwin = _this->windows; sdlwin; sdlwin = sdlwin->next) {
-
         SDL_WindowData *data = sdlwin->driverdata;
 
         if (data->syswin == syswin) {
@@ -193,10 +192,7 @@ OS4_TranslateUnicode(SDL_VideoDevice *_this, uint16 code, uint32 qualifier)
 
     res = IKeymap->MapRawKey(&ie, buffer, sizeof(buffer), 0);
 
-    if (res != 1)
-        return 0;
-    else
-        return buffer[0];
+    return (res == 1) ? buffer[0] : 0;
 }
 
 static void
@@ -250,7 +246,6 @@ OS4_HandleKeyboard(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
     const uint8 rawkey = imsg->Code & 0x7F;
 
     if (rawkey < sizeof(amiga_scancode_table) / sizeof(amiga_scancode_table[0])) {
-
         SDL_Scancode s = amiga_scancode_table[rawkey];
 
         if (imsg->Code < 0x80) {
@@ -434,7 +429,6 @@ OS4_HandleHitTest(SDL_VideoDevice *_this, SDL_Window * sdlwin, struct MyIntuiMes
                 hti->htr = rc;
                 hti->point.x = imsg->ScreenMouseX;
                 hti->point.y = imsg->ScreenMouseY;
-
                 return SDL_TRUE;
 
             default:
@@ -482,7 +476,6 @@ OS4_HandleMouseButtons(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
 
         if (button == SDL_BUTTON_LEFT) {
             if (state == SDL_PRESSED) {
-
                 if (OS4_HandleHitTest(_this, sdlwin, imsg)) {
                     return;
                 }
@@ -730,7 +723,6 @@ OS4_HandleIdcmpMessages(SDL_VideoDevice *_this, struct MsgPort * msgPort)
     struct MyIntuiMessage msg;
 
     while ((imsg = (struct IntuiMessage *)IExec->GetMsg(msgPort))) {
-
         OS4_CopyIdcmpMessage(imsg, &msg);
 
         IExec->ReplyMsg((struct Message *) imsg);
