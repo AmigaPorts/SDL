@@ -1087,6 +1087,12 @@ OS4_SetVSync(SDL_Renderer * renderer, int vsync)
     return 0;
 }
 
+static void
+OS4_InvalidateCachedState(SDL_Renderer *renderer)
+{
+    // TODO:
+}
+
 SDL_Renderer *
 OS4_CreateRenderer(SDL_Window * window, SDL_PropertiesID create_props)
 {
@@ -1123,6 +1129,7 @@ OS4_CreateRenderer(SDL_Window * window, SDL_PropertiesID create_props)
     renderer->QueueCopy = OS4_QueueCopy;
     renderer->QueueCopyEx = OS4_QueueCopyEx;
     renderer->QueueGeometry = OS4_QueueGeometry;
+    renderer->InvalidateCachedState = OS4_InvalidateCachedState;
     renderer->RunCommandQueue = OS4_RunCommandQueue;
     renderer->RenderReadPixels = OS4_RenderReadPixels;
     renderer->RenderPresent = OS4_RenderPresent;
