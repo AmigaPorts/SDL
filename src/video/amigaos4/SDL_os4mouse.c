@@ -78,7 +78,6 @@ OS4_CreateCursorInternal()
     //dprintf("Called\n");
 
     if (cursor) {
-
         SDL_CursorData *data = SDL_calloc(1, sizeof(SDL_CursorData));
 
         if (data) {
@@ -86,7 +85,6 @@ OS4_CreateCursorInternal()
         } else {
             dprintf("Failed to create cursor data\n");
         }
-
     } else {
         dprintf("Failed to create cursor\n");
     }
@@ -121,7 +119,6 @@ OS4_CopyImageData(SDL_Surface * surface)
         surface->w, surface->h, surface, buffer);
 
     if (buffer) {
-
         if (SDL_MUSTLOCK(surface)) {
             SDL_LockSurface(surface);
         }
@@ -154,7 +151,6 @@ OS4_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
     dprintf("Surface %p, cursor %p, hot_x %d, hot_y %d\n", surface, cursor, hot_x, hot_y);
 
     if (cursor && cursor->driverdata) {
-
         if (surface->w > 64) {
             dprintf("Invalid width %d\n", surface->w);
         } else if (surface->h > 64) {
@@ -291,13 +287,11 @@ OS4_ShowCursorForWindow(struct Window * window)
 {
     dprintf("Called\n");
 
-    if (hidden) {
-        if (window) {
-            IIntuition->SetWindowPointer(
-                window,
-                WA_Pointer, NULL,
-                TAG_DONE);
-        }
+    if (window) {
+        IIntuition->SetWindowPointer(
+            window,
+            WA_Pointer, NULL,
+            TAG_DONE);
     }
 }
 
@@ -481,14 +475,12 @@ OS4_WarpMouse(SDL_Window * window, int x, int y)
     warpHostPointer = !SDL_GetRelativeMouseMode() && (window == SDL_GetMouseFocus());
 
     if (warpHostPointer) {
-
         struct Screen *screen = (window->flags & SDL_WINDOW_FULLSCREEN) ?
             syswin->WScreen : NULL;
 
         OS4_WarpMouseInternal(screen,
             x + syswin->BorderLeft + syswin->LeftEdge,
             y + syswin->BorderTop + syswin->TopEdge);
-
     } else {
         /* Just warp SDL's notion of the pointer position */
         SDL_SendMouseMotion(window, 0, SDL_GetRelativeMouseMode(), x, y);
