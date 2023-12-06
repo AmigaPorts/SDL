@@ -55,6 +55,8 @@ struct SDL_WindowData
     struct Image    * image;
 
     int               originalX, originalY, originalW, originalH;
+
+    BOOL              pointerHidden;
 };
 
 extern void OS4_GetWindowSize(SDL_VideoDevice *this, struct Window * window, int * width, int * height);
