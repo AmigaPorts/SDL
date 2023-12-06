@@ -265,7 +265,6 @@ OS4_SetPointerForEachWindow(ULONG type, Object * object)
         SDL_WindowData *data = sdlwin->driverdata;
 
         if (data->syswin) {
-
             if (object || type) {
                 dprintf("Setting pointer object %p (type %d) for window %p\n", object, type, data->syswin);
             }
@@ -279,6 +278,41 @@ OS4_SetPointerForEachWindow(ULONG type, Object * object)
                 IIntuition->SetWindowPointer(
                     data->syswin,
                     WA_PointerType, type,
+                    TAG_DONE);
+            }
+        }
+
+        data->pointerHidden = (type == POINTERTYPE_NONE);
+    }
+}
+
+void
+OS4_ShowCursorForWindow(struct Window * window)
+{
+    dprintf("Called\n");
+
+    if (hidden) {
+        if (window) {
+            IIntuition->SetWindowPointer(
+                window,
+                WA_Pointer, NULL,
+                TAG_DONE);
+        }
+    }
+}
+
+void OS4_HideCursorForWindow(struct Window * window)
+{
+    dprintf("Called\n");
+
+    if (hidden) {
+        SDL_CursorData *data = hidden->driverdata;
+
+        if (data) {
+            if (window) {
+                IIntuition->SetWindowPointer(
+                    window,
+                    WA_Pointer, data->object,
                     TAG_DONE);
             }
         }

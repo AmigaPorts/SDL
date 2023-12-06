@@ -55,6 +55,7 @@ typedef struct
     struct Image    * image;
 
     int               originalX, originalY, originalW, originalH;
+    BOOL              pointerHidden;
 } SDL_WindowData;
 
 extern void OS4_GetWindowSize(_THIS, struct Window * window, int * width, int * height);

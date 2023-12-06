@@ -64,8 +64,16 @@ struct MyIntuiMessage
     int16  ScreenMouseX;
     int16  ScreenMouseY;
 
-    int16  Width; // Inner window dimensions
-    int16  Height;
+    int16  InnerWidth; // Inner window dimensions
+    int16  InnerHeight;
+
+    WORD   LeftEdge;
+    WORD   TopEdge;
+
+    BYTE   BorderLeft;
+    BYTE   BorderTop;
+    BYTE   BorderRight;
+    BYTE   BorderBottom;
 };
 
 struct QualifierItem
@@ -485,7 +493,7 @@ OS4_HandleMouseButtons(_THIS, struct MyIntuiMessage * imsg)
                 hti->htr = SDL_HITTEST_NORMAL;
                 // TODO: shape resize? OpenGL resize?
                 SDL_SendWindowEvent(sdlwin, SDL_WINDOWEVENT_RESIZED,
-                    imsg->Width, imsg->Height);
+                    imsg->InnerWidth, imsg->InnerHeight);
             }
         }
 
@@ -530,14 +538,14 @@ OS4_HandleResize(_THIS, struct MyIntuiMessage * imsg)
             // That is why we ignore these for now.
             dprintf("Resize notification ignored because resize is still in progress\n");
         } else {
-            dprintf("Window resized to %d*%d\n", imsg->Width, imsg->Height);
+            dprintf("Window resized to %d*%d\n", imsg->InnerWidth, imsg->InnerHeight);
 
-            if (imsg->Width != sdlwin->w || imsg->Height != sdlwin->h) {
+            if (imsg->InnerWidth != sdlwin->w || imsg->InnerHeight != sdlwin->h) {
                 SDL_WindowData *data = (SDL_WindowData *)sdlwin->driverdata;
 
                 SDL_SendWindowEvent(sdlwin, SDL_WINDOWEVENT_RESIZED,
-                    imsg->Width,
-                    imsg->Height);
+                    imsg->InnerWidth,
+                    imsg->InnerHeight);
 
                 if (SDL_IsShapedWindow(sdlwin)) {
                     OS4_ResizeWindowShape(sdlwin);
@@ -558,8 +566,8 @@ OS4_HandleMove(_THIS, struct MyIntuiMessage * imsg)
 
     if (sdlwin) {
             SDL_SendWindowEvent(sdlwin, SDL_WINDOWEVENT_MOVED,
-                imsg->IDCMPWindow->LeftEdge,
-                imsg->IDCMPWindow->TopEdge);
+                imsg->LeftEdge,
+                imsg->TopEdge);
 
         dprintf("Window %p changed\n", sdlwin);
     }
@@ -606,10 +614,10 @@ OS4_HandleTicks(_THIS, struct MyIntuiMessage * imsg)
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
     if (sdlwin) {
+        SDL_WindowData *data = sdlwin->driverdata;
+
         if ((sdlwin->flags & SDL_WINDOW_INPUT_GRABBED) && !(sdlwin->flags & SDL_WINDOW_FULLSCREEN) &&
             (SDL_GetKeyboardFocus() == sdlwin)) {
-
-            SDL_WindowData *data = sdlwin->driverdata;
 
             dprintf("Window %p ticks %d\n", imsg->IDCMPWindow, data->pointerGrabTicks);
 
@@ -618,6 +626,22 @@ OS4_HandleTicks(_THIS, struct MyIntuiMessage * imsg)
                 data->pointerGrabTicks = 0;
 
                 OS4_SetWindowGrabPrivate(_this, imsg->IDCMPWindow, TRUE);
+            }
+        }
+
+        // Makes hidden mouse pointer visible when it leaves its window area,
+        // and hides it again when it enter the window area.
+        if (data->pointerHidden) {
+            const int left = imsg->LeftEdge + imsg->BorderLeft;
+            const int right = left + imsg->InnerWidth;
+            const int top = imsg->TopEdge + imsg->BorderTop;
+            const int bottom = top + imsg->InnerHeight;
+
+            if (imsg->ScreenMouseX >= left && imsg->ScreenMouseX < right &&
+                    imsg->ScreenMouseY >= top && imsg->ScreenMouseY < bottom) {
+                OS4_HideCursorForWindow(imsg->IDCMPWindow);
+            } else {
+                OS4_ShowCursorForWindow(imsg->IDCMPWindow);
             }
         }
     }
@@ -685,14 +709,22 @@ OS4_CopyIdcmpMessage(struct IntuiMessage * src, struct MyIntuiMessage * dst)
     dst->IDCMPWindow     = src->IDCMPWindow;
 
     if (src->IDCMPWindow) {
-        dst->WindowMouseX = src->IDCMPWindow->MouseX - src->IDCMPWindow->BorderLeft;
-        dst->WindowMouseY = src->IDCMPWindow->MouseY - src->IDCMPWindow->BorderTop;
+        dst->BorderLeft   = src->IDCMPWindow->BorderLeft;
+        dst->BorderTop    = src->IDCMPWindow->BorderTop;
+        dst->BorderRight  = src->IDCMPWindow->BorderRight;
+        dst->BorderBottom = src->IDCMPWindow->BorderBottom;
+
+        dst->WindowMouseX = src->IDCMPWindow->MouseX - dst->BorderLeft;
+        dst->WindowMouseY = src->IDCMPWindow->MouseY - dst->BorderTop;
 
         dst->ScreenMouseX = src->IDCMPWindow->WScreen->MouseX;
         dst->ScreenMouseY = src->IDCMPWindow->WScreen->MouseY;
 
-        dst->Width        = src->IDCMPWindow->Width  - src->IDCMPWindow->BorderLeft - src->IDCMPWindow->BorderRight;
-        dst->Height       = src->IDCMPWindow->Height - src->IDCMPWindow->BorderTop  - src->IDCMPWindow->BorderBottom;
+        dst->InnerWidth   = src->IDCMPWindow->Width  - dst->BorderLeft - dst->BorderRight;
+        dst->InnerHeight  = src->IDCMPWindow->Height - dst->BorderTop  - dst->BorderBottom;
+
+        dst->LeftEdge     = src->IDCMPWindow->LeftEdge;
+        dst->TopEdge      = src->IDCMPWindow->TopEdge;
     }
 }
 
