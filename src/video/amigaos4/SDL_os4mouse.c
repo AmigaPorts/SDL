@@ -36,7 +36,7 @@
 
 #include <devices/input.h>
 
-static SDL_Cursor *hidden;
+static SDL_Cursor *hiddenCursor;
 
 typedef struct SDL_CursorData {
     int hot_x;
@@ -176,6 +176,7 @@ OS4_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
                 TAG_DONE);
 
             if (object) {
+                dprintf("Object %p\n", object);
                 SDL_CursorData *data = cursor->driverdata;
                 data->object = object;
                 data->imageData = buffer;
@@ -188,25 +189,23 @@ OS4_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
     return cursor;
 }
 
-static SDL_Cursor*
+static void
 OS4_CreateHiddenCursor()
 {
     dprintf("Called\n");
 
     /* Create invisible 1*1 cursor because system version (POINTERTYPE_NONE) has a shadow */
 
-    SDL_Cursor *cursor = NULL;
     SDL_Surface *surface = SDL_CreateSurface(1, 1, SDL_PIXELFORMAT_ARGB8888);
-
     if (surface) {
         SDL_FillSurfaceRect(surface, NULL, 0x0);
 
-        cursor = OS4_CreateCursor(surface, 0, 0);
+        hiddenCursor = OS4_CreateCursor(surface, 0, 0);
 
         SDL_DestroySurface(surface);
+    } else {
+        dprintf("Failed to create surface for hidden cursor\n");
     }
-
-    return cursor;
 }
 
 
@@ -250,6 +249,28 @@ OS4_CreateSystemCursor(SDL_SystemCursor id)
 }
 
 static void
+OS4_SetPointerObjectOrTypeForWindow(struct Window * window, ULONG type, Object * object)
+{
+    if (object || type) {
+        dprintf("Setting pointer object %p (type %d) for window %p\n", object, type, window);
+    }
+
+    if (window) {
+        if (object) {
+            IIntuition->SetWindowPointer(
+                window,
+                WA_Pointer, object,
+                TAG_DONE);
+        } else {
+            IIntuition->SetWindowPointer(
+                window,
+                WA_PointerType, type,
+                TAG_DONE);
+        }
+    }
+}
+
+static void
 OS4_SetPointerForEachWindow(ULONG type, Object * object)
 {
     SDL_VideoDevice *_this = SDL_GetVideoDevice();
@@ -259,34 +280,17 @@ OS4_SetPointerForEachWindow(ULONG type, Object * object)
     for (sdlwin = _this->windows; sdlwin; sdlwin = sdlwin->next) {
         SDL_WindowData *data = sdlwin->driverdata;
 
-        if (data->syswin) {
-            if (object || type) {
-                dprintf("Setting pointer object %p (type %d) for window %p\n", object, type, data->syswin);
-            }
-
-            if (object) {
-                IIntuition->SetWindowPointer(
-                    data->syswin,
-                    WA_Pointer, object,
-                    TAG_DONE);
-            } else {
-                IIntuition->SetWindowPointer(
-                    data->syswin,
-                    WA_PointerType, type,
-                    TAG_DONE);
-            }
-        }
-
-        data->pointerHidden = (type == POINTERTYPE_NONE);
+        OS4_SetPointerObjectOrTypeForWindow(data->syswin, type, object);
     }
 }
 
 void
-OS4_ShowCursorForWindow(struct Window * window)
+OS4_ResetCursorForWindow(struct Window * window)
 {
     dprintf("Called\n");
 
     if (window) {
+        // Restore normal system pointer
         IIntuition->SetWindowPointer(
             window,
             WA_Pointer, NULL,
@@ -294,22 +298,40 @@ OS4_ShowCursorForWindow(struct Window * window)
     }
 }
 
-void OS4_HideCursorForWindow(struct Window * window)
+void
+OS4_RestoreSdlCursorForWindow(struct Window * window)
 {
     dprintf("Called\n");
 
-    if (hidden) {
-        SDL_CursorData *data = hidden->driverdata;
+    // Restore SDL-configured cursor (possibly hidden)
 
-        if (data) {
-            if (window) {
-                IIntuition->SetWindowPointer(
-                    window,
-                    WA_Pointer, data->object,
-                    TAG_DONE);
+    Object* object = NULL;
+    ULONG type = POINTERTYPE_NONE;
+
+    SDL_Mouse* mouse = SDL_GetMouse();
+    if (mouse->cursor_shown) {
+        SDL_Cursor *cursor = mouse->cur_cursor;
+        if (cursor) {
+            SDL_CursorData *data = cursor->driverdata;
+            if (data) {
+                type = data->type;
+                object = data->object;
+            } else {
+                dprintf("NULL data\n");
             }
+        } else {
+            dprintf("NULL cursor\n");
+        }
+    } else {
+        SDL_CursorData *data = hiddenCursor->driverdata;
+        if (data) {
+            object = data->object;
+        } else {
+            dprintf("NULL data\n");
         }
     }
+
+    OS4_SetPointerObjectOrTypeForWindow(window, type, object);
 }
 
 static int
@@ -335,8 +357,8 @@ OS4_ShowCursor(SDL_Cursor * cursor)
 
         type = POINTERTYPE_NONE;
 
-        if (hidden) {
-            SDL_CursorData *data = hidden->driverdata;
+        if (hiddenCursor) {
+            SDL_CursorData *data = hiddenCursor->driverdata;
 
             if (data) {
                 object = data->object;
@@ -456,9 +478,7 @@ OS4_WarpMouse(SDL_Window * window, float x, float y)
     SDL_WindowData *winData = window->driverdata;
     struct Window *syswin = winData->syswin;
 
-    BOOL warpHostPointer;
-
-    dprintf("Warping mouse to %f, %f\n", x, y);
+    SDL_bool relativeMouseMode = SDL_GetRelativeMouseMode();
 
     /* If the host mouse pointer is outside of the SDL window or the SDL
      * window is inactive then we just need to warp SDL's notion of where
@@ -467,11 +487,9 @@ OS4_WarpMouse(SDL_Window * window, float x, float y)
      * to the app anyway and in the latter case we don't receive mouse
      * movements events anyway.
      */
-    //warpHostPointer  = (hidden->pointerState == pointer_inside_window) && !hidden->isMouseRelative
-    //                &&  hidden->windowActive;
+    BOOL warpHostPointer = !relativeMouseMode && (window == SDL_GetMouseFocus());
 
-    // TODO: "inside window" logic needed/wanted?
-    warpHostPointer = !SDL_GetRelativeMouseMode() && (window == SDL_GetMouseFocus());
+    dprintf("Warping mouse to %d, %d\n", x, y);
 
     if (warpHostPointer) {
         struct Screen *screen = (window->flags & SDL_WINDOW_FULLSCREEN) ?
@@ -482,7 +500,7 @@ OS4_WarpMouse(SDL_Window * window, float x, float y)
             y + syswin->BorderTop + syswin->TopEdge);
     } else {
         /* Just warp SDL's notion of the pointer position */
-        SDL_SendMouseMotion(0, window, 0, SDL_GetRelativeMouseMode(), x, y);
+        SDL_SendMouseMotion(0, window, 0, relativeMouseMode, x, y);
     }
 
     return 0;
@@ -527,8 +545,6 @@ OS4_GetGlobalMouseState(float * x, float * y)
 void
 OS4_InitMouse(SDL_VideoDevice *_this)
 {
-    //SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
-
     SDL_Mouse *mouse = SDL_GetMouse();
     char buffer[16];
 
@@ -542,9 +558,9 @@ OS4_InitMouse(SDL_VideoDevice *_this)
     //mouse->CaptureMouse = OS4_CaptureMouse;
     mouse->GetGlobalMouseState = OS4_GetGlobalMouseState;
 
-    SDL_SetDefaultCursor( OS4_CreateDefaultCursor() );
+    SDL_SetDefaultCursor(OS4_CreateDefaultCursor());
 
-    hidden = OS4_CreateHiddenCursor();
+    OS4_CreateHiddenCursor();
 
     SDL_SetHint(SDL_HINT_MOUSE_DOUBLE_CLICK_TIME,
         SDL_uitoa(OS4_GetDoubleClickTimeInMillis(_this), buffer, 10));
@@ -560,9 +576,9 @@ OS4_QuitMouse(SDL_VideoDevice *_this)
         mouse->def_cursor = NULL;
     }
 
-    if (hidden) {
-        OS4_FreeCursor(hidden);
-        hidden = NULL;
+    if (hiddenCursor) {
+        OS4_FreeCursor(hiddenCursor);
+        hiddenCursor = NULL;
     }
 
     mouse->cur_cursor = NULL;
