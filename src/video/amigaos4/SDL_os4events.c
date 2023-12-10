@@ -69,11 +69,6 @@ struct MyIntuiMessage
 
     WORD   LeftEdge;
     WORD   TopEdge;
-
-    BYTE   BorderLeft;
-    BYTE   BorderTop;
-    BYTE   BorderRight;
-    BYTE   BorderBottom;
 };
 
 struct QualifierItem
@@ -378,6 +373,18 @@ OS4_IsHitTestResize(HitTestInfo * hti)
 }
 
 static void
+OS4_UpdateMousePointer(SDL_Window * sdlwin, struct MyIntuiMessage * imsg)
+{
+    // Resets mouse pointer when it leaves its window area. For example,
+    // a hidden pointer becomes visible outside.
+    if (SDL_GetMouse()->focus == sdlwin) {
+        OS4_RestoreSdlCursorForWindow(imsg->IDCMPWindow);
+    } else {
+        OS4_ResetCursorForWindow(imsg->IDCMPWindow);
+    }
+}
+
+static void
 OS4_HandleMouseMotion(_THIS, struct MyIntuiMessage * imsg)
 {
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
@@ -404,6 +411,8 @@ OS4_HandleMouseMotion(_THIS, struct MyIntuiMessage * imsg)
         if (hti->htr != SDL_HITTEST_NORMAL) {
             OS4_HandleHitTestMotion(_this, sdlwin, imsg);
         }
+
+        OS4_UpdateMousePointer(sdlwin, imsg);
     }
 }
 
@@ -578,14 +587,14 @@ OS4_HandleActivation(_THIS, struct MyIntuiMessage * imsg, SDL_bool activated)
 
             if (SDL_GetKeyboardFocus() != sdlwin) {
                 SDL_SetKeyboardFocus(sdlwin);
-                // TODO: do we want to set mouse colors as in SDL1?
             }
         } else {
             if (SDL_GetKeyboardFocus() == sdlwin) {
                 SDL_SetKeyboardFocus(NULL);
-                // TODO: do we want to reset mouse colors as in SDL1?
             }
         }
+
+        OS4_UpdateMousePointer(sdlwin, imsg);
 
         dprintf("Window %p activation %d\n", sdlwin, activated);
     }
@@ -607,10 +616,9 @@ OS4_HandleTicks(_THIS, struct MyIntuiMessage * imsg)
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
     if (sdlwin) {
-        SDL_WindowData *data = sdlwin->driverdata;
-
         if ((sdlwin->flags & SDL_WINDOW_INPUT_GRABBED) && !(sdlwin->flags & SDL_WINDOW_FULLSCREEN) &&
-            (SDL_GetKeyboardFocus() == sdlwin)) {
+             (SDL_GetKeyboardFocus() == sdlwin)) {
+            SDL_WindowData *data = sdlwin->driverdata;
 
             dprintf("Window %p ticks %d\n", imsg->IDCMPWindow, data->pointerGrabTicks);
 
@@ -619,22 +627,6 @@ OS4_HandleTicks(_THIS, struct MyIntuiMessage * imsg)
                 data->pointerGrabTicks = 0;
 
                 OS4_SetWindowGrabPrivate(_this, imsg->IDCMPWindow, TRUE);
-            }
-        }
-
-        // Makes hidden mouse pointer visible when it leaves its window area,
-        // and hides it again when it enter the window area.
-        if (data->pointerHidden) {
-            const int left = imsg->LeftEdge + imsg->BorderLeft;
-            const int right = left + imsg->InnerWidth;
-            const int top = imsg->TopEdge + imsg->BorderTop;
-            const int bottom = top + imsg->InnerHeight;
-
-            if (imsg->ScreenMouseX >= left && imsg->ScreenMouseX < right &&
-                    imsg->ScreenMouseY >= top && imsg->ScreenMouseY < bottom) {
-                OS4_HideCursorForWindow(imsg->IDCMPWindow);
-            } else {
-                OS4_ShowCursorForWindow(imsg->IDCMPWindow);
             }
         }
     }
@@ -702,26 +694,20 @@ OS4_CopyIdcmpMessage(struct IntuiMessage * src, struct MyIntuiMessage * dst)
     dst->IDCMPWindow     = src->IDCMPWindow;
 
     if (src->IDCMPWindow) {
-        dst->BorderLeft   = src->IDCMPWindow->BorderLeft;
-        dst->BorderTop    = src->IDCMPWindow->BorderTop;
-        dst->BorderRight  = src->IDCMPWindow->BorderRight;
-        dst->BorderBottom = src->IDCMPWindow->BorderBottom;
-
-        dst->WindowMouseX = src->IDCMPWindow->MouseX - dst->BorderLeft;
-        dst->WindowMouseY = src->IDCMPWindow->MouseY - dst->BorderTop;
+        dst->WindowMouseX = src->IDCMPWindow->MouseX - src->IDCMPWindow->BorderLeft;
+        dst->WindowMouseY = src->IDCMPWindow->MouseY - src->IDCMPWindow->BorderTop;
 
         dst->ScreenMouseX = src->IDCMPWindow->WScreen->MouseX;
         dst->ScreenMouseY = src->IDCMPWindow->WScreen->MouseY;
 
-        dst->InnerWidth   = src->IDCMPWindow->Width  - dst->BorderLeft - dst->BorderRight;
-        dst->InnerHeight  = src->IDCMPWindow->Height - dst->BorderTop  - dst->BorderBottom;
+        dst->InnerWidth   = src->IDCMPWindow->Width  - src->IDCMPWindow->BorderLeft - src->IDCMPWindow->BorderRight;
+        dst->InnerHeight  = src->IDCMPWindow->Height - src->IDCMPWindow->BorderTop  - src->IDCMPWindow->BorderBottom;
 
         dst->LeftEdge     = src->IDCMPWindow->LeftEdge;
         dst->TopEdge      = src->IDCMPWindow->TopEdge;
     }
 }
 
-// TODO: we need to handle Intuition's window move (repositioning) event and update sdlwin's x&y
 static void
 OS4_HandleIdcmpMessages(_THIS, struct MsgPort * msgPort)
 {
