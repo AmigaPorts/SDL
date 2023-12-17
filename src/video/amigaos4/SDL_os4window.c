@@ -709,7 +709,7 @@ OS4_CloseWindow(SDL_VideoDevice *_this, SDL_Window * sdlwin)
     }
 }
 
-void
+int
 OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDisplay * display, SDL_bool fullscreen)
 {
     if (window->is_destroying) {
@@ -734,7 +734,7 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
                 if (displayData->screen && data->syswin) {
                     if (data->syswin->WScreen == displayData->screen) {
                         dprintf("Same screen, useless mode change ignored\n");
-                        return;
+                        return 0;
                     }
                 }
             }
@@ -745,7 +745,6 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
 
                 OS4_GetWindowSize(_this, data->syswin, &oldWidth, &oldHeight);
                 OS4_CloseWindow(_this, window);
-
             } else {
                 dprintf("System window doesn't exist yet, let's open it\n");
             }
@@ -780,6 +779,8 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
             }
         }
     }
+
+    return 0;
 }
 
 // This may be called from os4events.c
