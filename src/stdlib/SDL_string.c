@@ -468,19 +468,28 @@ wchar_t *SDL_wcsdup(const wchar_t *string)
     return newstr;
 }
 
+wchar_t *SDL_wcsnstr(const wchar_t *haystack, const wchar_t *needle, size_t maxlen)
+{
+    size_t length = SDL_wcslen(needle);
+    if (length == 0) {
+        return (wchar_t *)haystack;
+    }
+    while (maxlen >= length && *haystack) {
+        if (maxlen >= length && SDL_wcsncmp(haystack, needle, length) == 0) {
+            return (wchar_t *)haystack;
+        }
+        ++haystack;
+        --maxlen;
+    }
+    return NULL;
+}
+
 wchar_t *SDL_wcsstr(const wchar_t *haystack, const wchar_t *needle)
 {
 #ifdef HAVE_WCSSTR
     return SDL_const_cast(wchar_t *, wcsstr(haystack, needle));
 #else
-    size_t length = SDL_wcslen(needle);
-    while (*haystack) {
-        if (SDL_wcsncmp(haystack, needle, length) == 0) {
-            return (wchar_t *)haystack;
-        }
-        ++haystack;
-    }
-    return NULL;
+    return SDL_wcsnstr(haystack, needle, SDL_wcslen(haystack));
 #endif /* HAVE_WCSSTR */
 }
 
@@ -821,19 +830,32 @@ char *SDL_strrchr(const char *string, int c)
 #endif /* HAVE_STRRCHR */
 }
 
+char *SDL_strnstr(const char *haystack, const char *needle, size_t maxlen)
+{
+#ifdef HAVE_STRNSTR
+    return SDL_const_cast(char *, strnstr(haystack, needle, maxlen));
+#else
+    size_t length = SDL_strlen(needle);
+    if (length == 0) {
+        return (char *)haystack;
+    }
+    while (maxlen >= length && *haystack) {
+        if (SDL_strncmp(haystack, needle, length) == 0) {
+            return (char *)haystack;
+        }
+        ++haystack;
+        --maxlen;
+    }
+    return NULL;
+#endif /* HAVE_STRSTR */
+}
+
 char *SDL_strstr(const char *haystack, const char *needle)
 {
 #ifdef HAVE_STRSTR
     return SDL_const_cast(char *, strstr(haystack, needle));
 #else
-    size_t length = SDL_strlen(needle);
-    while (*haystack) {
-        if (SDL_strncmp(haystack, needle, length) == 0) {
-            return (char *)haystack;
-        }
-        ++haystack;
-    }
-    return NULL;
+    return SDL_strnstr(haystack, needle, SDL_strlen(haystack));
 #endif /* HAVE_STRSTR */
 }
 
@@ -1233,7 +1255,7 @@ static SDL_bool CharacterMatchesSet(char c, const char *set, size_t set_len)
 }
 
 /* NOLINTNEXTLINE(readability-non-const-parameter) */
-int SDL_vsscanf(const char *text, const char *fmt, va_list ap)
+int SDL_vsscanf(const char *text, SDL_SCANF_FORMAT_STRING const char *fmt, va_list ap)
 {
     int retval = 0;
 
@@ -1900,7 +1922,7 @@ static size_t SDL_PrintPointer(char *text, size_t maxlen, SDL_FormatInfo *info, 
 }
 
 /* NOLINTNEXTLINE(readability-non-const-parameter) */
-int SDL_vsnprintf(SDL_OUT_Z_CAP(maxlen) char *text, size_t maxlen, const char *fmt, va_list ap)
+int SDL_vsnprintf(SDL_OUT_Z_CAP(maxlen) char *text, size_t maxlen, SDL_PRINTF_FORMAT_STRING const char *fmt, va_list ap)
 {
     size_t length = 0;
 
@@ -2124,7 +2146,7 @@ int SDL_vsnprintf(SDL_OUT_Z_CAP(maxlen) char *text, size_t maxlen, const char *f
 #undef TEXT_AND_LEN_ARGS
 #endif /* HAVE_VSNPRINTF */
 
-int SDL_vswprintf(SDL_OUT_Z_CAP(maxlen) wchar_t *text, size_t maxlen, SDL_PRINTF_FORMAT_STRING const wchar_t *fmt, va_list ap)
+int SDL_vswprintf(SDL_OUT_Z_CAP(maxlen) wchar_t *text, size_t maxlen, const wchar_t *fmt, va_list ap)
 {
     char *text_utf8 = NULL, *fmt_utf8 = NULL;
     int retval;
@@ -2179,7 +2201,7 @@ int SDL_asprintf(char **strp, SDL_PRINTF_FORMAT_STRING const char *fmt, ...)
     return retval;
 }
 
-int SDL_vasprintf(char **strp, const char *fmt, va_list ap)
+int SDL_vasprintf(char **strp, SDL_PRINTF_FORMAT_STRING const char *fmt, va_list ap)
 {
     int retval;
     int size = 100; /* Guess we need no more than 100 bytes */

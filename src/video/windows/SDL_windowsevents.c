@@ -95,6 +95,14 @@
 #define TOUCHEVENTF_PEN 0x0040
 #endif
 
+#ifndef MAPVK_VK_TO_VSC_EX
+#define MAPVK_VK_TO_VSC_EX 4
+#endif
+
+#ifndef WC_ERR_INVALID_CHARS
+#define WC_ERR_INVALID_CHARS 0x00000080
+#endif
+
 #ifndef IS_HIGH_SURROGATE
 #define IS_HIGH_SURROGATE(x) (((x) >= 0xd800) && ((x) <= 0xdbff))
 #endif
@@ -1001,11 +1009,38 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 #endif /* WM_GETMINMAXINFO */
 
     case WM_WINDOWPOSCHANGING:
+    {
+        WINDOWPOS *windowpos = (WINDOWPOS*)lParam;
 
         if (data->expected_resize) {
             returnCode = 0;
         }
-        break;
+
+        if (IsIconic(hwnd)) {
+            SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_MINIMIZED, 0, 0);
+        } else if (IsZoomed(hwnd)) {
+            if (data->window->flags & SDL_WINDOW_MINIMIZED) {
+                /* If going from minimized to maximized, send the restored event first. */
+                SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_RESTORED, 0, 0);
+            }
+            SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_MAXIMIZED, 0, 0);
+        } else {
+            SDL_bool was_fixed_size = !!(data->window->flags & (SDL_WINDOW_MAXIMIZED | SDL_WINDOW_MINIMIZED));
+            SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_RESTORED, 0, 0);
+
+            /* Send the stored floating size if moving from a fixed-size to floating state. */
+            if (was_fixed_size && !(data->window->flags & SDL_WINDOW_FULLSCREEN)) {
+                int fx, fy, fw, fh;
+
+                WIN_AdjustWindowRect(data->window, &fx, &fy, &fw, &fh, SDL_WINDOWRECT_FLOATING);
+                windowpos->x = fx;
+                windowpos->y = fy;
+                windowpos->cx = fw;
+                windowpos->cy = fh;
+                windowpos->flags &= ~(SWP_NOSIZE | SWP_NOMOVE);
+            }
+        }
+    } break;
 
     case WM_WINDOWPOSCHANGED:
     {
@@ -1074,7 +1109,7 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         for (win = data->window->first_child; win; win = win->next_sibling) {
             /* Don't update hidden child windows, their relative position doesn't change */
             if (!(win->flags & SDL_WINDOW_HIDDEN)) {
-                WIN_SetWindowPositionInternal(win, SWP_NOCOPYBITS | SWP_NOACTIVATE);
+                WIN_SetWindowPositionInternal(win, SWP_NOCOPYBITS | SWP_NOACTIVATE, SDL_WINDOWRECT_CURRENT);
             }
         }
     } break;
@@ -1102,28 +1137,6 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_EXITMENULOOP:
     {
         KillTimer(hwnd, (UINT_PTR)SDL_IterateMainCallbacks);
-    } break;
-
-    case WM_SIZE:
-    {
-        switch (wParam) {
-        case SIZE_MAXIMIZED:
-            SDL_SendWindowEvent(data->window,
-                                SDL_EVENT_WINDOW_RESTORED, 0, 0);
-            SDL_SendWindowEvent(data->window,
-                                SDL_EVENT_WINDOW_MAXIMIZED, 0, 0);
-            break;
-        case SIZE_MINIMIZED:
-            SDL_SendWindowEvent(data->window,
-                                SDL_EVENT_WINDOW_MINIMIZED, 0, 0);
-            break;
-        case SIZE_RESTORED:
-            SDL_SendWindowEvent(data->window,
-                                SDL_EVENT_WINDOW_RESTORED, 0, 0);
-            break;
-        default:
-            break;
-        }
     } break;
 
     case WM_SETCURSOR:
@@ -1288,16 +1301,15 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         HDROP drop = (HDROP)wParam;
         UINT count = DragQueryFile(drop, 0xFFFFFFFF, NULL, 0);
         for (i = 0; i < count; ++i) {
-            SDL_bool isstack;
             UINT size = DragQueryFile(drop, i, NULL, 0) + 1;
-            LPTSTR buffer = SDL_small_alloc(TCHAR, size, &isstack);
+            LPTSTR buffer = (LPTSTR)SDL_malloc(sizeof(TCHAR) * size);
             if (buffer) {
                 if (DragQueryFile(drop, i, buffer, size)) {
                     char *file = WIN_StringToUTF8(buffer);
                     SDL_SendDropFile(data->window, NULL, file);
                     SDL_free(file);
                 }
-                SDL_small_free(buffer, isstack);
+                SDL_free(buffer);
             }
         }
         SDL_SendDropComplete(data->window);
@@ -1643,7 +1655,14 @@ void WIN_SendWakeupEvent(SDL_VideoDevice *_this, SDL_Window *window)
 void WIN_PumpEvents(SDL_VideoDevice *_this)
 {
     MSG msg;
+#ifdef _MSC_VER /* We explicitly want to use GetTickCount(), not GetTickCount64() */
+#pragma warning(push)
+#pragma warning(disable : 28159)
+#endif
     DWORD end_ticks = GetTickCount() + 1;
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
     int new_messages = 0;
 #if !defined(__XBOXONE__) && !defined(__XBOXSERIES__)
     const Uint8 *keystate;

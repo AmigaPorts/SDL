@@ -164,7 +164,6 @@ SDL3_0.0.0 {
     SDL_GetDisplayUsableBounds;
     SDL_GetDisplays;
     SDL_GetError;
-    SDL_GetErrorMsg;
     SDL_GetEventFilter;
     SDL_GetFullscreenDisplayModes;
     SDL_GetGamepadAppleSFSymbolsNameForAxis;
@@ -961,6 +960,9 @@ SDL3_0.0.0 {
     SDL_GetGamepadMappings;
     SDL_GetTouchDevices;
     SDL_GetTouchDeviceName;
+    SDL_strnstr;
+    SDL_wcsnstr;
+    SDL_SyncWindow;
     # extra symbols go here (don't modify this line)
   local: *;
 };

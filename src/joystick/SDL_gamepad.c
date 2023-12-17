@@ -140,18 +140,18 @@ struct SDL_Gamepad
         return retval;                                                       \
     }
 
-static SDL_vidpid_list SDL_allowed_gamepads;
-static SDL_vidpid_list SDL_ignored_gamepads;
-
-static void SDLCALL SDL_GamepadIgnoreDevicesChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
-{
-    SDL_LoadVIDPIDListFromHint(hint, &SDL_ignored_gamepads);
-}
-
-static void SDLCALL SDL_GamepadIgnoreDevicesExceptChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
-{
-    SDL_LoadVIDPIDListFromHint(hint, &SDL_allowed_gamepads);
-}
+static SDL_vidpid_list SDL_allowed_gamepads = {
+    SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT, 0, 0, NULL,
+    NULL, 0, 0, NULL,
+    0, NULL,
+    SDL_FALSE
+};
+static SDL_vidpid_list SDL_ignored_gamepads = {
+    SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES, 0, 0, NULL,
+    NULL, 0, 0, NULL,
+    0, NULL,
+    SDL_FALSE
+};
 
 static GamepadMapping_t *SDL_PrivateAddMappingForGUID(SDL_JoystickGUID jGUID, const char *mappingString, SDL_bool *existing, SDL_GamepadMappingPriority priority);
 static void SDL_PrivateLoadButtonMapping(SDL_Gamepad *gamepad, GamepadMapping_t *pGamepadMapping);
@@ -1695,10 +1695,10 @@ static void SDL_PrivateAppendToMappingString(char *mapping_string,
     SDL_strlcat(mapping_string, ":", mapping_string_len);
     switch (mapping->kind) {
     case EMappingKind_Button:
-        (void)SDL_snprintf(buffer, sizeof(buffer), "b%i", mapping->target);
+        (void)SDL_snprintf(buffer, sizeof(buffer), "b%u", mapping->target);
         break;
     case EMappingKind_Axis:
-        (void)SDL_snprintf(buffer, sizeof(buffer), "%sa%i%s",
+        (void)SDL_snprintf(buffer, sizeof(buffer), "%sa%u%s",
             mapping->half_axis_positive ? "+" :
             mapping->half_axis_negative ? "-" : "",
             mapping->target,
@@ -2079,7 +2079,7 @@ char **SDL_GetGamepadMappings(int *count)
     if (!mappings) {
         failed = SDL_TRUE;
     } else {
-        size_t i = 0;
+        int i = 0;
         for (GamepadMapping_t *mapping = s_pSupportedGamepads; mapping; mapping = mapping->next) {
             if (SDL_memcmp(&mapping->guid, &s_zeroGUID, sizeof(mapping->guid)) == 0) {
                 continue;
@@ -2276,10 +2276,8 @@ int SDL_InitGamepadMappings(void)
     /* load in any user supplied config */
     SDL_LoadGamepadHints();
 
-    SDL_AddHintCallback(SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES,
-                        SDL_GamepadIgnoreDevicesChanged, NULL);
-    SDL_AddHintCallback(SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT,
-                        SDL_GamepadIgnoreDevicesExceptChanged, NULL);
+    SDL_LoadVIDPIDList(&SDL_allowed_gamepads);
+    SDL_LoadVIDPIDList(&SDL_ignored_gamepads);
 
     PopMappingChangeTracking();
 
@@ -2506,8 +2504,8 @@ SDL_bool SDL_ShouldIgnoreGamepad(const char *name, SDL_JoystickGUID guid)
         return SDL_TRUE;
     }
 
-    if (SDL_allowed_gamepads.num_entries == 0 &&
-        SDL_ignored_gamepads.num_entries == 0) {
+    if (SDL_allowed_gamepads.num_included_entries == 0 &&
+        SDL_ignored_gamepads.num_included_entries == 0) {
         return SDL_FALSE;
     }
 
@@ -2530,7 +2528,7 @@ SDL_bool SDL_ShouldIgnoreGamepad(const char *name, SDL_JoystickGUID guid)
         }
     }
 
-    if (SDL_allowed_gamepads.num_entries > 0) {
+    if (SDL_allowed_gamepads.num_included_entries > 0) {
         if (SDL_VIDPIDInList(vendor, product, &SDL_allowed_gamepads)) {
             return SDL_FALSE;
         }
@@ -3582,11 +3580,6 @@ void SDL_QuitGamepadMappings(void)
         SDL_free(pGamepadMap->mapping);
         SDL_free(pGamepadMap);
     }
-
-    SDL_DelHintCallback(SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES,
-                        SDL_GamepadIgnoreDevicesChanged, NULL);
-    SDL_DelHintCallback(SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT,
-                        SDL_GamepadIgnoreDevicesExceptChanged, NULL);
 
     SDL_FreeVIDPIDList(&SDL_allowed_gamepads);
     SDL_FreeVIDPIDList(&SDL_ignored_gamepads);

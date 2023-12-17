@@ -554,6 +554,8 @@ static SDL_AudioDevice *CreatePhysicalAudioDevice(const char *name, SDL_bool isc
     if (SDL_InsertIntoHashTable(current_audio.device_hash, (const void *) (uintptr_t) device->instance_id, device)) {
         SDL_AtomicAdd(device_count, 1);
     } else {
+        SDL_DestroyCondition(device->close_cond);
+        SDL_DestroyMutex(device->lock);
         SDL_free(device->name);
         SDL_free(device);
         device = NULL;
@@ -1774,7 +1776,14 @@ int SDL_BindAudioStreams(SDL_AudioDeviceID devid, SDL_AudioStream **streams, int
             if (retval != 0) {
                 int j;
                 for (j = 0; j <= i; j++) {
+#ifdef _MSC_VER /* Visual Studio analyzer can't tell that we've already verified streams[j] isn't NULL */
+#pragma warning(push)
+#pragma warning(disable : 28182)
+#endif
                     SDL_UnlockMutex(streams[j]->lock);
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
                 }
                 break;
             }
@@ -1785,6 +1794,10 @@ int SDL_BindAudioStreams(SDL_AudioDeviceID devid, SDL_AudioStream **streams, int
         // Now that everything is verified, chain everything together.
         const SDL_bool iscapture = device->iscapture;
         for (int i = 0; i < num_streams; i++) {
+#ifdef _MSC_VER /* Visual Studio analyzer can't tell that streams[i] isn't NULL if retval is 0 */
+#pragma warning(push)
+#pragma warning(disable : 28182)
+#endif
             SDL_AudioStream *stream = streams[i];
 
             stream->bound_device = logdev;
@@ -1803,6 +1816,9 @@ int SDL_BindAudioStreams(SDL_AudioDeviceID devid, SDL_AudioStream **streams, int
             }
 
             SDL_UnlockMutex(stream->lock);
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
         }
     }
 

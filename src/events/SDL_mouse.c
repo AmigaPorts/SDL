@@ -799,8 +799,8 @@ static int SDL_PrivateSendMouseButton(Uint64 timestamp, SDL_Window *window, SDL_
                 Uint64 now = SDL_GetTicks();
 
                 if (now >= (clickstate->last_timestamp + mouse->double_click_time) ||
-                    SDL_fabs(mouse->x - clickstate->last_x) > mouse->double_click_radius ||
-                    SDL_fabs(mouse->y - clickstate->last_y) > mouse->double_click_radius) {
+                    SDL_fabs((double)mouse->x - clickstate->last_x) > mouse->double_click_radius ||
+                    SDL_fabs((double)mouse->y - clickstate->last_y) > mouse->double_click_radius) {
                     clickstate->click_count = 0;
                 }
                 clickstate->last_timestamp = now;
@@ -898,6 +898,7 @@ void SDL_QuitMouse(void)
     }
     SDL_SetRelativeMouseMode(SDL_FALSE);
     SDL_ShowCursor();
+    SDL_PenQuit();
 
     if (mouse->def_cursor) {
         SDL_SetDefaultCursor(NULL);
@@ -1237,6 +1238,12 @@ SDL_Cursor *SDL_CreateCursor(const Uint8 *data, const Uint8 *mask, int w, int h,
     const Uint32 black = 0xFF000000;
     const Uint32 white = 0xFFFFFFFF;
     const Uint32 transparent = 0x00000000;
+#if defined(__WIN32__)
+    /* Only Windows backend supports inverted pixels in mono cursors. */
+    const Uint32 inverted = 0x00FFFFFF;
+#else
+    const Uint32 inverted = 0xFF000000;
+#endif /* defined(__WIN32__) */
 
     /* Make sure the width is a multiple of 8 */
     w = ((w + 7) & ~7);
@@ -1256,7 +1263,7 @@ SDL_Cursor *SDL_CreateCursor(const Uint8 *data, const Uint8 *mask, int w, int h,
             if (maskb & 0x80) {
                 *pixel++ = (datab & 0x80) ? black : white;
             } else {
-                *pixel++ = (datab & 0x80) ? black : transparent;
+                *pixel++ = (datab & 0x80) ? inverted : transparent;
             }
             datab <<= 1;
             maskb <<= 1;

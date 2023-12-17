@@ -112,7 +112,7 @@ static int SDLCALL pen_header_compare(const void *lhs, const void *rhs)
     return l->id - r->id;
 }
 
-SDL_Pen *SDL_GetPenPtr(const Uint32 instance_id)
+SDL_Pen *SDL_GetPenPtr(Uint32 instance_id)
 {
     unsigned int i;
 
@@ -271,7 +271,7 @@ static void pen_sort(void)
     pen_handler.sorted = SDL_TRUE;
 }
 
-SDL_Pen *SDL_PenModifyBegin(const Uint32 instance_id)
+SDL_Pen *SDL_PenModifyBegin(Uint32 instance_id)
 {
     SDL_PenID id = { 0 };
     const size_t alloc_growth_constant = 1; /* Expect few pens */
@@ -826,6 +826,19 @@ void SDL_PenInit(void)
                         SDL_PenUpdateHint, &pen_delay_mouse_button_mode);
 #ifndef SDL_THREADS_DISABLED
     SDL_pen_access_lock = SDL_CreateMutex();
+#endif
+}
+
+void SDL_PenQuit(void)
+{
+    SDL_DelHintCallback(SDL_HINT_PEN_NOT_MOUSE,
+                        SDL_PenUpdateHint, &pen_mouse_emulation_mode);
+
+    SDL_DelHintCallback(SDL_HINT_PEN_DELAY_MOUSE_BUTTON,
+                        SDL_PenUpdateHint, &pen_delay_mouse_button_mode);
+#ifndef SDL_THREADS_DISABLED
+    SDL_DestroyMutex(SDL_pen_access_lock);
+    SDL_pen_access_lock = NULL;
 #endif
 }
 

@@ -546,20 +546,19 @@ static GLuint GLES2_CacheShader(GLES2_RenderData *data, GLES2_ShaderType type, G
     }
 
     if (!compileSuccessful) {
-        SDL_bool isstack = SDL_FALSE;
         char *info = NULL;
         int length = 0;
 
         data->myglGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
         if (length > 0) {
-            info = SDL_small_alloc(char, length, &isstack);
+            info = (char *)SDL_malloc(length);
             if (info) {
                 data->myglGetShaderInfoLog(id, length, &length, info);
             }
         }
         if (info) {
             SDL_SetError("Failed to load the shader %d: %s", type, info);
-            SDL_small_free(info, isstack);
+            SDL_free(info);
         } else {
             SDL_SetError("Failed to load the shader %d", type);
         }
@@ -2092,6 +2091,7 @@ static SDL_Renderer *GLES2_CreateRenderer(SDL_Window *window, SDL_PropertiesID c
         goto error;
     }
 
+    SDL_SyncWindow(window);
     window_flags = SDL_GetWindowFlags(window);
 
     /* OpenGL ES 3.0 is a superset of OpenGL ES 2.0 */
@@ -2122,6 +2122,7 @@ static SDL_Renderer *GLES2_CreateRenderer(SDL_Window *window, SDL_PropertiesID c
     renderer->info = GLES2_RenderDriver.info;
     renderer->info.flags = SDL_RENDERER_ACCELERATED;
     renderer->driverdata = data;
+    GLES2_InvalidateCachedState(renderer);
     renderer->window = window;
 
     /* Create an OpenGL ES 2.0 context */
@@ -2258,7 +2259,6 @@ static SDL_Renderer *GLES2_CreateRenderer(SDL_Window *window, SDL_PropertiesID c
 
     data->myglClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-    data->drawstate.blend = SDL_BLENDMODE_INVALID;
     data->drawstate.clear_color = 0xFFFFFFFF;
     data->drawstate.projection[3][0] = -1.0f;
     data->drawstate.projection[3][3] = 1.0f;
