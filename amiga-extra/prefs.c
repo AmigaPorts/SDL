@@ -48,7 +48,6 @@
 #define MAX_VARIABLE_NAME_LEN 32
 
 static const char* const versingString __attribute__((used)) = "$VER: " NAME " " VERSION " (" __AMIGADATE__ ")";
-static const char* const name = NAME;
 
 static struct ClassLibrary* WindowBase;
 static struct ClassLibrary* RequesterBase;
@@ -688,8 +687,8 @@ CreateWindow(Object* menuObject, struct MsgPort* appPort)
 
     Object* w = IIntuition->NewObject(WindowClass, NULL,
         WA_Activate, TRUE,
-        WA_Title, name,
-        WA_ScreenTitle, name,
+        WA_Title, NAME,
+        WA_ScreenTitle, NAME,
         WA_IDCMP, IDCMP_CLOSEWINDOW | IDCMP_RAWKEY | IDCMP_MENUPICK,
         WA_CloseGadget, TRUE,
         WA_DragBar, TRUE,
@@ -698,7 +697,7 @@ CreateWindow(Object* menuObject, struct MsgPort* appPort)
         WA_MenuStrip, menuObject,
         WINDOW_IconifyGadget, TRUE,
         WINDOW_Icon, MyGetDiskObject(),
-        WINDOW_IconTitle, name,
+        WINDOW_IconTitle, NAME,
         WINDOW_AppPort, appPort, // Iconification needs it
         WINDOW_Position, WPOS_CENTERSCREEN,
         WINDOW_Layout, CreateLayout(),
