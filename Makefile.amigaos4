@@ -10,7 +10,7 @@ INSTALL_PATH ?=
 
 AMIGADATE = $(shell date +"%-d.%-m.%Y")
 
-CFLAGS  = -mcrt=$(CRT) -gstabs -O2 -Wall -fPIC -fcommon -I./include -I./include/SDL3 -I./src -D__AMIGADATE__=\"$(AMIGADATE)\"
+CFLAGS  = -mcrt=$(CRT) -gstabs -O2 -Wall -Werror -fPIC -fcommon -I./include -I./include/SDL3 -I./src -D__AMIGADATE__=\"$(AMIGADATE)\"
 
 TARGET_STATIC  = libSDL3.a
 TARGET_SHARED  = libSDL3-3.0.so
