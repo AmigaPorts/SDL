@@ -586,14 +586,14 @@ AMIGAINPUT_GetDeviceGUID(int device_index)
     Uint16 version = 0;
     Uint8 signature = 0;
     Uint8 data = 0;
-    const char *productName = NULL;
+    const char *vendorName = NULL;
 
     return SDL_CreateJoystickGUID(SDL_HARDWARE_BUS_USB,
                                   vendor,
                                   product,
                                   version,
+                                  vendorName,
                                   joystickList[device_index].name,
-                                  productName,
                                   signature,
                                   data);
 }
