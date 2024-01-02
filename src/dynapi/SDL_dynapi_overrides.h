@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -636,7 +636,6 @@
 #define SDL_ShowWindow SDL_ShowWindow_REAL
 #define SDL_SignalCondition SDL_SignalCondition_REAL
 #define SDL_SoftStretch SDL_SoftStretch_REAL
-#define SDL_SoftStretchLinear SDL_SoftStretchLinear_REAL
 #define SDL_StartTextInput SDL_StartTextInput_REAL
 #define SDL_StopTextInput SDL_StopTextInput_REAL
 #define SDL_SurfaceHasColorKey SDL_SurfaceHasColorKey_REAL
@@ -988,3 +987,4 @@
 #define SDL_strnstr SDL_strnstr_REAL
 #define SDL_wcsnstr SDL_wcsnstr_REAL
 #define SDL_SyncWindow SDL_SyncWindow_REAL
+#define SDL_GetGamepadSteamHandle SDL_GetGamepadSteamHandle_REAL

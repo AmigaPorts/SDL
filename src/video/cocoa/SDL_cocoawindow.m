@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -1140,8 +1140,19 @@ static SDL_bool Cocoa_IsZoomed(SDL_Window *window)
 - (void)windowWillEnterFullScreen:(NSNotification *)aNotification
 {
     SDL_Window *window = _data.window;
+    NSUInteger flags = NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
 
-    SetWindowStyle(window, (NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable));
+    /* Don't set the titled flag on a fullscreen window if the windowed-mode window
+     * is borderless, or the window can wind up in a weird, pseudo-decorated state
+     * when leaving fullscreen if the border flag was toggled on.
+     */
+    if (!(window->flags & SDL_WINDOW_BORDERLESS)) {
+        flags |= NSWindowStyleMaskTitled;
+    } else {
+        flags |= NSWindowStyleMaskBorderless;
+    }
+
+    SetWindowStyle(window, flags);
 
     _data.was_zoomed = !!(window->flags & SDL_WINDOW_MAXIMIZED);
 
@@ -1201,31 +1212,26 @@ static SDL_bool Cocoa_IsZoomed(SDL_Window *window)
 
 - (void)windowWillExitFullScreen:(NSNotification *)aNotification
 {
-    SDL_Window *window = _data.window;
-
     isFullscreenSpace = NO;
     inFullscreenTransition = YES;
-
-    /* As of macOS 10.11, the window seems to need to be resizable when exiting
-       a Space, in order for it to resize back to its windowed-mode size.
-       As of macOS 10.15, the window decorations can go missing sometimes after
-       certain fullscreen-desktop->exlusive-fullscreen->windowed mode flows
-       sometimes. Making sure the style mask always uses the windowed mode style
-       when returning to windowed mode from a space (instead of using a pending
-       fullscreen mode style mask) seems to work around that issue.
-     */
-    SetWindowStyle(window, GetWindowWindowedStyle(window) | NSWindowStyleMaskResizable);
 }
 
 - (void)windowDidFailToExitFullScreen:(NSNotification *)aNotification
 {
     SDL_Window *window = _data.window;
+    NSUInteger flags = NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
 
     if (window->is_destroying) {
         return;
     }
 
-    SetWindowStyle(window, (NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable));
+    if (!(window->flags & SDL_WINDOW_BORDERLESS)) {
+        flags |= NSWindowStyleMaskTitled;
+    } else {
+        flags |= NSWindowStyleMaskBorderless;
+    }
+    
+    SetWindowStyle(window, flags);
 
     isFullscreenSpace = YES;
     inFullscreenTransition = NO;
@@ -2440,9 +2446,14 @@ void Cocoa_RestoreWindow(SDL_VideoDevice *_this, SDL_Window *window)
 void Cocoa_SetWindowBordered(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool bordered)
 {
     @autoreleasepool {
-        if (SetWindowStyle(window, GetWindowStyle(window))) {
-            if (bordered) {
-                Cocoa_SetWindowTitle(_this, window); /* this got blanked out. */
+        SDL_CocoaWindowData *data = (__bridge SDL_CocoaWindowData *)window->driverdata;
+
+        /* If the window is in or transitioning to/from fullscreen, this will be set on leave. */
+        if (!(window->flags & SDL_WINDOW_FULLSCREEN) && ![data.listener isInFullscreenSpaceTransition]) {
+            if (SetWindowStyle(window, GetWindowStyle(window))) {
+                if (bordered) {
+                    Cocoa_SetWindowTitle(_this, window); /* this got blanked out. */
+                }
             }
         }
     }
@@ -2451,7 +2462,7 @@ void Cocoa_SetWindowBordered(SDL_VideoDevice *_this, SDL_Window *window, SDL_boo
 void Cocoa_SetWindowResizable(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool resizable)
 {
     @autoreleasepool {
-        /* Don't set this if we're in a space!
+        /* Don't set this if we're in or transitioning to/from a space!
          * The window will get permanently stuck if resizable is false.
          * -flibit
          */
@@ -2459,7 +2470,7 @@ void Cocoa_SetWindowResizable(SDL_VideoDevice *_this, SDL_Window *window, SDL_bo
         Cocoa_WindowListener *listener = data.listener;
         NSWindow *nswindow = data.nswindow;
         SDL_CocoaVideoData *videodata = data.videodata;
-        if (![listener isInFullscreenSpace]) {
+        if (![listener isInFullscreenSpace] && ![listener isInFullscreenSpaceTransition]) {
             SetWindowStyle(window, GetWindowStyle(window));
         }
         if (videodata.allow_spaces) {
@@ -2476,11 +2487,16 @@ void Cocoa_SetWindowResizable(SDL_VideoDevice *_this, SDL_Window *window, SDL_bo
 void Cocoa_SetWindowAlwaysOnTop(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool on_top)
 {
     @autoreleasepool {
-        NSWindow *nswindow = ((__bridge SDL_CocoaWindowData *)window->driverdata).nswindow;
-        if (on_top) {
-            [nswindow setLevel:NSFloatingWindowLevel];
-        } else {
-            [nswindow setLevel:kCGNormalWindowLevel];
+        SDL_CocoaWindowData *data = (__bridge SDL_CocoaWindowData *)window->driverdata;
+        NSWindow *nswindow = data.nswindow;
+
+        /* If the window is in or transitioning to/from fullscreen, this will be set on leave. */
+        if (!(window->flags & SDL_WINDOW_FULLSCREEN) && ![data.listener isInFullscreenSpaceTransition]) {
+            if (on_top) {
+                [nswindow setLevel:NSFloatingWindowLevel];
+            } else {
+                [nswindow setLevel:kCGNormalWindowLevel];
+            }
         }
     }
 }

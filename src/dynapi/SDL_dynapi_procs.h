@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -119,9 +119,9 @@ SDL_DYNAPI_PROC(void,SDL_AtomicUnlock,(SDL_SpinLock *a),(a),)
 SDL_DYNAPI_PROC(SDL_JoystickID,SDL_AttachVirtualJoystick,(SDL_JoystickType a, int b, int c, int d),(a,b,c,d),return)
 SDL_DYNAPI_PROC(SDL_JoystickID,SDL_AttachVirtualJoystickEx,(const SDL_VirtualJoystickDesc *a),(a),return)
 SDL_DYNAPI_PROC(int,SDL_BlitSurface,(SDL_Surface *a, const SDL_Rect *b, SDL_Surface *c, SDL_Rect *d),(a,b,c,d),return)
-SDL_DYNAPI_PROC(int,SDL_BlitSurfaceScaled,(SDL_Surface *a, const SDL_Rect *b, SDL_Surface *c, SDL_Rect *d),(a,b,c,d),return)
+SDL_DYNAPI_PROC(int,SDL_BlitSurfaceScaled,(SDL_Surface *a, const SDL_Rect *b, SDL_Surface *c, SDL_Rect *d, SDL_ScaleMode e),(a,b,c,d,e),return)
 SDL_DYNAPI_PROC(int,SDL_BlitSurfaceUnchecked,(SDL_Surface *a, const SDL_Rect *b, SDL_Surface *c, const SDL_Rect *d),(a,b,c,d),return)
-SDL_DYNAPI_PROC(int,SDL_BlitSurfaceUncheckedScaled,(SDL_Surface *a, const SDL_Rect *b, SDL_Surface *c, const SDL_Rect *d),(a,b,c,d),return)
+SDL_DYNAPI_PROC(int,SDL_BlitSurfaceUncheckedScaled,(SDL_Surface *a, const SDL_Rect *b, SDL_Surface *c, const SDL_Rect *d, SDL_ScaleMode e),(a,b,c,d,e),return)
 SDL_DYNAPI_PROC(int,SDL_BroadcastCondition,(SDL_Condition *a),(a),return)
 SDL_DYNAPI_PROC(int,SDL_CaptureMouse,(SDL_bool a),(a),return)
 SDL_DYNAPI_PROC(void,SDL_CleanupTLS,(void),(),)
@@ -677,8 +677,7 @@ SDL_DYNAPI_PROC(int,SDL_ShowMessageBox,(const SDL_MessageBoxData *a, int *b),(a,
 SDL_DYNAPI_PROC(int,SDL_ShowSimpleMessageBox,(Uint32 a, const char *b, const char *c, SDL_Window *d),(a,b,c,d),return)
 SDL_DYNAPI_PROC(int,SDL_ShowWindow,(SDL_Window *a),(a),return)
 SDL_DYNAPI_PROC(int,SDL_SignalCondition,(SDL_Condition *a),(a),return)
-SDL_DYNAPI_PROC(int,SDL_SoftStretch,(SDL_Surface *a, const SDL_Rect *b, SDL_Surface *c, const SDL_Rect *d),(a,b,c,d),return)
-SDL_DYNAPI_PROC(int,SDL_SoftStretchLinear,(SDL_Surface *a, const SDL_Rect *b, SDL_Surface *c, const SDL_Rect *d),(a,b,c,d),return)
+SDL_DYNAPI_PROC(int,SDL_SoftStretch,(SDL_Surface *a, const SDL_Rect *b, SDL_Surface *c, const SDL_Rect *d, SDL_ScaleMode e),(a,b,c,d,e),return)
 SDL_DYNAPI_PROC(void,SDL_StartTextInput,(void),(),)
 SDL_DYNAPI_PROC(void,SDL_StopTextInput,(void),(),)
 SDL_DYNAPI_PROC(SDL_bool,SDL_SurfaceHasColorKey,(SDL_Surface *a),(a),return)
@@ -1013,3 +1012,4 @@ SDL_DYNAPI_PROC(const char*,SDL_GetTouchDeviceName,(SDL_TouchID a),(a),return)
 SDL_DYNAPI_PROC(char*,SDL_strnstr,(const char *a, const char *b, size_t c),(a,b,c),return)
 SDL_DYNAPI_PROC(wchar_t*,SDL_wcsnstr,(const wchar_t *a, const wchar_t *b, size_t c),(a,b,c),return)
 SDL_DYNAPI_PROC(int,SDL_SyncWindow,(SDL_Window *a),(a),return)
+SDL_DYNAPI_PROC(Uint64,SDL_GetGamepadSteamHandle,(SDL_Gamepad *a),(a),return)

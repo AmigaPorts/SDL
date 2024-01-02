@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -382,7 +382,7 @@ int SDL_SW_CopyYUVToRGB(SDL_SW_YUVTexture *swdata, const SDL_Rect *srcrect,
     }
     if (stretch) {
         SDL_Rect rect = *srcrect;
-        SDL_SoftStretch(swdata->stretch, &rect, swdata->display, NULL);
+        SDL_SoftStretch(swdata->stretch, &rect, swdata->display, NULL, SDL_SCALEMODE_NEAREST);
     }
     return 0;
 }

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -32,6 +32,7 @@ extern "C" {
 #endif
 
 struct SDL_JoystickDriver;
+struct SDL_SteamVirtualGamepadInfo;
 extern char SDL_joystick_magic;
 
 /* Initialization and shutdown functions */
@@ -59,7 +60,7 @@ extern SDL_bool SDL_JoysticksOpened(void);
 extern char *SDL_CreateJoystickName(Uint16 vendor, Uint16 product, const char *vendor_name, const char *product_name);
 
 /* Function to create a GUID for a joystick based on the VID/PID and name */
-extern SDL_JoystickGUID SDL_CreateJoystickGUID(Uint16 bus, Uint16 vendor, Uint16 product, Uint16 version, const char *name, Uint8 driver_signature, Uint8 driver_data);
+extern SDL_JoystickGUID SDL_CreateJoystickGUID(Uint16 bus, Uint16 vendor, Uint16 product, Uint16 version, const char *vendor_name, const char *product_name, Uint8 driver_signature, Uint8 driver_data);
 
 /* Function to create a GUID for a joystick based on the name, with no VID/PID information */
 extern SDL_JoystickGUID SDL_CreateJoystickGUIDForName(const char *name);
@@ -169,6 +170,9 @@ extern int SDL_SendJoystickSensor(Uint64 timestamp, SDL_Joystick *joystick,
                                      SDL_SensorType type, Uint64 sensor_timestamp, const float *data, int num_values);
 extern void SDL_SendJoystickBatteryLevel(SDL_Joystick *joystick,
                                             SDL_JoystickPowerLevel ePowerLevel);
+
+/* Function to get the Steam virtual gamepad info for a joystick */
+extern const struct SDL_SteamVirtualGamepadInfo *SDL_GetJoystickInstanceVirtualGamepadInfo(SDL_JoystickID instance_id);
 
 /* Internal sanity checking functions */
 extern SDL_bool SDL_IsJoystickValid(SDL_Joystick *joystick);

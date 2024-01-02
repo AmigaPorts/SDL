@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -158,9 +158,6 @@ static int WIN_AdjustWindowRectWithStyle(SDL_Window *window, DWORD style, BOOL m
 {
     SDL_VideoData *videodata = SDL_GetVideoDevice() ? SDL_GetVideoDevice()->driverdata : NULL;
     RECT rect;
-#if !defined(__XBOXONE__) && !defined(__XBOXSERIES__)
-    UINT frame_dpi;
-#endif
 
     /* Client rect, in points */
     switch (rect_type) {
@@ -202,8 +199,9 @@ static int WIN_AdjustWindowRectWithStyle(SDL_Window *window, DWORD style, BOOL m
             /* With per-monitor v2, the window border/titlebar size depend on the DPI, so we need to call AdjustWindowRectExForDpi instead of
                AdjustWindowRectEx. */
             if (videodata) {
+                UINT frame_dpi;
                 SDL_WindowData *data = window->driverdata;
-                frame_dpi = (data && videodata->GetDpiForWindow) ? videodata->GetDpiForWindow(data->hwnd) : 96;
+                frame_dpi = (data && videodata->GetDpiForWindow) ? videodata->GetDpiForWindow(data->hwnd) : USER_DEFAULT_SCREEN_DPI;
                 if (videodata->AdjustWindowRectExForDpi(&rect, style, menu, 0, frame_dpi) == 0) {
                     return WIN_SetError("AdjustWindowRectExForDpi()");
                 }
@@ -224,10 +222,10 @@ static int WIN_AdjustWindowRectWithStyle(SDL_Window *window, DWORD style, BOOL m
 
 #ifdef HIGHDPI_DEBUG
     SDL_Log("WIN_AdjustWindowRectWithStyle: in: %d, %d, %dx%d, returning: %d, %d, %dx%d, used dpi %d for frame calculation",
-            (use_current ? window->requested.x : window->windowed.x),
-            (use_current ? window->requested.y : window->windowed.y),
-            (use_current ? window->requested.w : window->windowed.w),
-            (use_current ? window->requested.h : window->windowed.h),
+            (rect_type == SDL_WINDOWRECT_FLOATING ? window->floating.x : rect_type == SDL_WINDOWRECT_WINDOWED ? window->windowed.x : window->x),
+            (rect_type == SDL_WINDOWRECT_FLOATING ? window->floating.y : rect_type == SDL_WINDOWRECT_WINDOWED ? window->windowed.y : window->y),
+            (rect_type == SDL_WINDOWRECT_FLOATING ? window->floating.w : rect_type == SDL_WINDOWRECT_WINDOWED ? window->windowed.w : window->w),
+            (rect_type == SDL_WINDOWRECT_FLOATING ? window->floating.h : rect_type == SDL_WINDOWRECT_WINDOWED ? window->windowed.h : window->h),
             *x, *y, *width, *height, frame_dpi);
 #endif
     return 0;
@@ -520,6 +518,7 @@ static void CleanupWindowData(SDL_VideoDevice *_this, SDL_Window *window)
 #endif
             }
         }
+        SDL_free(data->rawinput);
         SDL_free(data);
     }
     window->driverdata = NULL;
@@ -1082,6 +1081,13 @@ int WIN_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_Vide
 #ifdef HIGHDPI_DEBUG
     SDL_Log("WIN_SetWindowFullscreen: %d", (int)fullscreen);
 #endif
+
+    /* Early out if already not in fullscreen, or the styling on
+     * external windows may end up being overridden.
+     */
+    if (!(window->flags & SDL_WINDOW_FULLSCREEN) && !fullscreen) {
+        return 0;
+    }
 
     if (SDL_ShouldAllowTopmost() && (window->flags & SDL_WINDOW_ALWAYS_ON_TOP)) {
         top = HWND_TOPMOST;

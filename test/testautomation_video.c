@@ -15,7 +15,7 @@ static SDL_Window *createVideoSuiteTestWindow(const char *title)
     SDL_Window *window;
     SDL_Event event;
     int w, h;
-    SDL_WindowFlags flags;
+    Uint32 flags;
     SDL_bool needs_renderer = SDL_FALSE;
     SDL_bool needs_events_pumped = SDL_FALSE;
 
@@ -25,7 +25,7 @@ static SDL_Window *createVideoSuiteTestWindow(const char *title)
     flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_BORDERLESS;
 
     window = SDL_CreateWindow(title, w, h, flags);
-    SDLTest_AssertPass("Call to SDL_CreateWindow('Title',%d,%d,%d)", w, h, flags);
+    SDLTest_AssertPass("Call to SDL_CreateWindow('Title',%d,%d,%" SDL_PRIu32 ")", w, h, flags);
     SDLTest_AssertCheck(window != NULL, "Validate that returned window struct is not NULL");
 
     /* Wayland and XWayland windows require that a frame be presented before they are fully mapped and visible onscreen.
@@ -197,7 +197,7 @@ static int video_createWindowVariousFlags(void *arg)
     const char *title = "video_createWindowVariousFlags Test Window";
     int w, h;
     int fVariation;
-    SDL_WindowFlags flags;
+    Uint32 flags;
 
     /* Standard window */
     w = SDLTest_RandomIntegerInRange(320, 1024);
@@ -252,7 +252,7 @@ static int video_createWindowVariousFlags(void *arg)
         }
 
         window = SDL_CreateWindow(title, w, h, flags);
-        SDLTest_AssertPass("Call to SDL_CreateWindow('Title',%d,%d,%d)", w, h, flags);
+        SDLTest_AssertPass("Call to SDL_CreateWindow('Title',%d,%d,%" SDL_PRIu32 ")", w, h, flags);
         SDLTest_AssertCheck(window != NULL, "Validate that returned window struct is not NULL");
 
         /* Clean up */
@@ -269,7 +269,7 @@ static int video_getWindowFlags(void *arg)
 {
     SDL_Window *window;
     const char *title = "video_getWindowFlags Test Window";
-    SDL_WindowFlags flags;
+    Uint32 flags;
     Uint32 actualFlags;
 
     /* Reliable flag set always set in test window */
@@ -280,7 +280,7 @@ static int video_getWindowFlags(void *arg)
     if (window != NULL) {
         actualFlags = SDL_GetWindowFlags(window);
         SDLTest_AssertPass("Call to SDL_GetWindowFlags()");
-        SDLTest_AssertCheck((flags & actualFlags) == flags, "Verify returned value has flags %d set, got: %" SDL_PRIu32, flags, actualFlags);
+        SDLTest_AssertCheck((flags & actualFlags) == flags, "Verify returned value has flags %" SDL_PRIu32 " set, got: %" SDL_PRIu32, flags, actualFlags);
     }
 
     /* Clean up */

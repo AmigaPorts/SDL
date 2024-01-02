@@ -1924,10 +1924,10 @@ expression e2;
 + SDL_BlitSurfaceUnchecked
   (...)
 @@
+expression e1, e2, e3, e4;
 @@
-- SDL_LowerBlitScaled
-+ SDL_BlitSurfaceUncheckedScaled
-  (...)
+- SDL_LowerBlitScaled(e1, e2, e3, e4)
++ SDL_BlitSurfaceUncheckedScaled(e1, e2, e3, e4, SDL_SCALEMODE_NEAREST)
 @@
 @@
 - SDL_SetClipRect
@@ -1944,10 +1944,10 @@ expression e2;
 + SDL_BlitSurface
   (...)
 @@
+expression e1, e2, e3, e4;
 @@
-- SDL_UpperBlitScaled
-+ SDL_BlitSurfaceScaled
-  (...)
+- SDL_UpperBlitScaled(e1, e2, e3, e4)
++ SDL_BlitSurfaceScaled(e1, e2, e3, e4, SDL_SCALEMODE_NEAREST)
 @@
 @@
 - SDL_RenderGetD3D11Device
@@ -2745,3 +2745,22 @@ expression w, i, s;
 - SDL_RenderFlush
 + SDL_FlushRenderer
   (...)
+@@
+@@
+- SDL_CONTROLLERSTEAMHANDLEUPDATED
++ SDL_EVENT_GAMEPAD_STEAM_HANDLE_UPDATED
+@@
+@@
+- SDL_GameControllerGetSteamHandle
++ SDL_GetGamepadSteamHandle
+  (...)
+@@
+expression e1, e2, e3, e4;
+@@
+- SDL_SoftStretch(e1, e2, e3, e4)
++ SDL_SoftStretch(e1, e2, e3, e4, SDL_SCALEMODE_NEAREST)
+@@
+expression e1, e2, e3, e4;
+@@
+- SDL_SoftStretchLinear(e1, e2, e3, e4)
++ SDL_SoftStretch(e1, e2, e3, e4, SDL_SCALEMODE_LINEAR)

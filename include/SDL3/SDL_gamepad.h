@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -757,6 +757,19 @@ extern DECLSPEC Uint16 SDLCALL SDL_GetGamepadFirmwareVersion(SDL_Gamepad *gamepa
  * \since This function is available since SDL 3.0.0.
  */
 extern DECLSPEC const char * SDLCALL SDL_GetGamepadSerial(SDL_Gamepad *gamepad);
+
+/**
+ * Get the Steam Input handle of an opened gamepad, if available.
+ *
+ * Returns an InputHandle_t for the gamepad that can be used with Steam Input
+ * API: https://partner.steamgames.com/doc/api/ISteamInput
+ *
+ * \param gamepad the gamepad object to query.
+ * \returns the gamepad handle, or 0 if unavailable.
+ *
+ * \since This function is available since SDL 3.0.0.
+ */
+extern DECLSPEC Uint64 SDLCALL SDL_GetGamepadSteamHandle(SDL_Gamepad *gamepad);
 
 /**
  * Get the battery level of a gamepad, if available.

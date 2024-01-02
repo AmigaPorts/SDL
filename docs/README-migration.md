@@ -338,6 +338,7 @@ The following symbols have been renamed:
 * SDL_CONTROLLERDEVICEREMAPPED => SDL_EVENT_GAMEPAD_REMAPPED
 * SDL_CONTROLLERDEVICEREMOVED => SDL_EVENT_GAMEPAD_REMOVED
 * SDL_CONTROLLERSENSORUPDATE => SDL_EVENT_GAMEPAD_SENSOR_UPDATE
+* SDL_CONTROLLERSTEAMHANDLEUPDATED => SDL_EVENT_GAMEPAD_STEAM_HANDLE_UPDATED
 * SDL_CONTROLLERTOUCHPADDOWN => SDL_EVENT_GAMEPAD_TOUCHPAD_DOWN
 * SDL_CONTROLLERTOUCHPADMOTION => SDL_EVENT_GAMEPAD_TOUCHPAD_MOTION
 * SDL_CONTROLLERTOUCHPADUP => SDL_EVENT_GAMEPAD_TOUCHPAD_UP
@@ -459,6 +460,7 @@ The following functions have been renamed:
 * SDL_GameControllerGetSensorData() => SDL_GetGamepadSensorData()
 * SDL_GameControllerGetSensorDataRate() => SDL_GetGamepadSensorDataRate()
 * SDL_GameControllerGetSerial() => SDL_GetGamepadSerial()
+* SDL_GameControllerGetSteamHandle() => SDL_GetGamepadSteamHandle()
 * SDL_GameControllerGetStringForAxis() => SDL_GetGamepadStringForAxis()
 * SDL_GameControllerGetStringForButton() => SDL_GetGamepadStringForButton()
 * SDL_GameControllerGetTouchpadFinger() => SDL_GetGamepadTouchpadFinger()
@@ -1156,6 +1158,9 @@ But if you're migrating your code which uses masks, you probably have a format i
 0x0000F800 0x000007E0 0x0000001F 0x00000000 => SDL_PIXELFORMAT_RGB565
 ```
 
+SDL_BlitSurfaceScaled() and SDL_BlitSurfaceUncheckedScaled() now take a scale paramater.
+
+SDL_SoftStretch() now takes a scale paramater.
 
 The following functions have been renamed:
 * SDL_FillRect() => SDL_FillSurfaceRect()
@@ -1171,6 +1176,9 @@ The following functions have been renamed:
 * SDL_SetColorKey() => SDL_SetSurfaceColorKey()
 * SDL_UpperBlit() => SDL_BlitSurface()
 * SDL_UpperBlitScaled() => SDL_BlitSurfaceScaled()
+
+The following functions have been removed:
+* SDL_SoftStretchLinear() - use SDL_SoftStretch() with SDL_SCALEMODE_LINEAR
 
 ## SDL_system.h
 
@@ -1191,22 +1199,56 @@ The Windows and X11 events are now available via callbacks which you can set wit
 
 The information previously available in SDL_GetWindowWMInfo() is now available as window properties, e.g.
 ```c
-    HWND hwnd = NULL;
     SDL_SysWMinfo info;
     SDL_VERSION(&info.version);
+
+#if defined(__WIN32__)
+    HWND hwnd = NULL;
     if (SDL_GetWindowWMInfo(window, &info) && info.subsystem == SDL_SYSWM_WINDOWS) {
         hwnd = info.info.win.window;
     }
     if (hwnd) {
         ...
     }
+#elif defined(__MACOSX__)
+    NSWindow *nswindow = NULL;
+    if (SDL_GetWindowWMInfo(window, &info) && info.subsystem == SDL_SYSWM_COCOA) {
+        nswindow = (__bridge NSWindow *)info.info.cocoa.window;
+    }
+    if (nswindow) {
+        ...
+    }
+#elif defined(__LINUX__)
+    Display *xdisplay = NULL;
+    Window xwindow = 0;
+    if (SDL_GetWindowWMInfo(window, &info) && info.subsystem == SDL_SYSWM_X11) {
+        xdisplay = info.info.x11.display;
+        xwindow = info.info.x11.window;
+    }
+    if (xdisplay && xwindow) {
+        ...
+    }
+#endif
 ```
 becomes:
 ```c
-    HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(window), "SDL.window.win32.hwnd");
+#if defined(__WIN32__)
+    HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(window), "SDL.window.win32.hwnd", NULL);
     if (hwnd) {
         ...
     }
+#elif defined(__MACOS__)
+    NSWindow *nswindow = (__bridge NSWindow *)SDL_GetProperty(SDL_GetWindowProperties(window), "SDL.window.cocoa.window", NULL);
+    if (nswindow) {
+        ...
+    }
+#elif defined(__LINUX__)
+    Display *xdisplay = (Display *)SDL_GetProperty(SDL_GetWindowProperties(window), "SDL.window.x11.display", NULL);
+    Window xwindow = (Window)SDL_GetNumberProperty(SDL_GetWindowProperties(window), "SDL.window.x11.window", 0);
+    if (xdisplay && xwindow) {
+        ...
+    }
+#endif
 ```
 
 ## SDL_thread.h
@@ -1281,7 +1323,21 @@ Rather than iterating over displays using display index, there is a new function
 }
 ```
 
-SDL_CreateWindow() has been simplified and no longer takes a window position. You can use SDL_CreateWindowWithProperties() if you need to set the window position when creating it.
+SDL_CreateWindow() has been simplified and no longer takes a window position. You can use SDL_CreateWindowWithProperties() if you need to set the window position when creating it, e.g.
+```c
+    SDL_PropertiesID props = SDL_CreateProperties();
+    SDL_SetStringProperty(props, "title", title);
+    SDL_SetNumberProperty(props, "x", x);
+    SDL_SetNumberProperty(props, "y", y);
+    SDL_SetNumberProperty(props, "width", width);
+    SDL_SetNumberProperty(props, "height", height);
+    SDL_SetNumberProperty(props, "flags", flags);
+    pWindow = SDL_CreateWindowWithProperties(props);
+    SDL_DestroyProperties(props);
+    if (window) {
+        ...
+    }
+```
 
 The SDL_WINDOWPOS_UNDEFINED_DISPLAY() and SDL_WINDOWPOS_CENTERED_DISPLAY() macros take a display ID instead of display index. The display ID 0 has a special meaning in this case, and is used to indicate the primary display.
 
@@ -1352,7 +1408,8 @@ The following functions have been removed:
 * SDL_SetWindowData() - use SDL_GetWindowProperties() instead
 * SDL_CreateWindowFrom() - use SDL_CreateWindowWithProperties() with the properties that allow you to wrap an existing window
 
-SDL_Window id type is named SDL_WindowID
+The SDL_Window id type is named SDL_WindowID
+The SDL_WindowFlags enum should be replaced with Uint32
 
 The following symbols have been renamed:
 * SDL_WINDOW_ALLOW_HIGHDPI => SDL_WINDOW_HIGH_PIXEL_DENSITY

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -661,7 +661,7 @@ void HIDAPI_SetDeviceName(SDL_HIDAPI_Device *device, const char *name)
 void HIDAPI_SetDeviceProduct(SDL_HIDAPI_Device *device, Uint16 vendor_id, Uint16 product_id)
 {
     /* Don't set the device product ID directly, or we'll constantly re-enumerate this device */
-    device->guid = SDL_CreateJoystickGUID(device->guid.data[0], vendor_id, product_id, device->version, device->name, 'h', 0);
+    device->guid = SDL_CreateJoystickGUID(device->guid.data[0], vendor_id, product_id, device->version, device->manufacturer_string, device->product_string, 'h', 0);
 }
 
 static void HIDAPI_UpdateJoystickSerial(SDL_HIDAPI_Device *device)
@@ -894,18 +894,11 @@ static SDL_HIDAPI_Device *HIDAPI_AddDevice(const struct SDL_hid_device_info *inf
 
     /* Need the device name before getting the driver to know whether to ignore this device */
     {
-        char *manufacturer_string = HIDAPI_ConvertString(info->manufacturer_string);
-        char *product_string = HIDAPI_ConvertString(info->product_string);
         char *serial_number = HIDAPI_ConvertString(info->serial_number);
 
-        device->name = SDL_CreateJoystickName(device->vendor_id, device->product_id, manufacturer_string, product_string);
-
-        if (manufacturer_string) {
-            SDL_free(manufacturer_string);
-        }
-        if (product_string) {
-            SDL_free(product_string);
-        }
+        device->manufacturer_string = HIDAPI_ConvertString(info->manufacturer_string);
+        device->product_string = HIDAPI_ConvertString(info->product_string);
+        device->name = SDL_CreateJoystickName(device->vendor_id, device->product_id, device->manufacturer_string, device->product_string);
 
         if (serial_number && *serial_number) {
             device->serial = serial_number;
@@ -914,6 +907,8 @@ static SDL_HIDAPI_Device *HIDAPI_AddDevice(const struct SDL_hid_device_info *inf
         }
 
         if (!device->name) {
+            SDL_free(device->manufacturer_string);
+            SDL_free(device->product_string);
             SDL_free(device->serial);
             SDL_free(device->path);
             SDL_free(device);
@@ -926,7 +921,7 @@ static SDL_HIDAPI_Device *HIDAPI_AddDevice(const struct SDL_hid_device_info *inf
     } else {
         bus = SDL_HARDWARE_BUS_USB;
     }
-    device->guid = SDL_CreateJoystickGUID(bus, device->vendor_id, device->product_id, device->version, device->name, 'h', 0);
+    device->guid = SDL_CreateJoystickGUID(bus, device->vendor_id, device->product_id, device->version, device->manufacturer_string, device->product_string, 'h', 0);
     device->joystick_type = SDL_JOYSTICK_TYPE_GAMEPAD;
     device->type = SDL_GetJoystickGameControllerProtocol(device->name, device->vendor_id, device->product_id, device->interface_number, device->interface_class, device->interface_subclass, device->interface_protocol);
 
@@ -996,6 +991,8 @@ static void HIDAPI_DelDevice(SDL_HIDAPI_Device *device)
 
             device->magic = NULL;
             SDL_DestroyMutex(device->dev_lock);
+            SDL_free(device->manufacturer_string);
+            SDL_free(device->product_string);
             SDL_free(device->serial);
             SDL_free(device->name);
             SDL_free(device->path);
@@ -1376,6 +1373,11 @@ static const char *HIDAPI_JoystickGetDevicePath(int device_index)
     return path;
 }
 
+static int HIDAPI_JoystickGetDeviceSteamVirtualGamepadSlot(int device_index)
+{
+    return -1;
+}
+
 static int HIDAPI_JoystickGetDevicePlayerIndex(int device_index)
 {
     SDL_HIDAPI_Device *device;
@@ -1654,6 +1656,7 @@ SDL_JoystickDriver SDL_HIDAPI_JoystickDriver = {
     HIDAPI_JoystickDetect,
     HIDAPI_JoystickGetDeviceName,
     HIDAPI_JoystickGetDevicePath,
+    HIDAPI_JoystickGetDeviceSteamVirtualGamepadSlot,
     HIDAPI_JoystickGetDevicePlayerIndex,
     HIDAPI_JoystickSetDevicePlayerIndex,
     HIDAPI_JoystickGetDeviceGUID,

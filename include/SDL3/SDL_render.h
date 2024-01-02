@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -94,16 +94,6 @@ typedef struct SDL_Vertex
     SDL_Color  color;           /**< Vertex color */
     SDL_FPoint tex_coord;       /**< Normalized texture coordinates, if needed */
 } SDL_Vertex;
-
-/**
- * The scaling mode for a texture.
- */
-typedef enum
-{
-    SDL_SCALEMODE_NEAREST, /**< nearest pixel sampling */
-    SDL_SCALEMODE_LINEAR,  /**< linear filtering */
-    SDL_SCALEMODE_BEST     /**< anisotropic filtering */
-} SDL_ScaleMode;
 
 /**
  * The access pattern allowed for a texture.

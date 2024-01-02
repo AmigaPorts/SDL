@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -66,6 +66,10 @@ struct SDL_WindowData
     SDL_bool windowed_mode_was_maximized;
     SDL_bool in_window_deactivation;
     RECT cursor_clipped_rect;
+    RAWINPUT *rawinput;
+    UINT rawinput_size;
+    UINT rawinput_count;
+    Uint64 last_rawinput_poll;
     SDL_Point last_raw_mouse_position;
     SDL_bool mouse_tracked;
     SDL_bool destroy_parent_with_window;

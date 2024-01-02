@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -741,8 +741,13 @@ static void handle_configure_xdg_toplevel(void *data,
             /* If we're a fixed-size window, we know our size for sure.
              * Always assume the configure is wrong.
              */
-            width = window->windowed.w;
-            height = window->windowed.h;
+            if (floating) {
+                width = window->floating.w;
+                height = window->floating.h;
+            } else {
+                width = window->windowed.w;
+                height = window->windowed.h;
+            }
         }
 
         /* The content limits are only a hint, which the compositor is free to ignore,
@@ -1007,8 +1012,13 @@ static void decoration_frame_configure(struct libdecor_frame *frame,
         }
     } else {
         if (!(window->flags & SDL_WINDOW_RESIZABLE)) {
-            width = window->windowed.w;
-            height = window->windowed.h;
+            if (floating) {
+                width = window->floating.w;
+                height = window->floating.h;
+            } else {
+                width = window->windowed.w;
+                height = window->windowed.h;
+            }
 
             OverrideLibdecorLimits(window);
         } else {
@@ -1077,8 +1087,6 @@ static void decoration_frame_configure(struct libdecor_frame *frame,
     window->state_not_floating = tiled;
 
     /* Calculate the new window geometry */
-    wind->requested_window_width = width;
-    wind->requested_window_height = height;
     ConfigureWindowGeometry(window);
 
     /* ... then commit the changes on the libdecor side. */
