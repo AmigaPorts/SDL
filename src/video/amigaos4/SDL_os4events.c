@@ -349,7 +349,13 @@ OS4_HandleHitTestMotion(SDL_VideoDevice *_this, SDL_Window * sdlwin, struct MyIn
     sdlwin->w = w;
     sdlwin->h = h;
 
-    OS4_SetWindowBox(_this, sdlwin);
+    SDL_Rect rect;
+    rect.x = x;
+    rect.y = y;
+    rect.w = w;
+    rect.h = h;
+
+    OS4_SetWindowBox(_this, sdlwin, &rect);
 }
 
 static SDL_bool

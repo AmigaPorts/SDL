@@ -69,6 +69,7 @@ OS4_GetWindowSize(SDL_VideoDevice *_this, struct Window * window, int * width, i
     }
 }
 
+// TODO: can this be handled asynchronously now?
 void
 OS4_WaitForResize(SDL_VideoDevice *_this, SDL_Window * window, int * width, int * height)
 {
@@ -303,6 +304,9 @@ OS4_CenterWindow(struct Screen * screen, SDL_Window * window)
 static void
 OS4_DefineWindowBox(SDL_Window * window, struct Screen * screen, SDL_bool fullscreen, SDL_Rect * box)
 {
+    //dprintf("windowed %d, %d, w %d, h %d\n", window->windowed.x, window->windowed.y, window->windowed.w, window->windowed.h);
+    //dprintf("floating %d, %d, w %d, h %d\n", window->floating.x, window->floating.y, window->floating.w, window->floating.h);
+
     if (screen) {
         if (fullscreen) {
             box->x = 0;
@@ -532,16 +536,16 @@ OS4_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window * window)
 }
 
 void
-OS4_SetWindowBox(SDL_VideoDevice *_this, SDL_Window * window)
+OS4_SetWindowBox(SDL_VideoDevice *_this, SDL_Window * window, SDL_Rect * rect)
 {
     SDL_WindowData *data = window->driverdata;
 
     if (data->syswin) {
         LONG ret = IIntuition->SetWindowAttrs(data->syswin,
-            WA_Left, window->x,
-            WA_Top, window->y,
-            WA_InnerWidth, window->w,
-            WA_InnerHeight, window->h,
+            WA_Left, rect->x,
+            WA_Top, rect->y,
+            WA_InnerWidth, rect->w,
+            WA_InnerHeight, rect->h,
             TAG_DONE);
 
         if (ret) {
@@ -557,9 +561,13 @@ OS4_SetWindowBox(SDL_VideoDevice *_this, SDL_Window * window)
 int
 OS4_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    dprintf("New window position %d, %d\n", window->x, window->y);
+    dprintf("New window position %d, %d\n", window->floating.x, window->floating.y);
 
-    OS4_SetWindowBox(_this, window);
+    OS4_SetWindowBox(_this, window, &window->floating);
+
+    SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_MOVED,
+        window->floating.x,
+        window->floating.y);
 
     return 0;
 }
@@ -575,10 +583,14 @@ OS4_SetWindowSize(SDL_VideoDevice *_this, SDL_Window * window)
 
         OS4_GetWindowSize(_this, data->syswin, &width, &height);
 
-        if (width != window->w || height != window->h) {
-            dprintf("New window size %d*%d\n", window->w, window->h);
+        if (width != window->floating.w || height != window->floating.h) {
+            dprintf("New window size %d*%d\n", window->floating.w, window->floating.h);
 
-            OS4_SetWindowBox(_this, window);
+            OS4_SetWindowBox(_this, window, &window->floating);
+
+            SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESIZED,
+                window->floating.w,
+                window->floating.h);
         } else {
             dprintf("Ignored size request %d*%d\n", width, height);
         }
@@ -749,6 +761,8 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
                 dprintf("System window doesn't exist yet, let's open it\n");
             }
 
+            SDL_SendWindowEvent(window, fullscreen ? SDL_EVENT_WINDOW_ENTER_FULLSCREEN : SDL_EVENT_WINDOW_LEAVE_FULLSCREEN, 0, 0);
+
             data->syswin = OS4_CreateSystemWindow(_this, window, fullscreen ? display : NULL);
 
             if (data->syswin) {
@@ -768,7 +782,6 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
                     OS4_GetWindowSize(_this, data->syswin, &width, &height);
 
                     if (oldWidth != width || oldHeight != height) {
-
                         dprintf("Inform SDL about window resize\n");
                         SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESIZED,
                             width, height);
@@ -776,6 +789,19 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
                 }
 
                 OS4_ResetNormalKeys();
+
+                if (fullscreen) {
+                    if (window->flags & SDL_WINDOW_MAXIMIZED) {
+                        data->wasMaximized = TRUE;
+                        // testautomation video_getSetWindowState verifies this
+                        window->flags &= ~SDL_WINDOW_MAXIMIZED;
+                    }
+                } else {
+                    if (data->wasMaximized) {
+                        window->flags |= SDL_WINDOW_MAXIMIZED;
+                        data->wasMaximized = FALSE;
+                    }
+                }
             }
         }
     }
@@ -921,7 +947,7 @@ void
 OS4_SetWindowMinMaxSize(SDL_VideoDevice *_this, SDL_Window * window)
 {
     if (window->flags & SDL_WINDOW_RESIZABLE) {
-       SDL_WindowData *data = window->driverdata;
+        SDL_WindowData *data = window->driverdata;
 
         OS4_SetWindowLimits(_this, window, data->syswin);
     } else {
@@ -950,29 +976,13 @@ OS4_MaximizeWindow(SDL_VideoDevice *_this, SDL_Window * window)
         OS4_UniconifyWindow(_this, window);
     }
 
-    // HACK: set flag temporarily so that shaped window and OpenGL
-    // context can be resized accordingly...
-    window->flags |= SDL_WINDOW_MAXIMIZED;
+    SDL_Rect rect;
+    rect.x = window->x;
+    rect.y = window->y;
+    rect.w = width;
+    rect.h = height;
 
-    dprintf("Remember original window x %d, y %d, w %d, h %d\n",
-        window->x, window->y, window->w, window->h);
-
-    // Remember old values for restoring
-    data->originalX = window->x;
-    data->originalY = window->y;
-    data->originalW = window->w;
-    data->originalH = window->h;
-
-    // Center maximized window
-    window->x = (screen->Width - width - borderWidth) / 2;
-    window->y = (screen->Height - height - borderHeight) / 2;
-    window->w = width;
-    window->h = height;
-
-    OS4_SetWindowBox(_this, window);
-
-    // ...then remove the flag so that user event can be triggered
-    window->flags &= ~SDL_WINDOW_MAXIMIZED;
+    OS4_SetWindowBox(_this, window, &rect);
 
     SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_MAXIMIZED, 0, 0);
 }
@@ -992,17 +1002,10 @@ OS4_RestoreWindow(SDL_VideoDevice *_this, SDL_Window * window)
         dprintf("Restoring iconified '%s'\n", window->title);
         OS4_UniconifyWindow(_this, window);
     } else if (window->flags & SDL_WINDOW_MAXIMIZED) {
-        SDL_WindowData *data = window->driverdata;
-
-        window->x = data->originalX;
-        window->y = data->originalY;
-        window->w = data->originalW;
-        window->h = data->originalH;
-
         dprintf("Restoring '%s' to x %d, y %d, w %d, h %d\n", window->title,
-            window->x, window->y, window->w, window->h);
+            window->floating.x, window->floating.y, window->floating.w, window->floating.h);
 
-        OS4_SetWindowBox(_this, window);
+        OS4_SetWindowBox(_this, window, &window->floating);
 
         SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESTORED, 0, 0);
     } else {

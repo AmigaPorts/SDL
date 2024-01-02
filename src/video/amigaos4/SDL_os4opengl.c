@@ -432,19 +432,17 @@ OS4_GL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
 
         uint32 depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
 
-        if (OS4_GL_AllocateBuffers(_this, window->w, window->h, depth, data)) {
-
-            dprintf("Resizing MiniGL context to %d*%d\n", window->w, window->h);
+        if (OS4_GL_AllocateBuffers(_this, window->floating.w, window->floating.h, depth, data)) {
+            dprintf("Resizing MiniGL context to %d*%d\n", window->floating.w, window->floating.h);
 
             ((struct GLContextIFace *)data->glContext)->MGLUpdateContextTags(
                             MGLCC_FrontBuffer, data->glFrontBuffer,
                             MGLCC_BackBuffer, data->glBackBuffer,
                             TAG_DONE);
 
-            ((struct GLContextIFace *)data->glContext)->GLViewport(0, 0, window->w, window->h);
+            ((struct GLContextIFace *)data->glContext)->GLViewport(0, 0, window->floating.w, window->floating.h);
 
             return SDL_TRUE;
-
         } else {
             dprintf("Failed to re-allocate MiniGL buffers\n");
             //SDL_Quit();
