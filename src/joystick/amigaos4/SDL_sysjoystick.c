@@ -271,6 +271,12 @@ AMIGAINPUT_GetDevicePath(int device_index)
 }
 
 static int
+AMIGAINPUT_GetDeviceSteamVirtualGamepadSlot(int device_index)
+{
+    return 0;
+}
+
+static int
 AMIGAINPUT_GetDevicePlayerIndex(int device_index)
 {
     return device_index;
@@ -580,12 +586,14 @@ AMIGAINPUT_GetDeviceGUID(int device_index)
     Uint16 version = 0;
     Uint8 signature = 0;
     Uint8 data = 0;
+    const char *productName = NULL;
 
     return SDL_CreateJoystickGUID(SDL_HARDWARE_BUS_USB,
                                   vendor,
                                   product,
                                   version,
                                   joystickList[device_index].name,
+                                  productName,
                                   signature,
                                   data);
 }
@@ -645,6 +653,7 @@ SDL_JoystickDriver SDL_AMIGAINPUT_JoystickDriver =
     AMIGAINPUT_Detect,
     AMIGAINPUT_GetDeviceName,
     AMIGAINPUT_GetDevicePath,
+    AMIGAINPUT_GetDeviceSteamVirtualGamepadSlot,
     AMIGAINPUT_GetDevicePlayerIndex,
     AMIGAINPUT_SetDevicePlayerIndex,
     AMIGAINPUT_GetDeviceGUID,
