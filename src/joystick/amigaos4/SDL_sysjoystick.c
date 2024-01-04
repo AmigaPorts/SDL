@@ -114,7 +114,7 @@ AMIGAINPUT_EnumerateJoysticks(AIN_Device *device, void *UserData)
     BOOL result = FALSE;
 
     if (*count < MAX_JOYSTICKS) {
-        dprintf("ENUMJOY: id=%ld, type=%ld, axes=%ld, buttons=%ld\n",
+        dprintf("id=%ld, type=%ld, axes=%ld, buttons=%ld\n",
             count,
             (int32)device->Type,
             (int32)device->NumAxes,
@@ -231,8 +231,9 @@ AMIGAINPUT_Init(void)
                 int i;
 
                 for (i = 0; i < joystickCount; i++) {
-                    dprintf("Add joystick %d\n", i);
-                    SDL_PrivateJoystickAdded(i);
+                    // Joystick IDs start from 0 in SDL2. In SDL3, they start from 1
+                    dprintf("Add joystick %d\n", i + 1);
+                    SDL_PrivateJoystickAdded(i + 1);
                 }
             }
         }
@@ -273,13 +274,13 @@ AMIGAINPUT_GetDevicePath(int device_index)
 static int
 AMIGAINPUT_GetDeviceSteamVirtualGamepadSlot(int device_index)
 {
-    return 0;
+    return -1;
 }
 
 static int
 AMIGAINPUT_GetDevicePlayerIndex(int device_index)
 {
-    return device_index;
+    return -1;
 }
 
 static void
@@ -291,7 +292,8 @@ AMIGAINPUT_SetDevicePlayerIndex(int device_index, int player_index)
 static SDL_JoystickID
 AMIGAINPUT_GetDeviceInstanceID(int device_index)
 {
-    return device_index;
+    //dprintf("device_index %d\n", device_index);
+    return device_index + 1;
 }
 
 /* Function to open a joystick for use.
@@ -303,7 +305,7 @@ static int
 AMIGAINPUT_Open(SDL_Joystick * joystick, int device_index)
 {
     AIN_DeviceHandle *handle;
-    AIN_DeviceID id = joystickList[joystick->instance_id].id;
+    AIN_DeviceID id = joystickList[joystick->instance_id - 1].id;
 
 #if OLDSDK
     handle = SDL_IAIN->AIN_ObtainDevice(joystickContext, id);
@@ -330,7 +332,7 @@ AMIGAINPUT_Open(SDL_Joystick * joystick, int device_index)
             hwdata->handle  = handle;
             hwdata->context = joystickContext;
 
-            joystick->name  = (char *) joystickList[joystick->instance_id].name;
+            joystick->name  = (char *) joystickList[joystick->instance_id - 1].name;
 
             /* Query number of axes, buttons and hats the device has */
 #if OLDSDK
@@ -461,6 +463,8 @@ AMIGAINPUT_Update(SDL_Joystick * joystick)
     {
         int i;
 
+        const Uint64 timestamp = SDL_GetTicksNS();
+
         /* Extract axis data from buffer and notify SDL of any changes
          * in axis state
          */
@@ -472,8 +476,9 @@ AMIGAINPUT_Update(SDL_Joystick * joystick)
             if (axisdata < -32768) axisdata = -32768;
 
             if (axisdata != hwdata->axisData[i]) {
-                SDL_SendJoystickAxis(0, joystick, i, (Sint16)axisdata);
+                SDL_SendJoystickAxis(timestamp, joystick, i, (Sint16)axisdata);
                 hwdata->axisData[i] = axisdata;
+                //dprintf("Send axis %d\n", i);
             }
         }
 
@@ -486,8 +491,9 @@ AMIGAINPUT_Update(SDL_Joystick * joystick)
             int buttondata = BUFFER_OFFSET(buffer, hwdata->buttonBufferOffset[i]);
 
             if (buttondata != hwdata->buttonData[i]) {
-                SDL_SendJoystickButton(0, joystick, 1, buttondata ? SDL_PRESSED : SDL_RELEASED);
+                SDL_SendJoystickButton(timestamp, joystick, i, buttondata ? SDL_PRESSED : SDL_RELEASED);
                 hwdata->buttonData[i] = buttondata;
+                //dprintf("Send button %d\n", i);
             }
         }
 
@@ -498,8 +504,9 @@ AMIGAINPUT_Update(SDL_Joystick * joystick)
             int hatdata = BUFFER_OFFSET(buffer, hwdata->hatBufferOffset[i]);
 
             if (hatdata != hwdata->hatData[i]) {
-                SDL_SendJoystickHat(0, joystick, i, AMIGAINPUT_MapHatData(hatdata));
+                SDL_SendJoystickHat(timestamp, joystick, i, AMIGAINPUT_MapHatData(hatdata));
                 hwdata->hatData[i] = hatdata;
+                //dprintf("Send hat %d\n", i);
             }
         }
     }
@@ -509,7 +516,7 @@ AMIGAINPUT_Update(SDL_Joystick * joystick)
 static void
 AMIGAINPUT_Close(SDL_Joystick * joystick)
 {
-    dprintf("Closing joystick #%d (AI ID=%d)\n", joystick->instance_id, joystickList[joystick->instance_id].id);
+    dprintf("Closing joystick #%d (AI ID=%d)\n", joystick->instance_id, joystickList[joystick->instance_id - 1].id);
 
 #if OLDSDK
     SDL_IAIN->AIN_ReleaseDevice(joystick->hwdata->context, joystick->hwdata->handle);
