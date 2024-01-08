@@ -33,6 +33,7 @@
 #include "SDL_os4mouse.h"
 #include "SDL_os4window.h"
 #include "SDL_os4events.h"
+#include "SDL_os4keyboard.h"
 
 #include "../../events/SDL_keyboard_c.h"
 #include "../../events/SDL_mouse_c.h"
@@ -40,7 +41,7 @@
 #include "../../events/scancodes_amiga.h"
 #include "../../events/SDL_events_c.h"
 
-#undef DEBUG
+//#undef DEBUG
 #include "../../main/amigaos4/SDL_os4debug.h"
 
 extern SDL_bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window);
@@ -172,24 +173,6 @@ OS4_FindWindow(SDL_VideoDevice *_this, struct Window * syswin)
     return NULL;
 }
 
-static char
-OS4_TranslateUnicode(SDL_VideoDevice *_this, uint16 code, uint32 qualifier)
-{
-    struct InputEvent ie;
-    uint16 res;
-    char buffer[10];
-
-    ie.ie_Class = IECLASS_RAWKEY;
-    ie.ie_SubClass = 0;
-    ie.ie_Code  = code & ~(IECODE_UP_PREFIX);
-    ie.ie_Qualifier = qualifier;
-    ie.ie_EventAddress = NULL;
-
-    res = IKeymap->MapRawKey(&ie, buffer, sizeof(buffer), 0);
-
-    return (res == 1) ? buffer[0] : 0;
-}
-
 static void
 OS4_DetectNumLock(const SDL_Scancode s)
 {
@@ -241,21 +224,22 @@ OS4_HandleKeyboard(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
     const uint8 rawkey = imsg->Code & 0x7F;
 
     if (rawkey < sizeof(amiga_scancode_table) / sizeof(amiga_scancode_table[0])) {
-        SDL_Scancode s = amiga_scancode_table[rawkey];
+        const SDL_Scancode s = amiga_scancode_table[rawkey];
 
         if (imsg->Code < 0x80) {
-            char text[2];
-
-            text[0] = OS4_TranslateUnicode(_this, imsg->Code, imsg->Qualifier);
-            text[1] = '\0';
+            char text[5] = { 0 };
 
             OS4_DetectNumLock(s);
-
             SDL_SendKeyboardKey(0, SDL_PRESSED, s);
 
-            if (text[0] && text[0] < 0x80) {
-                /* SDL wants UTF-8 strings. Filter out codes above 7-bit to avoid
-                interpretation issues later. */
+            const uint32 unicode = OS4_TranslateUnicode(_this, imsg->Code, imsg->Qualifier);
+
+            if (unicode) {
+                SDL_UCS4ToUTF8(unicode, text);
+
+                dprintf("Unicode %lu mapped to UTF-8: 0x%X, 0x%X, 0x%X, 0x%X 0x%X\n",
+                        unicode, text[0], text[1], text[2], text[3], text[4]);
+
                 SDL_SendKeyboardText(text);
             }
         } else {

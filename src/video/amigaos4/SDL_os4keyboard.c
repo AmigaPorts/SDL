@@ -24,6 +24,10 @@
 
 #include <proto/keymap.h>
 #include <proto/textclip.h>
+#include <proto/diskfont.h>
+#include <proto/locale.h>
+
+#include <diskfont/diskfonttag.h>
 
 #include "SDL_os4video.h"
 #include "SDL_os4keyboard.h"
@@ -33,11 +37,12 @@
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
+static ULONG* unicodeMappingTable;
+
 static SDL_Keycode
 OS4_MapRawKey(SDL_VideoDevice *_this, int code)
 {
     struct InputEvent ie;
-    int res;
     char buffer[2] = {0, 0};
 
     ie.ie_Class = IECLASS_RAWKEY;
@@ -46,26 +51,54 @@ OS4_MapRawKey(SDL_VideoDevice *_this, int code)
     ie.ie_Qualifier = 0;
     ie.ie_EventAddress = NULL;
 
-    res = IKeymap->MapRawKey(&ie, buffer, sizeof(buffer), NULL);
-    if (res > 0) {
-        return (buffer[0] + buffer[1] * 256);
+    const WORD res = IKeymap->MapRawKey(&ie, buffer, sizeof(buffer), NULL);
+
+    if (res == 1) {
+        return buffer[0];
     } else {
+        dprintf("MapRawKey(code %u) returned %d\n", code, res);
         return 0;
     }
+}
+
+uint32
+OS4_TranslateUnicode(SDL_VideoDevice *_this, uint16 code, uint32 qualifier)
+{
+    struct InputEvent ie;
+    char buffer[10];
+
+    ie.ie_Class = IECLASS_RAWKEY;
+    ie.ie_SubClass = 0;
+    ie.ie_Code  = code & ~(IECODE_UP_PREFIX);
+    ie.ie_Qualifier = qualifier;
+    ie.ie_EventAddress = NULL;
+
+    const WORD res = IKeymap->MapRawKey(&ie, buffer, sizeof(buffer), 0);
+
+    if (res == 1) {
+        if (unicodeMappingTable) {
+            return unicodeMappingTable[(int)buffer[0]];
+        } else {
+            // Fall-back to ASCII values
+            return buffer[0] & 0x7F;
+        }
+    } else {
+        dprintf("MapRawKey(code %u, qualifier %u) returned %d\n", code, qualifier, res);
+    }
+
+    return 0;
 }
 
 static void
 OS4_UpdateKeymap(SDL_VideoDevice *_this)
 {
-    int i;
-    SDL_Scancode scancode;
     SDL_Keycode keymap[SDL_NUM_SCANCODES];
 
     SDL_GetDefaultKeymap(keymap);
 
-    for (i = 0; i < SDL_arraysize(amiga_scancode_table); i++) {
+    for (int i = 0; i < SDL_arraysize(amiga_scancode_table); i++) {
         /* Make sure this scancode is a valid character scancode */
-        scancode = amiga_scancode_table[i];
+        const SDL_Scancode scancode = amiga_scancode_table[i];
         if (scancode == SDL_SCANCODE_UNKNOWN ) {
             continue;
         }
@@ -88,7 +121,7 @@ OS4_UpdateKeymap(SDL_VideoDevice *_this)
 int
 OS4_SetClipboardText(SDL_VideoDevice *_this, const char *text)
 {
-    LONG result = ITextClip->WriteClipVector(text, SDL_strlen(text));
+    const LONG result = ITextClip->WriteClipVector(text, SDL_strlen(text));
 
     //dprintf("Result %s\n", result ? "OK" : "NOK");
 
@@ -102,14 +135,13 @@ OS4_GetClipboardText(SDL_VideoDevice *_this)
     ULONG size;
     char *to = NULL;
 
-    LONG result = ITextClip->ReadClipVector(&from, &size);
+    const LONG result = ITextClip->ReadClipVector(&from, &size);
 
     //dprintf("Read '%s' (%d bytes) from clipboard\n", from, size);
 
     if (result) {
-
         if (size) {
-            to = SDL_malloc( ++size );
+            to = SDL_malloc(++size);
 
             if (to) {
                SDL_strlcpy(to, from, size);
@@ -154,6 +186,26 @@ OS4_InitKeyboard(SDL_VideoDevice *_this)
     SDL_SetScancodeName(SDL_SCANCODE_LGUI, "Left Amiga");
     SDL_SetScancodeName(SDL_SCANCODE_RGUI, "Right Amiga");
     SDL_SetScancodeName(SDL_SCANCODE_LCTRL, "Control");
+
+    if (!unicodeMappingTable) {
+        struct Locale *locale = ILocale->OpenLocale(NULL);
+
+        if (locale) {
+            const uint32 codeSet = locale->loc_CodeSet ? locale->loc_CodeSet : 4;
+
+            dprintf("Default code set %lu\n", codeSet);
+
+            unicodeMappingTable = (ULONG *)IDiskfont->ObtainCharsetInfo(DFCS_NUMBER, codeSet, DFCS_MAPTABLE);
+
+            if (!unicodeMappingTable) {
+                dprintf("Failed to get unicode mapping table\n");
+            }
+
+            ILocale->CloseLocale(locale);
+        } else {
+            dprintf("Failed to open current locale\n");
+        }
+    }
 }
 
 void

@@ -43,6 +43,8 @@ struct IntuitionIFace* IIntuition;
 struct IconIFace* IIcon;
 struct WorkbenchIFace* IWorkbench;
 struct KeymapIFace* IKeymap;
+struct DiskfontIFace* IDiskfont;
+struct LocaleIFace* ILocale;
 
 static struct Library* NewlibBase;
 static struct Library* DOSBase;
@@ -55,6 +57,8 @@ static struct Library* IntuitionBase;
 static struct Library* IconBase;
 static struct Library* WorkbenchBase;
 static struct Library* KeymapBase;
+static struct Library* DiskfontBase;
+static struct Library* LocaleBase;
 
 static BOOL newlibOpened = FALSE;
 static BOOL dosOpened = FALSE;
@@ -67,6 +71,8 @@ static BOOL intuitionOpened = FALSE;
 static BOOL iconOpened = FALSE;
 static BOOL workbenchOpened = FALSE;
 static BOOL keymapOpened = FALSE;
+static BOOL diskfontOpened = FALSE;
+static BOOL localeOpened = TRUE;
 
 static int initCount = 0;
 
@@ -138,7 +144,7 @@ void OS4_INIT(void)
     }
 
     if (IApplication) {
-        dprintf("IApplication %p", IApplication);
+        dprintf("IApplication %p\n", IApplication);
     } else {
         ApplicationBase = OS4_OpenLibrary("application.library", 53);
 
@@ -152,7 +158,7 @@ void OS4_INIT(void)
     }
 
     if (ITextClip) {
-        dprintf("ITextClip %p", ITextClip);
+        dprintf("ITextClip %p\n", ITextClip);
     } else {
         TextClipBase = OS4_OpenLibrary("textclip.library", 53);
 
@@ -164,7 +170,7 @@ void OS4_INIT(void)
     }
 
     if (IGraphics) {
-        dprintf("IGraphics %p", IGraphics);
+        dprintf("IGraphics %p\n", IGraphics);
     } else {
         GfxBase = OS4_OpenLibrary("graphics.library", 54);
 
@@ -176,7 +182,7 @@ void OS4_INIT(void)
     }
 
     if (ILayers) {
-        dprintf("ILayers %p", ILayers);
+        dprintf("ILayers %p\n", ILayers);
     } else {
         LayersBase = OS4_OpenLibrary("layers.library", 53);
 
@@ -188,7 +194,7 @@ void OS4_INIT(void)
     }
 
     if (IIntuition) {
-        dprintf("IIntuition %p", IIntuition);
+        dprintf("IIntuition %p\n", IIntuition);
     } else {
         IntuitionBase = OS4_OpenLibrary("intuition.library", 53);
 
@@ -200,7 +206,7 @@ void OS4_INIT(void)
     }
 
     if (IIcon) {
-        dprintf("IIcon %p", IIcon);
+        dprintf("IIcon %p\n", IIcon);
     } else {
         IconBase = OS4_OpenLibrary("icon.library", 53);
 
@@ -212,7 +218,7 @@ void OS4_INIT(void)
     }
 
     if (IWorkbench) {
-        dprintf("IWorkbench %p", IWorkbench);
+        dprintf("IWorkbench %p\n", IWorkbench);
     } else {
         WorkbenchBase = OS4_OpenLibrary("workbench.library", 53);
 
@@ -224,7 +230,7 @@ void OS4_INIT(void)
     }
 
     if (IKeymap) {
-        dprintf("IKeymap %p", IKeymap);
+        dprintf("IKeymap %p\n", IKeymap);
     } else {
         KeymapBase = OS4_OpenLibrary("keymap.library", 53);
 
@@ -235,8 +241,31 @@ void OS4_INIT(void)
         }
     }
 
-    OS4_LogVersion();
+    if (IDiskfont) {
+        dprintf("IDiskfont %p\n", IDiskfont);
+    } else {
+        DiskfontBase = OS4_OpenLibrary("diskfont.library", 53);
 
+        if (DiskfontBase) {
+            IDiskfont = (struct DiskfontIFace *)OS4_GetInterface(DiskfontBase);
+            dprintf("IDiskfont %p initialized\n", IDiskfont);
+            diskfontOpened = IDiskfont != NULL;
+        }
+    }
+
+    if (ILocale) {
+        dprintf("ILocale %p\n", ILocale);
+    } else {
+        LocaleBase = OS4_OpenLibrary("locale.library", 53);
+
+        if (LocaleBase) {
+            ILocale = (struct LocaleIFace *)OS4_GetInterface(LocaleBase);
+            dprintf("ILocale %p initialized\n", ILocale);
+            localeOpened = ILocale != NULL;
+        }
+    }
+
+    OS4_LogVersion();
     OS4_InitThreadSubSystem();
 
     initCount++;
@@ -254,6 +283,14 @@ void OS4_QUIT(void)
     }
 
     OS4_QuitThreadSubSystem();
+
+    if (localeOpened) {
+        OS4_DropInterface((struct Interface**)&ILocale);
+    }
+
+    if (diskfontOpened) {
+        OS4_DropInterface((struct Interface**)&IDiskfont);
+    }
 
     if (keymapOpened) {
         OS4_DropInterface((struct Interface**)&IKeymap);
@@ -299,6 +336,8 @@ void OS4_QUIT(void)
         OS4_DropInterface((struct Interface**)&IDOS);
     }
 
+    OS4_CloseLibrary(&LocaleBase);
+    OS4_CloseLibrary(&DiskfontBase);
     OS4_CloseLibrary(&KeymapBase);
     OS4_CloseLibrary(&WorkbenchBase);
     OS4_CloseLibrary(&IconBase);
