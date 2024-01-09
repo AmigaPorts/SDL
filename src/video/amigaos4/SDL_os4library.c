@@ -72,7 +72,7 @@ static BOOL iconOpened = FALSE;
 static BOOL workbenchOpened = FALSE;
 static BOOL keymapOpened = FALSE;
 static BOOL diskfontOpened = FALSE;
-static BOOL localeOpened = TRUE;
+static BOOL localeOpened = FALSE;
 
 static int initCount = 0;
 
