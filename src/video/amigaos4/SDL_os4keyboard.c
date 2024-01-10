@@ -55,10 +55,10 @@ OS4_MapRawKey(SDL_VideoDevice *_this, int code)
 
     if (res == 1) {
         return buffer[0];
-    } else {
-        dprintf("MapRawKey(code %u) returned %d\n", code, res);
-        return 0;
     }
+
+    dprintf("MapRawKey(code %u) returned %d\n", code, res);
+    return 0;
 }
 
 uint32
@@ -78,9 +78,11 @@ OS4_TranslateUnicode(SDL_VideoDevice *_this, uint16 code, uint32 qualifier)
     if (res == 1) {
         if (unicodeMappingTable) {
             return unicodeMappingTable[(int)buffer[0]];
+        } else if (buffer[0] <= 0x7F) {
+            // Return just ASCII values which are valid UTF-8
+            return buffer[0];
         } else {
-            // Fall-back to ASCII values
-            return buffer[0] & 0x7F;
+            dprintf("Failed to map ANSI code %u to unicode\n", buffer[0]);
         }
     } else {
         dprintf("MapRawKey(code %u, qualifier %u) returned %d\n", code, qualifier, res);
