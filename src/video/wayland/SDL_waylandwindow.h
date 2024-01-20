@@ -70,7 +70,8 @@ struct SDL_WindowData
         WAYLAND_SURFACE_UNKNOWN = 0,
         WAYLAND_SURFACE_XDG_TOPLEVEL,
         WAYLAND_SURFACE_XDG_POPUP,
-        WAYLAND_SURFACE_LIBDECOR
+        WAYLAND_SURFACE_LIBDECOR,
+        WAYLAND_SURFACE_CUSTOM
     } shell_surface_type;
     enum
     {
@@ -129,6 +130,8 @@ struct SDL_WindowData
     SDL_bool show_hide_sync_required;
 
     SDL_HitTestResult hit_test_result;
+
+    struct wl_list external_window_list_link;
 };
 
 extern void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window);

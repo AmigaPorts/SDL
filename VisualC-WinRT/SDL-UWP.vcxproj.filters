@@ -435,9 +435,6 @@
     <ClInclude Include="..\src\SDL_list.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\haptic\windows\SDL_xinputhaptic_c.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\haptic\windows\SDL_dinputhaptic_c.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -855,9 +852,6 @@
     <ClCompile Include="..\src\haptic\windows\SDL_windowshaptic.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\haptic\windows\SDL_xinputhaptic.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\video\SDL_yuv.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -899,7 +893,7 @@
     <ClCompile Include="..\src\stdlib\SDL_mslibc.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <MASM Include="..\src\stdlib\SDL_mslibc_x64.asm">
+    <MASM Include="..\src\stdlib\SDL_mslibc_x64.masm">
       <Filter>stdlib</Filter>
     </MASM>
     <ClCompile Include="..\src\core\windows\pch.c">

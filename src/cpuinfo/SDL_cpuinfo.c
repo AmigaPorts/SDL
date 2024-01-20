@@ -127,7 +127,7 @@ static int CPU_haveCPUID(void)
     int has_CPUID = 0;
 
 /* *INDENT-OFF* */ /* clang-format off */
-#ifndef SDL_CPUINFO_DISABLED
+#ifndef __EMSCRIPTEN__
 #if (defined(__GNUC__) || defined(__llvm__)) && defined(__i386__)
     __asm__ (
 "        pushfl                      # Get original EFLAGS             \n"
@@ -214,7 +214,7 @@ done:
 "1:                            \n"
     );
 #endif
-#endif
+#endif /* !__EMSCRIPTEN__ */
 /* *INDENT-ON* */ /* clang-format on */
     return has_CPUID;
 }
@@ -450,9 +450,7 @@ static int CPU_haveNEON(void)
 {
 /* The way you detect NEON is a privileged instruction on ARM, so you have
    query the OS kernel in a platform-specific way. :/ */
-#ifdef SDL_CPUINFO_DISABLED
-    return 0; /* disabled */
-#elif (defined(__WINDOWS__) || defined(__WINRT__) || defined(__GDK__)) && (defined(_M_ARM) || defined(_M_ARM64))
+#if (defined(__WINDOWS__) || defined(__WINRT__) || defined(__GDK__)) && (defined(_M_ARM) || defined(_M_ARM64))
 /* Visual Studio, for ARM, doesn't define __ARM_ARCH. Handle this first. */
 /* Seems to have been removed */
 #ifndef PF_ARM_NEON_INSTRUCTIONS_AVAILABLE
@@ -509,6 +507,8 @@ static int CPU_haveNEON(void)
         }
         return 0;
     }
+#elif defined(__EMSCRIPTEN__)
+    return 0;
 #else
 #warning SDL_HasNEON is not implemented for this ARM platform. Write me.
     return 0;
@@ -629,7 +629,6 @@ static int SDL_CPUCount = 0;
 int SDL_GetCPUCount(void)
 {
     if (!SDL_CPUCount) {
-#ifndef SDL_CPUINFO_DISABLED
 #if defined(HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
         if (SDL_CPUCount <= 0) {
             SDL_CPUCount = (int)sysconf(_SC_NPROCESSORS_ONLN);
@@ -647,7 +646,6 @@ int SDL_GetCPUCount(void)
             GetSystemInfo(&info);
             SDL_CPUCount = info.dwNumberOfProcessors;
         }
-#endif
 #endif
         /* There has to be at least 1, right? :) */
         if (SDL_CPUCount <= 0) {
@@ -1021,7 +1019,6 @@ static int SDL_SystemRAM = 0;
 int SDL_GetSystemRAM(void)
 {
     if (!SDL_SystemRAM) {
-#ifndef SDL_CPUINFO_DISABLED
 #if defined(HAVE_SYSCONF) && defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
         if (SDL_SystemRAM <= 0) {
             SDL_SystemRAM = (int)((Sint64)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / (1024 * 1024));
@@ -1095,7 +1092,6 @@ int SDL_GetSystemRAM(void)
                 SDL_SystemRAM = (int)SDL_round((info.max_pages + info.ignored_pages > 0 ? info.ignored_pages : 0) * B_PAGE_SIZE / 1048576.0);
             }
         }
-#endif
 #endif
     }
     return SDL_SystemRAM;

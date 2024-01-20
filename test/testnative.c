@@ -30,6 +30,9 @@ static NativeWindowFactory *factories[] = {
 #ifdef TEST_NATIVE_WINDOWS
     &WindowsWindowFactory,
 #endif
+#ifdef TEST_NATIVE_WAYLAND
+    &WaylandWindowFactory,
+#endif
 #ifdef TEST_NATIVE_X11
     &X11WindowFactory,
 #endif
@@ -152,6 +155,9 @@ int main(int argc, char *argv[])
     }
     props = SDL_CreateProperties();
     SDL_SetProperty(props, "sdl2-compat.external_window", native_window);
+    SDL_SetBooleanProperty(props, SDL_PROPERTY_WINDOW_CREATE_OPENGL_BOOLEAN, SDL_TRUE);
+    SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_WIDTH_NUMBER, WINDOW_W);
+    SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_HEIGHT_NUMBER, WINDOW_H);
     window = SDL_CreateWindowWithProperties(props);
     SDL_DestroyProperties(props);
     if (!window) {

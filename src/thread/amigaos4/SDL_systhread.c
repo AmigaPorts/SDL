@@ -247,10 +247,10 @@ SDL_SYS_SetupThread(const char * name)
     //dprintf("Called for '%s'\n", name);
 }
 
-SDL_threadID
-SDL_ThreadID(void)
+SDL_ThreadID
+SDL_GetCurrentThreadID(void)
 {
-    return (SDL_threadID) IExec->FindTask(NULL);
+    return (SDL_ThreadID)(Uint32)IExec->FindTask(NULL);
 }
 
 int
