@@ -857,21 +857,8 @@ static void testHiddenWindow()
      }
 }
 
-static void testInitEverything()
-{
-    if (SDL_Init(SDL_INIT_EVERYTHING) == 0) {
-        puts("I works?");
-    } else {
-        puts("Expected failure, there is no force feedback (haptic) here");
-    }
-
-    SDL_Quit();
-}
-
 int main(void)
 {
-    if (0) testInitEverything();
-
     if (SDL_Init(SDL_INIT_VIDEO/*|SDL_INIT_TIMER*/) == 0) {
         if (0) testPath();
         if (0) testWindow();

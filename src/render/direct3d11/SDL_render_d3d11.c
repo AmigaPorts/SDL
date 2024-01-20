@@ -665,7 +665,7 @@ static HRESULT D3D11_CreateDeviceResources(SDL_Renderer *renderer)
     ID3D11DeviceContext_VSSetShader(data->d3dContext, data->vertexShader, NULL, 0);
     ID3D11DeviceContext_VSSetConstantBuffers(data->d3dContext, 0, 1, &data->vertexShaderConstants);
 
-    SDL_SetProperty(SDL_GetRendererProperties(renderer), "SDL.renderer.d3d11.device", data->d3dDevice);
+    SDL_SetProperty(SDL_GetRendererProperties(renderer), SDL_PROPERTY_RENDERER_D3D11_DEVICE_POINTER, data->d3dDevice);
 
 done:
     SAFE_RELEASE(d3dDevice);
@@ -829,7 +829,7 @@ static HRESULT D3D11_CreateSwapChain(SDL_Renderer *renderer, int w, int h)
 #endif
     } else {
 #if defined(__WIN32__) || defined(__WINGDK__)
-        HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(renderer->window), "SDL.window.win32.hwnd", NULL);
+        HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(renderer->window), SDL_PROPERTY_WINDOW_WIN32_HWND_POINTER, NULL);
 
         result = IDXGIFactory2_CreateSwapChainForHwnd(data->dxgiFactory,
                                                       (IUnknown *)data->d3dDevice,
@@ -1137,7 +1137,7 @@ static int D3D11_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SDL
             return WIN_SetErrorFromHRESULT(SDL_COMPOSE_ERROR("ID3D11Device1::CreateTexture2D"), result);
         }
     }
-    SDL_SetProperty(SDL_GetTextureProperties(texture), "SDL.texture.d3d11.texture", textureData->mainTexture);
+    SDL_SetProperty(SDL_GetTextureProperties(texture), SDL_PROPERTY_TEXTURE_D3D11_TEXTURE_POINTER, textureData->mainTexture);
 #if SDL_HAVE_YUV
     if (texture->format == SDL_PIXELFORMAT_YV12 ||
         texture->format == SDL_PIXELFORMAT_IYUV) {
@@ -1159,7 +1159,7 @@ static int D3D11_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SDL
                 return WIN_SetErrorFromHRESULT(SDL_COMPOSE_ERROR("ID3D11Device1::CreateTexture2D"), result);
             }
         }
-        SDL_SetProperty(SDL_GetTextureProperties(texture), "SDL.texture.d3d11.texture_u", textureData->mainTextureU);
+        SDL_SetProperty(SDL_GetTextureProperties(texture), SDL_PROPERTY_TEXTURE_D3D11_TEXTURE_U_POINTER, textureData->mainTextureU);
 
         if (GetTextureProperty(create_props, "d3d11.texture_v", &textureData->mainTextureV) < 0) {
             return -1;
@@ -1174,7 +1174,7 @@ static int D3D11_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SDL
                 return WIN_SetErrorFromHRESULT(SDL_COMPOSE_ERROR("ID3D11Device1::CreateTexture2D"), result);
             }
         }
-        SDL_SetProperty(SDL_GetTextureProperties(texture), "SDL.texture.d3d11.texture_v", textureData->mainTextureV);
+        SDL_SetProperty(SDL_GetTextureProperties(texture), SDL_PROPERTY_TEXTURE_D3D11_TEXTURE_V_POINTER, textureData->mainTextureV);
     }
     if (texture->format == SDL_PIXELFORMAT_NV12 ||
         texture->format == SDL_PIXELFORMAT_NV21) {
@@ -1952,6 +1952,19 @@ static int D3D11_SetDrawState(SDL_Renderer *renderer, const SDL_RenderCommand *c
     ID3D11BlendState *blendState = NULL;
     SDL_bool updateSubresource = SDL_FALSE;
 
+    if (numShaderResources > 0) {
+        shaderResource = shaderResources[0];
+    } else {
+        shaderResource = NULL;
+    }
+
+    /* Make sure the render target isn't bound to a shader */
+    if (shaderResource != rendererData->currentShaderResource) {
+        ID3D11ShaderResourceView *pNullResource = NULL;
+        ID3D11DeviceContext_PSSetShaderResources(rendererData->d3dContext, 0, 1, &pNullResource);
+        rendererData->currentShaderResource = NULL;
+    }
+
     if (renderTargetView != rendererData->currentRenderTargetView) {
         ID3D11DeviceContext_OMSetRenderTargets(rendererData->d3dContext,
                                                1,
@@ -2014,11 +2027,6 @@ static int D3D11_SetDrawState(SDL_Renderer *renderer, const SDL_RenderCommand *c
     if (shader != rendererData->currentShader) {
         ID3D11DeviceContext_PSSetShader(rendererData->d3dContext, shader, NULL, 0);
         rendererData->currentShader = shader;
-    }
-    if (numShaderResources > 0) {
-        shaderResource = shaderResources[0];
-    } else {
-        shaderResource = NULL;
     }
     if (shaderResource != rendererData->currentShaderResource) {
         ID3D11DeviceContext_PSSetShaderResources(rendererData->d3dContext, 0, numShaderResources, shaderResources);
@@ -2488,7 +2496,7 @@ SDL_Renderer *D3D11_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_p
      */
     renderer->info.flags |= SDL_RENDERER_PRESENTVSYNC;
 #else
-    if (SDL_GetBooleanProperty(create_props, "present_vsync", SDL_FALSE)) {
+    if (SDL_GetBooleanProperty(create_props, SDL_PROPERTY_RENDERER_CREATE_PRESENT_VSYNC_BOOLEAN, SDL_FALSE)) {
         renderer->info.flags |= SDL_RENDERER_PRESENTVSYNC;
     }
     renderer->SetVSync = D3D11_SetVSync;

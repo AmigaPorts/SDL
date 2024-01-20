@@ -673,16 +673,16 @@ static void HIDAPI_DriverXboxOne_HandleStatePacket(SDL_Joystick *joystick, SDL_D
     if (ctx->last_state[1] != data[1]) {
         Uint8 hat = 0;
 
-        if (data[2] & 0x01) {
+        if (data[1] & 0x01) {
             hat |= SDL_HAT_UP;
         }
-        if (data[2] & 0x02) {
+        if (data[1] & 0x02) {
             hat |= SDL_HAT_DOWN;
         }
-        if (data[2] & 0x04) {
+        if (data[1] & 0x04) {
             hat |= SDL_HAT_LEFT;
         }
-        if (data[2] & 0x08) {
+        if (data[1] & 0x08) {
             hat |= SDL_HAT_RIGHT;
         }
         SDL_SendJoystickHat(timestamp, joystick, 0, hat);
@@ -1154,6 +1154,10 @@ static SDL_bool HIDAPI_DriverXboxOne_UpdateInitState(SDL_DriverXboxOne_Context *
     return SDL_TRUE;
 }
 
+/* GIP protocol handling adapted under the Zlib license with permission from @medusalix:
+ * https://github.com/medusalix/xone/blob/master/bus/protocol.h
+ * https://github.com/medusalix/xone/blob/master/bus/protocol.c
+ */
 #define GIP_HEADER_MIN_LENGTH 3
 
 /* Internal commands */

@@ -61,7 +61,7 @@ typedef enum SDL_ThreadState
 /* This is the system-independent thread info structure */
 struct SDL_Thread
 {
-    SDL_threadID threadid;
+    SDL_ThreadID threadid;
     SYS_ThreadHandle handle;
     int status;
     SDL_AtomicInt state; /* SDL_THREAD_STATE_* */
@@ -71,7 +71,7 @@ struct SDL_Thread
     int(SDLCALL *userfunc)(void *);
     void *userdata;
     void *data;
-    void *endfunc; /* only used on some platforms. */
+    SDL_FunctionPointer endfunc; /* only used on some platforms. */
 };
 
 /* This is the function called to run a thread */
@@ -80,7 +80,7 @@ extern void SDL_RunThread(SDL_Thread *thread);
 /* This is the system-independent thread local storage structure */
 typedef struct
 {
-    unsigned int limit;
+    SDL_TLSID limit;
     struct
     {
         void *data;
