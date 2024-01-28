@@ -499,12 +499,6 @@ AMIGAINPUT_RumbleTriggers(SDL_Joystick * joystick, Uint16 left_rumble, Uint16 ri
     return SDL_Unsupported();
 }
 
-static Uint32
-AMIGAINPUT_GetCapabilities(SDL_Joystick * joystick)
-{
-    return 0;
-}
-
 static int
 AMIGAINPUT_SetLED(SDL_Joystick * joystick, Uint8 red, Uint8 green, Uint8 blue)
 {
@@ -548,7 +542,6 @@ SDL_JoystickDriver SDL_AMIGAINPUT_JoystickDriver =
     AMIGAINPUT_Open,
     AMIGAINPUT_Rumble,
     AMIGAINPUT_RumbleTriggers,
-    AMIGAINPUT_GetCapabilities,
     AMIGAINPUT_SetLED,
     AMIGAINPUT_SendEffect,
     AMIGAINPUT_SetSensorsEnabled,

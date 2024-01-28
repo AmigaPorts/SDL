@@ -417,7 +417,7 @@ static SDL_bool UpdateAudioSession(SDL_AudioDevice *device, SDL_bool open, SDL_b
             category = AVAudioSessionCategoryRecord;
         }
 
-        #if !TARGET_OS_TV
+        #ifndef SDL_PLATFORM_TVOS
         if (category == AVAudioSessionCategoryPlayAndRecord) {
             options |= AVAudioSessionCategoryOptionDefaultToSpeaker;
         }
@@ -753,7 +753,7 @@ static int PrepareAudioQueue(SDL_AudioDevice *device)
 
     // Make sure we can feed the device a minimum amount of time
     double MINIMUM_AUDIO_BUFFER_TIME_MS = 15.0;
-    #ifdef __IOS__
+    #ifdef SDL_PLATFORM_IOS
     if (SDL_floor(NSFoundationVersionNumber) <= NSFoundationVersionNumber_iOS_7_1) {
         // Older iOS hardware, use 40 ms as a minimum time
         MINIMUM_AUDIO_BUFFER_TIME_MS = 40.0;
@@ -846,7 +846,7 @@ static int COREAUDIO_OpenDevice(SDL_AudioDevice *device)
         AVAudioSession *session = [AVAudioSession sharedInstance];
         [session setPreferredSampleRate:device->spec.freq error:nil];
         device->spec.freq = (int)session.sampleRate;
-        #if TARGET_OS_TV
+        #ifdef SDL_PLATFORM_TVOS
         if (device->iscapture) {
             [session setPreferredInputNumberOfChannels:device->spec.channels error:nil];
             device->spec.channels = session.preferredInputNumberOfChannels;
@@ -856,7 +856,7 @@ static int COREAUDIO_OpenDevice(SDL_AudioDevice *device)
         }
         #else
         // Calling setPreferredOutputNumberOfChannels seems to break audio output on iOS
-        #endif // TARGET_OS_TV
+        #endif /* SDL_PLATFORM_TVOS */
     }
     #endif
 

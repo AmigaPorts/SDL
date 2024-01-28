@@ -35,7 +35,7 @@
 /* Define this if you want to log all packets from the controller */
 /*#define DEBUG_XBOX_PROTOCOL*/
 
-#if defined(__WIN32__) || defined(__WINGDK__)
+#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINGDK)
 #define XBOX_ONE_DRIVER_ACTIVE  1
 #else
 #define XBOX_ONE_DRIVER_ACTIVE  0
@@ -350,7 +350,7 @@ static SDL_bool HIDAPI_DriverXboxOne_IsEnabled(void)
 
 static SDL_bool HIDAPI_DriverXboxOne_IsSupportedDevice(SDL_HIDAPI_Device *device, const char *name, SDL_GamepadType type, Uint16 vendor_id, Uint16 product_id, Uint16 version, int interface_number, int interface_class, int interface_subclass, int interface_protocol)
 {
-#ifdef __MACOS__
+#ifdef SDL_PLATFORM_MACOS
     /* Wired Xbox One controllers are handled by the 360Controller driver */
     if (!SDL_IsJoystickBluetoothXboxOne(vendor_id, product_id)) {
         return SDL_FALSE;
@@ -540,13 +540,13 @@ static Uint32 HIDAPI_DriverXboxOne_GetJoystickCapabilities(SDL_HIDAPI_Device *de
     SDL_DriverXboxOne_Context *ctx = (SDL_DriverXboxOne_Context *)device->context;
     Uint32 result = 0;
 
-    result |= SDL_JOYCAP_RUMBLE;
+    result |= SDL_JOYSTICK_CAP_RUMBLE;
     if (ctx->has_trigger_rumble) {
-        result |= SDL_JOYCAP_RUMBLE_TRIGGERS;
+        result |= SDL_JOYSTICK_CAP_TRIGGER_RUMBLE;
     }
 
     if (ctx->has_color_led) {
-        result |= SDL_JOYCAP_LED;
+        result |= SDL_JOYSTICK_CAP_RGB_LED;
     }
 
     return result;

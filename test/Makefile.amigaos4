@@ -102,6 +102,7 @@ testautomation: testautomation.o \
 		      testautomation_intrinsics.o \
 		      testautomation_joystick.o \
 		      testautomation_keyboard.o \
+		      testautomation_log.o \
 		      testautomation_main.o \
 		      testautomation_math.o \
 		      testautomation_mouse.o \

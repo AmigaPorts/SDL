@@ -686,7 +686,7 @@ static void RAWINPUT_InitWindowsGamingInput(RAWINPUT_DeviceContext *ctx)
             typedef HRESULT(WINAPI * WindowsCreateStringReference_t)(PCWSTR sourceString, UINT32 length, HSTRING_HEADER * hstringHeader, HSTRING * string);
             typedef HRESULT(WINAPI * RoGetActivationFactory_t)(HSTRING activatableClassId, REFIID iid, void **factory);
 
-#ifdef __WINRT__
+#ifdef SDL_PLATFORM_WINRT
             WindowsCreateStringReference_t WindowsCreateStringReferenceFunc = WindowsCreateStringReference;
             RoGetActivationFactory_t RoGetActivationFactoryFunc = RoGetActivationFactory;
 #else
@@ -1431,6 +1431,21 @@ static int RAWINPUT_JoystickOpen(SDL_Joystick *joystick, int device_index)
 
     joystick->epowerlevel = SDL_JOYSTICK_POWER_UNKNOWN;
 
+#ifdef SDL_JOYSTICK_RAWINPUT_XINPUT
+    if (ctx->is_xinput) {
+        SDL_SetBooleanProperty(SDL_GetJoystickProperties(joystick), SDL_PROP_JOYSTICK_CAP_RUMBLE_BOOLEAN, SDL_TRUE);
+    }
+#endif
+#ifdef SDL_JOYSTICK_RAWINPUT_WGI
+    if (ctx->is_xinput) {
+        SDL_SetBooleanProperty(SDL_GetJoystickProperties(joystick), SDL_PROP_JOYSTICK_CAP_RUMBLE_BOOLEAN, SDL_TRUE);
+
+        if (ctx->is_xboxone) {
+            SDL_SetBooleanProperty(SDL_GetJoystickProperties(joystick), SDL_PROP_JOYSTICK_CAP_TRIGGER_RUMBLE_BOOLEAN, SDL_TRUE);
+        }
+    }
+#endif
+
     return 0;
 }
 
@@ -1504,31 +1519,6 @@ static int RAWINPUT_JoystickRumbleTriggers(SDL_Joystick *joystick, Uint16 left_r
 #else
     return SDL_Unsupported();
 #endif
-}
-
-static Uint32 RAWINPUT_JoystickGetCapabilities(SDL_Joystick *joystick)
-{
-    Uint32 result = 0;
-#if defined(SDL_JOYSTICK_RAWINPUT_XINPUT) || defined(SDL_JOYSTICK_RAWINPUT_WGI)
-    RAWINPUT_DeviceContext *ctx = joystick->hwdata;
-
-#ifdef SDL_JOYSTICK_RAWINPUT_XINPUT
-    if (ctx->is_xinput) {
-        result |= SDL_JOYCAP_RUMBLE;
-    }
-#endif
-#ifdef SDL_JOYSTICK_RAWINPUT_WGI
-    if (ctx->is_xinput) {
-        result |= SDL_JOYCAP_RUMBLE;
-
-        if (ctx->is_xboxone) {
-            result |= SDL_JOYCAP_RUMBLE_TRIGGERS;
-        }
-    }
-#endif
-#endif /**/
-
-    return result;
 }
 
 static int RAWINPUT_JoystickSetLED(SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue)
@@ -2226,7 +2216,6 @@ SDL_JoystickDriver SDL_RAWINPUT_JoystickDriver = {
     RAWINPUT_JoystickOpen,
     RAWINPUT_JoystickRumble,
     RAWINPUT_JoystickRumbleTriggers,
-    RAWINPUT_JoystickGetCapabilities,
     RAWINPUT_JoystickSetLED,
     RAWINPUT_JoystickSendEffect,
     RAWINPUT_JoystickSetSensorsEnabled,

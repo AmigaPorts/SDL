@@ -69,15 +69,15 @@ static SDL_bool HIDAPI_DriverPS3_IsEnabled(void)
 {
     SDL_bool default_value;
 
-#ifdef __MACOS__
+#ifdef SDL_PLATFORM_MACOS
     /* This works well on macOS */
     default_value = SDL_TRUE;
-#elif defined(__WINDOWS__)
+#elif defined(SDL_PLATFORM_WIN32)
     /* You can't initialize the controller with the stock Windows drivers
      * See https://github.com/ViGEm/DsHidMini as an alternative driver
      */
     default_value = SDL_FALSE;
-#elif defined(__LINUX__)
+#elif defined(SDL_PLATFORM_LINUX)
     /* Linux drivers do a better job of managing the transition between
      * USB and Bluetooth. There are also some quirks in communicating
      * with PS3 controllers that have been implemented in SDL's hidapi
@@ -267,7 +267,7 @@ static int HIDAPI_DriverPS3_RumbleJoystickTriggers(SDL_HIDAPI_Device *device, SD
 
 static Uint32 HIDAPI_DriverPS3_GetJoystickCapabilities(SDL_HIDAPI_Device *device, SDL_Joystick *joystick)
 {
-    return SDL_JOYCAP_RUMBLE;
+    return SDL_JOYSTICK_CAP_RUMBLE;
 }
 
 static int HIDAPI_DriverPS3_SetJoystickLED(SDL_HIDAPI_Device *device, SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue)

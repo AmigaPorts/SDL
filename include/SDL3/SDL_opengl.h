@@ -37,7 +37,7 @@
 
 #include <SDL3/SDL_platform.h>
 
-#ifdef __AMIGAOS4__
+#ifdef SDL_PLATFORM_AMIGAOS4
 /* We really need the system headers for MiniGL */
 
 #include <GL/gl.h>
@@ -46,7 +46,7 @@
 
 #else
 
-#ifndef __IOS__  /* No OpenGL on iOS. */
+#ifndef SDL_PLATFORM_IOS  /* No OpenGL on iOS. */
 
 /*
  * Mesa 3-D graphics library
@@ -86,11 +86,7 @@
  * Begin system-specific stuff.
  */
 
-#if defined(_WIN32) && !defined(__WIN32__) && !defined(__CYGWIN__)
-#define __WIN32__
-#endif
-
-#if defined(__WIN32__) && !defined(__CYGWIN__)
+#if defined(_WIN32) && !defined(__CYGWIN__)
 #  if (defined(_MSC_VER) || defined(__MINGW32__)) && defined(BUILD_GL32) /* tag specify we're building mesa as a DLL */
 #    define GLAPI __declspec(dllexport)
 #  elif (defined(_MSC_VER) || defined(__MINGW32__)) && defined(_DLL) /* tag specifying we're building for DLL runtime support */
@@ -99,7 +95,7 @@
 #    define GLAPI extern
 #  endif /* _STATIC_MESA support */
 #  if defined(__MINGW32__) && defined(GL_NO_STDCALL) || defined(UNDER_CE)  /* The generated DLLs by MingW with STDCALL are not compatible with the ones done by Microsoft's compilers */
-#    define GLAPIENTRY 
+#    define GLAPIENTRY
 #  else
 #    define GLAPIENTRY __stdcall
 #  endif
@@ -2127,8 +2123,8 @@ typedef void (APIENTRYP PFNGLMULTITEXCOORD4SVARBPROC) (GLenum target, const GLsh
 
 #endif /* __gl_h_ */
 
-#endif /* !__IOS__ */
+#endif /* !SDL_PLATFORM_IOS */
 
-#endif /* __AMIGAOS4__ */
+#endif /* SDL_PLATFORM_AMIGAOS4 */
 
 #endif /* SDL_opengl_h_ */

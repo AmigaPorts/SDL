@@ -36,6 +36,7 @@
 #include "SDL_uikitclipboard.h"
 #include "SDL_uikitvulkan.h"
 #include "SDL_uikitmetalview.h"
+#include "SDL_uikitmessagebox.h"
 
 #define UIKITVID_DRIVER_NAME "uikit"
 
@@ -141,7 +142,8 @@ static SDL_VideoDevice *UIKit_CreateDevice(void)
 
 VideoBootStrap UIKIT_bootstrap = {
     UIKITVID_DRIVER_NAME, "SDL UIKit video driver",
-    UIKit_CreateDevice
+    UIKit_CreateDevice,
+    UIKit_ShowMessageBox
 };
 
 int UIKit_VideoInit(SDL_VideoDevice *_this)
@@ -184,7 +186,7 @@ SDL_bool UIKit_IsSystemVersionAtLeast(double version)
 
 SDL_SystemTheme UIKit_GetSystemTheme(void)
 {
-#if !TARGET_OS_XR
+#ifndef SDL_PLATFORM_VISIONOS
     if (@available(iOS 12.0, tvOS 10.0, *)) {
         switch ([UIScreen mainScreen].traitCollection.userInterfaceStyle) {
         case UIUserInterfaceStyleDark:
@@ -199,7 +201,7 @@ SDL_SystemTheme UIKit_GetSystemTheme(void)
     return SDL_SYSTEM_THEME_UNKNOWN;
 }
 
-#if TARGET_OS_XR
+#ifdef SDL_PLATFORM_VISIONOS
 CGRect UIKit_ComputeViewFrame(SDL_Window *window){
     return CGRectMake(window->x, window->y, window->w, window->h);
 }
@@ -216,7 +218,7 @@ CGRect UIKit_ComputeViewFrame(SDL_Window *window, UIScreen *screen)
         frame = data.uiwindow.bounds;
     }
 
-#if !TARGET_OS_TV
+#ifndef SDL_PLATFORM_TVOS
     /* iOS 10 seems to have a bug where, in certain conditions, putting the
      * device to sleep with the a landscape-only app open, re-orienting the
      * device to portrait, and turning it back on will result in the screen
@@ -246,7 +248,7 @@ CGRect UIKit_ComputeViewFrame(SDL_Window *window, UIScreen *screen)
 
 void UIKit_ForceUpdateHomeIndicator(void)
 {
-#if !TARGET_OS_TV
+#ifndef SDL_PLATFORM_TVOS
     /* Force the main SDL window to re-evaluate home indicator state */
     SDL_Window *focus = SDL_GetKeyboardFocus();
     if (focus) {
@@ -261,7 +263,7 @@ void UIKit_ForceUpdateHomeIndicator(void)
 #pragma clang diagnostic pop
         }
     }
-#endif /* !TARGET_OS_TV */
+#endif /* !SDL_PLATFORM_TVOS */
 }
 
 /*

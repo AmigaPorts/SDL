@@ -54,15 +54,15 @@ static FcitxClient fcitx_client;
 
 static char *GetAppName(void)
 {
-#if defined(__LINUX__) || defined(__FREEBSD__)
+#if defined(SDL_PLATFORM_LINUX) || defined(SDL_PLATFORM_FREEBSD)
     char *spot;
     char procfile[1024];
     char linkfile[1024];
     int linksize;
 
-#ifdef __LINUX__
+#ifdef SDL_PLATFORM_LINUX
     (void)SDL_snprintf(procfile, sizeof(procfile), "/proc/%d/exe", getpid());
-#elif defined(__FREEBSD__)
+#elif defined(SDL_PLATFORM_FREEBSD)
     (void)SDL_snprintf(procfile, sizeof(procfile), "/proc/%d/file", getpid());
 #endif
     linksize = readlink(procfile, linkfile, sizeof(linkfile) - 1);
@@ -75,7 +75,7 @@ static char *GetAppName(void)
             return SDL_strdup(linkfile);
         }
     }
-#endif /* __LINUX__ || __FREEBSD__ */
+#endif /* SDL_PLATFORM_LINUX || SDL_PLATFORM_FREEBSD */
 
     return SDL_strdup("SDL_App");
 }
@@ -428,9 +428,9 @@ void SDL_Fcitx_UpdateTextRect(const SDL_Rect *rect)
 #ifdef SDL_VIDEO_DRIVER_X11
     {
         SDL_PropertiesID props = SDL_GetWindowProperties(focused_win);
-        Display *x_disp = (Display *)SDL_GetProperty(props, SDL_PROPERTY_WINDOW_X11_DISPLAY_POINTER, NULL);
-        int x_screen = SDL_GetNumberProperty(props, SDL_PROPERTY_WINDOW_X11_SCREEN_NUMBER, 0);
-        Window x_win = SDL_GetNumberProperty(props, SDL_PROPERTY_WINDOW_X11_WINDOW_NUMBER, 0);
+        Display *x_disp = (Display *)SDL_GetProperty(props, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
+        int x_screen = SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_SCREEN_NUMBER, 0);
+        Window x_win = SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
         Window unused;
         if (x_disp && x_win) {
             X11_XTranslateCoordinates(x_disp, x_win, RootWindow(x_disp, x_screen), 0, 0, &x, &y, &unused);

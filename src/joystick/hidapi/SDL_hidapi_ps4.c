@@ -723,6 +723,8 @@ static void HIDAPI_DriverPS4_SetEnhancedModeAvailable(SDL_DriverPS4_Context *ctx
     if (ctx->device->is_bluetooth && ctx->official_controller) {
         ctx->report_battery = SDL_TRUE;
     }
+
+    HIDAPI_UpdateDeviceProperties(ctx->device);
 }
 
 static void HIDAPI_DriverPS4_SetEnhancedMode(SDL_DriverPS4_Context *ctx)
@@ -869,10 +871,10 @@ static Uint32 HIDAPI_DriverPS4_GetJoystickCapabilities(SDL_HIDAPI_Device *device
 
     if (ctx->enhanced_mode_available) {
         if (ctx->lightbar_supported) {
-            result |= SDL_JOYCAP_LED;
+            result |= SDL_JOYSTICK_CAP_RGB_LED;
         }
         if (ctx->vibration_supported) {
-            result |= SDL_JOYCAP_RUMBLE;
+            result |= SDL_JOYSTICK_CAP_RUMBLE;
         }
     }
 
