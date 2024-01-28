@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-#if defined(__WIN32__) || defined(__WINRT__) || defined(__GDK__)
+#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINRT) || defined(SDL_PLATFORM_GDK)
 
 #include "SDL_windows.h"
 
@@ -86,14 +86,14 @@ WIN_CoInitialize(void)
 
        If you need multi-threaded mode, call CoInitializeEx() before SDL_Init()
     */
-#ifdef __WINRT__
+#ifdef SDL_PLATFORM_WINRT
     /* DLudwig: On WinRT, it is assumed that COM was initialized in main().
        CoInitializeEx is available (not CoInitialize though), however
        on WinRT, main() is typically declared with the [MTAThread]
        attribute, which, AFAIK, should initialize COM.
     */
     return S_OK;
-#elif defined(__XBOXONE__) || defined(__XBOXSERIES__)
+#elif defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)
     /* On Xbox, there's no need to call CoInitializeEx (and it's not implemented) */
     return S_OK;
 #else
@@ -114,12 +114,12 @@ WIN_CoInitialize(void)
 
 void WIN_CoUninitialize(void)
 {
-#ifndef __WINRT__
+#ifndef SDL_PLATFORM_WINRT
     CoUninitialize();
 #endif
 }
 
-#ifndef __WINRT__
+#ifndef SDL_PLATFORM_WINRT
 FARPROC WIN_LoadComBaseFunction(const char *name)
 {
     static SDL_bool s_bLoaded;
@@ -140,7 +140,7 @@ FARPROC WIN_LoadComBaseFunction(const char *name)
 HRESULT
 WIN_RoInitialize(void)
 {
-#ifdef __WINRT__
+#ifdef SDL_PLATFORM_WINRT
     return S_OK;
 #else
     typedef HRESULT(WINAPI * RoInitialize_t)(RO_INIT_TYPE initType);
@@ -167,7 +167,7 @@ WIN_RoInitialize(void)
 
 void WIN_RoUninitialize(void)
 {
-#ifndef __WINRT__
+#ifndef SDL_PLATFORM_WINRT
     typedef void(WINAPI * RoUninitialize_t)(void);
     RoUninitialize_t RoUninitializeFunc = (RoUninitialize_t)WIN_LoadComBaseFunction("RoUninitialize");
     if (RoUninitializeFunc) {
@@ -176,7 +176,7 @@ void WIN_RoUninitialize(void)
 #endif
 }
 
-#if !defined(__WINRT__) && !defined(__XBOXONE__) && !defined(__XBOXSERIES__)
+#if !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 static BOOL IsWindowsVersionOrGreater(WORD wMajorVersion, WORD wMinorVersion, WORD wServicePackMajor)
 {
     OSVERSIONINFOEXW osvi;
@@ -197,32 +197,46 @@ static BOOL IsWindowsVersionOrGreater(WORD wMajorVersion, WORD wMinorVersion, WO
 }
 #endif
 
+// apply some static variables so we only call into the Win32 API once per process for each check.
+#if defined(SDL_PLATFORM_WINRT) || defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)
+    #define CHECKWINVER(notdesktop_platform_result, test) return (notdesktop_platform_result);
+#else
+    #define CHECKWINVER(notdesktop_platform_result, test) \
+        static SDL_bool checked = SDL_FALSE; \
+        static BOOL retval = FALSE; \
+        if (!checked) { \
+            retval = (test); \
+            checked = SDL_TRUE; \
+        } \
+        return retval;
+#endif
+
+// this is the oldest thing we run on (and we may lose support for this in SDL3 at any time!),
+//  so there's no "OrGreater" as that would always be TRUE. The other functions are here to
+//  ask "can we support a specific feature?" but this function is here to ask "do we need to do
+//  something different for an OS version we probably should abandon?"  :)
+BOOL WIN_IsWindowsXP(void)
+{
+    CHECKWINVER(FALSE, !WIN_IsWindowsVistaOrGreater() && IsWindowsVersionOrGreater(HIBYTE(_WIN32_WINNT_WINXP), LOBYTE(_WIN32_WINNT_WINXP), 0));
+}
+
 BOOL WIN_IsWindowsVistaOrGreater(void)
 {
-#if defined(__WINRT__) || defined(__XBOXONE__) || defined(__XBOXSERIES__)
-    return TRUE;
-#else
-    return IsWindowsVersionOrGreater(HIBYTE(_WIN32_WINNT_VISTA), LOBYTE(_WIN32_WINNT_VISTA), 0);
-#endif
+    CHECKWINVER(TRUE, IsWindowsVersionOrGreater(HIBYTE(_WIN32_WINNT_VISTA), LOBYTE(_WIN32_WINNT_VISTA), 0));
 }
 
 BOOL WIN_IsWindows7OrGreater(void)
 {
-#if defined(__WINRT__) || defined(__XBOXONE__) || defined(__XBOXSERIES__)
-    return TRUE;
-#else
-    return IsWindowsVersionOrGreater(HIBYTE(_WIN32_WINNT_WIN7), LOBYTE(_WIN32_WINNT_WIN7), 0);
-#endif
+    CHECKWINVER(TRUE, IsWindowsVersionOrGreater(HIBYTE(_WIN32_WINNT_WIN7), LOBYTE(_WIN32_WINNT_WIN7), 0));
 }
 
 BOOL WIN_IsWindows8OrGreater(void)
 {
-#if defined(__WINRT__) || defined(__XBOXONE__) || defined(__XBOXSERIES__)
-    return TRUE;
-#else
-    return IsWindowsVersionOrGreater(HIBYTE(_WIN32_WINNT_WIN8), LOBYTE(_WIN32_WINNT_WIN8), 0);
-#endif
+    CHECKWINVER(TRUE, IsWindowsVersionOrGreater(HIBYTE(_WIN32_WINNT_WIN8), LOBYTE(_WIN32_WINNT_WIN8), 0));
 }
+
+#undef CHECKWINVER
+
 
 /*
 WAVExxxCAPS gives you 31 bytes for the device name, and just truncates if it's
@@ -247,7 +261,7 @@ WASAPI doesn't need this. This is just for DirectSound/WinMM.
 */
 char *WIN_LookupAudioDeviceName(const WCHAR *name, const GUID *guid)
 {
-#if defined(__WINRT__) || defined(__XBOXONE__) || defined(__XBOXSERIES__)
+#if defined(SDL_PLATFORM_WINRT) || defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)
     return WIN_StringToUTF8(name); /* No registry access on WinRT/UWP and Xbox, go with what we've got. */
 #else
     static const GUID nullguid = { 0 };
@@ -300,7 +314,7 @@ char *WIN_LookupAudioDeviceName(const WCHAR *name, const GUID *guid)
     retval = WIN_StringToUTF8(strw);
     SDL_free(strw);
     return retval ? retval : WIN_StringToUTF8(name);
-#endif /* if __WINRT__ / else */
+#endif /* if SDL_PLATFORM_WINRT / else */
 }
 
 BOOL WIN_IsEqualGUID(const GUID *a, const GUID *b)
@@ -362,9 +376,19 @@ SDL_AudioFormat SDL_WaveFormatExToSDLFormat(WAVEFORMATEX *waveformat)
     return 0;
 }
 
+
+int WIN_WideCharToMultiByte(UINT CodePage, DWORD dwFlags, LPCWCH lpWideCharStr, int cchWideChar, LPSTR lpMultiByteStr, int cbMultiByte, LPCCH lpDefaultChar, LPBOOL lpUsedDefaultChar)
+{
+    if (WIN_IsWindowsXP()) {
+        dwFlags &= ~WC_ERR_INVALID_CHARS;  // not supported before Vista. Without this flag, it will just replace bogus chars with U+FFFD. You're on your own, WinXP.
+    }
+    return WideCharToMultiByte(CodePage, dwFlags, lpWideCharStr, cchWideChar, lpMultiByteStr, cbMultiByte, lpDefaultChar, lpUsedDefaultChar);
+}
+
+
 /* Win32-specific SDL_RunApp(), which does most of the SDL_main work,
   based on SDL_windows_main.c, placed in the public domain by Sam Lantinga  4/13/98 */
-#ifdef __WIN32__
+#ifdef SDL_PLATFORM_WIN32
 
 #include <shellapi.h> /* CommandLineToArgvW() */
 
@@ -433,6 +457,6 @@ DECLSPEC int MINGW32_FORCEALIGN SDL_RunApp(int _argc, char* _argv[], SDL_main_fu
     return result;
 }
 
-#endif /* __WIN32__ */
+#endif /* SDL_PLATFORM_WIN32 */
 
-#endif /* defined(__WIN32__) || defined(__WINRT__) || defined(__GDK__) */
+#endif /* defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINRT) || defined(SDL_PLATFORM_GDK) */

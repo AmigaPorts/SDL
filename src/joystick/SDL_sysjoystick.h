@@ -141,11 +141,6 @@ struct SDL_Joystick
 #define SDL_HARDWARE_BUS_BLUETOOTH 0x05
 #define SDL_HARDWARE_BUS_VIRTUAL   0xFF
 
-/* Joystick capability flags for GetCapabilities() */
-#define SDL_JOYCAP_LED             0x01
-#define SDL_JOYCAP_RUMBLE          0x02
-#define SDL_JOYCAP_RUMBLE_TRIGGERS 0x04
-
 /* Macro to combine a USB vendor ID and product ID into a single Uint32 value */
 #define MAKE_VIDPID(VID, PID) (((Uint32)(VID)) << 16 | (PID))
 
@@ -194,9 +189,6 @@ typedef struct SDL_JoystickDriver
     /* Rumble functionality */
     int (*Rumble)(SDL_Joystick *joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble);
     int (*RumbleTriggers)(SDL_Joystick *joystick, Uint16 left_rumble, Uint16 right_rumble);
-
-    /* Capability detection */
-    Uint32 (*GetCapabilities)(SDL_Joystick *joystick);
 
     /* LED functionality */
     int (*SetLED)(SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue);

@@ -53,17 +53,17 @@
 #endif
 #endif
 
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
 #include <emscripten.h>
 #endif
 
-#ifdef __LINUX__
+#ifdef SDL_PLATFORM_LINUX
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
 
-#ifdef __AMIGAOS4__
+#ifdef SDL_PLATFORM_AMIGAOS4
 #include "../main/amigaos4/SDL_os4debug.h"
 #endif
 
@@ -162,7 +162,7 @@ static VideoBootStrap *bootstrap[] = {
         return retval;                                                  \
     }
 
-#if defined(__MACOS__) && defined(SDL_VIDEO_DRIVER_COCOA)
+#if defined(SDL_PLATFORM_MACOS) && defined(SDL_VIDEO_DRIVER_COCOA)
 /* Support for macOS fullscreen spaces */
 extern SDL_bool Cocoa_IsWindowInFullscreenSpace(SDL_Window *window);
 extern SDL_bool Cocoa_SetWindowFullscreenSpace(SDL_Window *window, SDL_bool state, SDL_bool blocking);
@@ -202,7 +202,7 @@ static void SDL_SyncIfRequired(SDL_Window *window)
 
 /* Support for framebuffer emulation using an accelerated renderer */
 
-#define SDL_PROPERTY_WINDOW_TEXTUREDATA "SDL.internal.window.texturedata"
+#define SDL_PROP_WINDOW_TEXTUREDATA "SDL.internal.window.texturedata"
 
 typedef struct
 {
@@ -215,12 +215,12 @@ typedef struct
 
 static Uint32 SDL_DefaultGraphicsBackends(SDL_VideoDevice *_this)
 {
-#if (defined(SDL_VIDEO_OPENGL) && defined(__MACOS__)) || (defined(__IOS__) && !TARGET_OS_MACCATALYST) || defined(__ANDROID__)
+#if (defined(SDL_VIDEO_OPENGL) && defined(SDL_PLATFORM_MACOS)) || (defined(SDL_PLATFORM_IOS) && !TARGET_OS_MACCATALYST) || defined(SDL_PLATFORM_ANDROID)
     if (_this->GL_CreateContext) {
         return SDL_WINDOW_OPENGL;
     }
 #endif
-#if defined(SDL_VIDEO_METAL) && (TARGET_OS_MACCATALYST || defined(__MACOS__) || defined(__IOS__))
+#if defined(SDL_VIDEO_METAL) && (TARGET_OS_MACCATALYST || defined(SDL_PLATFORM_MACOS) || defined(SDL_PLATFORM_IOS))
     if (_this->Metal_CreateView) {
         return SDL_WINDOW_METAL;
     }
@@ -246,7 +246,7 @@ static int SDL_CreateWindowTexture(SDL_VideoDevice *_this, SDL_Window *window, U
 {
     SDL_RendererInfo info;
     SDL_PropertiesID props = SDL_GetWindowProperties(window);
-    SDL_WindowTextureData *data = (SDL_WindowTextureData *)SDL_GetProperty(props, SDL_PROPERTY_WINDOW_TEXTUREDATA, NULL);
+    SDL_WindowTextureData *data = (SDL_WindowTextureData *)SDL_GetProperty(props, SDL_PROP_WINDOW_TEXTUREDATA, NULL);
     const SDL_bool transparent = (window->flags & SDL_WINDOW_TRANSPARENT) ? SDL_TRUE : SDL_FALSE;
     int i;
     int w, h;
@@ -299,7 +299,7 @@ static int SDL_CreateWindowTexture(SDL_VideoDevice *_this, SDL_Window *window, U
             SDL_DestroyRenderer(renderer);
             return -1;
         }
-        SDL_SetPropertyWithCleanup(props, SDL_PROPERTY_WINDOW_TEXTUREDATA, data, SDL_CleanupWindowTextureData, NULL);
+        SDL_SetPropertyWithCleanup(props, SDL_PROP_WINDOW_TEXTUREDATA, data, SDL_CleanupWindowTextureData, NULL);
 
         data->renderer = renderer;
     } else {
@@ -331,7 +331,7 @@ static int SDL_CreateWindowTexture(SDL_VideoDevice *_this, SDL_Window *window, U
                                       SDL_TEXTUREACCESS_STREAMING,
                                       w, h);
     if (!data->texture) {
-        /* codechecker_false_positive [Malloc] Static analyzer doesn't realize allocated `data` is saved to SDL_PROPERTY_WINDOW_TEXTUREDATA and not leaked here. */
+        /* codechecker_false_positive [Malloc] Static analyzer doesn't realize allocated `data` is saved to SDL_PROP_WINDOW_TEXTUREDATA and not leaked here. */
         return -1; /* NOLINT(clang-analyzer-unix.Malloc) */
     }
 
@@ -369,7 +369,7 @@ static int SDL_UpdateWindowTexture(SDL_VideoDevice *unused, SDL_Window *window, 
 
     SDL_GetWindowSizeInPixels(window, &w, &h);
 
-    data = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROPERTY_WINDOW_TEXTUREDATA, NULL);
+    data = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_TEXTUREDATA, NULL);
     if (!data || !data->texture) {
         return SDL_SetError("No window texture data");
     }
@@ -394,14 +394,14 @@ static int SDL_UpdateWindowTexture(SDL_VideoDevice *unused, SDL_Window *window, 
 
 static void SDL_DestroyWindowTexture(SDL_VideoDevice *unused, SDL_Window *window)
 {
-    SDL_ClearProperty(SDL_GetWindowProperties(window), SDL_PROPERTY_WINDOW_TEXTUREDATA);
+    SDL_ClearProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_TEXTUREDATA);
 }
 
 int SDL_SetWindowTextureVSync(SDL_Window *window, int vsync)
 {
     SDL_WindowTextureData *data;
 
-    data = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROPERTY_WINDOW_TEXTUREDATA, NULL);
+    data = SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_TEXTUREDATA, NULL);
     if (!data) {
         return -1;
     }
@@ -573,16 +573,21 @@ int SDL_VideoInit(const char *driver_name)
         SDL_DisableScreenSaver();
     }
 
-    /* If we don't use a screen keyboard, turn on text input by default,
-       otherwise programs that expect to get text events without enabling
-       UNICODE input won't get any events.
-
-       Actually, come to think of it, you needed to call SDL_EnableUNICODE(1)
-       in SDL 1.2 before you got text input events.  Hmm...
-     */
-    if (!SDL_HasScreenKeyboardSupport()) {
+#if !defined(SDL_VIDEO_DRIVER_N3DS)
+    {
+        /* In the initial state we don't want to pop up an on-screen keyboard,
+         * but we do want to allow text input from other mechanisms.
+         */
+        const char *hint = SDL_GetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD);
+        if (!hint) {
+            SDL_SetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD, "0");
+        }
         SDL_StartTextInput();
+        if (!hint) {
+            SDL_SetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD, NULL);
+        }
     }
+#endif /* !SDL_VIDEO_DRIVER_N3DS */
 
     SDL_PostInitMouse();
 
@@ -1409,14 +1414,19 @@ SDL_VideoDisplay *SDL_GetVideoDisplayForFullscreenWindow(SDL_Window *window)
     }
 
     /* The floating position is used here as a very common pattern is
-     * SDL_SetWindowPosition() followed by SDL_SetWindowFullscreen to make the
+     * SDL_SetWindowPosition() followed by SDL_SetWindowFullscreen() to make the
      * window fullscreen desktop on a specific display. If the backend doesn't
      * support changing the window position, or the compositor hasn't yet actually
-     * moved the window, the actual position won't be updated at the time of the
+     * moved the window, the current position won't be updated at the time of the
      * fullscreen call.
      */
     if (!displayID) {
-        displayID = GetDisplayForRect(window->floating.x, window->floating.y, window->w, window->h);
+        if (window->flags & SDL_WINDOW_FULLSCREEN && !window->is_repositioning) {
+            /* This was a window manager initiated move, use the current position. */
+            displayID = GetDisplayForRect(window->x, window->y, window->w, window->h);
+        } else {
+            displayID = GetDisplayForRect(window->floating.x, window->floating.y, window->w, window->h);
+        }
     }
     if (!displayID) {
         /* Use the primary display for a window if we can't find it anywhere else */
@@ -1513,7 +1523,7 @@ static void SDL_CheckWindowDisplayScaleChanged(SDL_Window *window)
     }
 }
 
-#ifdef __WINRT__
+#ifdef SDL_PLATFORM_WINRT
 extern Uint32 WINRT_DetectWindowFlags(SDL_Window *window);
 #endif
 
@@ -1565,7 +1575,7 @@ int SDL_UpdateFullscreenMode(SDL_Window *window, SDL_bool fullscreen, SDL_bool c
     if (fullscreen) {
         mode = (SDL_DisplayMode *)SDL_GetWindowFullscreenMode(window);
 
-#if defined(__AMIGAOS4__)
+#if defined(SDL_PLATFORM_AMIGAOS4)
         /* HACK: in order to open an exclusive fullscreen before window,
            copy necessary mode data into window struct */
         if (mode == NULL) {
@@ -1606,7 +1616,7 @@ int SDL_UpdateFullscreenMode(SDL_Window *window, SDL_bool fullscreen, SDL_bool c
         }
     }
 
-#if defined(__MACOS__) && defined(SDL_VIDEO_DRIVER_COCOA)
+#if defined(SDL_PLATFORM_MACOS) && defined(SDL_VIDEO_DRIVER_COCOA)
     /* if the window is going away and no resolution change is necessary,
        do nothing, or else we may trigger an ugly double-transition
      */
@@ -1642,7 +1652,7 @@ int SDL_UpdateFullscreenMode(SDL_Window *window, SDL_bool fullscreen, SDL_bool c
             }
         }
     }
-#elif defined(__WINRT__) && (NTDDI_VERSION < NTDDI_WIN10)
+#elif defined(SDL_PLATFORM_WINRT) && (NTDDI_VERSION < NTDDI_WIN10)
     /* HACK: WinRT 8.x apps can't choose whether or not they are fullscreen
        or not.  The user can choose this, via OS-provided UI, but this can't
        be set programmatically.
@@ -1870,7 +1880,7 @@ Uint32 SDL_GetWindowPixelFormat(SDL_Window *window)
     }
 }
 
-#if defined(__AMIGAOS4__)
+#if defined(SDL_PLATFORM_AMIGAOS4)
     /* Without this hack, SDL would trigger us to open a window before screen which causes unnecessary
     work, because then we would have to close the window first and re-open it on the custom screen */
     #define CREATE_FLAGS \
@@ -1964,23 +1974,23 @@ static struct {
     Uint32 flag;
     SDL_bool invert_value;
 } SDL_WindowFlagProperties[] = {
-    { SDL_PROPERTY_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN,      SDL_WINDOW_ALWAYS_ON_TOP,       SDL_FALSE },
-    { SDL_PROPERTY_WINDOW_CREATE_BORDERLESS_BOOLEAN,         SDL_WINDOW_BORDERLESS,          SDL_FALSE },
-    { SDL_PROPERTY_WINDOW_CREATE_FOCUSABLE_BOOLEAN,          SDL_WINDOW_NOT_FOCUSABLE,       SDL_TRUE },
-    { SDL_PROPERTY_WINDOW_CREATE_FULLSCREEN_BOOLEAN,         SDL_WINDOW_FULLSCREEN,          SDL_FALSE },
-    { SDL_PROPERTY_WINDOW_CREATE_HIDDEN_BOOLEAN,             SDL_WINDOW_HIDDEN,              SDL_FALSE },
-    { SDL_PROPERTY_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN, SDL_WINDOW_HIGH_PIXEL_DENSITY,  SDL_FALSE },
-    { SDL_PROPERTY_WINDOW_CREATE_MAXIMIZED_BOOLEAN,          SDL_WINDOW_MAXIMIZED,           SDL_FALSE },
-    { SDL_PROPERTY_WINDOW_CREATE_MENU_BOOLEAN,               SDL_WINDOW_POPUP_MENU,          SDL_FALSE },
-    { SDL_PROPERTY_WINDOW_CREATE_METAL_BOOLEAN,              SDL_WINDOW_METAL,               SDL_FALSE },
-    { SDL_PROPERTY_WINDOW_CREATE_MINIMIZED_BOOLEAN,          SDL_WINDOW_MINIMIZED,           SDL_FALSE },
-    { SDL_PROPERTY_WINDOW_CREATE_MOUSE_GRABBED_BOOLEAN,      SDL_WINDOW_MOUSE_GRABBED,       SDL_FALSE },
-    { SDL_PROPERTY_WINDOW_CREATE_OPENGL_BOOLEAN,             SDL_WINDOW_OPENGL,              SDL_FALSE },
-    { SDL_PROPERTY_WINDOW_CREATE_RESIZABLE_BOOLEAN,          SDL_WINDOW_RESIZABLE,           SDL_FALSE },
-    { SDL_PROPERTY_WINDOW_CREATE_TRANSPARENT_BOOLEAN,        SDL_WINDOW_TRANSPARENT,         SDL_FALSE },
-    { SDL_PROPERTY_WINDOW_CREATE_TOOLTIP_BOOLEAN,            SDL_WINDOW_TOOLTIP,             SDL_FALSE },
-    { SDL_PROPERTY_WINDOW_CREATE_UTILITY_BOOLEAN,            SDL_WINDOW_UTILITY,             SDL_FALSE },
-    { SDL_PROPERTY_WINDOW_CREATE_VULKAN_BOOLEAN,             SDL_WINDOW_VULKAN,              SDL_FALSE }
+    { SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN,      SDL_WINDOW_ALWAYS_ON_TOP,       SDL_FALSE },
+    { SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN,         SDL_WINDOW_BORDERLESS,          SDL_FALSE },
+    { SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN,          SDL_WINDOW_NOT_FOCUSABLE,       SDL_TRUE },
+    { SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN,         SDL_WINDOW_FULLSCREEN,          SDL_FALSE },
+    { SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN,             SDL_WINDOW_HIDDEN,              SDL_FALSE },
+    { SDL_PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN, SDL_WINDOW_HIGH_PIXEL_DENSITY,  SDL_FALSE },
+    { SDL_PROP_WINDOW_CREATE_MAXIMIZED_BOOLEAN,          SDL_WINDOW_MAXIMIZED,           SDL_FALSE },
+    { SDL_PROP_WINDOW_CREATE_MENU_BOOLEAN,               SDL_WINDOW_POPUP_MENU,          SDL_FALSE },
+    { SDL_PROP_WINDOW_CREATE_METAL_BOOLEAN,              SDL_WINDOW_METAL,               SDL_FALSE },
+    { SDL_PROP_WINDOW_CREATE_MINIMIZED_BOOLEAN,          SDL_WINDOW_MINIMIZED,           SDL_FALSE },
+    { SDL_PROP_WINDOW_CREATE_MOUSE_GRABBED_BOOLEAN,      SDL_WINDOW_MOUSE_GRABBED,       SDL_FALSE },
+    { SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN,             SDL_WINDOW_OPENGL,              SDL_FALSE },
+    { SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN,          SDL_WINDOW_RESIZABLE,           SDL_FALSE },
+    { SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN,        SDL_WINDOW_TRANSPARENT,         SDL_FALSE },
+    { SDL_PROP_WINDOW_CREATE_TOOLTIP_BOOLEAN,            SDL_WINDOW_TOOLTIP,             SDL_FALSE },
+    { SDL_PROP_WINDOW_CREATE_UTILITY_BOOLEAN,            SDL_WINDOW_UTILITY,             SDL_FALSE },
+    { SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN,             SDL_WINDOW_VULKAN,              SDL_FALSE }
 };
 
 static Uint32 SDL_GetWindowFlagProperties(SDL_PropertiesID props)
@@ -2005,12 +2015,12 @@ static Uint32 SDL_GetWindowFlagProperties(SDL_PropertiesID props)
 SDL_Window *SDL_CreateWindowWithProperties(SDL_PropertiesID props)
 {
     SDL_Window *window;
-    const char *title = SDL_GetStringProperty(props, SDL_PROPERTY_WINDOW_CREATE_TITLE_STRING, NULL);
-    int x = (int)SDL_GetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_X_NUMBER, SDL_WINDOWPOS_UNDEFINED);
-    int y = (int)SDL_GetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_Y_NUMBER, SDL_WINDOWPOS_UNDEFINED);
-    int w = (int)SDL_GetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_WIDTH_NUMBER, 0);
-    int h = (int)SDL_GetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_HEIGHT_NUMBER, 0);
-    SDL_Window *parent = SDL_GetProperty(props, SDL_PROPERTY_WINDOW_CREATE_PARENT_POINTER, NULL);
+    const char *title = SDL_GetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, NULL);
+    int x = (int)SDL_GetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, SDL_WINDOWPOS_UNDEFINED);
+    int y = (int)SDL_GetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, SDL_WINDOWPOS_UNDEFINED);
+    int w = (int)SDL_GetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, 0);
+    int h = (int)SDL_GetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, 0);
+    SDL_Window *parent = SDL_GetProperty(props, SDL_PROP_WINDOW_CREATE_PARENT_POINTER, NULL);
     Uint32 flags = SDL_GetWindowFlagProperties(props);
     Uint32 type_flags, graphics_flags;
     SDL_bool undefined_x = SDL_FALSE;
@@ -2187,13 +2197,13 @@ SDL_Window *SDL_CreateWindowWithProperties(SDL_PropertiesID props)
     /* Clear minimized if not on windows, only windows handles it at create rather than FinishWindowCreation,
      * but it's important or window focus will get broken on windows!
      */
-#if !defined(__WIN32__) && !defined(__GDK__)
+#if !defined(SDL_PLATFORM_WIN32) && !defined(SDL_PLATFORM_GDK)
     if (window->flags & SDL_WINDOW_MINIMIZED) {
         window->flags &= ~SDL_WINDOW_MINIMIZED;
     }
 #endif
 
-#if defined(__WINRT__) && (NTDDI_VERSION < NTDDI_WIN10)
+#if defined(SDL_PLATFORM_WINRT) && (NTDDI_VERSION < NTDDI_WIN10)
     /* HACK: WinRT 8.x apps can't choose whether or not they are fullscreen
        or not.  The user can choose this, via OS-provided UI, but this can't
        be set programmatically.
@@ -2221,10 +2231,10 @@ SDL_Window *SDL_CreateWindow(const char *title, int w, int h, Uint32 flags)
     SDL_Window *window;
     SDL_PropertiesID props = SDL_CreateProperties();
     if (title && *title) {
-        SDL_SetStringProperty(props, SDL_PROPERTY_WINDOW_CREATE_TITLE_STRING, title);
+        SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, title);
     }
-    SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_WIDTH_NUMBER, w);
-    SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_HEIGHT_NUMBER, h);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, w);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, h);
     SDL_SetNumberProperty(props, "flags", flags);
     window = SDL_CreateWindowWithProperties(props);
     SDL_DestroyProperties(props);
@@ -2242,11 +2252,11 @@ SDL_Window *SDL_CreatePopupWindow(SDL_Window *parent, int offset_x, int offset_y
         return NULL;
     }
 
-    SDL_SetProperty(props, SDL_PROPERTY_WINDOW_CREATE_PARENT_POINTER, parent);
-    SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_X_NUMBER, offset_x);
-    SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_Y_NUMBER, offset_y);
-    SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_WIDTH_NUMBER, w);
-    SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_HEIGHT_NUMBER, h);
+    SDL_SetProperty(props, SDL_PROP_WINDOW_CREATE_PARENT_POINTER, parent);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, offset_x);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, offset_y);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, w);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, h);
     SDL_SetNumberProperty(props, "flags", flags);
     window = SDL_CreateWindowWithProperties(props);
     SDL_DestroyProperties(props);
@@ -2296,7 +2306,7 @@ int SDL_RecreateWindow(SDL_Window *window, Uint32 flags)
     /* Tear down the old native window */
     SDL_DestroyWindowSurface(window);
 
-#ifdef __AMIGAOS4__
+#ifdef SDL_PLATFORM_AMIGAOS4
     if (window->flags & SDL_WINDOW_OPENGL) {
         /* We have to unload the old library in case we have to switch
         between MiniGL and OGLES2. Otherwise function pointers will be messed up. */
@@ -2557,7 +2567,9 @@ int SDL_SetWindowPosition(SDL_Window *window, int x, int y)
     window->undefined_y = SDL_FALSE;
 
     if (_this->SetWindowPosition) {
+        window->is_repositioning = SDL_TRUE;
         const int ret = _this->SetWindowPosition(_this, window);
+        window->is_repositioning = SDL_FALSE;
         if (!ret) {
             SDL_SyncIfRequired(window);
         }
@@ -3078,7 +3090,7 @@ static SDL_Surface *SDL_CreateWindowFramebuffer(SDL_Window *window)
             attempt_texture_framebuffer = SDL_FALSE;
         }
 
-#ifdef __LINUX__
+#ifdef SDL_PLATFORM_LINUX
         /* On WSL, direct X11 is faster than using OpenGL for window framebuffers, so try to detect WSL and avoid texture framebuffer. */
         else if ((_this->CreateWindowFramebuffer) && (SDL_strcmp(_this->name, "x11") == 0)) {
             struct stat sb;
@@ -3087,12 +3099,12 @@ static SDL_Surface *SDL_CreateWindowFramebuffer(SDL_Window *window)
             }
         }
 #endif
-#if defined(__WIN32__) || defined(__WINGDK__) /* GDI BitBlt() is way faster than Direct3D dynamic textures right now. (!!! FIXME: is this still true?) */
+#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINGDK) /* GDI BitBlt() is way faster than Direct3D dynamic textures right now. (!!! FIXME: is this still true?) */
         else if ((_this->CreateWindowFramebuffer) && (SDL_strcmp(_this->name, "windows") == 0)) {
             attempt_texture_framebuffer = SDL_FALSE;
         }
 #endif
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
         else {
             attempt_texture_framebuffer = SDL_FALSE;
         }
@@ -3579,7 +3591,7 @@ static SDL_bool SDL_ShouldMinimizeOnFocusLoss(SDL_Window *window)
         return SDL_FALSE;
     }
 
-#if defined(__MACOS__) && defined(SDL_VIDEO_DRIVER_COCOA)
+#if defined(SDL_PLATFORM_MACOS) && defined(SDL_VIDEO_DRIVER_COCOA)
     if (SDL_strcmp(_this->name, "cocoa") == 0) { /* don't do this for X11, etc */
         if (Cocoa_IsWindowInFullscreenSpace(window)) {
             return SDL_FALSE;
@@ -3587,7 +3599,7 @@ static SDL_bool SDL_ShouldMinimizeOnFocusLoss(SDL_Window *window)
     }
 #endif
 
-#ifdef __ANDROID__
+#ifdef SDL_PLATFORM_ANDROID
     {
         extern SDL_bool Android_JNI_ShouldMinimizeOnFocusLoss(void);
         if (!Android_JNI_ShouldMinimizeOnFocusLoss()) {
@@ -4075,7 +4087,7 @@ void SDL_GL_ResetAttributes(void)
     _this->gl_config.accelerated = -1; /* accelerated or not, both are fine */
 
 #ifdef SDL_VIDEO_OPENGL
-#ifdef __AMIGAOS4__
+#ifdef SDL_PLATFORM_AMIGAOS4
     _this->gl_config.major_version = 1; /* MiniGL */
     _this->gl_config.minor_version = 3;
 #else
@@ -4951,75 +4963,37 @@ int SDL_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
 
     if (_this && _this->ShowMessageBox) {
         retval = _this->ShowMessageBox(_this, messageboxdata, buttonid);
+    } else {
+        /* It's completely fine to call this function before video is initialized */
+        const char *driver_name = SDL_GetHint(SDL_HINT_VIDEO_DRIVER);
+        if (driver_name && *driver_name != 0) {
+            const char *driver_attempt = driver_name;
+            while (driver_attempt && (*driver_attempt != 0) && (retval == -1)) {
+                const char *driver_attempt_end = SDL_strchr(driver_attempt, ',');
+                size_t driver_attempt_len = (driver_attempt_end) ? (driver_attempt_end - driver_attempt)
+                                                                     : SDL_strlen(driver_attempt);
+                for (int i = 0; bootstrap[i]; ++i) {
+                    if (bootstrap[i]->ShowMessageBox && (driver_attempt_len == SDL_strlen(bootstrap[i]->name)) &&
+                        (SDL_strncasecmp(bootstrap[i]->name, driver_attempt, driver_attempt_len) == 0)) {
+                        if (bootstrap[i]->ShowMessageBox(messageboxdata, buttonid) == 0) {
+                            retval = 0;
+                        }
+                        break;
+                    }
+                }
+
+                driver_attempt = (driver_attempt_end) ? (driver_attempt_end + 1) : NULL;
+            }
+        } else {
+            for (int i = 0; bootstrap[i]; ++i) {
+                if (bootstrap[i]->ShowMessageBox && bootstrap[i]->ShowMessageBox(messageboxdata, buttonid) == 0) {
+                    retval = 0;
+                    break;
+                }
+            }
+        }
     }
 
-    /* It's completely fine to call this function before video is initialized */
-#ifdef SDL_VIDEO_DRIVER_ANDROID
-    if (retval == -1 &&
-        Android_ShowMessageBox(messageboxdata, buttonid) == 0) {
-        retval = 0;
-    }
-#endif
-#if defined(SDL_VIDEO_DRIVER_WINDOWS) && !defined(__XBOXONE__) && !defined(__XBOXSERIES__)
-    if (retval == -1 &&
-        WIN_ShowMessageBox(messageboxdata, buttonid) == 0) {
-        retval = 0;
-    }
-#endif
-#ifdef SDL_VIDEO_DRIVER_WINRT
-    if (retval == -1 &&
-        WINRT_ShowMessageBox(messageboxdata, buttonid) == 0) {
-        retval = 0;
-    }
-#endif
-#ifdef SDL_VIDEO_DRIVER_COCOA
-    if (retval == -1 &&
-        Cocoa_ShowMessageBox(messageboxdata, buttonid) == 0) {
-        retval = 0;
-    }
-#endif
-#ifdef SDL_VIDEO_DRIVER_UIKIT
-    if (retval == -1 &&
-        UIKit_ShowMessageBox(messageboxdata, buttonid) == 0) {
-        retval = 0;
-    }
-#endif
-#ifdef SDL_VIDEO_DRIVER_AMIGAOS4
-    if (retval == -1 &&
-        OS4_ShowMessageBox(messageboxdata, buttonid) == 0) {
-        retval = 0;
-    }
-#endif
-#ifdef SDL_VIDEO_DRIVER_WAYLAND
-    if (retval == -1 &&
-        Wayland_ShowMessageBox(messageboxdata, buttonid) == 0) {
-        retval = 0;
-    }
-#endif
-#ifdef SDL_VIDEO_DRIVER_X11
-    if (retval == -1 &&
-        X11_ShowMessageBox(messageboxdata, buttonid) == 0) {
-        retval = 0;
-    }
-#endif
-#ifdef SDL_VIDEO_DRIVER_HAIKU
-    if (retval == -1 &&
-        HAIKU_ShowMessageBox(messageboxdata, buttonid) == 0) {
-        retval = 0;
-    }
-#endif
-#ifdef SDL_VIDEO_DRIVER_RISCOS
-    if (retval == -1 &&
-        RISCOS_ShowMessageBox(messageboxdata, buttonid) == 0) {
-        retval = 0;
-    }
-#endif
-#ifdef SDL_VIDEO_DRIVER_VITA
-    if (retval == -1 &&
-        VITA_ShowMessageBox(messageboxdata, buttonid) == 0) {
-        retval = 0;
-    }
-#endif
     if (retval == -1) {
         const char *error = SDL_GetError();
 
@@ -5047,7 +5021,7 @@ int SDL_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
 
 int SDL_ShowSimpleMessageBox(Uint32 flags, const char *title, const char *message, SDL_Window *window)
 {
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
     /* !!! FIXME: propose a browser API for this, get this #ifdef out of here? */
     /* Web browsers don't (currently) have an API for a custom message box
        that can block, but for the most common case (SDL_ShowSimpleMessageBox),

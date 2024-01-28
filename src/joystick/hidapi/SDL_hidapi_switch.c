@@ -727,6 +727,7 @@ static void SDLCALL SDL_PlayerLEDHintChanged(void *userdata, const char *name, c
         ctx->m_bPlayerLights = bPlayerLights;
 
         UpdateSlotLED(ctx);
+        HIDAPI_UpdateDeviceProperties(ctx->device);
     }
 }
 
@@ -1577,12 +1578,16 @@ static Uint32 HIDAPI_DriverSwitch_GetJoystickCapabilities(SDL_HIDAPI_Device *dev
     SDL_DriverSwitch_Context *ctx = (SDL_DriverSwitch_Context *)device->context;
     Uint32 result = 0;
 
+    if (ctx->m_bPlayerLights && !ctx->m_bInputOnly) {
+        result |= SDL_JOYSTICK_CAP_PLAYER_LED;
+    }
+
     if (ctx->m_eControllerType == k_eSwitchDeviceInfoControllerType_ProController && !ctx->m_bInputOnly) {
-        /* Doesn't have an RGB LED, so don't return SDL_JOYCAP_LED here */
-        result |= SDL_JOYCAP_RUMBLE;
+        /* Doesn't have an RGB LED, so don't return SDL_JOYSTICK_CAP_RGB_LED here */
+        result |= SDL_JOYSTICK_CAP_RUMBLE;
     } else if (ctx->m_eControllerType == k_eSwitchDeviceInfoControllerType_JoyConLeft ||
                ctx->m_eControllerType == k_eSwitchDeviceInfoControllerType_JoyConRight) {
-        result |= SDL_JOYCAP_RUMBLE;
+        result |= SDL_JOYSTICK_CAP_RUMBLE;
     }
     return result;
 }

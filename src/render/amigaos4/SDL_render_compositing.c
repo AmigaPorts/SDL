@@ -311,7 +311,7 @@ OS4_ScaleVertices(OS4_Vertex vertices[4], const float scale_x, const float scale
 
 static void
 OS4_FillVertexData(OS4_Vertex vertices[4], const SDL_FRect * srcrect, const SDL_FRect * dstrect,
-    const double angle, const SDL_FPoint * center, const SDL_RendererFlip flip, float scale_x, float scale_y)
+    const double angle, const SDL_FPoint * center, const SDL_FlipMode flip, float scale_x, float scale_y)
 {
     /* Flip texture coordinates if needed */
 
@@ -322,13 +322,13 @@ OS4_FillVertexData(OS4_Vertex vertices[4], const SDL_FRect * srcrect, const SDL_
     top = srcrect->y;
     bottom = top + srcrect->h;
 
-    if (flip & SDL_FLIP_HORIZONTAL) {
+    if (flip == SDL_FLIP_HORIZONTAL) {
         tmp = left;
         left = right;
         right = tmp;
     }
 
-    if (flip & SDL_FLIP_VERTICAL) {
+    if (flip == SDL_FLIP_VERTICAL) {
         tmp = bottom;
         bottom = top;
         top = tmp;
@@ -766,7 +766,7 @@ OS4_QueueFillRects(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FR
 static int
 OS4_QueueCopyEx(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * texture,
                const SDL_FRect * srcrect, const SDL_FRect * dstrect,
-               const double angle, const SDL_FPoint *center, const SDL_RendererFlip flip, float scale_x, float scale_y)
+               const double angle, const SDL_FPoint *center, const SDL_FlipMode flip, float scale_x, float scale_y)
 {
     SDL_FPoint final_center;
 

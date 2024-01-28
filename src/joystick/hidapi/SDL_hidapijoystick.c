@@ -27,7 +27,7 @@
 #include "SDL_hidapi_rumble.h"
 #include "../../SDL_hints_c.h"
 
-#if defined(__WIN32__) || defined(__WINGDK__)
+#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINGDK)
 #include "../windows/SDL_rawinputjoystick_c.h"
 #endif
 
@@ -163,6 +163,8 @@ SDL_bool HIDAPI_SupportsPlaystationDetection(Uint16 vendor, Uint16 product)
         }
         return SDL_TRUE;
     case USB_VENDOR_MADCATZ:
+        return SDL_TRUE;
+    case USB_VENDOR_MAYFLASH:
         return SDL_TRUE;
     case USB_VENDOR_NACON:
     case USB_VENDOR_NACON_ALT:
@@ -451,7 +453,7 @@ static void HIDAPI_SetupDeviceDriver(SDL_HIDAPI_Device *device, SDL_bool *remove
             /* Wait a little bit for the device to initialize */
             SDL_Delay(10);
 
-#ifdef __ANDROID__
+#ifdef SDL_PLATFORM_ANDROID
             /* On Android we need to leave joysticks unlocked because it calls
              * out to the main thread for permissions and the main thread can
              * be in the process of handling controller input.
@@ -853,6 +855,54 @@ void HIDAPI_JoystickDisconnected(SDL_HIDAPI_Device *device, SDL_JoystickID joyst
 
     /* Rescan the device list in case device state has changed */
     SDL_HIDAPI_change_count = 0;
+
+    SDL_UnlockJoysticks();
+}
+
+static void HIDAPI_UpdateJoystickProperties(SDL_HIDAPI_Device *device, SDL_Joystick *joystick)
+{
+    SDL_PropertiesID props = SDL_GetJoystickProperties(joystick);
+    Uint32 caps = device->driver->GetJoystickCapabilities(device, joystick);
+
+    if (caps & SDL_JOYSTICK_CAP_MONO_LED) {
+        SDL_SetBooleanProperty(props, SDL_PROP_JOYSTICK_CAP_MONO_LED_BOOLEAN, SDL_TRUE);
+    } else {
+        SDL_SetBooleanProperty(props, SDL_PROP_JOYSTICK_CAP_MONO_LED_BOOLEAN, SDL_FALSE);
+    }
+    if (caps & SDL_JOYSTICK_CAP_RGB_LED) {
+        SDL_SetBooleanProperty(props, SDL_PROP_JOYSTICK_CAP_RGB_LED_BOOLEAN, SDL_TRUE);
+    } else {
+        SDL_SetBooleanProperty(props, SDL_PROP_JOYSTICK_CAP_RGB_LED_BOOLEAN, SDL_FALSE);
+    }
+    if (caps & SDL_JOYSTICK_CAP_PLAYER_LED) {
+        SDL_SetBooleanProperty(props, SDL_PROP_JOYSTICK_CAP_PLAYER_LED_BOOLEAN, SDL_TRUE);
+    } else {
+        SDL_SetBooleanProperty(props, SDL_PROP_JOYSTICK_CAP_PLAYER_LED_BOOLEAN, SDL_FALSE);
+    }
+    if (caps & SDL_JOYSTICK_CAP_RUMBLE) {
+        SDL_SetBooleanProperty(props, SDL_PROP_JOYSTICK_CAP_RUMBLE_BOOLEAN, SDL_TRUE);
+    } else {
+        SDL_SetBooleanProperty(props, SDL_PROP_JOYSTICK_CAP_RUMBLE_BOOLEAN, SDL_FALSE);
+    }
+    if (caps & SDL_JOYSTICK_CAP_TRIGGER_RUMBLE) {
+        SDL_SetBooleanProperty(props, SDL_PROP_JOYSTICK_CAP_TRIGGER_RUMBLE_BOOLEAN, SDL_TRUE);
+    } else {
+        SDL_SetBooleanProperty(props, SDL_PROP_JOYSTICK_CAP_TRIGGER_RUMBLE_BOOLEAN, SDL_FALSE);
+    }
+}
+
+void HIDAPI_UpdateDeviceProperties(SDL_HIDAPI_Device *device)
+{
+    int i;
+
+    SDL_LockJoysticks();
+
+    for (i = 0; i < device->num_joysticks; ++i) {
+        SDL_Joystick *joystick = SDL_GetJoystickFromInstanceID(device->joysticks[i]);
+        if (joystick) {
+            HIDAPI_UpdateJoystickProperties(device, joystick);
+        }
+    }
 
     SDL_UnlockJoysticks();
 }
@@ -1469,6 +1519,8 @@ static int HIDAPI_JoystickOpen(SDL_Joystick *joystick, int device_index)
         return -1;
     }
 
+    HIDAPI_UpdateJoystickProperties(device, joystick);
+
     if (device->serial) {
         joystick->serial = SDL_strdup(device->serial);
     }
@@ -1513,18 +1565,6 @@ static int HIDAPI_JoystickRumbleTriggers(SDL_Joystick *joystick, Uint16 left_rum
         result = device->driver->RumbleJoystickTriggers(device, joystick, left_rumble, right_rumble);
     } else {
         result = SDL_SetError("Rumble failed, device disconnected");
-    }
-
-    return result;
-}
-
-static Uint32 HIDAPI_JoystickGetCapabilities(SDL_Joystick *joystick)
-{
-    Uint32 result = 0;
-    SDL_HIDAPI_Device *device = NULL;
-
-    if (HIDAPI_GetJoystickDevice(joystick, &device)) {
-        result = device->driver->GetJoystickCapabilities(device, joystick);
     }
 
     return result;
@@ -1669,7 +1709,6 @@ SDL_JoystickDriver SDL_HIDAPI_JoystickDriver = {
     HIDAPI_JoystickOpen,
     HIDAPI_JoystickRumble,
     HIDAPI_JoystickRumbleTriggers,
-    HIDAPI_JoystickGetCapabilities,
     HIDAPI_JoystickSetLED,
     HIDAPI_JoystickSendEffect,
     HIDAPI_JoystickSetSensorsEnabled,

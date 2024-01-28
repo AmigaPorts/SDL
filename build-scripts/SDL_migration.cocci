@@ -1205,21 +1205,6 @@ typedef SDL_GameControllerButton, SDL_GamepadButton;
   (...)
 @@
 @@
-- SDL_GameControllerHasLED
-+ SDL_GamepadHasLED
-  (...)
-@@
-@@
-- SDL_GameControllerHasRumble
-+ SDL_GamepadHasRumble
-  (...)
-@@
-@@
-- SDL_GameControllerHasRumbleTriggers
-+ SDL_GamepadHasRumbleTriggers
-  (...)
-@@
-@@
 - SDL_GameControllerHasSensor
 + SDL_GamepadHasSensor
   (...)
@@ -2918,3 +2903,4 @@ expression e1, e2, e3, e4;
 @@
 - SDL_threadID
 + SDL_ThreadID
+  (...)

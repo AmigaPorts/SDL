@@ -30,18 +30,18 @@
 #include "SDL_mfijoystick_c.h"
 
 
-#if TARGET_OS_IOS
+#if defined(SDL_PLATFORM_IOS) && !defined(SDL_PLATFORM_TVOS)
 #define SDL_JOYSTICK_iOS_ACCELEROMETER
 #import <CoreMotion/CoreMotion.h>
 #endif
 
-#ifdef __MACOS__
+#ifdef SDL_PLATFORM_MACOS
 #include <IOKit/hid/IOHIDManager.h>
 #include <AppKit/NSApplication.h>
 #ifndef NSAppKitVersionNumber10_15
 #define NSAppKitVersionNumber10_15 1894
 #endif
-#endif /* __MACOS__ */
+#endif /* SDL_PLATFORM_MACOS */
 
 #ifdef SDL_JOYSTICK_MFI
 #import <GameController/GameController.h>
@@ -68,7 +68,7 @@ static id disconnectObserver = nil;
  * they are only ever used indirectly through objc_msgSend
  */
 @interface GCController (SDL)
-#if defined(__MACOS__) && (__MAC_OS_X_VERSION_MAX_ALLOWED <= 101600)
+#if defined(SDL_PLATFORM_MACOS) && (__MAC_OS_X_VERSION_MAX_ALLOWED <= 101600)
 + (BOOL)supportsHIDDevice:(IOHIDDeviceRef)device;
 #endif
 #if !((__IPHONE_OS_VERSION_MAX_ALLOWED >= 130000) || (__APPLETV_OS_VERSION_MAX_ALLOWED >= 130000) || (__MAC_OS_VERSION_MAX_ALLOWED >= 1500000))
@@ -325,7 +325,7 @@ static BOOL ElementAlreadyHandled(SDL_JoystickDeviceItem *device, NSString *elem
             /* The Nintendo Switch JoyCon home button doesn't ever show as being held down */
             return TRUE;
         }
-#if TARGET_OS_TV
+#ifdef SDL_PLATFORM_TVOS
         /* The OS uses the home button, it's not available to apps */
         return TRUE;
 #endif
@@ -484,7 +484,7 @@ static BOOL IOS_AddMFIJoystickDevice(SDL_JoystickDeviceItem *device, GCControlle
         vendor = USB_VENDOR_APPLE;
         product = 2;
         subtype = 2;
-#if TARGET_OS_TV
+#ifdef SDL_PLATFORM_TVOS
     } else if (controller.microGamepad) {
         vendor = USB_VENDOR_APPLE;
         product = 3;
@@ -541,7 +541,7 @@ static BOOL IOS_AddMFIJoystickDevice(SDL_JoystickDeviceItem *device, GCControlle
         }
 #endif /* DEBUG_CONTROLLER_PROFILE */
 
-#if TARGET_OS_TV
+#ifdef SDL_PLATFORM_TVOS
         /* tvOS turns the menu button into a system gesture, so we grab it here instead */
         if (elements[GCInputButtonMenu] && !elements[@"Button Home"]) {
             device->pause_button_index = [device->buttons indexOfObject:GCInputButtonMenu];
@@ -588,7 +588,7 @@ static BOOL IOS_AddMFIJoystickDevice(SDL_JoystickDeviceItem *device, GCControlle
                 has_direct_menu = TRUE;
             }
         }
-#if TARGET_OS_TV
+#ifdef SDL_PLATFORM_TVOS
         /* The single menu button isn't very reliable, at least as of tvOS 16.1 */
         if ((device->button_mask & (1 << SDL_GAMEPAD_BUTTON_BACK)) == 0) {
             has_direct_menu = FALSE;
@@ -620,7 +620,7 @@ static BOOL IOS_AddMFIJoystickDevice(SDL_JoystickDeviceItem *device, GCControlle
         device->nhats = 1; /* d-pad */
         device->nbuttons = nbuttons;
     }
-#if TARGET_OS_TV
+#ifdef SDL_PLATFORM_TVOS
     else if (controller.microGamepad) {
         int nbuttons = 0;
 
@@ -786,7 +786,7 @@ static SDL_JoystickDeviceItem *IOS_RemoveJoystickDevice(SDL_JoystickDeviceItem *
     return next;
 }
 
-#if TARGET_OS_TV
+#ifdef SDL_PLATFORM_TVOS
 static void SDLCALL SDL_AppleTVRemoteRotationHintChanged(void *udata, const char *name, const char *oldValue, const char *newValue)
 {
     BOOL allowRotation = newValue != NULL && *newValue != '0';
@@ -799,7 +799,7 @@ static void SDLCALL SDL_AppleTVRemoteRotationHintChanged(void *udata, const char
         }
     }
 }
-#endif /* TARGET_OS_TV */
+#endif /* SDL_PLATFORM_TVOS */
 
 static int IOS_JoystickInit(void)
 {
@@ -807,7 +807,7 @@ static int IOS_JoystickInit(void)
         return 0;
     }
 
-#ifdef __MACOS__
+#ifdef SDL_PLATFORM_MACOS
 #if SDL_HAS_BUILTIN(__builtin_available)
     if (@available(macOS 10.16, *)) {
         /* Continue with initialization on macOS 11+ */
@@ -843,10 +843,10 @@ static int IOS_JoystickInit(void)
             IOS_AddJoystickDevice(controller, SDL_FALSE);
         }
 
-#if TARGET_OS_TV
+#ifdef SDL_PLATFORM_TVOS
         SDL_AddHintCallback(SDL_HINT_APPLE_TV_REMOTE_ALLOW_ROTATION,
                             SDL_AppleTVRemoteRotationHintChanged, NULL);
-#endif /* TARGET_OS_TV */
+#endif /* SDL_PLATFORM_TVOS */
 
         center = [NSNotificationCenter defaultCenter];
 
@@ -1012,6 +1012,26 @@ static int IOS_JoystickOpen(SDL_Joystick *joystick, int device_index)
             }
 #endif /* ENABLE_MFI_SYSTEM_GESTURE_STATE */
 
+            if (@available(macOS 10.16, iOS 14.0, tvOS 14.0, *)) {
+                GCController *controller = device->controller;
+#ifdef ENABLE_MFI_LIGHT
+                if (controller.light) {
+                    SDL_SetBooleanProperty(SDL_GetJoystickProperties(joystick), SDL_PROP_JOYSTICK_CAP_RGB_LED_BOOLEAN, SDL_TRUE);
+                }
+#endif
+
+#ifdef ENABLE_MFI_RUMBLE
+                if (controller.haptics) {
+                    for (GCHapticsLocality locality in controller.haptics.supportedLocalities) {
+                        if ([locality isEqualToString:GCHapticsLocalityHandles]) {
+                            SDL_SetBooleanProperty(SDL_GetJoystickProperties(joystick), SDL_PROP_JOYSTICK_CAP_RUMBLE_BOOLEAN, SDL_TRUE);
+                        } else if ([locality isEqualToString:GCHapticsLocalityTriggers]) {
+                            SDL_SetBooleanProperty(SDL_GetJoystickProperties(joystick), SDL_PROP_JOYSTICK_CAP_TRIGGER_RUMBLE_BOOLEAN, SDL_TRUE);
+                        }
+                    }
+                }
+#endif
+            }
 #endif /* SDL_JOYSTICK_MFI */
         }
     }
@@ -1248,7 +1268,7 @@ static void IOS_MFIJoystickUpdate(SDL_Joystick *joystick)
 
             SDL_small_free(buttons, isstack);
         }
-#if TARGET_OS_TV
+#ifdef SDL_PLATFORM_TVOS
         else if (controller.microGamepad) {
             GCMicroGamepad *gamepad = controller.microGamepad;
 
@@ -1271,7 +1291,7 @@ static void IOS_MFIJoystickUpdate(SDL_Joystick *joystick)
                 SDL_SendJoystickButton(timestamp, joystick, i, buttons[i]);
             }
         }
-#endif /* TARGET_OS_TV */
+#endif /* SDL_PLATFORM_TVOS */
 
         if (joystick->nhats > 0) {
             SDL_SendJoystickHat(timestamp, joystick, 0, hatstate);
@@ -1625,44 +1645,6 @@ static int IOS_JoystickRumbleTriggers(SDL_Joystick *joystick, Uint16 left_rumble
 #endif
 }
 
-static Uint32 IOS_JoystickGetCapabilities(SDL_Joystick *joystick)
-{
-    Uint32 result = 0;
-
-#if defined(ENABLE_MFI_LIGHT) || defined(ENABLE_MFI_RUMBLE)
-    @autoreleasepool {
-        SDL_JoystickDeviceItem *device = joystick->hwdata;
-
-        if (device == NULL) {
-            return 0;
-        }
-
-        if (@available(macOS 10.16, iOS 14.0, tvOS 14.0, *)) {
-            GCController *controller = device->controller;
-#ifdef ENABLE_MFI_LIGHT
-            if (controller.light) {
-                result |= SDL_JOYCAP_LED;
-            }
-#endif
-
-#ifdef ENABLE_MFI_RUMBLE
-            if (controller.haptics) {
-                for (GCHapticsLocality locality in controller.haptics.supportedLocalities) {
-                    if ([locality isEqualToString:GCHapticsLocalityHandles]) {
-                        result |= SDL_JOYCAP_RUMBLE;
-                    } else if ([locality isEqualToString:GCHapticsLocalityTriggers]) {
-                        result |= SDL_JOYCAP_RUMBLE_TRIGGERS;
-                    }
-                }
-            }
-#endif
-        }
-    }
-#endif /* ENABLE_MFI_LIGHT || ENABLE_MFI_RUMBLE */
-
-    return result;
-}
-
 static int IOS_JoystickSetLED(SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue)
 {
 #ifdef ENABLE_MFI_LIGHT
@@ -1799,10 +1781,10 @@ static void IOS_JoystickQuit(void)
             disconnectObserver = nil;
         }
 
-#if TARGET_OS_TV
+#ifdef SDL_PLATFORM_TVOS
         SDL_DelHintCallback(SDL_HINT_APPLE_TV_REMOTE_ALLOW_ROTATION,
                             SDL_AppleTVRemoteRotationHintChanged, NULL);
-#endif /* TARGET_OS_TV */
+#endif /* SDL_PLATFORM_TVOS */
 #endif /* SDL_JOYSTICK_MFI */
 
         while (deviceList != NULL) {
@@ -1960,7 +1942,7 @@ static SDL_bool IOS_JoystickGetGamepadMapping(int device_index, SDL_GamepadMappi
     return SDL_FALSE;
 }
 
-#if defined(SDL_JOYSTICK_MFI) && defined(__MACOS__)
+#if defined(SDL_JOYSTICK_MFI) && defined(SDL_PLATFORM_MACOS)
 SDL_bool IOS_SupportedHIDDevice(IOHIDDeviceRef device)
 {
     if (!SDL_GetHintBoolean(SDL_HINT_JOYSTICK_MFI, SDL_TRUE)) {
@@ -2184,7 +2166,6 @@ SDL_JoystickDriver SDL_IOS_JoystickDriver = {
     IOS_JoystickOpen,
     IOS_JoystickRumble,
     IOS_JoystickRumbleTriggers,
-    IOS_JoystickGetCapabilities,
     IOS_JoystickSetLED,
     IOS_JoystickSendEffect,
     IOS_JoystickSetSensorsEnabled,

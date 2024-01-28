@@ -454,7 +454,7 @@ static void CheckMotionPlusConnection(SDL_DriverWii_Context *ctx)
 
 static void ActivateMotionPlusWithMode(SDL_DriverWii_Context *ctx, Uint8 mode)
 {
-#ifdef __LINUX__
+#ifdef SDL_PLATFORM_LINUX
     /* Linux drivers maintain a lot of state around the Motion Plus
      * extension, so don't mess with it here.
      */
@@ -824,7 +824,7 @@ static int HIDAPI_DriverWii_RumbleJoystickTriggers(SDL_HIDAPI_Device *device, SD
 
 static Uint32 HIDAPI_DriverWii_GetJoystickCapabilities(SDL_HIDAPI_Device *device, SDL_Joystick *joystick)
 {
-    return SDL_JOYCAP_RUMBLE;
+    return SDL_JOYSTICK_CAP_RUMBLE;
 }
 
 static int HIDAPI_DriverWii_SetJoystickLED(SDL_HIDAPI_Device *device, SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue)

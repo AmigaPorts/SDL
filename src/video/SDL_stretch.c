@@ -146,9 +146,10 @@ int SDL_SoftStretch(SDL_Surface *src, const SDL_Rect *srcrect,
     int i;                                                                            \
     Sint64 fp_sum_h;                                                                  \
     int fp_step_h, left_pad_h, right_pad_h;                                           \
-    Sint64  fp_sum_w;                                                                 \
+    Sint64 fp_sum_w;                                                                  \
     int fp_step_w, left_pad_w, right_pad_w;                                           \
-    int fp_sum_w_init, left_pad_w_init, right_pad_w_init, dst_gap, middle_init;       \
+    Sint64 fp_sum_w_init;                                                             \
+    int left_pad_w_init, right_pad_w_init, dst_gap, middle_init;                      \
     get_scaler_datas(src_h, dst_h, &fp_sum_h, &fp_step_h, &left_pad_h, &right_pad_h); \
     get_scaler_datas(src_w, dst_w, &fp_sum_w, &fp_step_w, &left_pad_w, &right_pad_w); \
     fp_sum_w_init = fp_sum_w + left_pad_w * fp_step_w;                                \
@@ -336,7 +337,7 @@ static int scale_mat(const Uint32 *src, int src_w, int src_h, int src_pitch,
 #define CAST_uint32x2_t      (uint32x2_t)
 #endif
 
-#if defined(__WINRT__) || defined(_MSC_VER)
+#if defined(SDL_PLATFORM_WINRT) || defined(_MSC_VER)
 #ifdef SDL_NEON_INTRINSICS
 #undef CAST_uint8x8_t
 #undef CAST_uint32x2_t

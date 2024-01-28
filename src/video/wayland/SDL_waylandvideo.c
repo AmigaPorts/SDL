@@ -34,6 +34,7 @@
 #include "SDL_waylandkeyboard.h"
 #include "SDL_waylandclipboard.h"
 #include "SDL_waylandvulkan.h"
+#include "SDL_waylandmessagebox.h"
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -56,6 +57,7 @@
 #include "input-timestamps-unstable-v1-client-protocol.h"
 #include "relative-pointer-unstable-v1-client-protocol.h"
 #include "pointer-constraints-unstable-v1-client-protocol.h"
+#include "kde-output-order-v1-client-protocol.h"
 
 #ifdef HAVE_LIBDECOR_H
 #include <libdecor.h>
@@ -63,10 +65,19 @@
 
 #define WAYLANDVID_DRIVER_NAME "wayland"
 
+/* Clamp certain core protocol versions on older versions of libwayland. */
 #if SDL_WAYLAND_CHECK_VERSION(1, 22, 0)
 #define SDL_WL_COMPOSITOR_VERSION 6
 #else
 #define SDL_WL_COMPOSITOR_VERSION 4
+#endif
+
+#if SDL_WAYLAND_CHECK_VERSION(1, 22, 0)
+#define SDL_WL_SEAT_VERSION 9
+#elif SDL_WAYLAND_CHECK_VERSION(1, 21, 0)
+#define SDL_WL_SEAT_VERSION 8
+#else
+#define SDL_WL_SEAT_VERSION 5
 #endif
 
 #if SDL_WAYLAND_CHECK_VERSION(1, 20, 0)
@@ -74,6 +85,205 @@
 #else
 #define SDL_WL_OUTPUT_VERSION 3
 #endif
+
+#ifdef SDL_USE_LIBDBUS
+#include "../../core/linux/SDL_dbus.h"
+
+#define DISPLAY_INFO_NODE   "org.gnome.Mutter.DisplayConfig"
+#define DISPLAY_INFO_PATH   "/org/gnome/Mutter/DisplayConfig"
+#define DISPLAY_INFO_METHOD "GetCurrentState"
+#endif
+
+/* GNOME doesn't expose displays in any particular order, but we can find the
+ * primary display and its logical coordinates via a DBus method.
+ */
+static SDL_bool Wayland_GetGNOMEPrimaryDisplayCoordinates(int *x, int *y)
+{
+#ifdef SDL_USE_LIBDBUS
+    SDL_DBusContext *dbus = SDL_DBus_GetContext();
+    DBusMessage *reply = NULL;
+    DBusMessageIter iter[3];
+    DBusMessage *msg = dbus->message_new_method_call(DISPLAY_INFO_NODE,
+                                                     DISPLAY_INFO_PATH,
+                                                     DISPLAY_INFO_NODE,
+                                                     DISPLAY_INFO_METHOD);
+
+    if (msg) {
+        reply = dbus->connection_send_with_reply_and_block(dbus->session_conn, msg, DBUS_TIMEOUT_USE_DEFAULT, NULL);
+        dbus->message_unref(msg);
+    }
+
+    if (reply) {
+        /* Serial (don't care) */
+        dbus->message_iter_init(reply, &iter[0]);
+        if (dbus->message_iter_get_arg_type(&iter[0]) != DBUS_TYPE_UINT32) {
+            goto error;
+        }
+
+        /* Physical monitor array (don't care) */
+        dbus->message_iter_next(&iter[0]);
+        if (dbus->message_iter_get_arg_type(&iter[0]) != DBUS_TYPE_ARRAY) {
+            goto error;
+        }
+
+        /* Logical monitor array of structs */
+        dbus->message_iter_next(&iter[0]);
+        if (dbus->message_iter_get_arg_type(&iter[0]) != DBUS_TYPE_ARRAY) {
+            goto error;
+        }
+
+        /* First logical monitor struct */
+        dbus->message_iter_recurse(&iter[0], &iter[1]);
+        if (dbus->message_iter_get_arg_type(&iter[1]) != DBUS_TYPE_STRUCT) {
+            goto error;
+        }
+
+        do {
+            int logical_x, logical_y;
+            dbus_bool_t primary;
+
+            /* Logical X */
+            dbus->message_iter_recurse(&iter[1], &iter[2]);
+            if (dbus->message_iter_get_arg_type(&iter[2]) != DBUS_TYPE_INT32) {
+                goto error;
+            }
+            dbus->message_iter_get_basic(&iter[2], &logical_x);
+
+            /* Logical Y */
+            dbus->message_iter_next(&iter[2]);
+            if (dbus->message_iter_get_arg_type(&iter[2]) != DBUS_TYPE_INT32) {
+                goto error;
+            }
+            dbus->message_iter_get_basic(&iter[2], &logical_y);
+
+            /* Scale (don't care) */
+            dbus->message_iter_next(&iter[2]);
+            if (dbus->message_iter_get_arg_type(&iter[2]) != DBUS_TYPE_DOUBLE) {
+                goto error;
+            }
+
+            /* Transform (don't care) */
+            dbus->message_iter_next(&iter[2]);
+            if (dbus->message_iter_get_arg_type(&iter[2]) != DBUS_TYPE_UINT32) {
+                goto error;
+            }
+
+            /* Primary display boolean */
+            dbus->message_iter_next(&iter[2]);
+            if (dbus->message_iter_get_arg_type(&iter[2]) != DBUS_TYPE_BOOLEAN) {
+                goto error;
+            }
+            dbus->message_iter_get_basic(&iter[2], &primary);
+
+            if (primary) {
+                *x = logical_x;
+                *y = logical_y;
+
+                /* We found the primary display: success. */
+                dbus->message_unref(reply);
+                return SDL_TRUE;
+            }
+        } while (dbus->message_iter_next(&iter[1]));
+    }
+
+error:
+    if (reply) {
+        dbus->message_unref(reply);
+    }
+#endif
+    return SDL_FALSE;
+}
+
+static void Wayland_FlushOutputOrder(SDL_VideoData *vid)
+{
+    SDL_WaylandConnectorName *c, *tmp;
+    wl_list_for_each_safe (c, tmp, &vid->output_order, link) {
+        WAYLAND_wl_list_remove(&c->link);
+        SDL_free(c);
+    }
+
+    vid->output_order_finalized = SDL_FALSE;
+}
+
+/* The order of wl_output displays exposed by KDE doesn't correspond to any priority, but KDE does provide a protocol
+ * that tells clients the preferred order or all connected displays via an ordered list of connector name strings.
+ */
+static void handle_kde_output_order_output(void *data, struct kde_output_order_v1 *kde_output_order_v1, const char *output_name)
+{
+    SDL_VideoData *vid = (SDL_VideoData *)data;
+
+    /* Starting a new list, flush the old. */
+    if (vid->output_order_finalized) {
+        Wayland_FlushOutputOrder(vid);
+    }
+
+    const int len = SDL_strlen(output_name) + 1;
+    SDL_WaylandConnectorName *node = SDL_malloc(sizeof(SDL_WaylandConnectorName) + len);
+    SDL_strlcpy(node->wl_output_name, output_name, len);
+
+    WAYLAND_wl_list_insert(vid->output_order.prev, &node->link);
+}
+
+static void handle_kde_output_order_done(void *data, struct kde_output_order_v1 *kde_output_order_v1)
+{
+    SDL_VideoData *vid = (SDL_VideoData *)data;
+    vid->output_order_finalized = SDL_TRUE;
+}
+
+static const struct kde_output_order_v1_listener kde_output_order_listener = {
+    handle_kde_output_order_output,
+    handle_kde_output_order_done
+};
+
+static void Wayland_SortOutputs(SDL_VideoData *vid)
+{
+    SDL_DisplayData *d;
+    int p_x, p_y;
+
+    /* KDE provides the kde-output-order-v1 protocol, which gives us the full preferred display
+     * ordering in the form of a list of wl_output.name strings (connector names).
+     */
+    if (!WAYLAND_wl_list_empty(&vid->output_order)) {
+        struct wl_list sorted_list;
+        SDL_WaylandConnectorName *c;
+
+        /* Sort the outputs by connector name. */
+        WAYLAND_wl_list_init(&sorted_list);
+        wl_list_for_each (c, &vid->output_order, link) {
+            wl_list_for_each (d, &vid->output_list, link) {
+                if (SDL_strcmp(c->wl_output_name, d->wl_output_name) == 0) {
+                    /* Remove from the current list and Append the next node to the end of the new list. */
+                    WAYLAND_wl_list_remove(&d->link);
+                    WAYLAND_wl_list_insert(sorted_list.prev, &d->link);
+                    break;
+                }
+            }
+        }
+
+        if (!WAYLAND_wl_list_empty(&vid->output_list)) {
+            /* If any displays were omitted during the sort, append them to the new list.
+             * This shouldn't happen, but better safe than sorry.
+             */
+            WAYLAND_wl_list_insert_list(sorted_list.prev, &vid->output_list);
+        }
+
+        /* Set the output list to the sorted list. */
+        WAYLAND_wl_list_init(&vid->output_list);
+        WAYLAND_wl_list_insert_list(&vid->output_list, &sorted_list);
+    } else if (Wayland_GetGNOMEPrimaryDisplayCoordinates(&p_x, &p_y)) {
+        /* GNOME doesn't expose the displays in any preferential order, so find the primary display coordinates and use them
+         * to manually sort the primary display to the front of the list so that it is always the first exposed by SDL.
+         * Otherwise, assume that the displays were already exposed in preferential order.
+         */
+        wl_list_for_each (d, &vid->output_list, link) {
+            if (d->x == p_x && d->y == p_y) {
+                WAYLAND_wl_list_remove(&d->link);
+                WAYLAND_wl_list_insert(&vid->output_list, &d->link);
+                break;
+            }
+        }
+    }
+}
 
 static void display_handle_done(void *data, struct wl_output *output);
 
@@ -144,7 +354,7 @@ static void Wayland_DeleteDevice(SDL_VideoDevice *device)
     if (data->display && !data->display_externally_owned) {
         WAYLAND_wl_display_flush(data->display);
         WAYLAND_wl_display_disconnect(data->display);
-        SDL_ClearProperty(SDL_GetGlobalProperties(), SDL_PROPERTY_GLOBAL_VIDEO_WAYLAND_WL_DISPLAY_POINTER);
+        SDL_ClearProperty(SDL_GetGlobalProperties(), SDL_PROP_GLOBAL_VIDEO_WAYLAND_WL_DISPLAY_POINTER);
     }
     if (device->wakeup_lock) {
         SDL_DestroyMutex(device->wakeup_lock);
@@ -158,8 +368,9 @@ static SDL_VideoDevice *Wayland_CreateDevice(void)
 {
     SDL_VideoDevice *device;
     SDL_VideoData *data;
+    struct SDL_WaylandInput *input;
     struct wl_display *display = SDL_GetProperty(SDL_GetGlobalProperties(),
-                                                 SDL_PROPERTY_GLOBAL_VIDEO_WAYLAND_WL_DISPLAY_POINTER, NULL);
+                                                 SDL_PROP_GLOBAL_VIDEO_WAYLAND_WL_DISPLAY_POINTER, NULL);
     SDL_bool display_is_external = !!display;
 
     /* Are we trying to connect to or are currently in a Wayland session? */
@@ -189,15 +400,31 @@ static SDL_VideoDevice *Wayland_CreateDevice(void)
         return NULL;
     }
 
+    input = SDL_calloc(1, sizeof(*input));
+    if (!input) {
+        SDL_free(data);
+        WAYLAND_wl_display_disconnect(display);
+        SDL_WAYLAND_UnloadSymbols();
+        return NULL;
+    }
+
+    input->display = data;
+    input->sx_w = wl_fixed_from_int(0);
+    input->sy_w = wl_fixed_from_int(0);
+    input->xkb.current_group = XKB_GROUP_INVALID;
+
     data->initializing = SDL_TRUE;
     data->display = display;
+    data->input = input;
     data->display_externally_owned = display_is_external;
     WAYLAND_wl_list_init(&data->output_list);
+    WAYLAND_wl_list_init(&data->output_order);
     WAYLAND_wl_list_init(&external_window_list);
 
     /* Initialize all variables that we clean on shutdown */
     device = SDL_calloc(1, sizeof(SDL_VideoDevice));
     if (!device) {
+        SDL_free(input);
         SDL_free(data);
         WAYLAND_wl_display_disconnect(display);
         SDL_WAYLAND_UnloadSymbols();
@@ -206,7 +433,7 @@ static SDL_VideoDevice *Wayland_CreateDevice(void)
 
     if (!display_is_external) {
         SDL_SetProperty(SDL_GetGlobalProperties(),
-                        SDL_PROPERTY_GLOBAL_VIDEO_WAYLAND_WL_DISPLAY_POINTER, display);
+                        SDL_PROP_GLOBAL_VIDEO_WAYLAND_WL_DISPLAY_POINTER, display);
     }
 
     device->driverdata = data;
@@ -293,7 +520,8 @@ static SDL_VideoDevice *Wayland_CreateDevice(void)
 
 VideoBootStrap Wayland_bootstrap = {
     WAYLANDVID_DRIVER_NAME, "SDL Wayland video driver",
-    Wayland_CreateDevice
+    Wayland_CreateDevice,
+    Wayland_ShowMessageBox
 };
 
 static void xdg_output_handle_logical_position(void *data, struct zxdg_output_v1 *xdg_output,
@@ -638,8 +866,7 @@ static void display_handle_done(void *data,
     }
 
     if (driverdata->display == 0) {
-        /* First time getting display info, create the VideoDisplay */
-        SDL_bool send_event = !driverdata->videodata->initializing;
+        /* First time getting display info, initialize the VideoDisplay */
         if (driverdata->physical_width >= driverdata->physical_height) {
             driverdata->placeholder.natural_orientation = SDL_ORIENTATION_LANDSCAPE;
         } else {
@@ -647,9 +874,13 @@ static void display_handle_done(void *data,
         }
         driverdata->placeholder.current_orientation = driverdata->orientation;
         driverdata->placeholder.driverdata = driverdata;
-        driverdata->display = SDL_AddVideoDisplay(&driverdata->placeholder, send_event);
-        SDL_free(driverdata->placeholder.name);
-        SDL_zero(driverdata->placeholder);
+
+        /* During initialization, the displays will be added after enumeration is complete. */
+        if (!video->initializing) {
+            driverdata->display = SDL_AddVideoDisplay(&driverdata->placeholder, SDL_TRUE);
+            SDL_free(driverdata->placeholder.name);
+            SDL_zero(driverdata->placeholder);
+        }
     } else {
         SDL_SendDisplayEvent(dpy, SDL_EVENT_DISPLAY_ORIENTATION, driverdata->orientation);
     }
@@ -665,6 +896,10 @@ static void display_handle_scale(void *data,
 
 static void display_handle_name(void *data, struct wl_output *wl_output, const char *name)
 {
+    SDL_DisplayData *driverdata = (SDL_DisplayData *)data;
+
+    SDL_free(driverdata->wl_output_name);
+    driverdata->wl_output_name = SDL_strdup(name);
 }
 
 static void display_handle_description(void *data, struct wl_output *wl_output, const char *description)
@@ -721,6 +956,8 @@ static void Wayland_free_display(SDL_VideoDisplay *display)
         SDL_DisplayData *display_data = display->driverdata;
         int i;
 
+        SDL_free(display_data->wl_output_name);
+
         if (display_data->xdg_output) {
             zxdg_output_v1_destroy(display_data->xdg_output);
         }
@@ -743,10 +980,22 @@ static void Wayland_free_display(SDL_VideoDisplay *display)
     }
 }
 
+static void Wayland_FinalizeDisplays(SDL_VideoData *vid)
+{
+    SDL_DisplayData *d;
+
+    Wayland_SortOutputs(vid);
+    wl_list_for_each(d, &vid->output_list, link) {
+        d->display = SDL_AddVideoDisplay(&d->placeholder, SDL_FALSE);
+        SDL_free(d->placeholder.name);
+        SDL_zero(d->placeholder);
+    }
+}
+
 static void Wayland_init_xdg_output(SDL_VideoData *d)
 {
     SDL_DisplayData *node;
-    wl_list_for_each(node, &d->output_list, link) {
+    wl_list_for_each (node, &d->output_list, link) {
         node->xdg_output = zxdg_output_manager_v1_get_xdg_output(node->videodata->xdg_output_manager, node->output);
         zxdg_output_v1_add_listener(node->xdg_output, &xdg_output_listener, node);
     }
@@ -786,7 +1035,8 @@ static void display_handle_global(void *data, struct wl_registry *registry, uint
     } else if (SDL_strcmp(interface, "wl_output") == 0) {
         Wayland_add_display(d, id, SDL_min(version, SDL_WL_OUTPUT_VERSION));
     } else if (SDL_strcmp(interface, "wl_seat") == 0) {
-        Wayland_display_add_input(d, id, version);
+        d->input->seat = wl_registry_bind(d->registry, id, &wl_seat_interface, SDL_min(SDL_WL_SEAT_VERSION, version));
+        Wayland_input_initialize_seat(d);
     } else if (SDL_strcmp(interface, "xdg_wm_base") == 0) {
         d->shell.xdg = wl_registry_bind(d->registry, id, &xdg_wm_base_interface, SDL_min(version, 6));
         xdg_wm_base_add_listener(d->shell.xdg, &shell_listener_xdg, NULL);
@@ -803,18 +1053,19 @@ static void display_handle_global(void *data, struct wl_registry *registry, uint
     } else if (SDL_strcmp(interface, "xdg_activation_v1") == 0) {
         d->activation_manager = wl_registry_bind(d->registry, id, &xdg_activation_v1_interface, 1);
     } else if (SDL_strcmp(interface, "zwp_text_input_manager_v3") == 0) {
-        Wayland_add_text_input_manager(d, id, version);
+        d->text_input_manager = wl_registry_bind(d->registry, id, &zwp_text_input_manager_v3_interface, 1);
+        Wayland_create_text_input(d);
     } else if (SDL_strcmp(interface, "wl_data_device_manager") == 0) {
-        Wayland_add_data_device_manager(d, id, version);
+        d->data_device_manager = wl_registry_bind(d->registry, id, &wl_data_device_manager_interface, SDL_min(3, version));
+        Wayland_create_data_device(d);
     } else if (SDL_strcmp(interface, "zwp_primary_selection_device_manager_v1") == 0) {
-        Wayland_add_primary_selection_device_manager(d, id, version);
+        d->primary_selection_device_manager = wl_registry_bind(d->registry, id, &zwp_primary_selection_device_manager_v1_interface, 1);
+        Wayland_create_primary_selection_device(d);
     } else if (SDL_strcmp(interface, "zxdg_decoration_manager_v1") == 0) {
         d->decoration_manager = wl_registry_bind(d->registry, id, &zxdg_decoration_manager_v1_interface, 1);
     } else if (SDL_strcmp(interface, "zwp_tablet_manager_v2") == 0) {
         d->tablet_manager = wl_registry_bind(d->registry, id, &zwp_tablet_manager_v2_interface, 1);
-        if (d->input) {
-            Wayland_input_add_tablet(d->input, d->tablet_manager);
-        }
+        Wayland_input_add_tablet(d->input, d->tablet_manager);
     } else if (SDL_strcmp(interface, "zxdg_output_manager_v1") == 0) {
         version = SDL_min(version, 3); /* Versions 1 through 3 are supported. */
         d->xdg_output_manager = wl_registry_bind(d->registry, id, &zxdg_output_manager_v1_interface, version);
@@ -828,6 +1079,9 @@ static void display_handle_global(void *data, struct wl_registry *registry, uint
         if (d->input) {
             Wayland_RegisterTimestampListeners(d->input);
         }
+    } else if (SDL_strcmp(interface, "kde_output_order_v1") == 0) {
+        d->kde_output_order = wl_registry_bind(d->registry, id, &kde_output_order_v1_interface, 1);
+        kde_output_order_v1_add_listener(d->kde_output_order, &kde_output_order_listener, d);
     }
 }
 
@@ -915,6 +1169,8 @@ int Wayland_VideoInit(SDL_VideoDevice *_this)
 
     // Second roundtrip to receive all output events.
     WAYLAND_wl_display_roundtrip(data->display);
+
+    Wayland_FinalizeDisplays(data);
 
     Wayland_InitMouse();
 
@@ -1053,6 +1309,12 @@ static void Wayland_VideoCleanup(SDL_VideoDevice *_this)
     if (data->input_timestamps_manager) {
         zwp_input_timestamps_manager_v1_destroy(data->input_timestamps_manager);
         data->input_timestamps_manager = NULL;
+    }
+
+    if (data->kde_output_order) {
+        Wayland_FlushOutputOrder(data);
+        kde_output_order_v1_destroy(data->kde_output_order);
+        data->kde_output_order = NULL;
     }
 
     if (data->compositor) {

@@ -895,6 +895,7 @@ extern DECLSPEC const char *SDLCALL SDL_GetHapticInstanceName(SDL_HapticID insta
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_CloseHaptic
+ * \sa SDL_GetHaptics
  * \sa SDL_OpenHapticFromJoystick
  * \sa SDL_OpenHapticFromMouse
  * \sa SDL_PauseHaptic
@@ -1090,7 +1091,7 @@ extern DECLSPEC int SDLCALL SDL_GetNumHapticAxes(SDL_Haptic *haptic);
  * \sa SDL_CreateHapticEffect
  * \sa SDL_GetHapticFeatures
  */
-extern DECLSPEC SDL_bool SDLCALL SDL_HapticEffectSupported(SDL_Haptic *haptic, SDL_HapticEffect *effect);
+extern DECLSPEC SDL_bool SDLCALL SDL_HapticEffectSupported(SDL_Haptic *haptic, const SDL_HapticEffect *effect);
 
 /**
  * Create a new haptic effect on a specified device.
@@ -1107,7 +1108,7 @@ extern DECLSPEC SDL_bool SDLCALL SDL_HapticEffectSupported(SDL_Haptic *haptic, S
  * \sa SDL_RunHapticEffect
  * \sa SDL_UpdateHapticEffect
  */
-extern DECLSPEC int SDLCALL SDL_CreateHapticEffect(SDL_Haptic *haptic, SDL_HapticEffect *effect);
+extern DECLSPEC int SDLCALL SDL_CreateHapticEffect(SDL_Haptic *haptic, const SDL_HapticEffect *effect);
 
 /**
  * Update the properties of an effect.
@@ -1130,7 +1131,7 @@ extern DECLSPEC int SDLCALL SDL_CreateHapticEffect(SDL_Haptic *haptic, SDL_Hapti
  * \sa SDL_CreateHapticEffect
  * \sa SDL_RunHapticEffect
  */
-extern DECLSPEC int SDLCALL SDL_UpdateHapticEffect(SDL_Haptic *haptic, int effect, SDL_HapticEffect *data);
+extern DECLSPEC int SDLCALL SDL_UpdateHapticEffect(SDL_Haptic *haptic, int effect, const SDL_HapticEffect *data);
 
 /**
  * Run the haptic effect on its associated haptic device.
@@ -1294,9 +1295,7 @@ extern DECLSPEC int SDLCALL SDL_StopHapticEffects(SDL_Haptic *haptic);
  * Check whether rumble is supported on a haptic device.
  *
  * \param haptic haptic device to check for rumble support
- * \returns SDL_TRUE if effect is supported, SDL_FALSE if it isn't, or a
- *          negative error code on failure; call SDL_GetError() for more
- *          information.
+ * \returns SDL_TRUE if the effect is supported or SDL_FALSE if it isn't.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1304,7 +1303,7 @@ extern DECLSPEC int SDLCALL SDL_StopHapticEffects(SDL_Haptic *haptic);
  * \sa SDL_PlayHapticRumble
  * \sa SDL_StopHapticRumble
  */
-extern DECLSPEC int SDLCALL SDL_HapticRumbleSupported(SDL_Haptic *haptic);
+extern DECLSPEC SDL_bool SDLCALL SDL_HapticRumbleSupported(SDL_Haptic *haptic);
 
 /**
  * Initialize a haptic device for simple rumble playback.

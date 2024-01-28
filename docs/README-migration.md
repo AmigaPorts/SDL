@@ -13,10 +13,16 @@ rename_symbols.py --all-symbols source_code_path
 
 It's also possible to apply a semantic patch to migrate more easily to SDL3: [SDL_migration.cocci](https://github.com/libsdl-org/SDL/blob/main/build-scripts/SDL_migration.cocci)
 
-SDL headers should now be included as `#include <SDL3/SDL.h>`. Typically that's the only header you'll need in your application unless you are using OpenGL or Vulkan functionality. We have provided a handy Python script [rename_headers.py](https://github.com/libsdl-org/SDL/blob/main/build-scripts/rename_headers.py) to rename SDL2 headers to their SDL3 counterparts:
+SDL headers should now be included as `#include <SDL3/SDL.h>`. Typically that's the only SDL header you'll need in your application unless you are using OpenGL or Vulkan functionality. SDL_image, SDL_mixer, SDL_net, SDL_ttf and SDL_rtf have also their preferred include path changed: for SDL_image, it becomes `#include <SDL3_image/SDL_image.h>`. We have provided a handy Python script [rename_headers.py](https://github.com/libsdl-org/SDL/blob/main/build-scripts/rename_headers.py) to rename SDL2 headers to their SDL3 counterparts:
 ```sh
 rename_headers.py source_code_path
 ```
+
+Some macros are renamed and/or removed in SDL3. We have provided a handy Python script [rename_macros.py](https://github.com/libsdl-org/SDL/blob/main/build-scripts/rename_macros.py) to replace these, and also add fixme comments on how to further improve the code:
+```sh
+rename_macros.py source_code_path
+```
+
 
 CMake users should use this snippet to include SDL support in their project:
 ```
@@ -539,9 +545,6 @@ The following functions have been renamed:
 * SDL_GameControllerGetVendor() => SDL_GetGamepadVendor()
 * SDL_GameControllerHasAxis() => SDL_GamepadHasAxis()
 * SDL_GameControllerHasButton() => SDL_GamepadHasButton()
-* SDL_GameControllerHasLED() => SDL_GamepadHasLED()
-* SDL_GameControllerHasRumble() => SDL_GamepadHasRumble()
-* SDL_GameControllerHasRumbleTriggers() => SDL_GamepadHasRumbleTriggers()
 * SDL_GameControllerHasSensor() => SDL_GamepadHasSensor()
 * SDL_GameControllerIsSensorEnabled() => SDL_GamepadSensorEnabled()
 * SDL_GameControllerMapping() => SDL_GetGamepadMapping()
@@ -562,12 +565,15 @@ The following functions have been removed:
 * SDL_GameControllerEventState() - replaced with SDL_SetGamepadEventsEnabled() and SDL_GamepadEventsEnabled()
 * SDL_GameControllerGetBindForAxis() - replaced with SDL_GetGamepadBindings()
 * SDL_GameControllerGetBindForButton() - replaced with SDL_GetGamepadBindings()
+* SDL_GameControllerHasLED() - replaced with SDL_PROP_GAMEPAD_CAP_RGB_LED_BOOLEAN
+* SDL_GameControllerHasRumble() - replaced with SDL_PROP_GAMEPAD_CAP_RUMBLE_BOOLEAN
+* SDL_GameControllerHasRumbleTriggers() - replaced with SDL_PROP_GAMEPAD_CAP_TRIGGER_RUMBLE_BOOLEAN
 * SDL_GameControllerMappingForDeviceIndex() - replaced with SDL_GetGamepadInstanceMapping()
+* SDL_GameControllerMappingForIndex() - replaced with SDL_GetGamepadMappings()
 * SDL_GameControllerNameForIndex() - replaced with SDL_GetGamepadInstanceName()
+* SDL_GameControllerNumMappings() - replaced with SDL_GetGamepadMappings()
 * SDL_GameControllerPathForIndex() - replaced with SDL_GetGamepadInstancePath()
 * SDL_GameControllerTypeForIndex() - replaced with SDL_GetGamepadInstanceType()
-* SDL_GameControllerNumMappings() - replaced with SDL_GetGamepadMappings()
-* SDL_GameControllerMappingForIndex() - replaced with SDL_GetGamepadMappings()
 
 The following symbols have been renamed:
 * SDL_CONTROLLER_AXIS_INVALID => SDL_GAMEPAD_AXIS_INVALID
@@ -805,6 +811,9 @@ The following functions have been removed:
 * SDL_JoystickGetDeviceProductVersion() - replaced with SDL_GetJoystickInstanceProductVersion()
 * SDL_JoystickGetDeviceType() - replaced with SDL_GetJoystickInstanceType()
 * SDL_JoystickGetDeviceVendor() - replaced with SDL_GetJoystickInstanceVendor()
+* SDL_JoystickHasLED() - replaced with SDL_PROP_JOYSTICK_CAP_RGB_LED_BOOLEAN
+* SDL_JoystickHasRumble() - replaced with SDL_PROP_JOYSTICK_CAP_RUMBLE_BOOLEAN
+* SDL_JoystickHasRumbleTriggers() - replaced with SDL_PROP_JOYSTICK_CAP_TRIGGER_RUMBLE_BOOLEAN
 * SDL_JoystickNameForIndex() - replaced with SDL_GetJoystickInstanceName()
 * SDL_JoystickNumBalls() - API has been removed, see https://github.com/libsdl-org/SDL/issues/6766
 * SDL_JoystickPathForIndex() - replaced with SDL_GetJoystickInstancePath()
@@ -852,7 +861,15 @@ SDL3 doesn't have a static libSDLmain to link against anymore.
 Instead SDL_main.h is now a header-only library **and not included by SDL.h anymore**.
 
 Using it is really simple: Just `#include <SDL3/SDL_main.h>` in the source file with your standard
-`int main(int argc, char* argv[])` function.
+`int main(int argc, char* argv[])` function. See docs/README-main-functions.md for details.
+
+Several platform-specific entry point functions have been removed as unnecessary. If for some reason you explicitly need them, here are easy replacements:
+
+```c
+#define SDL_WinRTRunApp(MAIN_FUNC, RESERVED)  SDL_RunApp(0, NULL, MAIN_FUNC, RESERVED)
+#define SDL_UIKitRunApp(ARGC, ARGV, MAIN_FUNC)  SDL_RunApp(ARGC, ARGV, MAIN_FUNC, NULL)
+#define SDL_GDKRunApp(MAIN_FUNC, RESERVED)  SDL_RunApp(0, NULL, MAIN_FUNC, RESERVED)
+```
 
 ## SDL_metal.h
 
@@ -929,7 +946,53 @@ The following symbols have been renamed:
 
 ## SDL_platform.h
 
-The preprocessor symbol `__MACOSX__` has been renamed `__MACOS__`, and `__IPHONEOS__` has been renamed `__IOS__`
+The following platform preprocessor macros have been renamed:
+
+| SDL2              | SDL3                      |
+|-------------------|---------------------------|
+| `__3DS__`         | `SDL_PLATFORM_3DS`        |
+| `__AIX__`         | `SDL_PLATFORM_AIX`        |
+| `__ANDROID__`     | `SDL_PLATFORM_ANDROID`    |
+| `__APPLE__`       | `SDL_PLATFORM_APPLE`      |
+| `__BSDI__`        | `SDL_PLATFORM_BSDI`       |
+| `__CYGWIN_`       | `SDL_PLATFORM_CYGWIN`     |
+| `__EMSCRIPTEN__`  | `SDL_PLATFORM_EMSCRIPTEN` |
+| `__FREEBSD__`     | `SDL_PLATFORM_FREEBSD`    |
+| `__GDK__`         | `SDL_PLATFORM_GDK`        |
+| `__HAIKU__`       | `SDL_PLATFORM_HAIKU`      |
+| `__HPUX__`        | `SDL_PLATFORM_HPUX`       |
+| `__IPHONEOS__`    | `SDL_PLATFORM_IOS`        |
+| `__IRIX__`        | `SDL_PLATFORM_IRIX`       |
+| `__LINUX__`       | `SDL_PLATFORM_LINUX`      |
+| `__MACOSX__`      | `SDL_PLATFORM_MACOS`      |
+| `__NETBSD__`      | `SDL_PLATFORM_NETBSD`     |
+| `__NGAGE__`       | `SDL_PLATFORM_NGAGE`      |
+| `__OPENBSD__`     | `SDL_PLATFORM_OPENBSD`    |
+| `__OS2__`         | `SDL_PLATFORM_OS2`        |
+| `__OSF__`         | `SDL_PLATFORM_OSF`        |
+| `__PS2__`         | `SDL_PLATFORM_PS2`        |
+| `__PSP__`         | `SDL_PLATFORM_PSP`        |
+| `__QNXNTO__`      | `SDL_PLATFORM_QNXNTO`     |
+| `__RISCOS__`      | `SDL_PLATFORM_RISCOS`     |
+| `__SOLARIS__`     | `SDL_PLATFORM_SOLARIS`    |
+| `__TVOS__`        | `SDL_PLATFORM_TVOS`       |
+| `__unix__`        | `SDL_PLATFORM_UNI`        |
+| `__VITA__`        | `SDL_PLATFORM_VITA`       |
+| `__WIN32__`       | `SDL_PLATFORM_WIN32`      |
+| `__WINGDK__`      | `SDL_PLATFORM_WINGDK`     |
+| `__WINRT__`       | `SDL_PLATFORM_WINRT`      |
+| `__XBOXONE__`     | `SDL_PLATFORM_XBOXONE`    |
+| `__XBOXSERIES__`  | `SDL_PLATFORM_XBOXSERIES` |
+
+You can use the Python script [rename_macros.py](https://github.com/libsdl-org/SDL/blob/main/build-scripts/rename_macros.py) to automatically rename these in your source code.
+
+A new macro `SDL_PLATFORM_WINDOWS` has been added that is true for all Windows platforms, including Xbox, GDK, etc.
+
+The following platform preprocessor macros have been removed:
+* `__DREAMCAST__`
+* `__NACL__`
+* `__PNACL__`
+* `__WINDOWS__`
 
 ## SDL_rect.h
 
@@ -1037,6 +1100,7 @@ The following functions have been removed:
 * SDL_SetTextureUserData() - use SDL_GetTextureProperties() instead
 
 The following symbols have been renamed:
+* SDL_RendererFlip => SDL_FlipMode
 * SDL_ScaleModeBest => SDL_SCALEMODE_BEST
 * SDL_ScaleModeLinear => SDL_SCALEMODE_LINEAR
 * SDL_ScaleModeNearest => SDL_SCALEMODE_NEAREST
@@ -1248,6 +1312,9 @@ M_PI is no longer defined in SDL_stdinc.h, you can use the new symbols SDL_PI_D 
 The following functions have been renamed:
 * SDL_strtokr() => SDL_strtok_r()
 
+The following functions have been removed:
+* SDL_memcpy4()
+
 ## SDL_surface.h
 
 The userdata member of SDL_Surface has been replaced with a more general properties interface, which can be queried with SDL_GetSurfaceProperties()
@@ -1353,7 +1420,7 @@ The information previously available in SDL_GetWindowWMInfo() is now available a
     if (nswindow) {
         ...
     }
-#elif defined(__LINUX__)
+#elif defined(SDL_PLATFORM_LINUX)
     if (SDL_GetWindowWMInfo(window, &info)) {
         if (info.subsystem == SDL_SYSWM_X11) {
             Display *xdisplay = info.info.x11.display;
@@ -1373,26 +1440,26 @@ The information previously available in SDL_GetWindowWMInfo() is now available a
 ```
 becomes:
 ```c
-#if defined(__WIN32__)
-    HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROPERTY_WINDOW_WIN32_HWND_POINTER, NULL);
+#if defined(SDL_PLATFORM_WIN32)
+    HWND hwnd = (HWND)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
     if (hwnd) {
         ...
     }
-#elif defined(__MACOS__)
-    NSWindow *nswindow = (__bridge NSWindow *)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROPERTY_WINDOW_COCOA_WINDOW_POINTER, NULL);
+#elif defined(SDL_PLATFORM_MACOS)
+    NSWindow *nswindow = (__bridge NSWindow *)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
     if (nswindow) {
         ...
     }
-#elif defined(__LINUX__)
+#elif defined(SDL_PLATFORM_LINUX)
     if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "x11") == 0) {
-        Display *xdisplay = (Display *)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROPERTY_WINDOW_X11_DISPLAY_POINTER, NULL);
-        Window xwindow = (Window)SDL_GetNumberProperty(SDL_GetWindowProperties(window), SDL_PROPERTY_WINDOW_X11_WINDOW_NUMBER, 0);
+        Display *xdisplay = (Display *)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
+        Window xwindow = (Window)SDL_GetNumberProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
         if (xdisplay && xwindow) {
             ...
         }
     } else if (SDL_strcmp(SDL_GetCurrentVideoDriver(), "wayland") == 0) {
-        struct wl_display *display = (struct wl_display *)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROPERTY_WINDOW_WAYLAND_DISPLAY_POINTER, NULL);
-        struct wl_surface *surface = (struct wl_surface *)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROPERTY_WINDOW_WAYLAND_SURFACE_POINTER, NULL);
+        struct wl_display *display = (struct wl_display *)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, NULL);
+        struct wl_surface *surface = (struct wl_surface *)SDL_GetProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, NULL);
         if (display && surface) {
             ...
         }
@@ -1442,6 +1509,8 @@ SDL_GetNumTouchFingers() returns a negative error code if there was an error.
 
 SDL_GetTouchName is replaced with SDL_GetTouchDeviceName(), which takes an SDL_TouchID instead of an index.
 
+SDL_TouchID and SDL_FingerID are now Uint64 with 0 being an invalid value.
+
 The following functions have been removed:
 * SDL_GetNumTouchDevices() - replaced with SDL_GetTouchDevices()
 * SDL_GetTouchDevice() - replaced with SDL_GetTouchDevices()
@@ -1453,6 +1522,8 @@ SDL_GetRevisionNumber() has been removed from the API, it always returned 0 in S
 
 
 ## SDL_video.h
+
+Several video backends have had their names lower-cased ("kmsdrm", "rpi", "android", "psp", "ps2", "vita"). SDL already does a case-insensitive compare for SDL_HINT_VIDEO_DRIVER tests, but if your app is calling SDL_GetVideoDriver() or SDL_GetCurrentVideoDriver() and doing case-sensitive compares on those strings, please update your code.
 
 SDL_VideoInit() and SDL_VideoQuit() have been removed. Instead you can call SDL_InitSubSystem() and SDL_QuitSubSystem() with SDL_INIT_VIDEO, which will properly refcount the subsystems. You can choose a specific video driver using SDL_VIDEO_DRIVER hint.
 
@@ -1479,11 +1550,11 @@ Rather than iterating over displays using display index, there is a new function
 SDL_CreateWindow() has been simplified and no longer takes a window position. You can use SDL_CreateWindowWithProperties() if you need to set the window position when creating it, e.g.
 ```c
     SDL_PropertiesID props = SDL_CreateProperties();
-    SDL_SetStringProperty(props, SDL_PROPERTY_WINDOW_CREATE_TITLE_STRING, title);
-    SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_X_NUMBER, x);
-    SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_Y_NUMBER, y);
-    SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_WIDTH_NUMBER, width);
-    SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_HEIGHT_NUMBER, height);
+    SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, title);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, x);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, y);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, width);
+    SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, height);
     SDL_SetNumberProperty(props, "flags", flags);
     pWindow = SDL_CreateWindowWithProperties(props);
     SDL_DestroyProperties(props);

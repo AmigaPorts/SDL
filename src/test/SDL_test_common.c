@@ -1361,7 +1361,7 @@ SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state)
                 }
                 SDL_free((void *)modes);
 
-#if defined(SDL_VIDEO_DRIVER_WINDOWS) && !defined(__XBOXONE__) && !defined(__XBOXSERIES__)
+#if defined(SDL_VIDEO_DRIVER_WINDOWS) && !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
                 /* Print the D3D9 adapter index */
                 adapterIndex = SDL_Direct3D9GetAdapterIndex(displayID);
                 SDL_Log("D3D9 Adapter Index: %d", adapterIndex);
@@ -1451,11 +1451,11 @@ SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state)
                 SDL_strlcpy(title, state->window_title, SDL_arraysize(title));
             }
             props = SDL_CreateProperties();
-            SDL_SetStringProperty(props, SDL_PROPERTY_WINDOW_CREATE_TITLE_STRING, title);
-            SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_X_NUMBER, r.x);
-            SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_Y_NUMBER, r.y);
-            SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_WIDTH_NUMBER, r.w);
-            SDL_SetNumberProperty(props, SDL_PROPERTY_WINDOW_CREATE_HEIGHT_NUMBER, r.h);
+            SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, title);
+            SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, r.x);
+            SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, r.y);
+            SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, r.w);
+            SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, r.h);
             SDL_SetNumberProperty(props, "flags", state->window_flags);
             state->windows[i] = SDL_CreateWindowWithProperties(props);
             SDL_DestroyProperties(props);
