@@ -1,8 +1,8 @@
 failat 21
 
 echo Copying shared object ...
-copy SDK/local/newlib/lib/libSDL2-2.26.so SObjs:
-copy SDK/local/newlib/lib/libSDL2-2.26_debug.so SObjs:
+copy SDK/local/newlib/lib/libSDL2-2.30.so SObjs:
+copy SDK/local/newlib/lib/libSDL2-2.30_debug.so SObjs:
 
 echo Copying documentation ...
 copy README-amigaos4.md SYS:Documentation/SDL2.txt
@@ -19,7 +19,7 @@ Else
   echo Skipped translation installation ...
 Endif
 
-set option `RequestChoice "One more question..." "Would you like to install the SDK?" "Yes, please" "No, thanks"`
+set option `RequestChoice "SDK" "Would you like to install the SDK?" "Yes, please" "No, thanks"`
 
 If $option eq 1
   echo Copying SDK files ...
@@ -29,7 +29,7 @@ If $option eq 1
 
   cd SDK:local/newlib/lib
   delete libSDL2.so
-  makelink from=libSDL2.so to=SObjs:libSDL2-2.26.so soft
+  makelink from=libSDL2.so to=SObjs:libSDL2-2.30.so soft
 Else
   echo Skipped SDK installation ...
 EndIf
@@ -38,8 +38,9 @@ echo Setting up link ...
 
 cd SObjs:
 delete libSDL2.so
-makelink from=libSDL2.so to=libSDL2-2.26.so soft
+makelink from=libSDL2.so to=libSDL2-2.30.so soft
 
 echo SDL2 is installed :)
 
-Wait 5
+set option `RequestChoice "All done" "Installation finished" "OK"`
+
