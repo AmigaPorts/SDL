@@ -872,7 +872,7 @@ static const char *s_GamepadMappings[] = {
 #endif
 #ifdef SDL_JOYSTICK_AMIGAINPUT
     "0300b95453504545442d4c494e4b2000,SPEED-LINK Competition Pro,platform:AmigaOS 4,a:b0,b:b1,x:b3,y:b2,leftx:a0,lefty:a1,",
-    "0300f43c4577656e74204a6f79706100,Ewent Joypad EW3170,platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,start:b9,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,lefttrigger:b6,righttrigger:b7,",
+    "0300f43c4577656e74204a6f79706100,Ewent Joypad EW3170,platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,start:b9,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,-leftx:-a2,+leftx:+a0,lefty:a1,lefttrigger:b6,righttrigger:b7,",
     "030000bc505332204a6f797374696300,PS2 Joystick (USB adaptor),platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,start:b9,leftshoulder:b6,rightshoulder:b7,leftx:a0,lefty:a1,lefttrigger:b4,righttrigger:b5,",
     "0300ed2a534841524b20393132333000,SHARK 91230 Joystick,platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,start:b9,leftshoulder:b6,rightshoulder:b7,leftx:a0,lefty:a1,lefttrigger:b4,righttrigger:b5,",
     "0300b6044d414749432d4e5300000000,MAGIC-NS,platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,guide:b12,start:b9,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpdwn:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a3,lefttrigger:b6,righttrigger:b7,",
