@@ -1,8 +1,8 @@
 failat 21
 
 echo Copying shared object ...
-copy SDK/local/newlib/lib/libSDL2-2.30.so SObjs:
-copy SDK/local/newlib/lib/libSDL2-2.30_debug.so SObjs:
+copy SDK/local/newlib/lib/libSDL2-2.31.so SObjs:
+copy SDK/local/newlib/lib/libSDL2-2.31_debug.so SObjs:
 
 echo Copying documentation ...
 copy README-amigaos4.md SYS:Documentation/SDL2.txt
@@ -29,7 +29,7 @@ If $option eq 1
 
   cd SDK:local/newlib/lib
   delete libSDL2.so
-  makelink from=libSDL2.so to=SObjs:libSDL2-2.30.so soft
+  makelink from=libSDL2.so to=SObjs:libSDL2-2.31.so soft
 Else
   echo Skipped SDK installation ...
 EndIf
@@ -38,7 +38,7 @@ echo Setting up link ...
 
 cd SObjs:
 delete libSDL2.so
-makelink from=libSDL2.so to=libSDL2-2.30.so soft
+makelink from=libSDL2.so to=libSDL2-2.31.so soft
 
 echo SDL2 is installed :)
 
