@@ -1,10 +1,10 @@
 ================================================================================
-SDL 2 requirements
+SDL 3 requirements
 ================================================================================
 
 AmigaOS 4.1 Final Edition
-MiniGL (optional from SDL2 point of view, but OpenGL context might still be
-        required by the SDL2 application)
+MiniGL (optional from SDL3 point of view, but OpenGL context might still be
+        required by the SDL3 application)
 OpenGL ES 2.0 (optional)
 
 ================================================================================
@@ -12,15 +12,13 @@ Installation
 ================================================================================
 
 There is an installer script that can be used to install shared objects, prefs
-program and the SDK. Many current SDL2 applications are linked statically but
-there are some apps like RebelSDL (Hollywood) that use SDL2 as a shared object.
+program and the SDK. 
 
-Installer script creates soft link from libSDL2.so to the latest libSDL2-2.x.so
-file. SDL2 version numbering changed after 2.0.22 release: next stable release
-had version 2.24.0.
+Installer script creates soft link from libSDL3.so to the latest libSDL3-x.y.so
+file. 
 
 ================================================================================
-Building SDL 2 library
+Building SDL 3 library
 ================================================================================
 
     # non-debug variant
@@ -32,27 +30,24 @@ Building SDL 2 library
     At the moment configure script and CMake are not supported.
 
 ================================================================================
-Using SDL 2 in your projects
+Using SDL 3 in your projects
 ================================================================================
 
-    #include "SDL2/SDL.h"
-    ...do magical SDL2 things...
+    #include "SDL3/SDL.h"
+    ...do magical SDL3 things...
 
 
-    gcc helloworld.c -use-dynld -lSDL2
+    gcc helloworld.c -use-dynld -lSDL3
 
 ================================================================================
 About SDL_Renderers
 ================================================================================
 
-A renderer is a subsystem that can do 2D drawing. There are 4 renderers:
-software, OpenGL, OpenGL ES 2.0 and compositing.
+A renderer is a subsystem that can do 2D drawing. There are 3 renderers:
+software, OpenGL ES 2.0 and compositing.
 
 Software renderer is always available. Pixels are plotted by the CPU so this is
 usually a slow option.
-
-OpenGL renderer uses MiniGL (and Warp3D) for accelerated drawing. Drawing is
-done in immediate mode. This should be fairly fast if textures are static.
 
 OpenGL ES 2.0 renderer uses ogles2.library (and Warp3D Nova).
 
@@ -65,20 +60,20 @@ It's possible to select the preferred renderer before its creation, like this:
 
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, name);
 
-where name is "software", "opengl" or "compositing".
+where name is "software", "opengles2" or "compositing".
 
 It's possible to enable VSYNC with:
 
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
-There is a benchmark tool called sdl2benchmark which was written to test
+There is a benchmark tool called sdl3benchmark which was written to test
 available renderers.
 
 ================================================================================
 About ENV variables
 ================================================================================
 
-Advanced users may use ENV variables to control some things in SDL2.
+Advanced users may use ENV variables to control some things in SDL3.
 Some variables supported by the SDL_Renderer subsystem:
 
 Batch drawing:
@@ -90,7 +85,6 @@ Driver selection:
 
 setenv SDL_RENDER_DRIVER "software"
 setenv SDL_RENDER_DRIVER "compositing"
-setenv SDL_RENDER_DRIVER "opengl"
 setenv SDL_RENDER_DRIVER "opengles2"
 
 VSYNC:
@@ -106,7 +100,7 @@ Screensaver control:
 setenv SDL_VIDEO_ALLOW_SCREENSAVER 1 # Enable
 setenv SDL_VIDEO_ALLOW_SCREENSAVER 0 # Disable
 
-Please check also SDL2 preferences program.
+Please check also SDL3 preferences program.
 
 ================================================================================
 About OpenGL
@@ -132,7 +126,7 @@ also the default setup.
 About Joysticks
 ================================================================================
 
-Joysticks that are compatible with AmigaInput can be used with SDL2. In addition
+Joysticks that are compatible with AmigaInput can be used with SDL3. In addition
 to legacy joystick API, SDL supports new game controller API which uses a
 predefined database to map joystick axes and buttons. At the moment
 game controller database contains the following entries:
@@ -192,8 +186,7 @@ but it hasn't been tested so far.
 Unsupported subsystems include Haptic and Power. There is no Vulkan backend for
 AmigaOS either.
 
-OpenGL renderer doesn't support render targets and blend modes "ADD" or "MOD".
-This is due to missing features in MiniGL.
+OpenGL renderer doesn't exist anymore. This is due to missing features in MiniGL.
 
 Compositing renderer doesn't support color modulation for triangle geometry. Use
 "software" or "opengles2" driver if you need it.
@@ -202,5 +195,5 @@ Compositing renderer doesn't support color modulation for triangle geometry. Use
 Project page and bug tracker
 ================================================================================
 
-https://github.com/AmigaPorts/SDL-2.0
+https://github.com/AmigaPorts/SDL
 
