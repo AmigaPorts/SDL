@@ -202,5 +202,5 @@ Compositing renderer doesn't support color modulation for triangle geometry. Use
 Project page and bug tracker
 ================================================================================
 
-https://github.com/AmigaPorts/SDL-2.0
+https://github.com/AmigaPorts/SDL
 
