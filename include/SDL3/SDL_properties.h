@@ -82,6 +82,25 @@ extern DECLSPEC SDL_PropertiesID SDLCALL SDL_GetGlobalProperties(void);
 extern DECLSPEC SDL_PropertiesID SDLCALL SDL_CreateProperties(void);
 
 /**
+ * Copy a set of properties
+ *
+ * Copy all the properties from one set of properties to another, with the
+ * exception of properties requiring cleanup (set using
+ * SDL_SetPropertyWithCleanup()), which will not be copied. Any property that
+ * already exists on `dst` will be overwritten.
+ *
+ * \param src the properties to copy
+ * \param dst the destination properties
+ * \returns 0 on success or a negative error code on failure; call
+ *          SDL_GetError() for more information.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.0.0.
+ */
+extern DECLSPEC int SDLCALL SDL_CopyProperties(SDL_PropertiesID src, SDL_PropertiesID dst);
+
+/**
  * Lock a set of properties
  *
  * Obtain a multi-threaded lock for these properties. Other threads will wait
@@ -121,6 +140,9 @@ extern DECLSPEC void SDLCALL SDL_UnlockProperties(SDL_PropertiesID props);
 /**
  * Set a property on a set of properties with a cleanup function that is
  * called when the property is deleted
+ *
+ * The cleanup function is also called if setting the property fails for any
+ * reason.
  *
  * \param props the properties to modify
  * \param name the name of the property to modify

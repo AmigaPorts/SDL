@@ -43,6 +43,17 @@
 #include <libdecor.h>
 #endif
 
+/* These are *NOT* roundtrip safe! */
+static int PointToPixel(SDL_Window *window, int point)
+{
+    /* Rounds halfway away from zero as per the Wayland fractional scaling protocol spec. */
+    return (int)SDL_lroundf((float)point * window->driverdata->windowed_scale_factor);
+}
+
+static int PixelToPoint(SDL_Window *window, int pixel)
+{
+    return (int)SDL_lroundf((float)pixel / window->driverdata->windowed_scale_factor);
+}
 
 static SDL_bool FloatEqual(float a, float b)
 {
@@ -97,36 +108,6 @@ static enum WaylandModeScale GetModeScaleMethod()
     return scale_mode;
 }
 
-static SDL_bool SurfaceScaleIsFractional(SDL_Window *window)
-{
-    SDL_WindowData *data = window->driverdata;
-    const float scale_value = !(window->fullscreen_exclusive) ? data->windowed_scale_factor : window->current_fullscreen_mode.pixel_density;
-    return !FloatEqual(SDL_roundf(scale_value), scale_value);
-}
-
-static SDL_bool WindowNeedsViewport(SDL_Window *window)
-{
-    SDL_WindowData *wind = window->driverdata;
-    SDL_VideoData *video = wind->waylandData;
-
-    /*
-     * A viewport is only required when scaling is enabled and:
-     *  - The surface scale is fractional.
-     *  - An exclusive fullscreen mode is being emulated and the mode does not match the requested output size.
-     */
-    if (video->viewporter) {
-        if (SurfaceScaleIsFractional(window)) {
-            return SDL_TRUE;
-        } else if (window->fullscreen_exclusive) {
-            if (window->current_fullscreen_mode.w != wind->requested_window_width || window->current_fullscreen_mode.h != wind->requested_window_height) {
-                return SDL_TRUE;
-            }
-        }
-    }
-
-    return SDL_FALSE;
-}
-
 static void GetBufferSize(SDL_Window *window, int *width, int *height)
 {
     SDL_WindowData *data = window->driverdata;
@@ -137,10 +118,13 @@ static void GetBufferSize(SDL_Window *window, int *width, int *height)
     if (data->is_fullscreen && window->fullscreen_exclusive) {
         buf_width = window->current_fullscreen_mode.w;
         buf_height = window->current_fullscreen_mode.h;
-    } else {
+    } else if (!data->scale_to_display) {
         /* Round fractional backbuffer sizes halfway away from zero. */
-        buf_width = (int)SDL_lroundf(data->requested_window_width * data->windowed_scale_factor);
-        buf_height = (int)SDL_lroundf(data->requested_window_height * data->windowed_scale_factor);
+        buf_width = PointToPixel(window, data->requested.width);
+        buf_height = PointToPixel(window, data->requested.height);
+    } else {
+        buf_width = data->requested.width;
+        buf_height = data->requested.height;
     }
 
     if (width) {
@@ -148,31 +132,6 @@ static void GetBufferSize(SDL_Window *window, int *width, int *height)
     }
     if (height) {
         *height = buf_height;
-    }
-}
-
-static void SetDrawSurfaceViewport(SDL_Window *window, int src_width, int src_height, int dst_width, int dst_height)
-{
-    SDL_WindowData *wind = window->driverdata;
-    SDL_VideoData *video = wind->waylandData;
-
-    if (video->viewporter) {
-        if (!wind->draw_viewport) {
-            wind->draw_viewport = wp_viewporter_get_viewport(video->viewporter, wind->surface);
-        }
-
-        wp_viewport_set_source(wind->draw_viewport, wl_fixed_from_int(0), wl_fixed_from_int(0), wl_fixed_from_int(src_width), wl_fixed_from_int(src_height));
-        wp_viewport_set_destination(wind->draw_viewport, dst_width, dst_height);
-    }
-}
-
-static void UnsetDrawSurfaceViewport(SDL_Window *window)
-{
-    SDL_WindowData *wind = window->driverdata;
-
-    if (wind->draw_viewport) {
-        wp_viewport_destroy(wind->draw_viewport);
-        wind->draw_viewport = NULL;
     }
 }
 
@@ -187,15 +146,28 @@ static void SetMinMaxDimensions(SDL_Window *window)
         max_width = 0;
         max_height = 0;
     } else if (window->flags & SDL_WINDOW_RESIZABLE) {
-        min_width = SDL_max(window->min_w, wind->system_min_required_width);
-        min_height = SDL_max(window->min_h, wind->system_min_required_height);
-        max_width = window->max_w ? SDL_max(window->max_w, wind->system_min_required_width) : 0;
-        max_height = window->max_h ? SDL_max(window->max_h, wind->system_min_required_height) : 0;
+        int adj_w = SDL_max(window->min_w, wind->system_limits.min_width);
+        int adj_h = SDL_max(window->min_h, wind->system_limits.min_height);
+        if (wind->scale_to_display) {
+            adj_w = PixelToPoint(window, adj_w);
+            adj_h = PixelToPoint(window, adj_h);
+        }
+        min_width = adj_w;
+        min_height = adj_h;
+
+        adj_w = window->max_w ? SDL_max(window->max_w, wind->system_limits.min_width) : 0;
+        adj_h = window->max_h ? SDL_max(window->max_h, wind->system_limits.min_height) : 0;
+        if (wind->scale_to_display) {
+            adj_w = PixelToPoint(window, adj_w);
+            adj_h = PixelToPoint(window, adj_h);
+        }
+        max_width = adj_w;
+        max_height = adj_h;
     } else {
-        min_width = wind->wl_window_width;
-        min_height = wind->wl_window_height;
-        max_width = wind->wl_window_width;
-        max_height = wind->wl_window_height;
+        min_width = wind->current.logical_width;
+        min_height = wind->current.logical_height;
+        max_width = wind->current.logical_width;
+        max_height = wind->current.logical_height;
     }
 
 #ifdef HAVE_LIBDECOR_H
@@ -240,20 +212,20 @@ static void EnsurePopupPositionIsValid(SDL_Window *window, int *x, int *y)
      * can result in behavior ranging from the window being spuriously closed
      * to a protocol violation.
      */
-    if (*x + window->driverdata->wl_window_width < 0) {
+    if (*x + window->w < 0) {
         *x = -window->w;
         ++adj_count;
     }
-    if (*y + window->driverdata->wl_window_height < 0) {
+    if (*y + window->h < 0) {
         *y = -window->h;
         ++adj_count;
     }
-    if (*x > window->parent->driverdata->wl_window_width) {
-        *x = window->parent->driverdata->wl_window_width;
+    if (*x > window->parent->w) {
+        *x = window->parent->w;
         ++adj_count;
     }
-    if (*y > window->parent->driverdata->wl_window_height) {
-        *y = window->parent->driverdata->wl_window_height;
+    if (*y > window->parent->h) {
+        *y = window->parent->h;
         ++adj_count;
     }
 
@@ -266,19 +238,18 @@ static void EnsurePopupPositionIsValid(SDL_Window *window, int *x, int *y)
     }
 }
 
-static void GetPopupPosition(SDL_Window *popup, int x, int y, int *adj_x, int *adj_y)
+static void AdjustPopupOffset(SDL_Window *popup, int *x, int *y)
 {
     /* Adjust the popup positioning, if necessary */
 #ifdef HAVE_LIBDECOR_H
     if (popup->parent->driverdata->shell_surface_type == WAYLAND_SURFACE_LIBDECOR) {
+        int adj_x, adj_y;
         libdecor_frame_translate_coordinate(popup->parent->driverdata->shell_surface.libdecor.frame,
-                                            x, y, adj_x, adj_y);
-    } else
-#endif
-    {
-        *adj_x = x;
-        *adj_y = y;
+                                            *x, *y, &adj_x, &adj_y);
+        *x = adj_x;
+        *y = adj_y;
     }
+#endif
 }
 
 static void RepositionPopup(SDL_Window *window, SDL_bool use_current_position)
@@ -288,14 +259,17 @@ static void RepositionPopup(SDL_Window *window, SDL_bool use_current_position)
     if (wind->shell_surface_type == WAYLAND_SURFACE_XDG_POPUP &&
         wind->shell_surface.xdg.roleobj.popup.positioner &&
         xdg_popup_get_version(wind->shell_surface.xdg.roleobj.popup.popup) >= XDG_POPUP_REPOSITION_SINCE_VERSION) {
-        int orig_x = use_current_position ? window->x : window->floating.x;
-        int orig_y = use_current_position ? window->y : window->floating.y;
-        int x, y;
+        int x = use_current_position ? window->x : window->floating.x;
+        int y = use_current_position ? window->y : window->floating.y;
 
-        EnsurePopupPositionIsValid(window, &orig_x, &orig_y);
-        GetPopupPosition(window, orig_x, orig_y, &x, &y);
-        xdg_positioner_set_anchor_rect(wind->shell_surface.xdg.roleobj.popup.positioner, 0, 0, window->parent->driverdata->wl_window_width, window->parent->driverdata->wl_window_height);
-        xdg_positioner_set_size(wind->shell_surface.xdg.roleobj.popup.positioner, wind->wl_window_width, wind->wl_window_height);
+        EnsurePopupPositionIsValid(window, &x, &y);
+        if (wind->scale_to_display) {
+            x = PixelToPoint(window->parent, x);
+            y = PixelToPoint(window->parent, y);
+        }
+        AdjustPopupOffset(window, &x, &y);
+        xdg_positioner_set_anchor_rect(wind->shell_surface.xdg.roleobj.popup.positioner, 0, 0, window->parent->driverdata->current.logical_width, window->parent->driverdata->current.logical_height);
+        xdg_positioner_set_size(wind->shell_surface.xdg.roleobj.popup.positioner, wind->current.logical_width, wind->current.logical_height);
         xdg_positioner_set_offset(wind->shell_surface.xdg.roleobj.popup.positioner, x, y);
         xdg_popup_reposition(wind->shell_surface.xdg.roleobj.popup.popup,
                              wind->shell_surface.xdg.roleobj.popup.positioner,
@@ -307,28 +281,36 @@ static void ConfigureWindowGeometry(SDL_Window *window)
 {
     SDL_WindowData *data = window->driverdata;
     SDL_VideoData *viddata = data->waylandData;
-    const int old_dw = data->drawable_width;
-    const int old_dh = data->drawable_height;
+    const int old_dw = data->current.drawable_width;
+    const int old_dh = data->current.drawable_height;
     int window_width, window_height;
     SDL_bool window_size_changed;
     SDL_bool drawable_size_changed;
 
     /* Set the drawable backbuffer size. */
-    GetBufferSize(window, &data->drawable_width, &data->drawable_height);
-    drawable_size_changed = data->drawable_width != old_dw || data->drawable_height != old_dh;
+    GetBufferSize(window, &data->current.drawable_width, &data->current.drawable_height);
+    drawable_size_changed = data->current.drawable_width != old_dw || data->current.drawable_height != old_dh;
 
     if (data->egl_window && drawable_size_changed) {
         WAYLAND_wl_egl_window_resize(data->egl_window,
-                                     data->drawable_width,
-                                     data->drawable_height,
+                                     data->current.drawable_width,
+                                     data->current.drawable_height,
                                      0, 0);
     }
 
     if (data->is_fullscreen && window->fullscreen_exclusive) {
-        int output_width = data->requested_window_width;
-        int output_height = data->requested_window_height;
+        int output_width;
+        int output_height;
         window_width = window->current_fullscreen_mode.w;
         window_height = window->current_fullscreen_mode.h;
+
+        if (!data->scale_to_display) {
+            output_width = data->requested.width;
+            output_height = data->requested.height;
+        } else {
+            output_width = data->requested.logical_width;
+            output_height = data->requested.logical_height;
+        }
 
         switch (GetModeScaleMethod()) {
         case WAYLAND_MODE_SCALE_NONE:
@@ -359,55 +341,62 @@ static void ConfigureWindowGeometry(SDL_Window *window)
         }
 
         window_size_changed = window_width != window->w || window_height != window->h ||
-            data->wl_window_width != output_width || data->wl_window_height != output_height;
+            data->current.logical_width != output_width || data->current.logical_height != output_height;
 
         if (window_size_changed || drawable_size_changed) {
-            if (WindowNeedsViewport(window)) {
-                /* Set the buffer scale to 1 since a viewport will be used. */
-                wl_surface_set_buffer_scale(data->surface, 1);
-                SetDrawSurfaceViewport(window, data->drawable_width, data->drawable_height,
-                                       output_width, output_height);
+            if (data->viewport) {
+                wp_viewport_set_source(data->viewport,
+                                       wl_fixed_from_int(0), wl_fixed_from_int(0),
+                                       wl_fixed_from_int(data->current.drawable_width), wl_fixed_from_int(data->current.drawable_height));
+                wp_viewport_set_destination(data->viewport, output_width, output_height);
 
-                data->wl_window_width = output_width;
-                data->wl_window_height = output_height;
+                data->current.logical_width = output_width;
+                data->current.logical_height = output_height;
             } else {
                 /* Calculate the integer scale from the mode and output. */
                 const int32_t int_scale = SDL_max(window->current_fullscreen_mode.w / output_width, 1);
 
-                UnsetDrawSurfaceViewport(window);
                 wl_surface_set_buffer_scale(data->surface, int_scale);
-
-                data->wl_window_width = window->current_fullscreen_mode.w;
-                data->wl_window_height = window->current_fullscreen_mode.h;
+                data->current.logical_width = window->current_fullscreen_mode.w;
+                data->current.logical_height = window->current_fullscreen_mode.h;
             }
 
-            data->pointer_scale_x = (float)window_width / (float)data->wl_window_width;
-            data->pointer_scale_y = (float)window_height / (float)data->wl_window_height;
+            data->pointer_scale.x = (float)window_width / (float)data->current.logical_width;
+            data->pointer_scale.y = (float)window_height / (float)data->current.logical_height;
         }
     } else {
-        window_width = data->requested_window_width;
-        window_height = data->requested_window_height;
+        if (!data->scale_to_display) {
+            window_width = data->requested.width;
+            window_height = data->requested.height;
+        } else {
+            window_width = data->requested.logical_width;
+            window_height = data->requested.logical_height;
+        }
 
-        window_size_changed = window_width != data->wl_window_width || window_height != data->wl_window_height;
+        window_size_changed = window_width != data->current.logical_width || window_height != data->current.logical_height;
 
         if (window_size_changed || drawable_size_changed) {
-            if (WindowNeedsViewport(window)) {
-                wl_surface_set_buffer_scale(data->surface, 1);
-                SetDrawSurfaceViewport(window, data->drawable_width, data->drawable_height,
-                                       window_width, window_height);
+            if (data->viewport) {
+                wp_viewport_set_source(data->viewport,
+                                       wl_fixed_from_int(0), wl_fixed_from_int(0),
+                                       wl_fixed_from_int(data->current.drawable_width), wl_fixed_from_int(data->current.drawable_height));
+                wp_viewport_set_destination(data->viewport, window_width, window_height);
             } else if (window->flags & SDL_WINDOW_HIGH_PIXEL_DENSITY) {
-                UnsetDrawSurfaceViewport(window);
-
-                /* Don't change this if DPI awareness flag is unset, as an application may have set this manually. */
+                /* Don't change this if the DPI awareness flag is unset, as an application may have set this manually on a custom or external surface. */
                 wl_surface_set_buffer_scale(data->surface, (int32_t)data->windowed_scale_factor);
             }
 
             /* Clamp the physical window size to the system minimum required size. */
-            data->wl_window_width = SDL_max(window_width, data->system_min_required_width);
-            data->wl_window_height = SDL_max(window_height, data->system_min_required_height);
+            data->current.logical_width = SDL_max(window_width, data->system_limits.min_width);
+            data->current.logical_height = SDL_max(window_height, data->system_limits.min_height);
 
-            data->pointer_scale_x = 1.0f;
-            data->pointer_scale_y = 1.0f;
+            if (!data->scale_to_display) {
+                data->pointer_scale.x = 1.0f;
+                data->pointer_scale.y = 1.0f;
+            } else {
+                data->pointer_scale.x = data->windowed_scale_factor;
+                data->pointer_scale.y = data->windowed_scale_factor;
+            }
         }
     }
 
@@ -420,13 +409,13 @@ static void ConfigureWindowGeometry(SDL_Window *window)
 
         /* libdecor does this internally on frame commits, so it's only needed for xdg surfaces. */
         if (data->shell_surface_type != WAYLAND_SURFACE_LIBDECOR && data->shell_surface.xdg.surface) {
-            xdg_surface_set_window_geometry(data->shell_surface.xdg.surface, 0, 0, data->wl_window_width, data->wl_window_height);
+            xdg_surface_set_window_geometry(data->shell_surface.xdg.surface, 0, 0, data->current.logical_width, data->current.logical_height);
         }
 
         if (!(window->flags & SDL_WINDOW_TRANSPARENT)) {
             region = wl_compositor_create_region(viddata->compositor);
             wl_region_add(region, 0, 0,
-                          data->wl_window_width, data->wl_window_height);
+                          data->current.logical_width, data->current.logical_height);
             wl_surface_set_opaque_region(data->surface, region);
             wl_region_destroy(region);
         }
@@ -447,8 +436,12 @@ static void ConfigureWindowGeometry(SDL_Window *window)
     SetMinMaxDimensions(window);
 
     /* Unconditionally send the window and drawable size, the video core will deduplicate when required. */
-    SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESIZED, window_width, window_height);
-    SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED, data->drawable_width, data->drawable_height);
+    if (!data->scale_to_display) {
+        SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESIZED, window_width, window_height);
+    } else {
+        SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESIZED, data->current.drawable_width, data->current.drawable_height);
+    }
+    SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED, data->current.drawable_width, data->current.drawable_height);
 
     /* Send an exposure event if the window is in the shown state and the size has changed,
      * even if the window is occluded, as the client needs to commit a new frame for the
@@ -474,7 +467,7 @@ static void CommitLibdecorFrame(SDL_Window *window)
     SDL_WindowData *wind = window->driverdata;
 
     if (wind->shell_surface_type == WAYLAND_SURFACE_LIBDECOR && wind->shell_surface.libdecor.frame) {
-        struct libdecor_state *state = libdecor_state_new(wind->wl_window_width, wind->wl_window_height);
+        struct libdecor_state *state = libdecor_state_new(wind->current.logical_width, wind->current.logical_height);
         libdecor_frame_commit(wind->shell_surface.libdecor.frame, state, NULL);
         libdecor_state_free(state);
     }
@@ -595,10 +588,10 @@ static void surface_frame_done(void *data, struct wl_callback *cb, uint32_t time
      */
     if (wl_compositor_get_version(wind->waylandData->compositor) >= WL_SURFACE_DAMAGE_BUFFER_SINCE_VERSION) {
         wl_surface_damage_buffer(wind->surface, 0, 0,
-                                 wind->drawable_width, wind->drawable_height);
+                                 wind->current.drawable_width, wind->current.drawable_height);
     } else {
         wl_surface_damage(wind->surface, 0, 0,
-                          wind->wl_window_width, wind->wl_window_height);
+                          wind->current.logical_width, wind->current.logical_height);
     }
 
     if (wind->surface_status == WAYLAND_SURFACE_STATUS_WAITING_FOR_FRAME) {
@@ -736,17 +729,32 @@ static void handle_configure_xdg_toplevel(void *data,
                  */
                 width = window->floating.w;
                 height = window->floating.h;
+                if (wind->scale_to_display) {
+                    wind->requested.logical_width = PixelToPoint(window, width);
+                    wind->requested.logical_height = PixelToPoint(window, height);
+                }
+            } else if (wind->scale_to_display) {
+                /* Don't convert if the size hasn't changed to avoid rounding errors. */
+                if (width != wind->current.logical_width || height != wind->current.logical_height) {
+                    /* Initially assume that the compositor is telling us exactly what size the logical window size must be. */
+                    wind->requested.logical_width = width;
+                    wind->requested.logical_height = height;
+                    width = PointToPixel(window, width);
+                    height = PointToPixel(window, height);
+                } else {
+                    width = wind->requested.width;
+                    height = wind->requested.height;
+                }
             }
         } else {
             /* If we're a fixed-size window, we know our size for sure.
              * Always assume the configure is wrong.
              */
-            if (floating) {
-                width = window->floating.w;
-                height = window->floating.h;
-            } else {
-                width = window->windowed.w;
-                height = window->windowed.h;
+            width = window->floating.w;
+            height = window->floating.h;
+            if (wind->scale_to_display) {
+                wind->requested.logical_width = PixelToPoint(window, width);
+                wind->requested.logical_height = PixelToPoint(window, height);
             }
         }
 
@@ -766,24 +774,35 @@ static void handle_configure_xdg_toplevel(void *data,
                 height = SDL_min(height, window->max_h);
             }
             height = SDL_max(height, window->min_h);
+
+            if (wind->scale_to_display) {
+                wind->requested.logical_width = PixelToPoint(window, width);
+                wind->requested.logical_height = PixelToPoint(window, height);
+            }
         }
     } else {
+        /* Fullscreen windows know their exact size. */
         if (width == 0 || height == 0) {
-            width = wind->requested_window_width;
-            height = wind->requested_window_height;
+            width = wind->requested.width;
+            height = wind->requested.height;
+        } else if (wind->scale_to_display) {
+            wind->requested.logical_width = width;
+            wind->requested.logical_height = height;
+            width = PointToPixel(window, width);
+            height = PointToPixel(window, height);
         }
     }
 
     /* Don't update the dimensions if they haven't changed, or they could overwrite
      * a new size set programmatically with old dimensions.
      */
-    if (width != wind->last_configure_width || height != wind->last_configure_height) {
-        wind->requested_window_width = width;
-        wind->requested_window_height = height;
+    if (width != wind->last_configure.width || height != wind->last_configure.height) {
+        wind->requested.width = width;
+        wind->requested.height = height;
     }
 
-    wind->last_configure_width = width;
-    wind->last_configure_height = height;
+    wind->last_configure.width = width;
+    wind->last_configure.height = height;
     wind->floating = floating;
     wind->suspended = suspended;
     wind->active = active;
@@ -829,15 +848,22 @@ static void handle_configure_xdg_popup(void *data,
                                        int32_t height)
 {
     SDL_WindowData *wind = (SDL_WindowData *)data;
-    int offset_x, offset_y;
+    int offset_x = 0, offset_y = 0;
 
     /* Adjust the position if it was offset for libdecor */
-    GetPopupPosition(wind->sdlwindow, 0, 0, &offset_x, &offset_y);
+    AdjustPopupOffset(wind->sdlwindow, &offset_x, &offset_y);
     x -= offset_x;
     y -= offset_y;
 
-    wind->requested_window_width = width;
-    wind->requested_window_height = height;
+    if (wind->scale_to_display) {
+        x = PointToPixel(wind->sdlwindow->parent, x);
+        y = PointToPixel(wind->sdlwindow->parent, y);
+        width = PointToPixel(wind->sdlwindow, width);
+        height = PointToPixel(wind->sdlwindow, height);
+    }
+
+    wind->requested.width = width;
+    wind->requested.height = height;
 
     SDL_SendWindowEvent(wind->sdlwindow, SDL_EVENT_WINDOW_MOVED, x, y);
 
@@ -1007,17 +1033,24 @@ static void decoration_frame_configure(struct libdecor_frame *frame,
          * told to do this.
          */
         if (!libdecor_configuration_get_content_size(configuration, frame, &width, &height)) {
-            width = wind->requested_window_width;
-            height = wind->requested_window_height;
+            width = wind->requested.width;
+            height = wind->requested.height;
+        } else if (wind->scale_to_display) {
+            /* Fullscreen windows know their exact size. */
+            wind->requested.logical_width = width;
+            wind->requested.logical_height = height;
+            width = PointToPixel(window, width);
+            height = PointToPixel(window, height);
         }
     } else {
         if (!(window->flags & SDL_WINDOW_RESIZABLE)) {
-            if (floating) {
-                width = window->floating.w;
-                height = window->floating.h;
-            } else {
-                width = window->windowed.w;
-                height = window->windowed.h;
+            /* Non-resizable windows always know their exact size. */
+            width = window->floating.w;
+            height = window->floating.h;
+
+            if (wind->scale_to_display) {
+                wind->requested.logical_width = PixelToPoint(window, width);
+                wind->requested.logical_height = PixelToPoint(window, height);
             }
 
             OverrideLibdecorLimits(window);
@@ -1048,6 +1081,22 @@ static void decoration_frame_configure(struct libdecor_frame *frame,
                     width = window->windowed.w;
                     height = window->windowed.h;
                 }
+
+                if (wind->scale_to_display) {
+                    wind->requested.logical_width = PixelToPoint(window, width);
+                    wind->requested.logical_height = PixelToPoint(window, height);
+                }
+            } else if (wind->scale_to_display) {
+                /* Don't convert if the size hasn't changed to avoid rounding errors. */
+                if (width != wind->current.logical_width || height != wind->current.logical_height) {
+                    wind->requested.logical_width = width;
+                    wind->requested.logical_height = height;
+                    width = PointToPixel(window, width);
+                    height = PointToPixel(window, height);
+                } else {
+                    width = wind->requested.width;
+                    height = wind->requested.height;
+                }
             }
         }
 
@@ -1067,20 +1116,25 @@ static void decoration_frame_configure(struct libdecor_frame *frame,
                 height = SDL_min(height, window->max_h);
             }
             height = SDL_max(height, window->min_h);
+
+            if (wind->scale_to_display) {
+                wind->requested.logical_width = PixelToPoint(window, width);
+                wind->requested.logical_height = PixelToPoint(window, height);
+            }
         }
     }
 
     /* Don't update the dimensions if they haven't changed, or they could overwrite
      * a new size set programmatically with old dimensions.
      */
-    if (width != wind->last_configure_width || height != wind->last_configure_height) {
-        wind->requested_window_width = width;
-        wind->requested_window_height = height;
+    if (width != wind->last_configure.width || height != wind->last_configure.height) {
+        wind->requested.width = width;
+        wind->requested.height = height;
     }
 
     /* Store the new state. */
-    wind->last_configure_width = width;
-    wind->last_configure_height = height;
+    wind->last_configure.width = width;
+    wind->last_configure.height = height;
     wind->floating = floating;
     wind->suspended = suspended;
     wind->active = active;
@@ -1090,12 +1144,12 @@ static void decoration_frame_configure(struct libdecor_frame *frame,
     ConfigureWindowGeometry(window);
 
     /* ... then commit the changes on the libdecor side. */
-    state = libdecor_state_new(wind->wl_window_width, wind->wl_window_height);
+    state = libdecor_state_new(wind->current.logical_width, wind->current.logical_height);
     libdecor_frame_commit(frame, state, configuration);
     libdecor_state_free(state);
 
     if (!wind->shell_surface.libdecor.initial_configure_seen) {
-        LibdecorGetMinContentSize(frame, &wind->system_min_required_width, &wind->system_min_required_height);
+        LibdecorGetMinContentSize(frame, &wind->system_limits.min_width, &wind->system_limits.min_height);
         wind->shell_surface.libdecor.initial_configure_seen = SDL_TRUE;
     }
     if (wind->surface_status == WAYLAND_SURFACE_STATUS_WAITING_FOR_CONFIGURE) {
@@ -1141,14 +1195,30 @@ static void Wayland_HandlePreferredScaleChanged(SDL_WindowData *window_data, flo
 {
     const float old_factor = window_data->windowed_scale_factor;
 
-    if (!(window_data->sdlwindow->flags & SDL_WINDOW_HIGH_PIXEL_DENSITY)) {
+    if (!(window_data->sdlwindow->flags & SDL_WINDOW_HIGH_PIXEL_DENSITY) && !window_data->scale_to_display) {
         /* Scale will always be 1, just ignore this */
         return;
     }
 
     if (!FloatEqual(factor, old_factor)) {
         window_data->windowed_scale_factor = factor;
+
+        if (window_data->scale_to_display) {
+            /* If the window is in the floating state with a user/application specified size, calculate the new
+             * logical size from the backbuffer size. Otherwise, use the fixed underlying logical size to calculate
+             * the new backbuffer dimensions.
+             */
+            if (window_data->floating) {
+                window_data->requested.logical_width = PixelToPoint(window_data->sdlwindow, window_data->requested.width);
+                window_data->requested.logical_height = PixelToPoint(window_data->sdlwindow, window_data->requested.height);
+            } else {
+                window_data->requested.width = PointToPixel(window_data->sdlwindow, window_data->requested.logical_width);
+                window_data->requested.height = PointToPixel(window_data->sdlwindow, window_data->requested.logical_height);
+            }
+        }
+
         ConfigureWindowGeometry(window_data->sdlwindow);
+        CommitLibdecorFrame(window_data->sdlwindow);
     }
 }
 
@@ -1158,7 +1228,7 @@ static void Wayland_MaybeUpdateScaleFactor(SDL_WindowData *window)
     int i;
 
     /* If the fractional scale protocol is present or the core protocol supports the
-     * preferred buffer scale event, the compositor will tell explicitly the application
+     * preferred buffer scale event, the compositor will explicitly tell the application
      * what scale it wants via these events, so don't try to determine the scale factor
      * from which displays the surface has entered.
      */
@@ -1507,15 +1577,21 @@ void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
             /* Set up the positioner for the popup and configure the constraints */
             data->shell_surface.xdg.roleobj.popup.positioner = xdg_wm_base_create_positioner(c->shell.xdg);
             xdg_positioner_set_anchor(data->shell_surface.xdg.roleobj.popup.positioner, XDG_POSITIONER_ANCHOR_TOP_LEFT);
-            xdg_positioner_set_anchor_rect(data->shell_surface.xdg.roleobj.popup.positioner, 0, 0, parent->w, parent->h);
+            xdg_positioner_set_anchor_rect(data->shell_surface.xdg.roleobj.popup.positioner, 0, 0, parent->driverdata->current.logical_width, parent->driverdata->current.logical_width);
             xdg_positioner_set_constraint_adjustment(data->shell_surface.xdg.roleobj.popup.positioner,
                                                      XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y);
             xdg_positioner_set_gravity(data->shell_surface.xdg.roleobj.popup.positioner, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
-            xdg_positioner_set_size(data->shell_surface.xdg.roleobj.popup.positioner, window->w, window->h);
+            xdg_positioner_set_size(data->shell_surface.xdg.roleobj.popup.positioner, data->current.logical_width, data->current.logical_height);
 
             /* Set the popup initial position */
-            EnsurePopupPositionIsValid(window, &window->x, &window->y);
-            GetPopupPosition(window, window->x, window->y, &position_x, &position_y);
+            position_x = window->x;
+            position_y = window->y;
+            EnsurePopupPositionIsValid(window, &position_x, &position_y);
+            if (data->scale_to_display) {
+                position_x = PixelToPoint(window->parent, position_x);
+                position_y = PixelToPoint(window->parent, position_y);
+            }
+            AdjustPopupOffset(window, &position_x, &position_y);
             xdg_positioner_set_offset(data->shell_surface.xdg.roleobj.popup.positioner, position_x, position_y);
 
             /* Assign the popup role */
@@ -1586,11 +1662,15 @@ void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
         }
 
         /* Set the geometry */
-        xdg_surface_set_window_geometry(data->shell_surface.xdg.surface, 0, 0, data->wl_window_width, data->wl_window_height);
+        xdg_surface_set_window_geometry(data->shell_surface.xdg.surface, 0, 0, data->current.logical_width, data->current.logical_height);
     } else {
         /* Nothing to see here, just commit. */
         wl_surface_commit(data->surface);
     }
+
+    /* Make sure the window can't be resized to 0 or it can be spuriously closed by the window manager. */
+    data->system_limits.min_width = SDL_max(data->system_limits.min_width, 1);
+    data->system_limits.min_height = SDL_max(data->system_limits.min_height, 1);
 
     /* Unlike the rest of window state we have to set this _after_ flushing the
      * display, because we need to create the decorations before possibly hiding
@@ -1599,16 +1679,16 @@ void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
 #ifdef HAVE_LIBDECOR_H
     if (data->shell_surface_type == WAYLAND_SURFACE_LIBDECOR) {
         /* Libdecor plugins can enforce minimum window sizes, so adjust if the initial window size is too small. */
-        if (window->windowed.w < data->system_min_required_width ||
-            window->windowed.h < data->system_min_required_height) {
+        if (window->windowed.w < data->system_limits.min_width ||
+            window->windowed.h < data->system_limits.min_height) {
 
             /* Warn if the window frame will be larger than the content surface. */
             SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO,
                         "Window dimensions (%i, %i) are smaller than the system enforced minimum (%i, %i); window borders will be larger than the content surface.",
-                        window->windowed.w, window->windowed.h, data->system_min_required_width, data->system_min_required_height);
+                        window->windowed.w, window->windowed.h, data->system_limits.min_width, data->system_limits.min_height);
 
-            data->wl_window_width = SDL_max(window->windowed.w, data->system_min_required_width);
-            data->wl_window_height = SDL_max(window->windowed.h, data->system_min_required_height);
+            data->current.logical_width = SDL_max(window->windowed.w, data->system_limits.min_width);
+            data->current.logical_height = SDL_max(window->windowed.h, data->system_limits.min_height);
             CommitLibdecorFrame(window);
         }
     }
@@ -2056,20 +2136,32 @@ void Wayland_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, S
 int Wayland_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props)
 {
     SDL_WindowData *data;
-    SDL_VideoData *c;
+    SDL_VideoData *c = _this->driverdata;
     struct wl_surface *external_surface = (struct wl_surface *)SDL_GetProperty(create_props, SDL_PROP_WINDOW_CREATE_WAYLAND_WL_SURFACE_POINTER,
                                                                                (struct wl_surface *)SDL_GetProperty(create_props, "sdl2-compat.external_window", NULL));
     const SDL_bool custom_surface_role = (external_surface != NULL) || SDL_GetBooleanProperty(create_props, SDL_PROP_WINDOW_CREATE_WAYLAND_SURFACE_ROLE_CUSTOM_BOOLEAN, SDL_FALSE);
     const SDL_bool create_egl_window = !!(window->flags & SDL_WINDOW_OPENGL) ||
                                        SDL_GetBooleanProperty(create_props, SDL_PROP_WINDOW_CREATE_WAYLAND_CREATE_EGL_WINDOW_BOOLEAN, SDL_FALSE);
+    SDL_bool scale_to_display = !(window->flags & SDL_WINDOW_HIGH_PIXEL_DENSITY) && !custom_surface_role &&
+                                SDL_GetBooleanProperty(create_props, SDL_PROP_WINDOW_CREATE_WAYLAND_SCALE_TO_DISPLAY,
+                                                       SDL_GetHintBoolean(SDL_HINT_VIDEO_WAYLAND_SCALE_TO_DISPLAY, SDL_FALSE));
 
+    /* Require viewports for display scaling. */
+    if (scale_to_display && !c->viewporter) {
+        SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "wayland: Display scaling requires the missing 'wp_viewporter' protocol: disabling");
+        scale_to_display = SDL_FALSE;
+    }
+
+    /* Require popups to have the same scaling mode as the parent. */
+    if (SDL_WINDOW_IS_POPUP(window) && scale_to_display != window->parent->driverdata->scale_to_display) {
+        return SDL_SetError("wayland: Popup windows must use the same scaling as their parent");
+    }
 
     data = SDL_calloc(1, sizeof(*data));
     if (!data) {
         return -1;
     }
 
-    c = _this->driverdata;
     window->driverdata = data;
 
     if (window->x == SDL_WINDOWPOS_UNDEFINED) {
@@ -2079,18 +2171,17 @@ int Wayland_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Propert
         window->y = 0;
     }
 
-    if (SDL_WINDOW_IS_POPUP(window)) {
-        EnsurePopupPositionIsValid(window, &window->x, &window->y);
-    }
-
     data->waylandData = c;
     data->sdlwindow = window;
 
     data->windowed_scale_factor = 1.0f;
 
-    if (window->flags & SDL_WINDOW_HIGH_PIXEL_DENSITY) {
-        int i;
-        for (i = 0; i < _this->num_displays; i++) {
+    if (SDL_WINDOW_IS_POPUP(window)) {
+        data->scale_to_display = window->parent->driverdata->scale_to_display;
+        data->windowed_scale_factor = window->parent->driverdata->windowed_scale_factor;
+        EnsurePopupPositionIsValid(window, &window->x, &window->y);
+    } else if ((window->flags & SDL_WINDOW_HIGH_PIXEL_DENSITY) || scale_to_display) {
+        for (int i = 0; i < _this->num_displays; i++) {
             float scale = _this->displays[i]->driverdata->scale_factor;
             data->windowed_scale_factor = SDL_max(data->windowed_scale_factor, scale);
         }
@@ -2098,12 +2189,17 @@ int Wayland_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Propert
 
     data->outputs = NULL;
     data->num_outputs = 0;
+    data->scale_to_display = scale_to_display;
 
     /* Cache the app_id at creation time, as it may change before the window is mapped. */
     data->app_id = SDL_strdup(SDL_GetAppID());
 
-    data->requested_window_width = window->w;
-    data->requested_window_height = window->h;
+    data->requested.width = window->w;
+    data->requested.height = window->h;
+    if (data->scale_to_display) {
+        data->requested.logical_width = PixelToPoint(window, window->w);
+        data->requested.logical_height = PixelToPoint(window, window->h);
+    }
 
     if (!external_surface) {
         data->surface = wl_compositor_create_surface(c->compositor);
@@ -2118,6 +2214,20 @@ int Wayland_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Propert
          * can cause problems with external toolkits.
          */
         Wayland_AddWindowDataToExternalList(data);
+    }
+
+    /* Always attach a viewport and fractional scale manager if available and the surface is not custom/external,
+     * or the custom/external surface was explicitly flagged as high pixel density aware, which signals that the
+     * application wants SDL to handle scaling.
+     */
+    if (!custom_surface_role || (window->flags & SDL_WINDOW_HIGH_PIXEL_DENSITY)) {
+        if (c->viewporter) {
+            data->viewport = wp_viewporter_get_viewport(c->viewporter, data->surface);
+        }
+        if (c->fractional_scale_manager) {
+            data->fractional_scale = wp_fractional_scale_manager_v1_get_fractional_scale(c->fractional_scale_manager, data->surface);
+            wp_fractional_scale_v1_add_listener(data->fractional_scale, &fractional_scale_listener, data);
+        }
     }
 
     /* Must be called before EGL configuration to set the drawable backbuffer size. */
@@ -2150,7 +2260,7 @@ int Wayland_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Propert
     }
 
     if (create_egl_window) {
-        data->egl_window = WAYLAND_wl_egl_window_create(data->surface, data->drawable_width, data->drawable_height);
+        data->egl_window = WAYLAND_wl_egl_window_create(data->surface, data->current.drawable_width, data->current.drawable_height);
     }
 
 #ifdef SDL_VIDEO_OPENGL_EGL
@@ -2166,18 +2276,6 @@ int Wayland_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Propert
 
     if (c->relative_mouse_mode) {
         Wayland_input_lock_pointer(c->input);
-    }
-
-    /* Don't attach a fractional scale manager to surfaces unless they are
-     * flagged as DPI-aware. Under non-scaled operation, the scale will
-     * always be 1.0, and external/custom surfaces may already have, or
-     * will try to attach, their own fractional scale manager, which will
-     * result in a protocol violation.
-     */
-    if (c->fractional_scale_manager && (window->flags & SDL_WINDOW_HIGH_PIXEL_DENSITY)) {
-        data->fractional_scale = wp_fractional_scale_manager_v1_get_fractional_scale(c->fractional_scale_manager, data->surface);
-        wp_fractional_scale_v1_add_listener(data->fractional_scale,
-                                            &fractional_scale_listener, data);
     }
 
     /* We may need to create an idle inhibitor for this new window */
@@ -2287,8 +2385,12 @@ static void size_event_handler(void *data, struct wl_callback *callback, uint32_
          * obeying the size of maximized windows is a protocol violation.
          */
         if (!(window->flags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MAXIMIZED))) {
-            wind->requested_window_width = wind->pending_size_event.width;
-            wind->requested_window_height = wind->pending_size_event.height;
+            wind->requested.width = wind->pending_size_event.width;
+            wind->requested.height = wind->pending_size_event.height;
+            if (wind->scale_to_display) {
+                wind->requested.logical_width = PixelToPoint(window, wind->pending_size_event.width);
+                wind->requested.logical_height = PixelToPoint(window, wind->pending_size_event.height);
+            }
 
             ConfigureWindowGeometry(window);
         }
@@ -2317,8 +2419,8 @@ void Wayland_SetWindowSize(SDL_VideoDevice *_this, SDL_Window *window)
         wl_callback_add_listener(cb, &size_event_listener, (void *)((uintptr_t)window->id));
     } else {
         /* We are being informed of a size change on a custom surface, just configure. */
-        wind->requested_window_width = window->floating.w;
-        wind->requested_window_height = window->floating.h;
+        wind->requested.width = window->floating.w;
+        wind->requested.height = window->floating.h;
 
         ConfigureWindowGeometry(window);
     }
@@ -2329,8 +2431,8 @@ void Wayland_GetWindowSizeInPixels(SDL_VideoDevice *_this, SDL_Window *window, i
     SDL_WindowData *data;
     if (window->driverdata) {
         data = window->driverdata;
-        *w = data->drawable_width;
-        *h = data->drawable_height;
+        *w = data->current.drawable_width;
+        *h = data->current.drawable_height;
     }
 }
 
@@ -2434,8 +2536,8 @@ void Wayland_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
             xdg_activation_token_v1_destroy(wind->activation_token);
         }
 
-        if (wind->draw_viewport) {
-            wp_viewport_destroy(wind->draw_viewport);
+        if (wind->viewport) {
+            wp_viewport_destroy(wind->viewport);
         }
 
         if (wind->fractional_scale) {

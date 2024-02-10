@@ -501,13 +501,14 @@ static void pointer_handle_motion(void *data, struct wl_pointer *pointer,
     input->sx_w = sx_w;
     input->sy_w = sy_w;
     if (input->pointer_focus) {
-        float sx = (float)(wl_fixed_to_double(sx_w) * window_data->pointer_scale_x);
-        float sy = (float)(wl_fixed_to_double(sy_w) * window_data->pointer_scale_y);
+        float sx = (float)(wl_fixed_to_double(sx_w) * window_data->pointer_scale.x);
+        float sy = (float)(wl_fixed_to_double(sy_w) * window_data->pointer_scale.y);
         SDL_SendMouseMotion(Wayland_GetPointerTimestamp(input, time), window_data->sdlwindow, 0, 0, sx, sy);
     }
 
     if (window && window->hit_test) {
-        const SDL_Point point = { wl_fixed_to_int(sx_w), wl_fixed_to_int(sy_w) };
+        const SDL_Point point = { (int)SDL_floor(wl_fixed_to_double(sx_w) * window_data->pointer_scale.x),
+                                  (int)SDL_floor(wl_fixed_to_double(sy_w) * window_data->pointer_scale.y) };
         SDL_HitTestResult rc = window->hit_test(window, &point, window->hit_test_data);
         if (rc == window_data->hit_test_result) {
             return;
@@ -977,15 +978,15 @@ static void touch_handler_down(void *data, struct wl_touch *touch, uint32_t seri
     if (window_data) {
         float x, y;
 
-        if (window_data->wl_window_width <= 1) {
+        if (window_data->current.logical_width <= 1) {
             x = 0.5f;
         } else {
-            x = wl_fixed_to_double(fx) / (window_data->wl_window_width - 1);
+            x = wl_fixed_to_double(fx) / (window_data->current.logical_width - 1);
         }
-        if (window_data->wl_window_height <= 1) {
+        if (window_data->current.logical_height <= 1) {
             y = 0.5f;
         } else {
-            y = wl_fixed_to_double(fy) / (window_data->wl_window_height - 1);
+            y = wl_fixed_to_double(fy) / (window_data->current.logical_height - 1);
         }
 
         SDL_SetMouseFocus(window_data->sdlwindow);
@@ -1008,8 +1009,8 @@ static void touch_handler_up(void *data, struct wl_touch *touch, uint32_t serial
         SDL_WindowData *window_data = (SDL_WindowData *)wl_surface_get_user_data(surface);
 
         if (window_data) {
-            const float x = wl_fixed_to_double(fx) / window_data->wl_window_width;
-            const float y = wl_fixed_to_double(fy) / window_data->wl_window_height;
+            const float x = wl_fixed_to_double(fx) / window_data->current.logical_width;
+            const float y = wl_fixed_to_double(fy) / window_data->current.logical_height;
 
             SDL_SendTouch(Wayland_GetTouchTimestamp(input, timestamp), (SDL_TouchID)(uintptr_t)touch,
                           (SDL_FingerID)(id + 1), window_data->sdlwindow, SDL_FALSE, x, y, 0.0f);
@@ -1037,8 +1038,8 @@ static void touch_handler_motion(void *data, struct wl_touch *touch, uint32_t ti
         SDL_WindowData *window_data = (SDL_WindowData *)wl_surface_get_user_data(surface);
 
         if (window_data) {
-            const float x = wl_fixed_to_double(fx) / window_data->wl_window_width;
-            const float y = wl_fixed_to_double(fy) / window_data->wl_window_height;
+            const float x = wl_fixed_to_double(fx) / window_data->current.logical_width;
+            const float y = wl_fixed_to_double(fy) / window_data->current.logical_height;
 
             SDL_SendTouchMotion(Wayland_GetPointerTimestamp(input, timestamp), (SDL_TouchID)(uintptr_t)touch,
                                 (SDL_FingerID)(id + 1), window_data->sdlwindow, x, y, 1.0f);
@@ -1145,6 +1146,13 @@ static void keyboard_handle_keymap(void *data, struct wl_keyboard *keyboard,
         return;
     }
 
+    if (input->xkb.keymap != NULL) {
+        /* if there's already a keymap loaded, throw it away rather than leaking it before
+         * parsing the new one
+         */
+        WAYLAND_xkb_keymap_unref(input->xkb.keymap);
+        input->xkb.keymap = NULL;
+    }
     input->xkb.keymap = WAYLAND_xkb_keymap_new_from_string(input->display->xkb_context,
                                                            map_str,
                                                            XKB_KEYMAP_FORMAT_TEXT_V1,
@@ -1168,6 +1176,13 @@ static void keyboard_handle_keymap(void *data, struct wl_keyboard *keyboard,
     input->xkb.idx_caps = 1 << GET_MOD_INDEX(CAPS);
 #undef GET_MOD_INDEX
 
+    if (input->xkb.state != NULL) {
+        /* if there's already a state, throw it away rather than leaking it before
+         * trying to create a new one with the new keymap.
+         */
+        WAYLAND_xkb_state_unref(input->xkb.state);
+        input->xkb.state = NULL;
+    }
     input->xkb.state = WAYLAND_xkb_state_new(input->xkb.keymap);
     if (!input->xkb.state) {
         SDL_SetError("failed to create XKB state\n");
@@ -1213,10 +1228,18 @@ static void keyboard_handle_keymap(void *data, struct wl_keyboard *keyboard,
     }
 
     /* Set up XKB compose table */
+    if (input->xkb.compose_table != NULL) {
+        WAYLAND_xkb_compose_table_unref(input->xkb.compose_table);
+        input->xkb.compose_table = NULL;
+    }
     input->xkb.compose_table = WAYLAND_xkb_compose_table_new_from_locale(input->display->xkb_context,
                                                                          locale, XKB_COMPOSE_COMPILE_NO_FLAGS);
     if (input->xkb.compose_table) {
         /* Set up XKB compose state */
+        if (input->xkb.compose_state != NULL) {
+            WAYLAND_xkb_compose_state_unref(input->xkb.compose_state);
+            input->xkb.compose_state = NULL;
+        }
         input->xkb.compose_state = WAYLAND_xkb_compose_state_new(input->xkb.compose_table,
                                                                  XKB_COMPOSE_STATE_NO_FLAGS);
         if (!input->xkb.compose_state) {
@@ -1605,6 +1628,12 @@ static void keyboard_handle_modifiers(void *data, struct wl_keyboard *keyboard,
 {
     struct SDL_WaylandInput *input = data;
     Wayland_Keymap keymap;
+
+    if (input->xkb.state == NULL) {
+        /* if we get a modifier notification before the keymap, there's nothing we can do with the information
+        */
+        return;
+    }
 
     WAYLAND_xkb_state_update_mask(input->xkb.state, mods_depressed, mods_latched,
                                   mods_locked, 0, 0, group);
@@ -2641,8 +2670,8 @@ static void tablet_tool_handle_motion(void *data, struct zwp_tablet_tool_v2 *too
     if (input->tool_focus) {
         const float sx_f = (float)wl_fixed_to_double(sx_w);
         const float sy_f = (float)wl_fixed_to_double(sy_w);
-        const float sx = sx_f * window->pointer_scale_x;
-        const float sy = sy_f * window->pointer_scale_y;
+        const float sx = sx_f * window->pointer_scale.x;
+        const float sy = sy_f * window->pointer_scale.y;
 
         if (penid != SDL_PEN_INVALID) {
             input->current_pen.update_status.x = sx;
@@ -3303,10 +3332,10 @@ int Wayland_input_confine_pointer(struct SDL_WaylandInput *input, SDL_Window *wi
     } else {
         SDL_Rect scaled_mouse_rect;
 
-        scaled_mouse_rect.x = (int)SDL_floorf((float)window->mouse_rect.x / w->pointer_scale_x);
-        scaled_mouse_rect.y = (int)SDL_floorf((float)window->mouse_rect.y / w->pointer_scale_y);
-        scaled_mouse_rect.w = (int)SDL_ceilf((float)window->mouse_rect.w / w->pointer_scale_x);
-        scaled_mouse_rect.h = (int)SDL_ceilf((float)window->mouse_rect.h / w->pointer_scale_y);
+        scaled_mouse_rect.x = (int)SDL_floorf((float)window->mouse_rect.x / w->pointer_scale.x);
+        scaled_mouse_rect.y = (int)SDL_floorf((float)window->mouse_rect.y / w->pointer_scale.y);
+        scaled_mouse_rect.w = (int)SDL_ceilf((float)window->mouse_rect.w / w->pointer_scale.x);
+        scaled_mouse_rect.h = (int)SDL_ceilf((float)window->mouse_rect.h / w->pointer_scale.y);
 
         confine_rect = wl_compositor_create_region(d->compositor);
         wl_region_add(confine_rect,

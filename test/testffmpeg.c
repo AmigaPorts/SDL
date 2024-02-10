@@ -24,6 +24,7 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
+#include <libavutil/mastering_display_metadata.h>
 #include <libavutil/pixdesc.h>
 #include <libswscale/swscale.h>
 
@@ -46,7 +47,7 @@
 #endif
 
 #ifdef SDL_PLATFORM_APPLE
-#include "testffmpeg_videotoolbox.h"
+#include <CoreVideo/CoreVideo.h>
 #endif
 
 #ifdef SDL_PLATFORM_WIN32
@@ -55,6 +56,16 @@
 #endif /* SDL_PLATFORM_WIN32 */
 
 #include "icon.h"
+
+/* The value for the SDR white level on an SDR display, scRGB 1.0 */
+#define SDR_DISPLAY_WHITE_LEVEL  80.0f
+
+/* The default value for the SDR white level on an HDR display */
+#define DEFAULT_SDR_WHITE_LEVEL 200.0f
+
+/* The default value for the HDR white level on an HDR display */
+#define DEFAULT_HDR_WHITE_LEVEL 400.0f
+
 
 static SDL_Texture *sprite;
 static SDL_FRect *positions;
@@ -74,9 +85,6 @@ static SDL_bool has_EGL_EXT_image_dma_buf_import;
 static PFNGLACTIVETEXTUREARBPROC glActiveTextureARBFunc;
 static PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOESFunc;
 #endif
-#ifdef SDL_PLATFORM_APPLE
-static SDL_bool has_videotoolbox_output;
-#endif
 #ifdef SDL_PLATFORM_WIN32
 static ID3D11Device *d3d11_device;
 static ID3D11DeviceContext *d3d11_context;
@@ -89,8 +97,36 @@ struct SwsContextContainer
 static const char *SWS_CONTEXT_CONTAINER_PROPERTY = "SWS_CONTEXT_CONTAINER";
 static int done;
 
+/* This function isn't platform specific, but we haven't hooked up HDR video support on other platforms yet */
+#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_APPLE)
+static void GetDisplayHDRProperties(SDL_bool *HDR_display, float *SDR_white_level)
+{
+    SDL_PropertiesID props;
+
+    props = SDL_GetRendererProperties(renderer);
+    if (SDL_GetNumberProperty(props, SDL_PROP_RENDERER_OUTPUT_COLORSPACE_NUMBER, SDL_COLORSPACE_SRGB) != SDL_COLORSPACE_SCRGB) {
+        /* We're not displaying in HDR, use the SDR white level */
+        *HDR_display = SDL_FALSE;
+        *SDR_white_level = SDR_DISPLAY_WHITE_LEVEL;
+        return;
+    }
+
+    props = SDL_GetDisplayProperties(SDL_GetDisplayForWindow(window));
+    if (!SDL_GetBooleanProperty(props, SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN, SDL_FALSE)) {
+        /* HDR is not enabled on the display */
+        *HDR_display = SDL_FALSE;
+        *SDR_white_level = SDR_DISPLAY_WHITE_LEVEL;
+        return;
+    }
+
+    *HDR_display = SDL_TRUE;
+    *SDR_white_level = SDL_GetFloatProperty(props, SDL_PROP_DISPLAY_SDR_WHITE_LEVEL_FLOAT, DEFAULT_SDR_WHITE_LEVEL);
+}
+#endif /* SDL_PLATFORM_WIN32 || SDL_PLATFORM_APPLE */
+
 static SDL_bool CreateWindowAndRenderer(Uint32 window_flags, const char *driver)
 {
+    SDL_PropertiesID props;
     SDL_RendererInfo info;
     SDL_bool useEGL = (driver && SDL_strcmp(driver, "opengles2") == 0);
 
@@ -111,7 +147,23 @@ static SDL_bool CreateWindowAndRenderer(Uint32 window_flags, const char *driver)
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 5);
 
     /* The window will be resized to the video size when it's loaded, in OpenVideoStream() */
-    if (SDL_CreateWindowAndRenderer(320, 200, window_flags, &window, &renderer) < 0) {
+    window = SDL_CreateWindow("testffmpeg", 1920, 1080, 0);
+    if (!window) {
+        return SDL_FALSE;
+    }
+
+    props = SDL_CreateProperties();
+    SDL_SetStringProperty(props, SDL_PROP_RENDERER_CREATE_NAME_STRING, driver);
+    SDL_SetProperty(props, SDL_PROP_RENDERER_CREATE_WINDOW_POINTER, window);
+    SDL_SetNumberProperty(props, SDL_PROP_RENDERER_CREATE_OUTPUT_COLORSPACE_NUMBER, SDL_COLORSPACE_SCRGB);
+    renderer = SDL_CreateRendererWithProperties(props);
+    if (!renderer) {
+        /* Try again with the sRGB colorspace */
+        SDL_SetNumberProperty(props, SDL_PROP_RENDERER_CREATE_OUTPUT_COLORSPACE_NUMBER, SDL_COLORSPACE_SRGB);
+        renderer = SDL_CreateRendererWithProperties(props);
+    }
+    SDL_DestroyProperties(props);
+    if (!renderer) {
         return SDL_FALSE;
     }
 
@@ -139,10 +191,6 @@ static SDL_bool CreateWindowAndRenderer(Uint32 window_flags, const char *driver)
         }
     }
 #endif /* HAVE_EGL */
-
-#ifdef SDL_PLATFORM_APPLE
-    has_videotoolbox_output = SetupVideoToolboxOutput(renderer);
-#endif
 
 #ifdef SDL_PLATFORM_WIN32
     d3d11_device = (ID3D11Device *)SDL_GetProperty(SDL_GetRendererProperties(renderer), SDL_PROP_RENDERER_D3D11_DEVICE_POINTER, NULL);
@@ -260,7 +308,7 @@ static SDL_bool SupportedPixelFormat(enum AVPixelFormat format)
             return SDL_TRUE;
         }
 #ifdef SDL_PLATFORM_APPLE
-        if (has_videotoolbox_output && format == AV_PIX_FMT_VIDEOTOOLBOX) {
+        if (format == AV_PIX_FMT_VIDEOTOOLBOX) {
             return SDL_TRUE;
         }
 #endif
@@ -393,22 +441,27 @@ static AVCodecContext *OpenVideoStream(AVFormatContext *ic, int stream, const AV
     }
 
     SDL_SetWindowSize(window, codecpar->width, codecpar->height);
+    SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
     return context;
 }
 
-static void SetYUVConversionMode(AVFrame *frame)
+static SDL_Colorspace GetFrameColorspace(AVFrame *frame)
 {
-    SDL_YUV_CONVERSION_MODE mode = SDL_YUV_CONVERSION_AUTOMATIC;
-    if (frame && (frame->format == AV_PIX_FMT_YUV420P || frame->format == AV_PIX_FMT_YUYV422 || frame->format == AV_PIX_FMT_UYVY422)) {
-        if (frame->color_range == AVCOL_RANGE_JPEG)
-            mode = SDL_YUV_CONVERSION_JPEG;
-        else if (frame->colorspace == AVCOL_SPC_BT709)
-            mode = SDL_YUV_CONVERSION_BT709;
-        else if (frame->colorspace == AVCOL_SPC_BT470BG || frame->colorspace == AVCOL_SPC_SMPTE170M)
-            mode = SDL_YUV_CONVERSION_BT601;
+    SDL_Colorspace colorspace = SDL_COLORSPACE_SRGB;
+
+    if (frame && frame->colorspace != AVCOL_SPC_RGB) {
+#ifdef DEBUG_COLORSPACE
+        SDL_Log("Frame colorspace: range: %d, primaries: %d, trc: %d, colorspace: %d, chroma_location: %d\n", frame->color_range, frame->color_primaries, frame->color_trc, frame->colorspace, frame->chroma_location);
+#endif
+        colorspace = SDL_DEFINE_COLORSPACE(SDL_COLOR_TYPE_YCBCR,
+                                           frame->color_range,
+                                           frame->color_primaries,
+                                           frame->color_trc,
+                                           frame->colorspace,
+                                           frame->chroma_location);
     }
-    SDL_SetYUVConversionMode(mode); /* FIXME: no support for linear transfer */
+    return colorspace;
 }
 
 static void SDLCALL FreeSwsContextContainer(void *userdata, void *value)
@@ -436,11 +489,18 @@ static SDL_bool GetTextureForMemoryFrame(AVFrame *frame, SDL_Texture **texture)
             SDL_DestroyTexture(*texture);
         }
 
+        SDL_PropertiesID props = SDL_CreateProperties();
+        SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, GetFrameColorspace(frame));
         if (frame_format == SDL_PIXELFORMAT_UNKNOWN) {
-            *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, frame->width, frame->height);
+            SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_FORMAT_NUMBER, SDL_PIXELFORMAT_ARGB8888);
         } else {
-            *texture = SDL_CreateTexture(renderer, frame_format, SDL_TEXTUREACCESS_STREAMING, frame->width, frame->height);
+            SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_FORMAT_NUMBER, frame_format);
         }
+        SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_ACCESS_NUMBER, SDL_TEXTUREACCESS_STREAMING);
+        SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_WIDTH_NUMBER, frame->width);
+        SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_HEIGHT_NUMBER, frame->height);
+        *texture = SDL_CreateTextureWithProperties(renderer, props);
+        SDL_DestroyProperties(props);
         if (!*texture) {
             return SDL_FALSE;
         }
@@ -489,7 +549,6 @@ static SDL_bool GetTextureForMemoryFrame(AVFrame *frame, SDL_Texture **texture)
                                                    frame->data[1] + frame->linesize[1] * (AV_CEIL_RSHIFT(frame->height, 1) - 1), -frame->linesize[1],
                                                    frame->data[2] + frame->linesize[2] * (AV_CEIL_RSHIFT(frame->height, 1) - 1), -frame->linesize[2]);
         }
-        SetYUVConversionMode(frame);
         break;
     default:
         if (frame->linesize[0] < 0) {
@@ -527,11 +586,16 @@ static SDL_bool GetTextureForDRMFrame(AVFrame *frame, SDL_Texture **texture)
     } else {
         /* First time set up for NV12 textures */
         SDL_SetHint("SDL_RENDER_OPENGL_NV12_RG_SHADER", "1");
-
-        SetYUVConversionMode(frame);
     }
 
-    *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_NV12, SDL_TEXTUREACCESS_STATIC, frame->width, frame->height);
+    props = SDL_CreateProperties();
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, GetFrameColorspace(frame));
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_FORMAT_NUMBER, SDL_PIXELFORMAT_NV12);
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_ACCESS_NUMBER, SDL_TEXTUREACCESS_STATIC);
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_WIDTH_NUMBER, frame->width);
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_HEIGHT_NUMBER, frame->height);
+    *texture = SDL_CreateTextureWithProperties(renderer, props);
+    SDL_DestroyProperties(props);
     if (!*texture) {
         return SDL_FALSE;
     }
@@ -606,25 +670,60 @@ static SDL_bool GetTextureForD3D11Frame(AVFrame *frame, SDL_Texture **texture)
     D3D11_TEXTURE2D_DESC desc;
     SDL_zero(desc);
     ID3D11Texture2D_GetDesc(pTexture, &desc);
-    if (desc.Format != DXGI_FORMAT_NV12) {
-        SDL_SetError("Unsupported texture format, expected DXGI_FORMAT_NV12, got %d", desc.Format);
-        return SDL_FALSE;
-    }
 
     if (*texture) {
         SDL_QueryTexture(*texture, NULL, NULL, &texture_width, &texture_height);
     }
     if (!*texture || (UINT)texture_width != desc.Width || (UINT)texture_height != desc.Height) {
-        if (*texture) {
-            SDL_DestroyTexture(*texture);
-        } else {
-            /* First time set up for NV12 textures */
-            SetYUVConversionMode(frame);
+        float SDR_white_level, video_white_level;
+        SDL_bool HDR_display = SDL_FALSE;
+        SDL_bool HDR_video = SDL_FALSE;
+        Uint32 format;
+
+        switch (desc.Format) {
+        case DXGI_FORMAT_NV12:
+            format = SDL_PIXELFORMAT_NV12;
+            break;
+        case DXGI_FORMAT_P010:
+            format = SDL_PIXELFORMAT_P010;
+            HDR_video = SDL_TRUE;
+            break;
+        case DXGI_FORMAT_P016:
+            format = SDL_PIXELFORMAT_P016;
+            HDR_video = SDL_TRUE;
+            break;
+        default:
+            SDL_SetError("Unsupported texture format %d", desc.Format);
+            return SDL_FALSE;
         }
 
-        *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_NV12, SDL_TEXTUREACCESS_STATIC, desc.Width, desc.Height);
+        if (*texture) {
+            SDL_DestroyTexture(*texture);
+        }
+
+        GetDisplayHDRProperties(&HDR_display, &SDR_white_level);
+
+        SDL_PropertiesID props = SDL_CreateProperties();
+        SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, GetFrameColorspace(frame));
+        SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_FORMAT_NUMBER, format);
+        SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_ACCESS_NUMBER, SDL_TEXTUREACCESS_STATIC);
+        SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_WIDTH_NUMBER, desc.Width);
+        SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_HEIGHT_NUMBER, desc.Height);
+        *texture = SDL_CreateTextureWithProperties(renderer, props);
+        SDL_DestroyProperties(props);
         if (!*texture) {
             return SDL_FALSE;
+        }
+
+        if (HDR_video != HDR_display) {
+            if (HDR_display) {
+                video_white_level = SDR_DISPLAY_WHITE_LEVEL;
+            } else {
+                video_white_level = DEFAULT_HDR_WHITE_LEVEL;
+            }
+            SDL_SetRenderColorScale(renderer, SDR_white_level / video_white_level);
+        } else {
+            SDL_SetRenderColorScale(renderer, 1.0f);
         }
     }
 
@@ -641,6 +740,76 @@ static SDL_bool GetTextureForD3D11Frame(AVFrame *frame, SDL_Texture **texture)
 #endif
 }
 
+static SDL_bool GetTextureForVideoToolboxFrame(AVFrame *frame, SDL_Texture **texture)
+{
+#ifdef SDL_PLATFORM_APPLE
+    int texture_width = 0, texture_height = 0;
+    CVPixelBufferRef pPixelBuffer = (CVPixelBufferRef)frame->data[3];
+    OSType nPixelBufferType = CVPixelBufferGetPixelFormatType(pPixelBuffer);
+    size_t nPixelBufferWidth = CVPixelBufferGetWidthOfPlane(pPixelBuffer, 0);
+    size_t nPixelBufferHeight = CVPixelBufferGetHeightOfPlane(pPixelBuffer, 0);
+    SDL_PropertiesID props;
+    Uint32 format;
+    float SDR_white_level, video_white_level;
+    SDL_bool HDR_display = SDL_FALSE;
+    SDL_bool HDR_video = SDL_FALSE;
+
+    switch (nPixelBufferType) {
+    case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange:
+    case kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:
+        format = SDL_PIXELFORMAT_NV12;
+        break;
+    case kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange:
+    case kCVPixelFormatType_420YpCbCr10BiPlanarFullRange:
+        format = SDL_PIXELFORMAT_P010;
+        HDR_video = SDL_TRUE;
+        break;
+    default:
+        SDL_SetError("Unsupported texture format %c%c%c%c",
+            (char)((nPixelBufferType >> 24) & 0xFF),
+            (char)((nPixelBufferType >> 16) & 0xFF),
+            (char)((nPixelBufferType >> 8) & 0xFF),
+            (char)((nPixelBufferType >> 0) & 0xFF));
+        return SDL_FALSE;
+    }
+
+    if (*texture) {
+        /* Free the previous texture now that we're about to render a new one */
+        /* FIXME: We can actually keep a cache of textures that map to pixel buffers */
+        SDL_DestroyTexture(*texture);
+    }
+
+    GetDisplayHDRProperties(&HDR_display, &SDR_white_level);
+
+    props = SDL_CreateProperties();
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, GetFrameColorspace(frame));
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_FORMAT_NUMBER, format);
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_ACCESS_NUMBER, SDL_TEXTUREACCESS_STATIC);
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_WIDTH_NUMBER, nPixelBufferWidth);
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_HEIGHT_NUMBER, nPixelBufferHeight);
+    SDL_SetProperty(props, SDL_PROP_TEXTURE_CREATE_METAL_PIXELBUFFER_POINTER, pPixelBuffer);
+    *texture = SDL_CreateTextureWithProperties(renderer, props);
+    SDL_DestroyProperties(props);
+    if (!*texture) {
+        return SDL_FALSE;
+    }
+
+    if (HDR_video != HDR_display) {
+        if (HDR_display) {
+            video_white_level = SDR_DISPLAY_WHITE_LEVEL;
+        } else {
+            video_white_level = DEFAULT_HDR_WHITE_LEVEL;
+        }
+        SDL_SetRenderColorScale(renderer, SDR_white_level / video_white_level);
+    } else {
+        SDL_SetRenderColorScale(renderer, 1.0f);
+    }
+    return SDL_TRUE;
+#else
+    return SDL_FALSE;
+#endif
+}
+
 static SDL_bool GetTextureForFrame(AVFrame *frame, SDL_Texture **texture)
 {
     switch (frame->format) {
@@ -650,6 +819,8 @@ static SDL_bool GetTextureForFrame(AVFrame *frame, SDL_Texture **texture)
         return GetTextureForDRMFrame(frame, texture);
     case AV_PIX_FMT_D3D11:
         return GetTextureForD3D11Frame(frame, texture);
+    case AV_PIX_FMT_VIDEOTOOLBOX:
+        return GetTextureForVideoToolboxFrame(frame, texture);
     default:
         return GetTextureForMemoryFrame(frame, texture);
     }
@@ -657,6 +828,20 @@ static SDL_bool GetTextureForFrame(AVFrame *frame, SDL_Texture **texture)
 
 static void DisplayVideoTexture(AVFrame *frame)
 {
+#if 0 /* This data doesn't seem to be valid in any of the videos I've tried */
+    AVFrameSideData *sd = av_frame_get_side_data(frame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA);
+    if (sd) {
+        AVMasteringDisplayMetadata *mdm = (AVMasteringDisplayMetadata *)sd->data;
+        mdm = mdm;
+    }
+
+    sd = av_frame_get_side_data(frame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL);
+    if (sd) {
+        AVContentLightMetadata *clm = (AVContentLightMetadata *)sd->data;
+        clm = clm;
+    }
+#endif /* 0 */
+
     /* Update the video texture */
     if (!GetTextureForFrame(frame, &video_texture)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't get texture for frame: %s\n", SDL_GetError());
@@ -670,25 +855,9 @@ static void DisplayVideoTexture(AVFrame *frame)
     }
 }
 
-static void DisplayVideoToolbox(AVFrame *frame)
-{
-#ifdef SDL_PLATFORM_APPLE
-    SDL_Rect viewport;
-    SDL_GetRenderViewport(renderer, &viewport);
-    DisplayVideoToolboxFrame(renderer, frame->data[3], 0, 0, frame->width, frame->height, viewport.x, viewport.y, viewport.w, viewport.h);
-#endif
-}
-
 static void DisplayVideoFrame(AVFrame *frame)
 {
-    switch (frame->format) {
-    case AV_PIX_FMT_VIDEOTOOLBOX:
-        DisplayVideoToolbox(frame);
-        break;
-    default:
-        DisplayVideoTexture(frame);
-        break;
-    }
+    DisplayVideoTexture(frame);
 }
 
 static void HandleVideoFrame(AVFrame *frame, double pts)
@@ -1111,12 +1280,9 @@ int main(int argc, char *argv[])
     }
     return_code = 0;
 quit:
-#ifdef SDL_PLATFORM_APPLE
-    CleanupVideoToolboxOutput();
-#endif
 #ifdef SDL_PLATFORM_WIN32
     if (d3d11_context) {
-        ID3D11DeviceContext_Release(d3d11_device);
+        ID3D11DeviceContext_Release(d3d11_context);
         d3d11_context = NULL;
     }
     if (d3d11_device) {

@@ -152,13 +152,13 @@ static void DrawScreen(SDL_Renderer *renderer)
                            (color & 0x01) ? 0xff : 0,
                            (color & 0x02) ? 0xff : 0,
                            (color & 0x04) ? 0xff : 0,
-                           (int)(0xff * last_pressure));
+                           (Uint8)(0xff * last_pressure));
     /* Cone base width based on pressure: */
     SDL_RenderLine(renderer, X, Y, endx + (ydelta * last_pressure / 3.0f), endy - (xdelta * last_pressure / 3.0f));
     SDL_RenderLine(renderer, X, Y, endx - (ydelta * last_pressure / 3.0f), endy + (xdelta * last_pressure / 3.0f));
 
     /* If tilt is very small (or zero, for pens that don't have tilt), add some extra lines, rotated by the current rotation value */
-    if (ALWAYS_SHOW_PRESSURE_BOX || (fabs(tilt_vec_x) < 0.2f && fabs(tilt_vec_y) < 0.2f)) {
+    if (ALWAYS_SHOW_PRESSURE_BOX || (SDL_fabs(tilt_vec_x) < 0.2f && SDL_fabs(tilt_vec_y) < 0.2f)) {
         int rot;
         float pressure = last_pressure * 80.0f;
 

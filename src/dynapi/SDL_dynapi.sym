@@ -347,8 +347,6 @@ SDL3_0.0.0 {
     SDL_GetWindowSizeInPixels;
     SDL_GetWindowSurface;
     SDL_GetWindowTitle;
-    SDL_GetYUVConversionMode;
-    SDL_GetYUVConversionModeForResolution;
     SDL_CloseHaptic;
     SDL_DestroyHapticEffect;
     SDL_HapticEffectSupported;
@@ -395,7 +393,7 @@ SDL3_0.0.0 {
     SDL_HasSSE42;
     SDL_HasSSE;
     SDL_HasScreenKeyboardSupport;
-    SDL_HasWindowSurface;
+    SDL_WindowHasSurface;
     SDL_HideCursor;
     SDL_HideWindow;
     SDL_Init;
@@ -594,7 +592,6 @@ SDL3_0.0.0 {
     SDL_SetWindowSize;
     SDL_SetWindowTitle;
     SDL_SetWindowsMessageHook;
-    SDL_SetYUVConversionMode;
     SDL_ShowCursor;
     SDL_ShowMessageBox;
     SDL_ShowSimpleMessageBox;
@@ -959,6 +956,22 @@ SDL3_0.0.0 {
     SDL_GetHapticName;
     SDL_ReadSurfacePixel;
     SDL_FlipSurface;
+    SDL_SetTextureColorModFloat;
+    SDL_GetTextureColorModFloat;
+    SDL_SetTextureAlphaModFloat;
+    SDL_GetTextureAlphaModFloat;
+    SDL_SetRenderDrawColorFloat;
+    SDL_GetRenderDrawColorFloat;
+    SDL_ConvertPixelsAndColorspace;
+    SDL_SetSurfaceColorspace;
+    SDL_GetSurfaceColorspace;
+    SDL_ConvertSurfaceFormatAndColorspace;
+    SDL_CopyProperties;
+    SDL_SetRenderColorScale;
+    SDL_GetRenderColorScale;
+    SDL_RenderGeometryRawFloat;
+    SDL_SetWindowShape;
+    SDL_RenderViewportSet;
     # extra symbols go here (don't modify this line)
   local: *;
 };

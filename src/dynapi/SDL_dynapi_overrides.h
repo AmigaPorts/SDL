@@ -371,8 +371,6 @@
 #define SDL_GetWindowSizeInPixels SDL_GetWindowSizeInPixels_REAL
 #define SDL_GetWindowSurface SDL_GetWindowSurface_REAL
 #define SDL_GetWindowTitle SDL_GetWindowTitle_REAL
-#define SDL_GetYUVConversionMode SDL_GetYUVConversionMode_REAL
-#define SDL_GetYUVConversionModeForResolution SDL_GetYUVConversionModeForResolution_REAL
 #define SDL_CloseHaptic SDL_CloseHaptic_REAL
 #define SDL_DestroyHapticEffect SDL_DestroyHapticEffect_REAL
 #define SDL_HapticEffectSupported SDL_HapticEffectSupported_REAL
@@ -419,7 +417,7 @@
 #define SDL_HasSSE41 SDL_HasSSE41_REAL
 #define SDL_HasSSE42 SDL_HasSSE42_REAL
 #define SDL_HasScreenKeyboardSupport SDL_HasScreenKeyboardSupport_REAL
-#define SDL_HasWindowSurface SDL_HasWindowSurface_REAL
+#define SDL_WindowHasSurface SDL_WindowHasSurface_REAL
 #define SDL_HideCursor SDL_HideCursor_REAL
 #define SDL_HideWindow SDL_HideWindow_REAL
 #define SDL_Init SDL_Init_REAL
@@ -617,7 +615,6 @@
 #define SDL_SetWindowSize SDL_SetWindowSize_REAL
 #define SDL_SetWindowTitle SDL_SetWindowTitle_REAL
 #define SDL_SetWindowsMessageHook   SDL_SetWindowsMessageHook_REAL
-#define SDL_SetYUVConversionMode SDL_SetYUVConversionMode_REAL
 #define SDL_ShowCursor SDL_ShowCursor_REAL
 #define SDL_ShowMessageBox SDL_ShowMessageBox_REAL
 #define SDL_ShowSimpleMessageBox SDL_ShowSimpleMessageBox_REAL
@@ -984,3 +981,19 @@
 #define SDL_GetHapticName SDL_GetHapticName_REAL
 #define SDL_ReadSurfacePixel SDL_ReadSurfacePixel_REAL
 #define SDL_FlipSurface SDL_FlipSurface_REAL
+#define SDL_SetTextureColorModFloat SDL_SetTextureColorModFloat_REAL
+#define SDL_GetTextureColorModFloat SDL_GetTextureColorModFloat_REAL
+#define SDL_SetTextureAlphaModFloat SDL_SetTextureAlphaModFloat_REAL
+#define SDL_GetTextureAlphaModFloat SDL_GetTextureAlphaModFloat_REAL
+#define SDL_SetRenderDrawColorFloat SDL_SetRenderDrawColorFloat_REAL
+#define SDL_GetRenderDrawColorFloat SDL_GetRenderDrawColorFloat_REAL
+#define SDL_ConvertPixelsAndColorspace SDL_ConvertPixelsAndColorspace_REAL
+#define SDL_SetSurfaceColorspace SDL_SetSurfaceColorspace_REAL
+#define SDL_GetSurfaceColorspace SDL_GetSurfaceColorspace_REAL
+#define SDL_ConvertSurfaceFormatAndColorspace SDL_ConvertSurfaceFormatAndColorspace_REAL
+#define SDL_CopyProperties SDL_CopyProperties_REAL
+#define SDL_SetRenderColorScale SDL_SetRenderColorScale_REAL
+#define SDL_GetRenderColorScale SDL_GetRenderColorScale_REAL
+#define SDL_RenderGeometryRawFloat SDL_RenderGeometryRawFloat_REAL
+#define SDL_SetWindowShape SDL_SetWindowShape_REAL
+#define SDL_RenderViewportSet SDL_RenderViewportSet_REAL

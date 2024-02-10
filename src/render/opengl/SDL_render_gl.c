@@ -25,6 +25,7 @@
 #include <SDL3/SDL_opengl.h>
 #include "../SDL_sysrender.h"
 #include "SDL_shaders_gl.h"
+#include "../../video/SDL_pixels_c.h"
 #include "../../SDL_utils_c.h"
 
 #ifdef SDL_PLATFORM_MACOS
@@ -49,8 +50,6 @@
    http://developer.apple.com/library/mac/#documentation/GraphicsImaging/Conceptual/OpenGL-MacProgGuide/opengl_texturedata/opengl_texturedata.html
 */
 
-static const float inv255f = 1.0f / 255.0f;
-
 typedef struct GL_FBOList GL_FBOList;
 
 struct GL_FBOList
@@ -70,6 +69,7 @@ typedef struct
     int drawableh;
     SDL_BlendMode blend;
     GL_Shader shader;
+    const float *shader_params;
     SDL_bool cliprect_enabled_dirty;
     SDL_bool cliprect_enabled;
     SDL_bool cliprect_dirty;
@@ -80,9 +80,9 @@ typedef struct
     SDL_bool color_array;
     SDL_bool texture_array;
     SDL_bool color_dirty;
-    Uint32 color;
+    SDL_FColor color;
     SDL_bool clear_color_dirty;
-    Uint32 clear_color;
+    SDL_FColor clear_color;
 } GL_DrawStateCache;
 
 typedef struct
@@ -134,6 +134,7 @@ typedef struct
     GLenum format;
     GLenum formattype;
     GL_Shader shader;
+    const float *shader_params;
     void *pixels;
     int pitch;
     SDL_Rect locked_rect;
@@ -403,8 +404,7 @@ static SDL_bool GL_SupportsBlendMode(SDL_Renderer *renderer, SDL_BlendMode blend
     return SDL_TRUE;
 }
 
-static SDL_bool convert_format(GL_RenderData *renderdata, Uint32 pixel_format,
-               GLint *internalFormat, GLenum *format, GLenum *type)
+static SDL_bool convert_format(Uint32 pixel_format, GLint *internalFormat, GLenum *format, GLenum *type)
 {
     switch (pixel_format) {
     case SDL_PIXELFORMAT_ARGB8888:
@@ -460,8 +460,7 @@ static int GL_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SDL_Pr
         return SDL_SetError("Render targets not supported by OpenGL");
     }
 
-    if (!convert_format(renderdata, texture->format, &internalFormat,
-                        &format, &type)) {
+    if (!convert_format(texture->format, &internalFormat, &format, &type)) {
         return SDL_SetError("Texture format %s not supported by OpenGL",
                             SDL_GetPixelFormatName(texture->format));
     }
@@ -666,45 +665,24 @@ static int GL_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SDL_Pr
 
 #if SDL_HAVE_YUV
     if (data->yuv || data->nv12) {
-        switch (SDL_GetYUVConversionModeForResolution(texture->w, texture->h)) {
-        case SDL_YUV_CONVERSION_JPEG:
-            if (data->yuv) {
-                data->shader = SHADER_YUV_JPEG;
-            } else if (texture->format == SDL_PIXELFORMAT_NV12) {
-                data->shader = SHADER_NV12_JPEG;
+        if (data->yuv) {
+            data->shader = SHADER_YUV;
+        } else if (texture->format == SDL_PIXELFORMAT_NV12) {
+            if (SDL_GetHintBoolean("SDL_RENDER_OPENGL_NV12_RG_SHADER", SDL_FALSE)) {
+                data->shader = SHADER_NV12_RG;
             } else {
-                data->shader = SHADER_NV21_JPEG;
+                data->shader = SHADER_NV12_RA;
             }
-            break;
-        case SDL_YUV_CONVERSION_BT601:
-            if (data->yuv) {
-                data->shader = SHADER_YUV_BT601;
-            } else if (texture->format == SDL_PIXELFORMAT_NV12) {
-                if (SDL_GetHintBoolean("SDL_RENDER_OPENGL_NV12_RG_SHADER", SDL_FALSE)) {
-                    data->shader = SHADER_NV12_RG_BT601;
-                } else {
-                    data->shader = SHADER_NV12_RA_BT601;
-                }
+        } else {
+            if (SDL_GetHintBoolean("SDL_RENDER_OPENGL_NV12_RG_SHADER", SDL_FALSE)) {
+                data->shader = SHADER_NV21_RG;
             } else {
-                data->shader = SHADER_NV21_BT601;
+                data->shader = SHADER_NV21_RA;
             }
-            break;
-        case SDL_YUV_CONVERSION_BT709:
-            if (data->yuv) {
-                data->shader = SHADER_YUV_BT709;
-            } else if (texture->format == SDL_PIXELFORMAT_NV12) {
-                if (SDL_GetHintBoolean("SDL_RENDER_OPENGL_NV12_RG_SHADER", SDL_FALSE)) {
-                    data->shader = SHADER_NV12_RG_BT709;
-                } else {
-                    data->shader = SHADER_NV12_RA_BT709;
-                }
-            } else {
-                data->shader = SHADER_NV21_BT709;
-            }
-            break;
-        default:
-            SDL_assert(!"unsupported YUV conversion mode");
-            break;
+        }
+        data->shader_params = SDL_GetYCbCRtoRGBConversionMatrix(texture->colorspace, texture->w, texture->h, 8);
+        if (!data->shader_params) {
+            return SDL_SetError("Unsupported YUV colorspace");
         }
     }
 #endif /* SDL_HAVE_YUV */
@@ -932,7 +910,7 @@ static int GL_SetRenderTarget(SDL_Renderer *renderer, SDL_Texture *texture)
 /* !!! FIXME: all these Queue* calls set up the vertex buffer the way the immediate mode
    !!! FIXME:  renderer wants it, but this might want to operate differently if we move to
    !!! FIXME:  VBOs at some point. */
-static int GL_QueueSetViewport(SDL_Renderer *renderer, SDL_RenderCommand *cmd)
+static int GL_QueueNoOp(SDL_Renderer *renderer, SDL_RenderCommand *cmd)
 {
     return 0; /* nothing to do in this backend. */
 }
@@ -996,7 +974,7 @@ static int GL_QueueDrawLines(SDL_Renderer *renderer, SDL_RenderCommand *cmd, con
 }
 
 static int GL_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Texture *texture,
-                            const float *xy, int xy_stride, const SDL_Color *color, int color_stride, const float *uv, int uv_stride,
+                            const float *xy, int xy_stride, const SDL_FColor *color, int color_stride, const float *uv, int uv_stride,
                             int num_vertices, const void *indices, int num_indices, int size_indices,
                             float scale_x, float scale_y)
 {
@@ -1004,7 +982,8 @@ static int GL_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_
     int i;
     int count = indices ? num_indices : num_vertices;
     GLfloat *verts;
-    size_t sz = 2 * sizeof(GLfloat) + 4 * sizeof(Uint8) + (texture ? 2 : 0) * sizeof(GLfloat);
+    size_t sz = 2 * sizeof(GLfloat) + 4 * sizeof(GLfloat) + (texture ? 2 : 0) * sizeof(GLfloat);
+    const float color_scale = cmd->data.draw.color_scale;
 
     verts = (GLfloat *)SDL_AllocateRenderVertices(renderer, count * sz, 0, &cmd->data.draw.first);
     if (!verts) {
@@ -1021,6 +1000,7 @@ static int GL_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_
     for (i = 0; i < count; i++) {
         int j;
         float *xy_;
+        SDL_FColor *col_;
         if (size_indices == 4) {
             j = ((const Uint32 *)indices)[i];
         } else if (size_indices == 2) {
@@ -1036,10 +1016,11 @@ static int GL_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_
         *(verts++) = xy_[0] * scale_x;
         *(verts++) = xy_[1] * scale_y;
 
-        /* Not really a float, but it is still 4 bytes and will be cast to the
-           right type in the graphics driver. */
-        SDL_memcpy(verts, ((char *)color + j * color_stride), sizeof(*color));
-        ++verts;
+        col_ = (SDL_FColor *)((char *)color + j * color_stride);
+        *(verts++) = col_->r * color_scale;
+        *(verts++) = col_->g * color_scale;
+        *(verts++) = col_->b * color_scale;
+        *(verts++) = col_->a;
 
         if (texture) {
             float *uv_ = (float *)((char *)uv + j * uv_stride);
@@ -1050,7 +1031,7 @@ static int GL_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_
     return 0;
 }
 
-static int SetDrawState(GL_RenderData *data, const SDL_RenderCommand *cmd, const GL_Shader shader)
+static int SetDrawState(GL_RenderData *data, const SDL_RenderCommand *cmd, const GL_Shader shader, const float *shader_params)
 {
     const SDL_BlendMode blend = cmd->data.draw.blend;
     SDL_bool vertex_array;
@@ -1107,9 +1088,11 @@ static int SetDrawState(GL_RenderData *data, const SDL_RenderCommand *cmd, const
         data->drawstate.blend = blend;
     }
 
-    if (data->shaders && (shader != data->drawstate.shader)) {
-        GL_SelectShader(data->shaders, shader);
+    if (data->shaders &&
+        (shader != data->drawstate.shader || shader_params != data->drawstate.shader_params)) {
+        GL_SelectShader(data->shaders, shader, shader_params);
         data->drawstate.shader = shader;
+        data->drawstate.shader_params = shader_params;
     }
 
     if (data->drawstate.texturing_dirty || ((cmd->data.draw.texture != NULL) != data->drawstate.texturing)) {
@@ -1164,7 +1147,7 @@ static int SetCopyState(GL_RenderData *data, const SDL_RenderCommand *cmd)
     SDL_Texture *texture = cmd->data.draw.texture;
     const GL_TextureData *texturedata = (GL_TextureData *)texture->driverdata;
 
-    SetDrawState(data, cmd, texturedata->shader);
+    SetDrawState(data, cmd, texturedata->shader, texturedata->shader_params);
 
     if (texture != data->drawstate.texture) {
         const GLenum textype = data->textype;
@@ -1249,16 +1232,27 @@ static int GL_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, vo
         switch (cmd->command) {
         case SDL_RENDERCMD_SETDRAWCOLOR:
         {
-            const Uint8 r = cmd->data.color.r;
-            const Uint8 g = cmd->data.color.g;
-            const Uint8 b = cmd->data.color.b;
-            const Uint8 a = cmd->data.color.a;
-            const Uint32 color = (((Uint32)a << 24) | (r << 16) | (g << 8) | b);
-            if ((data->drawstate.color_dirty) || (color != data->drawstate.color)) {
-                data->glColor4ub((GLubyte)r, (GLubyte)g, (GLubyte)b, (GLubyte)a);
-                data->drawstate.color = color;
+            const float r = cmd->data.color.color.r * cmd->data.color.color_scale;
+            const float g = cmd->data.color.color.g * cmd->data.color.color_scale;
+            const float b = cmd->data.color.color.b * cmd->data.color.color_scale;
+            const float a = cmd->data.color.color.a;
+            if (data->drawstate.clear_color_dirty ||
+                (r != data->drawstate.color.r) ||
+                (g != data->drawstate.color.g) ||
+                (b != data->drawstate.color.b) ||
+                (a != data->drawstate.color.a)) {
+                data->glColor4f(r, g, b, a);
+                data->drawstate.color.r = r;
+                data->drawstate.color.g = g;
+                data->drawstate.color.b = b;
+                data->drawstate.color.a = a;
                 data->drawstate.color_dirty = SDL_FALSE;
             }
+            break;
+        }
+
+        case SDL_RENDERCMD_SETCOLORSCALE:
+        {
             break;
         }
 
@@ -1289,18 +1283,20 @@ static int GL_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, vo
 
         case SDL_RENDERCMD_CLEAR:
         {
-            const Uint8 r = cmd->data.color.r;
-            const Uint8 g = cmd->data.color.g;
-            const Uint8 b = cmd->data.color.b;
-            const Uint8 a = cmd->data.color.a;
-            const Uint32 color = (((Uint32)a << 24) | (r << 16) | (g << 8) | b);
-            if ((data->drawstate.clear_color_dirty) || (color != data->drawstate.clear_color)) {
-                const GLfloat fr = ((GLfloat)r) * inv255f;
-                const GLfloat fg = ((GLfloat)g) * inv255f;
-                const GLfloat fb = ((GLfloat)b) * inv255f;
-                const GLfloat fa = ((GLfloat)a) * inv255f;
-                data->glClearColor(fr, fg, fb, fa);
-                data->drawstate.clear_color = color;
+            const float r = cmd->data.color.color.r * cmd->data.color.color_scale;
+            const float g = cmd->data.color.color.g * cmd->data.color.color_scale;
+            const float b = cmd->data.color.color.b * cmd->data.color.color_scale;
+            const float a = cmd->data.color.color.a;
+            if (data->drawstate.clear_color_dirty ||
+                (r != data->drawstate.clear_color.r) ||
+                (g != data->drawstate.clear_color.g) ||
+                (b != data->drawstate.clear_color.b) ||
+                (a != data->drawstate.clear_color.a)) {
+                data->glClearColor(r, g, b, a);
+                data->drawstate.clear_color.r = r;
+                data->drawstate.clear_color.g = g;
+                data->drawstate.clear_color.b = b;
+                data->drawstate.clear_color.a = a;
                 data->drawstate.clear_color_dirty = SDL_FALSE;
             }
 
@@ -1324,7 +1320,7 @@ static int GL_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, vo
 
         case SDL_RENDERCMD_DRAW_LINES:
         {
-            if (SetDrawState(data, cmd, SHADER_SOLID) == 0) {
+            if (SetDrawState(data, cmd, SHADER_SOLID, NULL) == 0) {
                 size_t count = cmd->data.draw.count;
                 const GLfloat *verts = (GLfloat *)(((Uint8 *)vertices) + cmd->data.draw.first);
 
@@ -1390,7 +1386,7 @@ static int GL_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, vo
             if (thistexture) {
                 ret = SetCopyState(data, cmd);
             } else {
-                ret = SetDrawState(data, cmd, SHADER_SOLID);
+                ret = SetDrawState(data, cmd, SHADER_SOLID, NULL);
             }
 
             if (ret == 0) {
@@ -1406,12 +1402,12 @@ static int GL_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, vo
                 } else {
                     /* SetDrawState handles glEnableClientState. */
                     if (thistexture) {
-                        data->glVertexPointer(2, GL_FLOAT, sizeof(float) * 5, verts + 0);
-                        data->glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(float) * 5, verts + 2);
-                        data->glTexCoordPointer(2, GL_FLOAT, sizeof(float) * 5, verts + 3);
+                        data->glVertexPointer(2, GL_FLOAT, sizeof(float) * 8, verts + 0);
+                        data->glColorPointer(4, GL_FLOAT, sizeof(float) * 8, verts + 2);
+                        data->glTexCoordPointer(2, GL_FLOAT, sizeof(float) * 8, verts + 6);
                     } else {
-                        data->glVertexPointer(2, GL_FLOAT, sizeof(float) * 3, verts + 0);
-                        data->glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(float) * 3, verts + 2);
+                        data->glVertexPointer(2, GL_FLOAT, sizeof(float) * 6, verts + 0);
+                        data->glColorPointer(4, GL_FLOAT, sizeof(float) * 6, verts + 2);
                     }
                 }
 
@@ -1419,12 +1415,11 @@ static int GL_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, vo
 
                 /* Restore previously set color when we're done. */
                 if (thiscmdtype != SDL_RENDERCMD_DRAW_POINTS) {
-                    Uint32 color = data->drawstate.color;
-                    GLubyte a = (GLubyte)((color >> 24) & 0xFF);
-                    GLubyte r = (GLubyte)((color >> 16) & 0xFF);
-                    GLubyte g = (GLubyte)((color >> 8) & 0xFF);
-                    GLubyte b = (GLubyte)((color >> 0) & 0xFF);
-                    data->glColor4ub(r, g, b, a);
+                    const float r = data->drawstate.color.r;
+                    const float g = data->drawstate.color.g;
+                    const float b = data->drawstate.color.b;
+                    const float a = data->drawstate.color.a;
+                    data->glColor4f(r, g, b, a);
                 }
             }
 
@@ -1457,74 +1452,58 @@ static int GL_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, vo
     return GL_CheckError("", renderer);
 }
 
-static int GL_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rect *rect,
-                               Uint32 pixel_format, void *pixels, int pitch)
+static SDL_Surface *GL_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rect *rect)
 {
     GL_RenderData *data = (GL_RenderData *)renderer->driverdata;
-    Uint32 temp_format = renderer->target ? renderer->target->format : SDL_PIXELFORMAT_ARGB8888;
-    void *temp_pixels;
-    int temp_pitch;
+    Uint32 format = renderer->target ? renderer->target->format : SDL_PIXELFORMAT_ARGB8888;
     GLint internalFormat;
-    GLenum format, type;
-    Uint8 *src, *dst, *tmp;
-    int w, h, length, rows;
-    int status;
+    GLenum targetFormat, type;
+    int w, h;
+    SDL_Surface *surface;
 
     GL_ActivateRenderer(renderer);
 
-    if (!convert_format(data, temp_format, &internalFormat, &format, &type)) {
-        return SDL_SetError("Texture format %s not supported by OpenGL",
-                            SDL_GetPixelFormatName(temp_format));
+    if (!convert_format(format, &internalFormat, &targetFormat, &type)) {
+        SDL_SetError("Texture format %s not supported by OpenGL", SDL_GetPixelFormatName(format));
+        return NULL;
     }
 
-    if (rect->w == 0 || rect->h == 0) {
-        return 0; /* nothing to do. */
-    }
-
-    temp_pitch = rect->w * SDL_BYTESPERPIXEL(temp_format);
-    temp_pixels = SDL_malloc((size_t)rect->h * temp_pitch);
-    if (!temp_pixels) {
-        return -1;
+    surface = SDL_CreateSurface(rect->w, rect->h, format);
+    if (!surface) {
+        return NULL;
     }
 
     SDL_GetCurrentRenderOutputSize(renderer, &w, &h);
 
     data->glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    data->glPixelStorei(GL_PACK_ROW_LENGTH,
-                        (temp_pitch / SDL_BYTESPERPIXEL(temp_format)));
+    data->glPixelStorei(GL_PACK_ROW_LENGTH, (surface->pitch / SDL_BYTESPERPIXEL(format)));
 
     data->glReadPixels(rect->x, renderer->target ? rect->y : (h - rect->y) - rect->h,
-                       rect->w, rect->h, format, type, temp_pixels);
+                       rect->w, rect->h, targetFormat, type, surface->pixels);
 
     if (GL_CheckError("glReadPixels()", renderer) < 0) {
-        SDL_free(temp_pixels);
-        return -1;
+        SDL_DestroySurface(surface);
+        return NULL;
     }
 
     /* Flip the rows to be top-down if necessary */
     if (!renderer->target) {
         SDL_bool isstack;
-        length = rect->w * SDL_BYTESPERPIXEL(temp_format);
-        src = (Uint8 *)temp_pixels + (rect->h - 1) * temp_pitch;
-        dst = (Uint8 *)temp_pixels;
-        tmp = SDL_small_alloc(Uint8, length, &isstack);
-        rows = rect->h / 2;
+        int length = rect->w * SDL_BYTESPERPIXEL(format);
+        Uint8 *src = (Uint8 *)surface->pixels + (rect->h - 1) * surface->pitch;
+        Uint8 *dst = (Uint8 *)surface->pixels;
+        Uint8 *tmp = SDL_small_alloc(Uint8, length, &isstack);
+        int rows = rect->h / 2;
         while (rows--) {
             SDL_memcpy(tmp, dst, length);
             SDL_memcpy(dst, src, length);
             SDL_memcpy(src, tmp, length);
-            dst += temp_pitch;
-            src -= temp_pitch;
+            dst += surface->pitch;
+            src -= surface->pitch;
         }
         SDL_small_free(tmp, isstack);
     }
-
-    status = SDL_ConvertPixels(rect->w, rect->h,
-                               temp_format, temp_pixels, temp_pitch,
-                               pixel_format, pixels, pitch);
-    SDL_free(temp_pixels);
-
-    return status;
+    return surface;
 }
 
 static int GL_RenderPresent(SDL_Renderer *renderer)
@@ -1700,6 +1679,14 @@ static SDL_Renderer *GL_CreateRenderer(SDL_Window *window, SDL_PropertiesID crea
         goto error;
     }
 
+    SDL_SetupRendererColorspace(renderer, create_props);
+
+    if (renderer->output_colorspace != SDL_COLORSPACE_SRGB) {
+        SDL_SetError("Unsupported output colorspace");
+        SDL_free(renderer);
+        goto error;
+    }
+
     data = (GL_RenderData *)SDL_calloc(1, sizeof(*data));
     if (!data) {
         SDL_free(renderer);
@@ -1718,8 +1705,9 @@ static SDL_Renderer *GL_CreateRenderer(SDL_Window *window, SDL_PropertiesID crea
     renderer->UnlockTexture = GL_UnlockTexture;
     renderer->SetTextureScaleMode = GL_SetTextureScaleMode;
     renderer->SetRenderTarget = GL_SetRenderTarget;
-    renderer->QueueSetViewport = GL_QueueSetViewport;
-    renderer->QueueSetDrawColor = GL_QueueSetViewport; /* SetViewport and SetDrawColor are (currently) no-ops. */
+    renderer->QueueSetViewport = GL_QueueNoOp;
+    renderer->QueueSetDrawColor = GL_QueueNoOp;
+    renderer->QueueSetColorScale = GL_QueueNoOp;
     renderer->QueueDrawPoints = GL_QueueDrawPoints;
     renderer->QueueDrawLines = GL_QueueDrawLines;
     renderer->QueueGeometry = GL_QueueGeometry;
@@ -1906,22 +1894,31 @@ static SDL_Renderer *GL_CreateRenderer(SDL_Window *window, SDL_PropertiesID crea
     data->glDisable(GL_SCISSOR_TEST);
     data->glDisable(data->textype);
     data->glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-    data->glColor4ub(255, 255, 255, 255);
+    data->glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     /* This ended up causing video discrepancies between OpenGL and Direct3D */
     /* data->glEnable(GL_LINE_SMOOTH); */
 
-    data->drawstate.color = 0xFFFFFFFF;
-    data->drawstate.clear_color = 0xFFFFFFFF;
+    data->drawstate.color.r = 1.0f;
+    data->drawstate.color.g = 1.0f;
+    data->drawstate.color.b = 1.0f;
+    data->drawstate.color.a = 1.0f;
+    data->drawstate.clear_color.r = 1.0f;
+    data->drawstate.clear_color.g = 1.0f;
+    data->drawstate.clear_color.b = 1.0f;
+    data->drawstate.clear_color.a = 1.0f;
 
     return renderer;
 
 error:
     if (changed_window) {
         /* Uh oh, better try to put it back... */
+        char *error = SDL_strdup(SDL_GetError());
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, profile_mask);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, major);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minor);
         SDL_RecreateWindow(window, window_flags);
+        SDL_SetError("%s", error);
+        SDL_free(error);
     }
     return NULL;
 }
