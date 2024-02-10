@@ -113,12 +113,17 @@ typedef enum
     SDL_GAMEPAD_BUTTON_DPAD_DOWN,
     SDL_GAMEPAD_BUTTON_DPAD_LEFT,
     SDL_GAMEPAD_BUTTON_DPAD_RIGHT,
-    SDL_GAMEPAD_BUTTON_MISC1,           /* Additional button (e.g. Xbox Series X share button, PS5 microphone button, Nintendo Switch Pro capture button, Amazon Luna microphone button) */
+    SDL_GAMEPAD_BUTTON_MISC1,           /* Additional button (e.g. Xbox Series X share button, PS5 microphone button, Nintendo Switch Pro capture button, Amazon Luna microphone button, Google Stadia capture button) */
     SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1,   /* Upper or primary paddle, under your right hand (e.g. Xbox Elite paddle P1) */
     SDL_GAMEPAD_BUTTON_LEFT_PADDLE1,    /* Upper or primary paddle, under your left hand (e.g. Xbox Elite paddle P3) */
     SDL_GAMEPAD_BUTTON_RIGHT_PADDLE2,   /* Lower or secondary paddle, under your right hand (e.g. Xbox Elite paddle P2) */
     SDL_GAMEPAD_BUTTON_LEFT_PADDLE2,    /* Lower or secondary paddle, under your left hand (e.g. Xbox Elite paddle P4) */
     SDL_GAMEPAD_BUTTON_TOUCHPAD,        /* PS4/PS5 touchpad button */
+    SDL_GAMEPAD_BUTTON_MISC2,           /* Additional button */
+    SDL_GAMEPAD_BUTTON_MISC3,           /* Additional button */
+    SDL_GAMEPAD_BUTTON_MISC4,           /* Additional button */
+    SDL_GAMEPAD_BUTTON_MISC5,           /* Additional button */
+    SDL_GAMEPAD_BUTTON_MISC6,           /* Additional button */
     SDL_GAMEPAD_BUTTON_MAX
 } SDL_GamepadButton;
 
@@ -1194,6 +1199,9 @@ extern DECLSPEC int SDLCALL SDL_GetGamepadSensorData(SDL_Gamepad *gamepad, SDL_S
  * Each call to this function cancels any previous rumble effect, and calling
  * it with 0 intensity stops any rumbling.
  *
+ * This function requires you to process SDL events or call
+ * SDL_UpdateJoysticks() to update rumble state.
+ *
  * \param gamepad The gamepad to vibrate
  * \param low_frequency_rumble The intensity of the low frequency (left)
  *                             rumble motor, from 0 to 0xFFFF
@@ -1215,6 +1223,9 @@ extern DECLSPEC int SDLCALL SDL_RumbleGamepad(SDL_Gamepad *gamepad, Uint16 low_f
  * Note that this is rumbling of the _triggers_ and not the gamepad as a
  * whole. This is currently only supported on Xbox One gamepads. If you want
  * the (more common) whole-gamepad rumble, use SDL_RumbleGamepad() instead.
+ *
+ * This function requires you to process SDL events or call
+ * SDL_UpdateJoysticks() to update rumble state.
  *
  * \param gamepad The gamepad to vibrate
  * \param left_rumble The intensity of the left trigger rumble motor, from 0

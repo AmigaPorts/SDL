@@ -27,6 +27,7 @@
 #include "../SDL_sysrender.h"
 #include "../SDL_d3dmath.h"
 #include "../../video/windows/SDL_windowsvideo.h"
+#include "../../video/SDL_pixels_c.h"
 
 #ifdef SDL_VIDEO_RENDER_D3D
 #define D3D_DEBUG_INFO
@@ -45,7 +46,8 @@ typedef struct
     SDL_bool cliprect_enabled_dirty;
     SDL_Rect cliprect;
     SDL_bool cliprect_dirty;
-    LPDIRECT3DPIXELSHADER9 shader;
+    D3D9_Shader shader;
+    const float *shader_params;
 } D3D_DrawStateCache;
 
 /* Direct3D renderer implementation */
@@ -89,6 +91,8 @@ typedef struct
 {
     D3D_TextureRep texture;
     D3DTEXTUREFILTERTYPE scaleMode;
+    D3D9_Shader shader;
+    const float *shader_params;
 
 #if SDL_HAVE_YUV
     /* YV12 texture support */
@@ -552,6 +556,12 @@ static int D3D_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SDL_P
         if (D3D_CreateTextureRep(data->device, &texturedata->vtexture, usage, texture->format, PixelFormatToD3DFMT(texture->format), (texture->w + 1) / 2, (texture->h + 1) / 2) < 0) {
             return -1;
         }
+
+        texturedata->shader = SHADER_YUV;
+        texturedata->shader_params = SDL_GetYCbCRtoRGBConversionMatrix(texture->colorspace, texture->w, texture->h, 8);
+        if (texturedata->shader_params == NULL) {
+            return SDL_SetError("Unsupported YUV colorspace");
+        }
     }
 #endif
     return 0;
@@ -716,7 +726,8 @@ static void D3D_UnlockTexture(SDL_Renderer *renderer, SDL_Texture *texture)
         texturedata->texture.dirty = SDL_TRUE;
         if (data->drawstate.texture == texture) {
             data->drawstate.texture = NULL;
-            data->drawstate.shader = NULL;
+            data->drawstate.shader = SHADER_NONE;
+            data->drawstate.shader_params = NULL;
             IDirect3DDevice9_SetPixelShader(data->device, NULL);
             IDirect3DDevice9_SetTexture(data->device, 0, NULL);
         }
@@ -797,14 +808,17 @@ static int D3D_SetRenderTarget(SDL_Renderer *renderer, SDL_Texture *texture)
     return D3D_SetRenderTargetInternal(renderer, texture);
 }
 
-static int D3D_QueueSetViewport(SDL_Renderer *renderer, SDL_RenderCommand *cmd)
+static int D3D_QueueNoOp(SDL_Renderer *renderer, SDL_RenderCommand *cmd)
 {
     return 0; /* nothing to do in this backend. */
 }
 
 static int D3D_QueueDrawPoints(SDL_Renderer *renderer, SDL_RenderCommand *cmd, const SDL_FPoint *points, int count)
 {
-    const DWORD color = D3DCOLOR_ARGB(cmd->data.draw.a, cmd->data.draw.r, cmd->data.draw.g, cmd->data.draw.b);
+    const DWORD color = D3DCOLOR_COLORVALUE(cmd->data.draw.color.r * cmd->data.draw.color_scale,
+                                            cmd->data.draw.color.g * cmd->data.draw.color_scale,
+                                            cmd->data.draw.color.b * cmd->data.draw.color_scale,
+                                            cmd->data.draw.color.a);
     const size_t vertslen = count * sizeof(Vertex);
     Vertex *verts = (Vertex *)SDL_AllocateRenderVertices(renderer, vertslen, 0, &cmd->data.draw.first);
     int i;
@@ -826,13 +840,14 @@ static int D3D_QueueDrawPoints(SDL_Renderer *renderer, SDL_RenderCommand *cmd, c
 }
 
 static int D3D_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Texture *texture,
-                             const float *xy, int xy_stride, const SDL_Color *color, int color_stride, const float *uv, int uv_stride,
+                             const float *xy, int xy_stride, const SDL_FColor *color, int color_stride, const float *uv, int uv_stride,
                              int num_vertices, const void *indices, int num_indices, int size_indices,
                              float scale_x, float scale_y)
 {
     int i;
     int count = indices ? num_indices : num_vertices;
     Vertex *verts = (Vertex *)SDL_AllocateRenderVertices(renderer, count * sizeof(Vertex), 0, &cmd->data.draw.first);
+    const float color_scale = cmd->data.draw.color_scale;
 
     if (!verts) {
         return -1;
@@ -844,7 +859,7 @@ static int D3D_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL
     for (i = 0; i < count; i++) {
         int j;
         float *xy_;
-        SDL_Color col_;
+        SDL_FColor *col_;
         if (size_indices == 4) {
             j = ((const Uint32 *)indices)[i];
         } else if (size_indices == 2) {
@@ -856,12 +871,12 @@ static int D3D_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL
         }
 
         xy_ = (float *)((char *)xy + j * xy_stride);
-        col_ = *(SDL_Color *)((char *)color + j * color_stride);
+        col_ = (SDL_FColor *)((char *)color + j * color_stride);
 
         verts->x = xy_[0] * scale_x - 0.5f;
         verts->y = xy_[1] * scale_y - 0.5f;
         verts->z = 0.0f;
-        verts->color = D3DCOLOR_ARGB(col_.a, col_.r, col_.g, col_.b);
+        verts->color = D3DCOLOR_COLORVALUE(col_->r * color_scale, col_->g * color_scale, col_->b * color_scale, col_->a);
 
         if (texture) {
             float *uv_ = (float *)((char *)uv + j * uv_stride);
@@ -924,11 +939,9 @@ static void UpdateTextureScaleMode(D3D_RenderData *data, D3D_TextureData *textur
     }
 }
 
-static int SetupTextureState(D3D_RenderData *data, SDL_Texture *texture, LPDIRECT3DPIXELSHADER9 *shader)
+static int SetupTextureState(D3D_RenderData *data, SDL_Texture *texture, D3D9_Shader *shader, const float **shader_params)
 {
     D3D_TextureData *texturedata = (D3D_TextureData *)texture->driverdata;
-
-    SDL_assert(*shader == NULL);
 
     if (!texturedata) {
         return SDL_SetError("Texture is not currently available");
@@ -936,25 +949,14 @@ static int SetupTextureState(D3D_RenderData *data, SDL_Texture *texture, LPDIREC
 
     UpdateTextureScaleMode(data, texturedata, 0);
 
+    *shader = texturedata->shader;
+    *shader_params = texturedata->shader_params;
+
     if (BindTextureRep(data->device, &texturedata->texture, 0) < 0) {
         return -1;
     }
 #if SDL_HAVE_YUV
     if (texturedata->yuv) {
-        switch (SDL_GetYUVConversionModeForResolution(texture->w, texture->h)) {
-        case SDL_YUV_CONVERSION_JPEG:
-            *shader = data->shaders[SHADER_YUV_JPEG];
-            break;
-        case SDL_YUV_CONVERSION_BT601:
-            *shader = data->shaders[SHADER_YUV_BT601];
-            break;
-        case SDL_YUV_CONVERSION_BT709:
-            *shader = data->shaders[SHADER_YUV_BT709];
-            break;
-        default:
-            return SDL_SetError("Unsupported YUV conversion mode");
-        }
-
         UpdateTextureScaleMode(data, texturedata, 1);
         UpdateTextureScaleMode(data, texturedata, 2);
 
@@ -979,7 +981,8 @@ static int SetDrawState(D3D_RenderData *data, const SDL_RenderCommand *cmd)
         D3D_TextureData *oldtexturedata = data->drawstate.texture ? (D3D_TextureData *)data->drawstate.texture->driverdata : NULL;
         D3D_TextureData *newtexturedata = texture ? (D3D_TextureData *)texture->driverdata : NULL;
 #endif
-        LPDIRECT3DPIXELSHADER9 shader = NULL;
+        D3D9_Shader shader = SHADER_NONE;
+        const float *shader_params = NULL;
 
         /* disable any enabled textures we aren't going to use, let SetupTextureState() do the rest. */
         if (!texture) {
@@ -991,16 +994,27 @@ static int SetDrawState(D3D_RenderData *data, const SDL_RenderCommand *cmd)
             IDirect3DDevice9_SetTexture(data->device, 2, NULL);
         }
 #endif
-        if (texture && SetupTextureState(data, texture, &shader) < 0) {
+        if (texture && SetupTextureState(data, texture, &shader, &shader_params) < 0) {
             return -1;
         }
 
         if (shader != data->drawstate.shader) {
-            const HRESULT result = IDirect3DDevice9_SetPixelShader(data->device, shader);
+            const HRESULT result = IDirect3DDevice9_SetPixelShader(data->device, data->shaders[shader]);
             if (FAILED(result)) {
                 return D3D_SetError("IDirect3DDevice9_SetPixelShader()", result);
             }
             data->drawstate.shader = shader;
+        }
+
+        if (shader_params != data->drawstate.shader_params) {
+            if (shader_params) {
+                const UINT shader_params_length = 4; /* The YUV shader takes 4 float4 parameters */
+                const HRESULT result = IDirect3DDevice9_SetPixelShaderConstantF(data->device, 0, shader_params, shader_params_length);
+                if (FAILED(result)) {
+                    return D3D_SetError("IDirect3DDevice9_SetPixelShaderConstantF()", result);
+                }
+            }
+            data->drawstate.shader_params = shader_params;
         }
 
         data->drawstate.texture = texture;
@@ -1094,7 +1108,8 @@ static void D3D_InvalidateCachedState(SDL_Renderer *renderer)
     data->drawstate.cliprect_dirty = SDL_TRUE;
     data->drawstate.blend = SDL_BLENDMODE_INVALID;
     data->drawstate.texture = NULL;
-    data->drawstate.shader = NULL;
+    data->drawstate.shader = SHADER_NONE;
+    data->drawstate.shader_params = NULL;
 }
 
 static int D3D_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, void *vertices, size_t vertsize)
@@ -1164,6 +1179,11 @@ static int D3D_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
             break;
         }
 
+        case SDL_RENDERCMD_SETCOLORSCALE:
+        {
+            break;
+        }
+
         case SDL_RENDERCMD_SETVIEWPORT:
         {
             SDL_Rect *viewport = &data->drawstate.viewport;
@@ -1191,7 +1211,10 @@ static int D3D_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
 
         case SDL_RENDERCMD_CLEAR:
         {
-            const DWORD color = D3DCOLOR_ARGB(cmd->data.color.a, cmd->data.color.r, cmd->data.color.g, cmd->data.color.b);
+            const DWORD color = D3DCOLOR_COLORVALUE(cmd->data.color.color.r * cmd->data.color.color_scale,
+                                                    cmd->data.color.color.g * cmd->data.color.color_scale,
+                                                    cmd->data.color.color.b * cmd->data.color.color_scale,
+                                                    cmd->data.color.color.a);
             const SDL_Rect *viewport = &data->drawstate.viewport;
             const int backw = istarget ? renderer->target->w : data->pparams.BackBufferWidth;
             const int backh = istarget ? renderer->target->h : data->pparams.BackBufferHeight;
@@ -1292,8 +1315,7 @@ static int D3D_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
     return 0;
 }
 
-static int D3D_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rect *rect,
-                                Uint32 format, void *pixels, int pitch)
+static SDL_Surface *D3D_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rect *rect)
 {
     D3D_RenderData *data = (D3D_RenderData *)renderer->driverdata;
     D3DSURFACE_DESC desc;
@@ -1302,7 +1324,7 @@ static int D3D_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rect *rect,
     RECT d3drect;
     D3DLOCKED_RECT locked;
     HRESULT result;
-    int status;
+    SDL_Surface *output;
 
     if (data->currentRenderTarget) {
         backBuffer = data->currentRenderTarget;
@@ -1312,18 +1334,21 @@ static int D3D_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rect *rect,
 
     result = IDirect3DSurface9_GetDesc(backBuffer, &desc);
     if (FAILED(result)) {
-        return D3D_SetError("GetDesc()", result);
+        D3D_SetError("GetDesc()", result);
+        return NULL;
     }
 
     result = IDirect3DDevice9_CreateOffscreenPlainSurface(data->device, desc.Width, desc.Height, desc.Format, D3DPOOL_SYSTEMMEM, &surface, NULL);
     if (FAILED(result)) {
-        return D3D_SetError("CreateOffscreenPlainSurface()", result);
+        D3D_SetError("CreateOffscreenPlainSurface()", result);
+        return NULL;
     }
 
     result = IDirect3DDevice9_GetRenderTargetData(data->device, backBuffer, surface);
     if (FAILED(result)) {
         IDirect3DSurface9_Release(surface);
-        return D3D_SetError("GetRenderTargetData()", result);
+        D3D_SetError("GetRenderTargetData()", result);
+        return NULL;
     }
 
     d3drect.left = rect->x;
@@ -1334,18 +1359,17 @@ static int D3D_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rect *rect,
     result = IDirect3DSurface9_LockRect(surface, &locked, &d3drect, D3DLOCK_READONLY);
     if (FAILED(result)) {
         IDirect3DSurface9_Release(surface);
-        return D3D_SetError("LockRect()", result);
+        D3D_SetError("LockRect()", result);
+        return NULL;
     }
 
-    status = SDL_ConvertPixels(rect->w, rect->h,
-                               D3DFMTToPixelFormat(desc.Format), locked.pBits, locked.Pitch,
-                               format, pixels, pitch);
+    output = SDL_DuplicatePixels(rect->w, rect->h, D3DFMTToPixelFormat(desc.Format), SDL_COLORSPACE_SRGB, locked.pBits, locked.Pitch);
 
     IDirect3DSurface9_UnlockRect(surface);
 
     IDirect3DSurface9_Release(surface);
 
-    return status;
+    return output;
 }
 
 static int D3D_RenderPresent(SDL_Renderer *renderer)
@@ -1380,7 +1404,8 @@ static void D3D_DestroyTexture(SDL_Renderer *renderer, SDL_Texture *texture)
 
     if (renderdata->drawstate.texture == texture) {
         renderdata->drawstate.texture = NULL;
-        renderdata->drawstate.shader = NULL;
+        renderdata->drawstate.shader = SHADER_NONE;
+        renderdata->drawstate.shader_params = NULL;
         IDirect3DDevice9_SetPixelShader(renderdata->device, NULL);
         IDirect3DDevice9_SetTexture(renderdata->device, 0, NULL);
 #if SDL_HAVE_YUV
@@ -1563,6 +1588,14 @@ SDL_Renderer *D3D_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_pro
     }
     renderer->magic = &SDL_renderer_magic;
 
+    SDL_SetupRendererColorspace(renderer, create_props);
+
+    if (renderer->output_colorspace != SDL_COLORSPACE_SRGB) {
+        SDL_SetError("Unsupported output colorspace");
+        SDL_free(renderer);
+        return NULL;
+    }
+
     data = (D3D_RenderData *)SDL_calloc(1, sizeof(*data));
     if (!data) {
         SDL_free(renderer);
@@ -1570,9 +1603,9 @@ SDL_Renderer *D3D_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_pro
     }
 
     if (!D3D_LoadDLL(&data->d3dDLL, &data->d3d)) {
+        SDL_SetError("Unable to create Direct3D interface");
         SDL_free(renderer);
         SDL_free(data);
-        SDL_SetError("Unable to create Direct3D interface");
         return NULL;
     }
 
@@ -1587,8 +1620,9 @@ SDL_Renderer *D3D_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_pro
     renderer->UnlockTexture = D3D_UnlockTexture;
     renderer->SetTextureScaleMode = D3D_SetTextureScaleMode;
     renderer->SetRenderTarget = D3D_SetRenderTarget;
-    renderer->QueueSetViewport = D3D_QueueSetViewport;
-    renderer->QueueSetDrawColor = D3D_QueueSetViewport; /* SetViewport and SetDrawColor are (currently) no-ops. */
+    renderer->QueueSetViewport = D3D_QueueNoOp;
+    renderer->QueueSetDrawColor = D3D_QueueNoOp;
+    renderer->QueueSetColorScale = D3D_QueueNoOp;
     renderer->QueueDrawPoints = D3D_QueueDrawPoints;
     renderer->QueueDrawLines = D3D_QueueDrawPoints; /* lines and points queue vertices the same way. */
     renderer->QueueGeometry = D3D_QueueGeometry;
@@ -1696,13 +1730,13 @@ SDL_Renderer *D3D_CreateRenderer(SDL_Window *window, SDL_PropertiesID create_pro
 #if SDL_HAVE_YUV
     if (caps.MaxSimultaneousTextures >= 3) {
         int i;
-        for (i = 0; i < SDL_arraysize(data->shaders); ++i) {
+        for (i = SHADER_NONE + 1; i < SDL_arraysize(data->shaders); ++i) {
             result = D3D9_CreatePixelShader(data->device, (D3D9_Shader)i, &data->shaders[i]);
             if (FAILED(result)) {
                 D3D_SetError("CreatePixelShader()", result);
             }
         }
-        if (data->shaders[SHADER_YUV_JPEG] && data->shaders[SHADER_YUV_BT601] && data->shaders[SHADER_YUV_BT709]) {
+        if (data->shaders[SHADER_YUV]) {
             renderer->info.texture_formats[renderer->info.num_texture_formats++] = SDL_PIXELFORMAT_YV12;
             renderer->info.texture_formats[renderer->info.num_texture_formats++] = SDL_PIXELFORMAT_IYUV;
         }

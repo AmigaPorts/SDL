@@ -121,9 +121,9 @@ OS4_ModulateRGB(SDL_Renderer * renderer, SDL_Texture * texture, Uint8 * src, int
                     Uint8 g = (oldcolor & 0x0000FF00) >> 8;
                     Uint8 b = (oldcolor & 0x000000FF);
 
-                    newcolor |= ((r * texture->color.r) / 255) << 16;
-                    newcolor |= ((g * texture->color.g) / 255) << 8;
-                    newcolor |= ((b * texture->color.b) / 255);
+                    newcolor |= (int)(r * texture->color.r) << 16;
+                    newcolor |= (int)(g * texture->color.g) << 8;
+                    newcolor |= (int)(b * texture->color.b);
 
                     writeaddress[x] = newcolor;
                 }

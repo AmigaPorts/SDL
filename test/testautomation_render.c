@@ -150,7 +150,7 @@ static int render_testPrimitives(void *arg)
     checkFailCount2 = 0;
     for (y = 0; y < 3; y++) {
         for (x = y % 2; x < TESTRENDER_SCREEN_W; x += 2) {
-            ret = SDL_SetRenderDrawColor(renderer, x * y, x * y / 2, x * y / 3, SDL_ALPHA_OPAQUE);
+            ret = SDL_SetRenderDrawColor(renderer, (Uint8)(x * y), (Uint8)(x * y / 2), (Uint8)(x * y / 3), SDL_ALPHA_OPAQUE);
             if (ret != 0) {
                 checkFailCount1++;
             }
@@ -247,7 +247,7 @@ static int render_testPrimitivesBlend(void *arg)
     checkFailCount2 = 0;
     checkFailCount3 = 0;
     for (i = 0; i < TESTRENDER_SCREEN_W; i += 2) {
-        ret = SDL_SetRenderDrawColor(renderer, 60 + 2 * i, 240 - 2 * i, 50, 3 * i);
+        ret = SDL_SetRenderDrawColor(renderer, (Uint8)(60 + 2 * i), (Uint8)(240 - 2 * i), 50, (Uint8)(3 * i));
         if (ret != 0) {
             checkFailCount1++;
         }
@@ -271,7 +271,7 @@ static int render_testPrimitivesBlend(void *arg)
     checkFailCount2 = 0;
     checkFailCount3 = 0;
     for (i = 0; i < TESTRENDER_SCREEN_H; i += 2) {
-        ret = SDL_SetRenderDrawColor(renderer, 60 + 2 * i, 240 - 2 * i, 50, 3 * i);
+        ret = SDL_SetRenderDrawColor(renderer, (Uint8)(60 + 2 * i), (Uint8)(240 - 2 * i), 50, (Uint8)(3 * i));
         if (ret != 0) {
             checkFailCount1++;
         }
@@ -297,7 +297,7 @@ static int render_testPrimitivesBlend(void *arg)
     checkFailCount3 = 0;
     for (j = 0; j < TESTRENDER_SCREEN_H; j += 3) {
         for (i = 0; i < TESTRENDER_SCREEN_W; i += 3) {
-            ret = SDL_SetRenderDrawColor(renderer, j * 4, i * 3, j * 4, i * 3);
+            ret = SDL_SetRenderDrawColor(renderer, (Uint8)(j * 4), (Uint8)(i * 3), (Uint8)(j * 4), (Uint8)(i * 3));
             if (ret != 0) {
                 checkFailCount1++;
             }
@@ -343,7 +343,7 @@ static int render_testPrimitivesBlend(void *arg)
 static int render_testPrimitivesWithViewport(void *arg)
 {
     SDL_Rect viewport;
-    Uint32 pixel;
+    SDL_Surface *surface;
 
     /* Clear surface. */
     clearScreen();
@@ -363,9 +363,15 @@ static int render_testPrimitivesWithViewport(void *arg)
     viewport.h = 1;
     CHECK_FUNC(SDL_SetRenderViewport, (renderer, &viewport));
 
-    pixel = 0;
-    CHECK_FUNC(SDL_RenderReadPixels, (renderer, NULL, SDL_PIXELFORMAT_RGBA8888, &pixel, sizeof(pixel)));
-    SDLTest_AssertCheck(pixel == 0xFFFFFFFF, "Validate diagonal line drawing with viewport, expected 0xFFFFFFFF, got 0x%.8x", (unsigned int)pixel);
+    surface = SDL_RenderReadPixels(renderer, NULL);
+    if (surface) {
+        Uint8 r, g, b, a;
+        CHECK_FUNC(SDL_ReadSurfacePixel, (surface, 0, 0, &r, &g, &b, &a));
+        SDLTest_AssertCheck(r == 0xFF && g == 0xFF && b == 0xFF && a == 0xFF, "Validate diagonal line drawing with viewport, expected 0xFFFFFFFF, got 0x%.2x%.2x%.2x%.2x", r, g, b, a);
+        SDL_DestroySurface(surface);
+    } else {
+        SDLTest_AssertCheck(surface != NULL, "Validate result from SDL_RenderReadPixels, got NULL, %s", SDL_GetError());
+    }
 
     return TEST_COMPLETED;
 }
@@ -479,7 +485,7 @@ static int render_testBlitColor(void *arg)
     for (j = 0; j <= nj; j += 4) {
         for (i = 0; i <= ni; i += 4) {
             /* Set color mod. */
-            ret = SDL_SetTextureColorMod(tface, (255 / nj) * j, (255 / ni) * i, (255 / nj) * j);
+            ret = SDL_SetTextureColorMod(tface, (Uint8)((255 / nj) * j), (Uint8)((255 / ni) * i), (Uint8)((255 / nj) * j));
             if (ret != 0) {
                 checkFailCount1++;
             }
@@ -556,7 +562,7 @@ static int render_testBlitAlpha(void *arg)
     for (j = 0; j <= nj; j += 4) {
         for (i = 0; i <= ni; i += 4) {
             /* Set alpha mod. */
-            ret = SDL_SetTextureAlphaMod(tface, (255 / ni) * i);
+            ret = SDL_SetTextureAlphaMod(tface, (Uint8)((255 / ni) * i));
             if (ret != 0) {
                 checkFailCount1++;
             }
@@ -739,13 +745,13 @@ static int render_testBlitBlend(void *arg)
         for (i = 0; i <= ni; i += 4) {
 
             /* Set color mod. */
-            ret = SDL_SetTextureColorMod(tface, (255 / nj) * j, (255 / ni) * i, (255 / nj) * j);
+            ret = SDL_SetTextureColorMod(tface, (Uint8)((255 / nj) * j), (Uint8)((255 / ni) * i), (Uint8)((255 / nj) * j));
             if (ret != 0) {
                 checkFailCount1++;
             }
 
             /* Set alpha mod. */
-            ret = SDL_SetTextureAlphaMod(tface, (100 / ni) * i);
+            ret = SDL_SetTextureAlphaMod(tface, (Uint8)((100 / ni) * i));
             if (ret != 0) {
                 checkFailCount2++;
             }
@@ -1205,36 +1211,35 @@ hasTexAlpha(void)
 static void
 compare(SDL_Surface *referenceSurface, int allowable_error)
 {
-   int ret;
-   SDL_Rect rect;
-   Uint8 *pixels;
-   SDL_Surface *testSurface;
+    int ret;
+    SDL_Rect rect;
+    SDL_Surface *surface, *testSurface;
 
-   /* Read pixels. */
-   pixels = (Uint8 *)SDL_malloc(4*TESTRENDER_SCREEN_W*TESTRENDER_SCREEN_H);
-   SDLTest_AssertCheck(pixels != NULL, "Validate allocated temp pixel buffer");
-   if (pixels == NULL) {
-      return;
-   }
+    /* Explicitly specify the rect in case the window isn't the expected size... */
+    rect.x = 0;
+    rect.y = 0;
+    rect.w = TESTRENDER_SCREEN_W;
+    rect.h = TESTRENDER_SCREEN_H;
 
-   /* Explicitly specify the rect in case the window isn't the expected size... */
-   rect.x = 0;
-   rect.y = 0;
-   rect.w = TESTRENDER_SCREEN_W;
-   rect.h = TESTRENDER_SCREEN_H;
-   CHECK_FUNC(SDL_RenderReadPixels, (renderer, &rect, RENDER_COMPARE_FORMAT, pixels, 80*4 ))
+    surface = SDL_RenderReadPixels(renderer, &rect);
+    if (!surface) {
+        SDLTest_AssertCheck(surface != NULL, "Validate result from SDL_RenderReadPixels, got NULL, %s", SDL_GetError());
+        return;
+    }
 
-   /* Create surface. */
-   testSurface = SDL_CreateSurfaceFrom(pixels, TESTRENDER_SCREEN_W, TESTRENDER_SCREEN_H, TESTRENDER_SCREEN_W*4, RENDER_COMPARE_FORMAT);
-   SDLTest_AssertCheck(testSurface != NULL, "Verify result from SDL_CreateSurfaceFrom is not NULL");
+    testSurface = SDL_ConvertSurfaceFormat(surface, RENDER_COMPARE_FORMAT);
+    SDL_DestroySurface(surface);
+    if (!testSurface) {
+        SDLTest_AssertCheck(testSurface != NULL, "Validate result from SDL_ConvertSurfaceFormat, got NULL, %s", SDL_GetError());
+        return;
+    }
 
-   /* Compare surface. */
-   ret = SDLTest_CompareSurfaces( testSurface, referenceSurface, allowable_error );
-   SDLTest_AssertCheck(ret == 0, "Validate result from SDLTest_CompareSurfaces, expected: 0, got: %i", ret);
+    /* Compare surface. */
+    ret = SDLTest_CompareSurfaces(testSurface, referenceSurface, allowable_error);
+    SDLTest_AssertCheck(ret == 0, "Validate result from SDLTest_CompareSurfaces, expected: 0, got: %i", ret);
 
-   /* Clean up. */
-   SDL_free(pixels);
-   SDL_DestroySurface(testSurface);
+    /* Clean up. */
+    SDL_DestroySurface(testSurface);
 }
 
 /**

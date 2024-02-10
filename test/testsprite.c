@@ -127,7 +127,9 @@ static void MoveSprites(SDL_Renderer *renderer, SDL_Texture *sprite)
     /* Test horizontal and vertical lines */
     SDL_SetRenderDrawColor(renderer, 0x00, 0xFF, 0x00, 0xFF);
     SDL_RenderLine(renderer, 1.0f, 0.0f, (float)(viewport.w - 2), 0.0f);
+    SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF);
     SDL_RenderLine(renderer, 1.0f, (float)(viewport.h - 1), (float)(viewport.w - 2), (float)(viewport.h - 1));
+    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0xFF, 0xFF);
     SDL_RenderLine(renderer, 0.0f, 1.0f, 0.0f, (float)(viewport.h - 2));
     SDL_RenderLine(renderer, (float)(viewport.w - 1), 1.0f, (float)(viewport.w - 1), (float)(viewport.h - 2));
 
@@ -141,13 +143,13 @@ static void MoveSprites(SDL_Renderer *renderer, SDL_Texture *sprite)
         SDL_RenderFillRect(renderer, &temp);
     } else {
         /* Draw two triangles, filled, uniform */
-        SDL_Color color;
+        SDL_FColor color;
         SDL_Vertex verts[3];
         SDL_zeroa(verts);
-        color.r = 0xFF;
-        color.g = 0xFF;
-        color.b = 0xFF;
-        color.a = 0xFF;
+        color.r = 1.0f;
+        color.g = 1.0f;
+        color.b = 1.0f;
+        color.a = 1.0f;
 
         verts[0].position.x = temp.x;
         verts[0].position.y = temp.y;
@@ -243,9 +245,9 @@ static void MoveSprites(SDL_Renderer *renderer, SDL_Texture *sprite)
         SDL_Vertex *verts = (SDL_Vertex *)SDL_malloc(num_sprites * sizeof(SDL_Vertex) * 6);
         SDL_Vertex *verts2 = verts;
         if (verts) {
-            SDL_Color color;
-            SDL_GetTextureColorMod(sprite, &color.r, &color.g, &color.b);
-            SDL_GetTextureAlphaMod(sprite, &color.a);
+            SDL_FColor color;
+            SDL_GetTextureColorModFloat(sprite, &color.r, &color.g, &color.b);
+            SDL_GetTextureAlphaModFloat(sprite, &color.a);
             for (i = 0; i < num_sprites; ++i) {
                 position = &positions[i];
                 /* 0 */
@@ -314,9 +316,9 @@ static void MoveSprites(SDL_Renderer *renderer, SDL_Texture *sprite)
         int *indices2 = indices;
         if (verts && indices) {
             int pos = 0;
-            SDL_Color color;
-            SDL_GetTextureColorMod(sprite, &color.r, &color.g, &color.b);
-            SDL_GetTextureAlphaMod(sprite, &color.a);
+            SDL_FColor color;
+            SDL_GetTextureColorModFloat(sprite, &color.r, &color.g, &color.b);
+            SDL_GetTextureAlphaModFloat(sprite, &color.a);
             for (i = 0; i < num_sprites; ++i) {
                 position = &positions[i];
                 /* 0 */

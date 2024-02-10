@@ -155,13 +155,13 @@ static void testBlitBlendMode(int mode)
         for (i = 0; i <= ni; i += 4) {
             if (mode == -2) {
                 /* Set color mod. */
-                ret = SDL_SetSurfaceColorMod(face, (255 / nj) * j, (255 / ni) * i, (255 / nj) * j);
+                ret = SDL_SetSurfaceColorMod(face, (Uint8)((255 / nj) * j), (Uint8)((255 / ni) * i), (Uint8)((255 / nj) * j));
                 if (ret != 0) {
                     checkFailCount2++;
                 }
             } else if (mode == -3) {
                 /* Set alpha mod. */
-                ret = SDL_SetSurfaceAlphaMod(face, (255 / ni) * i);
+                ret = SDL_SetSurfaceAlphaMod(face, (Uint8)((255 / ni) * i));
                 if (ret != 0) {
                     checkFailCount3++;
                 }
@@ -336,10 +336,12 @@ static int surface_testCompleteSurfaceConversion(void *arg)
         SDL_PIXELFORMAT_RGBA8888,
         SDL_PIXELFORMAT_ABGR8888,
         SDL_PIXELFORMAT_BGRA8888,
+#if 0 /* We aren't testing HDR10 colorspace conversion */
         SDL_PIXELFORMAT_XRGB2101010,
         SDL_PIXELFORMAT_XBGR2101010,
         SDL_PIXELFORMAT_ARGB2101010,
         SDL_PIXELFORMAT_ABGR2101010,
+#endif
     };
     SDL_Surface *face = NULL, *cvt1, *cvt2, *final;
     SDL_PixelFormat *fmt1, *fmt2;

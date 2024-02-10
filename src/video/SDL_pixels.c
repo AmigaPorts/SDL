@@ -692,6 +692,326 @@ void SDL_DestroyPixelFormat(SDL_PixelFormat *format)
     return;
 }
 
+SDL_Colorspace SDL_GetDefaultColorspaceForFormat(Uint32 format)
+{
+    if (SDL_ISPIXELFORMAT_FOURCC(format)) {
+        return SDL_COLORSPACE_YUV_DEFAULT;
+    } else if (SDL_ISPIXELFORMAT_FLOAT(format)) {
+        return SDL_COLORSPACE_SCRGB;
+    } else if (SDL_ISPIXELFORMAT_10BIT(format)) {
+        return SDL_COLORSPACE_HDR10;
+    } else {
+        return SDL_COLORSPACE_RGB_DEFAULT;
+    }
+}
+
+float SDL_scRGBtoNits(float v)
+{
+    return v * 80.0f;
+}
+
+float SDL_scRGBfromNits(float v)
+{
+    return v / 80.0f;
+}
+
+float SDL_sRGBtoNits(float v)
+{
+    if (v <= 0.04045f) {
+        v = (v / 12.92f);
+    } else {
+        v = SDL_powf((v + 0.055f) / 1.055f, 2.4f);
+    }
+    return SDL_scRGBtoNits(v);
+}
+
+float SDL_sRGBfromNits(float v)
+{
+    v = SDL_scRGBfromNits(v);
+
+    if (v <= 0.0031308f) {
+        v = (v * 12.92f);
+    } else {
+        v = (SDL_powf(v, 1.0f / 2.4f) * 1.055f - 0.055f);
+    }
+    return v;
+}
+
+float SDL_PQtoNits(float v)
+{
+    const float c1 = 0.8359375f;
+    const float c2 = 18.8515625f;
+    const float c3 = 18.6875f;
+    const float oo_m1 = 1.0f / 0.1593017578125f;
+    const float oo_m2 = 1.0f / 78.84375f;
+
+    float num = SDL_max(SDL_powf(v, oo_m2) - c1, 0.0f);
+    float den = c2 - c3 * SDL_powf(v, oo_m2);
+    return 10000.0f * SDL_powf(num / den, oo_m1);
+}
+
+float SDL_PQfromNits(float v)
+{
+    const float c1 = 0.8359375f;
+    const float c2 = 18.8515625f;
+    const float c3 = 18.6875f;
+    const float m1 = 0.1593017578125f;
+    const float m2 = 78.84375f;
+
+    float y = SDL_clamp(v / 10000.0f, 0.0f, 1.0f);
+    float num = c1 + c2 * SDL_powf(y, m1);
+    float den = 1.0f + c3 * SDL_powf(y, m1);
+    return SDL_powf(num / den, m2);
+}
+
+/* This is a helpful tool for deriving these:
+ * https://kdashg.github.io/misc/colors/from-coeffs.html
+ */
+static const float mat_BT601_Limited_8bit[] = {
+    -0.0627451017f, -0.501960814f, -0.501960814f, 0.0f, /* offset */
+    1.1644f, 0.0000f, 1.5960f, 0.0f,                    /* Rcoeff */
+    1.1644f, -0.3918f, -0.8130f, 0.0f,                  /* Gcoeff */
+    1.1644f, 2.0172f, 0.0000f, 0.0f,                    /* Bcoeff */
+};
+
+static const float mat_BT601_Full_8bit[] = {
+    0.0f, -0.501960814f, -0.501960814f, 0.0f,           /* offset */
+    1.0000f, 0.0000f, 1.4020f, 0.0f,                    /* Rcoeff */
+    1.0000f, -0.3441f, -0.7141f, 0.0f,                  /* Gcoeff */
+    1.0000f, 1.7720f, 0.0000f, 0.0f,                    /* Bcoeff */
+};
+
+static const float mat_BT709_Limited_8bit[] = {
+    -0.0627451017f, -0.501960814f, -0.501960814f, 0.0f, /* offset */
+    1.1644f, 0.0000f, 1.7927f, 0.0f,                    /* Rcoeff */
+    1.1644f, -0.2132f, -0.5329f, 0.0f,                  /* Gcoeff */
+    1.1644f, 2.1124f, 0.0000f, 0.0f,                    /* Bcoeff */
+};
+
+static const float mat_BT709_Full_8bit[] = {
+    0.0f, -0.501960814f, -0.501960814f, 0.0f,           /* offset */
+    1.0000f, 0.0000f, 1.5748f, 0.0f,                    /* Rcoeff */
+    1.0000f, -0.1873f, -0.4681f, 0.0f,                  /* Gcoeff */
+    1.0000f, 1.8556f, 0.0000f, 0.0f,                    /* Bcoeff */
+};
+
+static const float mat_BT2020_Limited_10bit[] = {
+    -0.062561095f, -0.500488759f, -0.500488759f, 0.0f,  /* offset */
+    1.1678f, 0.0000f, 1.6836f, 0.0f,                    /* Rcoeff */
+    1.1678f, -0.1879f, -0.6523f, 0.0f,                  /* Gcoeff */
+    1.1678f, 2.1481f, 0.0000f, 0.0f,                    /* Bcoeff */
+};
+
+static const float mat_BT2020_Full_10bit[] = {
+    0.0f, -0.500488759f, -0.500488759f, 0.0f,           /* offset */
+    1.0000f, 0.0000f, 1.4760f, 0.0f,                    /* Rcoeff */
+    1.0000f, -0.1647f, -0.5719f, 0.0f,                  /* Gcoeff */
+    1.0000f, 1.8832f, 0.0000f, 0.0f,                    /* Bcoeff */
+};
+
+static const float *SDL_GetBT601ConversionMatrix( SDL_Colorspace colorspace )
+{
+    switch (SDL_COLORSPACERANGE(colorspace)) {
+    case SDL_COLOR_RANGE_LIMITED:
+    case SDL_COLOR_RANGE_UNKNOWN:
+        return mat_BT601_Limited_8bit;
+    case SDL_COLOR_RANGE_FULL:
+        return mat_BT601_Full_8bit;
+    default:
+        break;
+    }
+    return NULL;
+}
+
+static const float *SDL_GetBT709ConversionMatrix(SDL_Colorspace colorspace)
+{
+    switch (SDL_COLORSPACERANGE(colorspace)) {
+    case SDL_COLOR_RANGE_LIMITED:
+    case SDL_COLOR_RANGE_UNKNOWN:
+        return mat_BT709_Limited_8bit;
+    case SDL_COLOR_RANGE_FULL:
+        return mat_BT709_Full_8bit;
+    default:
+        break;
+    }
+    return NULL;
+}
+
+static const float *SDL_GetBT2020ConversionMatrix(SDL_Colorspace colorspace)
+{
+    switch (SDL_COLORSPACERANGE(colorspace)) {
+    case SDL_COLOR_RANGE_LIMITED:
+    case SDL_COLOR_RANGE_UNKNOWN:
+        return mat_BT2020_Limited_10bit;
+    case SDL_COLOR_RANGE_FULL:
+        return mat_BT2020_Full_10bit;
+    default:
+        break;
+    }
+    return NULL;
+}
+
+const float *SDL_GetYCbCRtoRGBConversionMatrix(SDL_Colorspace colorspace, int w, int h, int bits_per_pixel)
+{
+    const int YUV_SD_THRESHOLD = 576;
+
+    switch (SDL_COLORSPACEMATRIX(colorspace)) {
+    case SDL_MATRIX_COEFFICIENTS_BT601:
+        return SDL_GetBT601ConversionMatrix(colorspace);
+
+    case SDL_MATRIX_COEFFICIENTS_BT709:
+        return SDL_GetBT709ConversionMatrix(colorspace);
+
+    /* FIXME: Are these the same? */
+    case SDL_MATRIX_COEFFICIENTS_BT2020_NCL:
+    case SDL_MATRIX_COEFFICIENTS_BT2020_CL:
+        return SDL_GetBT2020ConversionMatrix(colorspace);
+
+    case SDL_MATRIX_COEFFICIENTS_UNSPECIFIED:
+        switch (bits_per_pixel) {
+        case 8:
+            if (h <= YUV_SD_THRESHOLD) {
+                return SDL_GetBT601ConversionMatrix(colorspace);
+            } else {
+                return SDL_GetBT709ConversionMatrix(colorspace);
+            }
+        case 10:
+        case 16:
+            return SDL_GetBT2020ConversionMatrix(colorspace);
+        default:
+            break;
+        }
+        break;
+    default:
+        break;
+    }
+    return NULL;
+}
+
+const float *SDL_GetColorPrimariesConversionMatrix(SDL_ColorPrimaries src, SDL_ColorPrimaries dst)
+{
+    /* Conversion matrices generated using gamescope color helpers and the primaries definitions at:
+     * https://www.itu.int/rec/T-REC-H.273-201612-S/en
+     */
+    static const float mat601to709[] = {
+        0.939542f, 0.050181f, 0.010277f,
+        0.017772f, 0.965793f, 0.016435f,
+        -0.001622f, -0.004370f, 1.005991f,
+    };
+    static const float mat601to2020[] = {
+        0.595254f, 0.349314f, 0.055432f,
+        0.081244f, 0.891503f, 0.027253f,
+        0.015512f, 0.081912f, 0.902576f,
+    };
+    static const float mat709to601[] = {
+        1.065379f, -0.055401f, -0.009978f,
+        -0.019633f, 1.036363f, -0.016731f,
+        0.001632f, 0.004412f, 0.993956f,
+    };
+    static const float mat709to2020[] = {
+        0.627404f, 0.329283f, 0.043313f,
+        0.069097f, 0.919541f, 0.011362f,
+        0.016391f, 0.088013f, 0.895595f,
+    };
+    static const float mat2020to601[] = {
+        1.776133f, -0.687820f, -0.088313f,
+        -0.161376f, 1.187315f, -0.025940f,
+        -0.015881f, -0.095931f, 1.111812f,
+    };
+    static const float mat2020to709[] = {
+        1.660496f, -0.587656f, -0.072840f,
+        -0.124547f, 1.132895f, -0.008348f,
+        -0.018154f, -0.100597f, 1.118751f
+    };
+    static const float matXYZto601[] = {
+        3.506001f, -1.739790f, -0.544058f,
+        -1.069047f, 1.977779f, 0.035171f,
+        0.056307f, -0.196976f, 1.049952f,
+    };
+    static const float matXYZto709[] = {
+        3.240969f, -1.537383f, -0.498611f,
+        -0.969243f, 1.875967f, 0.041555f,
+        0.055630f, -0.203977f, 1.056971f,
+    };
+    static const float matXYZto2020[] = {
+        1.716651f, -0.355671f, -0.253366f,
+        -0.666684f, 1.616481f, 0.015769f,
+        0.017640f, -0.042771f, 0.942103f,
+    };
+    static const float matSMPTE431to709[] = {
+        1.120713f, -0.234649f, 0.000000f,
+        -0.038478f, 1.087034f, 0.000000f,
+        -0.017967f, -0.082030f, 0.954576f,
+    };
+    static const float matSMPTE432to709[] = {
+        1.224940f, -0.224940f, -0.000000f,
+        -0.042057f, 1.042057f, 0.000000f,
+        -0.019638f, -0.078636f, 1.098273f,
+    };
+
+    switch (dst) {
+    case SDL_COLOR_PRIMARIES_BT601:
+    case SDL_COLOR_PRIMARIES_SMPTE240:
+        switch (src) {
+        case SDL_COLOR_PRIMARIES_BT709:
+            return mat709to601;
+        case SDL_COLOR_PRIMARIES_BT2020:
+            return mat2020to601;
+        case SDL_COLOR_PRIMARIES_XYZ:
+            return matXYZto601;
+        default:
+            break;
+        }
+        break;
+    case SDL_COLOR_PRIMARIES_BT709:
+        switch (src) {
+        case SDL_COLOR_PRIMARIES_BT601:
+        case SDL_COLOR_PRIMARIES_SMPTE240:
+            return mat601to709;
+        case SDL_COLOR_PRIMARIES_BT2020:
+            return mat2020to709;
+        case SDL_COLOR_PRIMARIES_XYZ:
+            return matXYZto709;
+        case SDL_COLOR_PRIMARIES_SMPTE431:
+            return matSMPTE431to709;
+        case SDL_COLOR_PRIMARIES_SMPTE432:
+            return matSMPTE432to709;
+        default:
+            break;
+        }
+        break;
+    case SDL_COLOR_PRIMARIES_BT2020:
+        switch (src) {
+        case SDL_COLOR_PRIMARIES_BT601:
+        case SDL_COLOR_PRIMARIES_SMPTE240:
+            return mat601to2020;
+        case SDL_COLOR_PRIMARIES_BT709:
+            return mat709to2020;
+        case SDL_COLOR_PRIMARIES_XYZ:
+            return matXYZto2020;
+        default:
+            break;
+        }
+        break;
+    default:
+        break;
+    }
+    return NULL;
+}
+
+void SDL_ConvertColorPrimaries(float *fR, float *fG, float *fB, const float *matrix)
+{
+    float v[3];
+
+    v[0] = *fR;
+    v[1] = *fG;
+    v[2] = *fB;
+
+    *fR = matrix[0 * 3 + 0] * v[0] + matrix[0 * 3 + 1] * v[1] + matrix[0 * 3 + 2] * v[2];
+    *fG = matrix[1 * 3 + 0] * v[0] + matrix[1 * 3 + 1] * v[1] + matrix[1 * 3 + 2] * v[2];
+    *fB = matrix[2 * 3 + 0] * v[0] + matrix[2 * 3 + 1] * v[1] + matrix[2 * 3 + 2] * v[2];
+}
+
 SDL_Palette *SDL_CreatePalette(int ncolors)
 {
     SDL_Palette *palette;
@@ -1172,52 +1492,5 @@ void SDL_FreeBlitMap(SDL_BlitMap *map)
         SDL_InvalidateMap(map);
         SDL_free(map);
     }
-}
-
-const float *SDL_GetColorPrimariesConversionMatrix(SDL_ColorPrimaries src, SDL_ColorPrimaries dst)
-{
-    /* Conversion matrices generated using gamescope color helpers and the primaries definitions at:
-     * https://www.itu.int/rec/T-REC-H.273-201612-S/en
-     */
-    static const float mat2020to709[] = {
-        1.660496f, -0.587656f, -0.072840f,
-        -0.124547f, 1.132895f, -0.008348f,
-        -0.018154f, -0.100597f, 1.118751f
-    };
-    static const float matXYZto709[] = {
-        3.240969f, -1.537383f, -0.498611f,
-        -0.969243f, 1.875967f, 0.041555f,
-        0.055630f, -0.203977f, 1.056971f,
-    };
-    static const float matSMPTE431to709[] = {
-        1.120713f, -0.234649f, 0.000000f,
-        -0.038478f, 1.087034f, 0.000000f,
-        -0.017967f, -0.082030f, 0.954576f,
-    };
-    static const float matSMPTE432to709[] = {
-        1.224940f, -0.224940f, -0.000000f,
-        -0.042057f, 1.042057f, 0.000000f,
-        -0.019638f, -0.078636f, 1.098273f,
-    };
-
-    switch (dst) {
-    case SDL_COLOR_PRIMARIES_BT709:
-        switch (src) {
-        case SDL_COLOR_PRIMARIES_BT2020:
-            return mat2020to709;
-        case SDL_COLOR_PRIMARIES_XYZ:
-            return matXYZto709;
-        case SDL_COLOR_PRIMARIES_SMPTE431:
-            return matSMPTE431to709;
-        case SDL_COLOR_PRIMARIES_SMPTE432:
-            return matSMPTE432to709;
-        default:
-            break;
-        }
-        break;
-    default:
-        break;
-    }
-    return NULL;
 }
 

@@ -1051,6 +1051,10 @@ SDL_RenderWindowToLogical() and SDL_RenderLogicalToWindow() have been renamed SD
 
 The viewport, clipping state, and scale for render targets are now persistent and will remain set whenever they are active.
 
+SDL_Vertex has been changed to use floating point colors, in the range of [0..1] for SDR content.
+
+SDL_RenderReadPixels() returns a surface instead of filling in preallocated memory.
+
 The following functions have been renamed:
 * SDL_GetRendererOutputSize() => SDL_GetCurrentRenderOutputSize()
 * SDL_RenderCopy() => SDL_RenderTexture()
@@ -1301,7 +1305,7 @@ The following functions have been removed:
 
 ## SDL_shape.h
 
-This header has been removed. You can create a window with the SDL_WINDOW_TRANSPARENT flag and then render using the alpha channel to achieve a similar effect. You can see an example of this in test/testshape.c
+This header has been removed and a simplified version of this API has been added as SDL_SetWindowShape() in SDL_video.h. See test/testshape.c for an example.
 
 ## SDL_stdinc.h
 
@@ -1380,6 +1384,9 @@ The following functions have been renamed:
 * SDL_UpperBlitScaled() => SDL_BlitSurfaceScaled()
 
 The following functions have been removed:
+* SDL_GetYUVConversionMode()
+* SDL_GetYUVConversionModeForResolution()
+* SDL_SetYUVConversionMode() - use SDL_SetSurfaceColorspace() to set the surface colorspace and SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER with SDL_CreateTextureWithProperties() to set the texture colorspace. The default colorspace for YUV pixel formats is SDL_COLORSPACE_JPEG.
 * SDL_SoftStretchLinear() - use SDL_SoftStretch() with SDL_SCALEMODE_LINEAR
 
 ## SDL_system.h
@@ -1619,6 +1626,7 @@ The following functions have been renamed:
 * SDL_GetRectDisplayIndex() => SDL_GetDisplayForRect()
 * SDL_GetWindowDisplayIndex() => SDL_GetDisplayForWindow()
 * SDL_GetWindowDisplayMode() => SDL_GetWindowFullscreenMode()
+* SDL_HasWindowSurface() => SDL_WindowHasSurface()
 * SDL_IsScreenSaverEnabled() => SDL_ScreenSaverEnabled()
 * SDL_SetWindowDisplayMode() => SDL_SetWindowFullscreenMode()
 

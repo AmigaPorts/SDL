@@ -31,6 +31,7 @@
 #include "SDL_video_c.h"
 #include "../events/SDL_events_c.h"
 #include "../SDL_hints_c.h"
+#include "../SDL_properties_c.h"
 #include "../timer/SDL_timer_c.h"
 #include "SDL_video_capture_c.h"
 
@@ -678,6 +679,7 @@ SDL_DisplayID SDL_AddVideoDisplay(const SDL_VideoDisplay *display, SDL_bool send
 {
     SDL_VideoDisplay **displays, *new_display;
     SDL_DisplayID id;
+    SDL_PropertiesID props;
     int i;
 
     new_display = (SDL_VideoDisplay *)SDL_malloc(sizeof(*new_display));
@@ -717,9 +719,15 @@ SDL_DisplayID SDL_AddVideoDisplay(const SDL_VideoDisplay *display, SDL_bool send
         new_display->fullscreen_modes[i].displayID = id;
     }
 
-    if (send_event) {
-        SDL_SendDisplayEvent(new_display, SDL_EVENT_DISPLAY_ADDED, 0);
+    props = SDL_GetDisplayProperties(id);
+
+    if (display->HDR.enabled) {
+        SDL_SetBooleanProperty(props, SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN, SDL_TRUE);
     }
+    if (display->HDR.SDR_whitelevel != 0.0f) {
+        SDL_SetFloatProperty(props, SDL_PROP_DISPLAY_SDR_WHITE_LEVEL_FLOAT, display->HDR.SDR_whitelevel);
+    }
+
     return id;
 }
 
@@ -981,6 +989,26 @@ float SDL_GetDisplayContentScale(SDL_DisplayID displayID)
     CHECK_DISPLAY_MAGIC(display, 0.0f);
 
     return display->content_scale;
+}
+
+void SDL_SetDisplayHDRProperties(SDL_VideoDisplay *display, const SDL_HDRDisplayProperties *HDR)
+{
+    SDL_PropertiesID props = SDL_GetDisplayProperties(display->id);
+    SDL_bool changed = SDL_FALSE;
+
+    if (HDR->enabled != display->HDR.enabled) {
+        SDL_SetBooleanProperty(props, SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN, HDR->enabled);
+        changed = SDL_TRUE;
+    }
+    if (HDR->SDR_whitelevel != display->HDR.SDR_whitelevel) {
+        SDL_SetFloatProperty(props, SDL_PROP_DISPLAY_SDR_WHITE_LEVEL_FLOAT, HDR->SDR_whitelevel);
+        changed = SDL_TRUE;
+    }
+    SDL_copyp(&display->HDR, HDR);
+
+    if (changed) {
+        SDL_SendDisplayEvent(display, SDL_EVENT_DISPLAY_HDR_STATE_CHANGED, HDR->enabled);
+    }
 }
 
 static const SDL_DisplayMode *SDL_GetFullscreenModeMatch(const SDL_DisplayMode *mode)
@@ -3148,7 +3176,7 @@ static SDL_Surface *SDL_CreateWindowFramebuffer(SDL_Window *window)
     return SDL_CreateSurfaceFrom(pixels, w, h, pitch, format);
 }
 
-SDL_bool SDL_HasWindowSurface(SDL_Window *window)
+SDL_bool SDL_WindowHasSurface(SDL_Window *window)
 {
     CHECK_WINDOW_MAGIC(window, SDL_FALSE);
 
@@ -3515,6 +3543,13 @@ void SDL_OnWindowResized(SDL_Window *window)
 {
     SDL_CheckWindowDisplayChanged(window);
     SDL_CheckWindowPixelSizeChanged(window);
+
+    if ((window->flags & SDL_WINDOW_TRANSPARENT) && _this->UpdateWindowShape) {
+        SDL_Surface *surface = (SDL_Surface *)SDL_GetProperty(window->props, SDL_PROP_WINDOW_SHAPE_POINTER, NULL);
+        if (surface) {
+            _this->UpdateWindowShape(_this, window, surface);
+        }
+    }
 }
 
 void SDL_CheckWindowPixelSizeChanged(SDL_Window *window)
@@ -5089,6 +5124,39 @@ int SDL_SetWindowHitTest(SDL_Window *window, SDL_HitTest callback, void *callbac
     window->hit_test = callback;
     window->hit_test_data = callback_data;
 
+    return 0;
+}
+
+int SDL_SetWindowShape(SDL_Window *window, SDL_Surface *shape)
+{
+    SDL_PropertiesID props;
+    SDL_Surface *surface;
+
+    CHECK_WINDOW_MAGIC(window, -1);
+
+    if (!(window->flags & SDL_WINDOW_TRANSPARENT)) {
+        return SDL_SetError("Window must be created with SDL_WINDOW_TRANSPARENT");
+    }
+
+    props = SDL_GetWindowProperties(window);
+    if (!props) {
+        return -1;
+    }
+
+    surface = SDL_ConvertSurfaceFormat(shape, SDL_PIXELFORMAT_ARGB32);
+    if (!surface) {
+        return -1;
+    }
+
+    if (SDL_SetSurfaceProperty(props, SDL_PROP_WINDOW_SHAPE_POINTER, surface) < 0) {
+        return -1;
+    }
+
+    if (_this->UpdateWindowShape) {
+        if (_this->UpdateWindowShape(_this, window, surface) < 0) {
+            return -1;
+        }
+    }
     return 0;
 }
 

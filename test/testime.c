@@ -468,7 +468,9 @@ static void _Redraw(int rendererID)
     SDL_Renderer *renderer = state->renderers[rendererID];
     SDL_FRect drawnTextRect, cursorRect, underlineRect;
     drawnTextRect.x = textRect.x;
+    drawnTextRect.y = 0;
     drawnTextRect.w = 0;
+    drawnTextRect.h = 0;
 
     SDL_SetRenderDrawColor(renderer, backColor.r, backColor.g, backColor.b, backColor.a);
     SDL_RenderFillRect(renderer, &textRect);
@@ -501,7 +503,7 @@ static void _Redraw(int rendererID)
         drawnTextRect.y = dstrect.y;
         drawnTextRect.h = dstrect.h;
 
-        while ((codepoint = utf8_decode(utext, len = utf8_length(*utext)))) {
+        while ((codepoint = utf8_decode(utext, len = utf8_length(*utext))) != 0) {
             Sint32 advance = unifont_draw_glyph(codepoint, rendererID, &dstrect) * UNIFONT_DRAW_SCALE;
             dstrect.x += advance;
             drawnTextRect.w += advance;
@@ -573,7 +575,7 @@ static void _Redraw(int rendererID)
         drawnTextRect.y = dstrect.y;
         drawnTextRect.h = dstrect.h;
 
-        while ((codepoint = utf8_decode(utext, len = utf8_length(*utext)))) {
+        while ((codepoint = utf8_decode(utext, len = utf8_length(*utext))) != 0) {
             Sint32 advance = unifont_draw_glyph(codepoint, rendererID, &dstrect) * UNIFONT_DRAW_SCALE;
             dstrect.x += advance;
             drawnTextRect.w += advance;

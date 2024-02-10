@@ -73,8 +73,8 @@ typedef struct {
 SDL_bool
 OS4_IsColorModEnabled(SDL_Texture * texture)
 {
-    if ((texture->color.r & texture->color.g & texture->color.b) != 255) {
-        //dprintf("Color mod enabled (%d, %d, %d)\n", texture->r, texture->g, texture->b);
+    if (texture->color.r != 1.0f || texture->color.g != 1.0f || texture->color.b != 1.0f) {
+        //dprintf("Color mod enabled (%f, %f, %f)\n", texture->color.r, texture->color.g, texture->color.b);
         return SDL_TRUE;
     }
 
@@ -259,7 +259,7 @@ OS4_GetCompositeFlags(SDL_BlendMode mode)
 }
 
 static void
-OS4_SetupCompositing(SDL_Texture * dst, OS4_CompositingParams * params, SDL_ScaleMode scaleMode, SDL_BlendMode blendMode, Uint8 alpha)
+OS4_SetupCompositing(SDL_Texture * dst, OS4_CompositingParams * params, SDL_ScaleMode scaleMode, SDL_BlendMode blendMode, float alpha)
 {
     params->flags = COMPFLAG_HardwareOnly;
 
@@ -273,7 +273,7 @@ OS4_SetupCompositing(SDL_Texture * dst, OS4_CompositingParams * params, SDL_Scal
         }
         params->srcAlpha = 1.0f;
     } else {
-        params->srcAlpha = alpha / 255.0f;
+        params->srcAlpha = alpha;
     }
 
     params->destAlpha = 1.0f;
@@ -484,7 +484,7 @@ OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Ver
         return -1;
     }
 
-    OS4_SetupCompositing(renderer->target, &params, texture->scaleMode, mode, cmd->data.draw.a);
+    OS4_SetupCompositing(renderer->target, &params, texture->scaleMode, mode, cmd->data.draw.color.a);
 
     //dprintf("clip x %d, y %d, w %d, h %d\n", data->cliprect.x, data->cliprect.y, data->cliprect.w, data->cliprect.h);
 
@@ -535,7 +535,7 @@ OS4_RenderGeometry(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_V
         return -1;
     }
 
-    OS4_SetupCompositing(renderer->target, &params, texture->scaleMode, mode, 255);
+    OS4_SetupCompositing(renderer->target, &params, texture->scaleMode, mode, 1.0f);
 
     ret_code = IGraphics->CompositeTags(
         OS4_ConvertBlendMode(mode),
@@ -568,10 +568,11 @@ OS4_RenderGeometry(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_V
     return 0;
 }
 
-static int
-OS4_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
-                    Uint32 format, void * pixels, int pitch)
+static SDL_Surface*
+OS4_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect)
 {
+    return NULL; // TODO: implement me
+#if 0
     OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
 
     struct BitMap *bitmap = OS4_ActivateRenderer(renderer);
@@ -604,6 +605,7 @@ OS4_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect,
         rect->h);
 
     return 0;
+#endif
 }
 
 static int min(int a, int b)
@@ -796,7 +798,7 @@ OS4_QueueCopy(SDL_Renderer * renderer, SDL_RenderCommand * cmd, SDL_Texture * te
 }
 
 static int OS4_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Texture *texture,
-    const float *xy, int xy_stride, const SDL_Color *color, int color_stride, const float *uv, int uv_stride,
+    const float *xy, int xy_stride, const SDL_FColor *color, int color_stride, const float *uv, int uv_stride,
     int num_vertices, const void *indices, int num_indices, int size_indices,
     float scale_x, float scale_y)
 {
@@ -893,6 +895,10 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
                 // Nothing to do
                 break;
 
+            case SDL_RENDERCMD_SETCOLORSCALE:
+                // TODO: is implementation needed?
+                break;
+
             case SDL_RENDERCMD_SETVIEWPORT: {
                 SDL_Rect *viewport = &data->viewport;
                 if (SDL_memcmp(viewport, &cmd->data.viewport.rect, sizeof(SDL_Rect)) != 0) {
@@ -938,19 +944,19 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
             }
 
             case SDL_RENDERCMD_CLEAR: {
-                const Uint8 r = cmd->data.color.r;
-                const Uint8 g = cmd->data.color.g;
-                const Uint8 b = cmd->data.color.b;
-                const Uint8 a = cmd->data.color.a;
+                const Uint8 r = cmd->data.color.color.r * 255.0f;
+                const Uint8 g = cmd->data.color.color.g * 255.0f;
+                const Uint8 b = cmd->data.color.color.b * 255.0f;
+                const Uint8 a = cmd->data.color.color.a * 255.0f;
                 OS4_RenderClear(renderer, a, r, g, b, bitmap);
                 break;
             }
 
             case SDL_RENDERCMD_DRAW_POINTS: {
-                const Uint8 r = cmd->data.draw.r;
-                const Uint8 g = cmd->data.draw.g;
-                const Uint8 b = cmd->data.draw.b;
-                const Uint8 a = cmd->data.draw.a;
+                const Uint8 r = cmd->data.draw.color.r * 255.0f;
+                const Uint8 g = cmd->data.draw.color.g * 255.0f;
+                const Uint8 b = cmd->data.draw.color.b * 255.0f;
+                const Uint8 a = cmd->data.draw.color.a * 255.0f;
                 const size_t count = cmd->data.draw.count;
                 SDL_Point *verts = (SDL_Point *)(((Uint8 *) vertices) + cmd->data.draw.first);
                 const SDL_BlendMode blend = cmd->data.draw.blend;
@@ -969,10 +975,10 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
             }
 
             case SDL_RENDERCMD_DRAW_LINES: {
-                const Uint8 r = cmd->data.draw.r;
-                const Uint8 g = cmd->data.draw.g;
-                const Uint8 b = cmd->data.draw.b;
-                const Uint8 a = cmd->data.draw.a;
+                const Uint8 r = cmd->data.draw.color.r * 255.0f;
+                const Uint8 g = cmd->data.draw.color.g * 255.0f;
+                const Uint8 b = cmd->data.draw.color.b * 255.0f;
+                const Uint8 a = cmd->data.draw.color.a * 255.0f;
                 const size_t count = cmd->data.draw.count;
                 SDL_Point *verts = (SDL_Point *)(((Uint8 *) vertices) + cmd->data.draw.first);
                 const SDL_BlendMode blend = cmd->data.draw.blend;
@@ -991,10 +997,10 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
             }
 
             case SDL_RENDERCMD_FILL_RECTS: {
-                const Uint8 r = cmd->data.draw.r;
-                const Uint8 g = cmd->data.draw.g;
-                const Uint8 b = cmd->data.draw.b;
-                const Uint8 a = cmd->data.draw.a;
+                const Uint8 r = cmd->data.draw.color.r * 255.0f;
+                const Uint8 g = cmd->data.draw.color.g * 255.0f;
+                const Uint8 b = cmd->data.draw.color.b * 255.0f;
+                const Uint8 a = cmd->data.draw.color.a * 255.0f;
                 const size_t count = cmd->data.draw.count;
                 SDL_FRect *verts = (SDL_FRect *)(((Uint8 *) vertices) + cmd->data.draw.first);
                 const SDL_BlendMode blend = cmd->data.draw.blend;

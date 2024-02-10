@@ -93,7 +93,7 @@ struct SDL_WindowData
     struct zwp_keyboard_shortcuts_inhibitor_v1 *key_inhibitor;
     struct zwp_idle_inhibitor_v1 *idle_inhibitor;
     struct xdg_activation_token_v1 *activation_token;
-    struct wp_viewport *draw_viewport;
+    struct wp_viewport *viewport;
     struct wp_fractional_scale_v1 *fractional_scale;
 
     SDL_AtomicInt swap_interval_ready;
@@ -105,20 +105,61 @@ struct SDL_WindowData
 
     char *app_id;
     float windowed_scale_factor;
-    float pointer_scale_x;
-    float pointer_scale_y;
 
     struct
     {
-        int width, height;
+        float x;
+        float y;
+    } pointer_scale;
+
+    /* The current pending user requested resize event. */
+    struct
+    {
+        /* These units can represent points or pixels, depending on the scaling mode. */
+        int width;
+        int height;
     } pending_size_event;
 
-    int last_configure_width, last_configure_height;
-    int requested_window_width, requested_window_height;
-    int drawable_width, drawable_height;
-    int wl_window_width, wl_window_height;
-    int system_min_required_width;
-    int system_min_required_height;
+    /* The in-flight window size request. */
+    struct
+    {
+        /* These units can represent points or pixels, depending on the scaling mode. */
+        int width;
+        int height;
+
+        /* The requested logical window size when using screen space scaling. */
+        int logical_width;
+        int logical_height;
+    } requested;
+
+    /* The current size of the window and drawable backing store. */
+    struct
+    {
+        /* The size of the window backbuffer in pixels. */
+        int drawable_width;
+        int drawable_height;
+
+        /* The size of the underlying window. */
+        int logical_width;
+        int logical_height;
+    } current;
+
+    /* The last compositor requested parameters; used for deduplication of window geometry configuration. */
+    struct
+    {
+        /* These units can be points or pixels, depending on the scaling mode. */
+        int width;
+        int height;
+    } last_configure;
+
+    /* System enforced window size limits. */
+    struct
+    {
+        /* Minimum allowed logical window size. */
+        int min_width;
+        int min_height;
+    } system_limits;
+
     SDL_DisplayID last_displayID;
     int fullscreen_deadline_count;
     SDL_bool floating;
@@ -128,6 +169,7 @@ struct SDL_WindowData
     SDL_bool drop_fullscreen_requests;
     SDL_bool fullscreen_was_positioned;
     SDL_bool show_hide_sync_required;
+    SDL_bool scale_to_display;
 
     SDL_HitTestResult hit_test_result;
 
