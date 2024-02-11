@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -124,7 +124,6 @@ OS4_ActivateRenderer(SDL_Renderer * renderer)
     }
 
     if (!data->target && renderer->window) {
-
         int width = renderer->window->w;
         int height = renderer->window->h;
         int depth = 32;
@@ -571,41 +570,36 @@ OS4_RenderGeometry(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_V
 static SDL_Surface*
 OS4_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect)
 {
-    return NULL; // TODO: implement me
-#if 0
     OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
-
     struct BitMap *bitmap = OS4_ActivateRenderer(renderer);
 
     //dprintf("Called\n");
 
     if (!bitmap) {
-        return -1;
+        SDL_SetError("Failed to activate renderer");
+        return NULL;
     }
 
-    if (rect->x < 0 || rect->x+rect->w > renderer->window->w ||
-        rect->y < 0 || rect->y+rect->h > renderer->window->h) {
-        return SDL_SetError("Tried to read outside of surface bounds");
-    }
+    SDL_Surface *surface = SDL_CreateSurface(rect->w, rect->h, SDL_PIXELFORMAT_ARGB8888);
 
-    if (format != SDL_PIXELFORMAT_ARGB8888) {
-        return SDL_SetError("Unsupported pixel format");
+    if (!surface) {
+        SDL_SetError("Failed to create surface");
+        return NULL;
     }
 
     IGraphics->ReadPixelArray(
         &data->rastport,
         rect->x,
         rect->y,
-        pixels,
+        surface->pixels,
         0,
         0,
-        pitch,
+        surface->pitch,
         PIXF_A8R8G8B8,
         rect->w,
         rect->h);
 
-    return 0;
-#endif
+    return surface;
 }
 
 static int min(int a, int b)
@@ -896,7 +890,7 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
                 break;
 
             case SDL_RENDERCMD_SETCOLORSCALE:
-                // TODO: is implementation needed?
+                // Nothing to do
                 break;
 
             case SDL_RENDERCMD_SETVIEWPORT: {
@@ -1129,6 +1123,7 @@ OS4_CreateRenderer(SDL_Window * window, SDL_PropertiesID create_props)
     renderer->SetRenderTarget = OS4_SetRenderTarget;
     renderer->QueueSetViewport = OS4_QueueNop;
     renderer->QueueSetDrawColor = OS4_QueueNop;
+    renderer->QueueSetColorScale = OS4_QueueNop;
     renderer->QueueDrawPoints = OS4_QueueDrawPoints;
     renderer->QueueDrawLines = OS4_QueueDrawLines;
     renderer->QueueFillRects = OS4_QueueFillRects;

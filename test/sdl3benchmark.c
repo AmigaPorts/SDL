@@ -106,11 +106,9 @@ static const BlendMode modes[] = {
 static const char *
 getModeName(SDL_BlendMode mode)
 {
-    int i;
-
     static const char *unknown = "Unknown";
 
-    for (i = 0; i < sizeof(modes) / sizeof(modes[0]); i++)
+    for (int i = 0; i < sizeof(modes) / sizeof(modes[0]); i++)
     {
         if (modes[i].mode == mode) {
             return modes[i].name;
@@ -187,11 +185,9 @@ getRand(Uint32 max)
 static void
 makeRandomTexture(Context *ctx)
 {
-    int i;
-
     SDL_memset(ctx->buffer, 0, ctx->texturewidth * ctx->textureheight * sizeof(Uint32));
 
-    for (i = 0; i < 100; i++) {
+    for (int i = 0; i < 100; i++) {
         ctx->buffer[
             getRand(ctx->texturewidth) +
             getRand(ctx->textureheight) * ctx->texturewidth] = 0xFFFFFFFF;
@@ -201,9 +197,7 @@ makeRandomTexture(Context *ctx)
 static SDL_bool
 prepareTexture(Context *ctx)
 {
-    int result;
-
-    result = SDL_SetSurfaceColorKey(ctx->surface, 1, 0);
+    int result = SDL_SetSurfaceColorKey(ctx->surface, 1, 0);
 
     if (result) {
         SDL_Log("[%s]Failed to set color key: %s\n", __FUNCTION__, SDL_GetError());
@@ -342,7 +336,7 @@ runTest(Context *ctx, const Test *test)
 static SDL_bool
 setRandomColor(Context *ctx)
 {
-    int result = SDL_SetRenderDrawColor(ctx->renderer,
+    const int result = SDL_SetRenderDrawColor(ctx->renderer,
         getRand(256), getRand(256), getRand(256), getRand(256));
 
     if (result) {
@@ -363,13 +357,12 @@ static SDL_bool testPointsInner(Context *ctx, SDL_bool linemode)
     }
 
     SDL_FPoint points[ctx->objects];
-    int object;
 
     if (!setRandomColor(ctx)) {
         return SDL_FALSE;
     }
 
-    for (object = 0; object < ctx->objects; object++) {
+    for (int object = 0; object < ctx->objects; object++) {
         points[object].x = getRand(ctx->width);
         points[object].y = getRand(ctx->height);
     }
@@ -413,7 +406,6 @@ testFillRects(Context *ctx)
     }
 
     SDL_FRect rects[ctx->objects];
-    int object;
 
     if (!setRandomColor(ctx)) {
         return SDL_FALSE;
@@ -421,7 +413,7 @@ testFillRects(Context *ctx)
 
     const int rectsize = ctx->rectsize + getRand(100); // + iteration
 
-    for (object = 0; object < ctx->objects; object++) {
+    for (int object = 0; object < ctx->objects; object++) {
         rects[object].x = getRand(ctx->width - rectsize);
         rects[object].y = getRand(ctx->height - rectsize);
         rects[object].w = rectsize;
@@ -560,20 +552,15 @@ testReadPixels(Context *ctx)
     rect.w = ctx->texturewidth;
     rect.h = ctx->textureheight;
 
-// TODO: implement me
-#if 0
-    if (SDL_RenderReadPixels(
-        ctx->renderer,
-        &rect,
-        SDL_PIXELFORMAT_ARGB8888,
-        ctx->buffer,
-        ctx->texturewidth * sizeof(Uint32)) != 0) {
+    SDL_Surface *s = SDL_RenderReadPixels(ctx->renderer, &rect);
 
+    if (s) {
+        SDL_DestroySurface(s);
+    } else {
         SDL_Log("[%s]Failed to read pixels: %s\n", __FUNCTION__, SDL_GetError());
-
         result = SDL_FALSE;
     }
-#endif
+
     ctx->operations++;
     ctx->bytes += rect.w * rect.h * sizeof(Uint32);
 
@@ -600,10 +587,8 @@ checkEvents(Context *ctx)
 static void
 runTestSuite(Context *ctx)
 {
-    int m, t;
-
-    for (t = 0; t < sizeof(tests) / sizeof(tests[0]); t++) {
-        for (m = 0; m < sizeof(modes) / sizeof(modes[0]); m++) {
+    for (int t = 0; t < sizeof(tests) / sizeof(tests[0]); t++) {
+        for (int m = 0; m < sizeof(modes) / sizeof(modes[0]); m++) {
             ctx->mode = modes[m].mode;
 
             runTest(ctx, &tests[t]);
@@ -662,9 +647,7 @@ initContext(Context *ctx, int argc, char **argv)
 static void
 checkPixelFormat(Context *ctx)
 {
-    Uint32 pf;
-
-    pf = SDL_GetWindowPixelFormat(ctx->window);
+    const Uint32 pf = SDL_GetWindowPixelFormat(ctx->window);
 
     SDL_Log("Pixel format 0x%X (%s)\n", pf, SDL_GetPixelFormatName(pf));
 
@@ -700,9 +683,7 @@ testSpecificRenderer(Context *ctx)
 static void
 testAllRenderers(Context *ctx)
 {
-    int r;
-
-    for (r = 0; r < SDL_GetNumRenderDrivers(); r++) {
+    for (int r = 0; r < SDL_GetNumRenderDrivers(); r++) {
         ctx->renderer = SDL_CreateRenderer(ctx->window, SDL_GetRenderDriver(r), 0);
 
         testRenderer(ctx);
@@ -737,7 +718,6 @@ main(int argc, char **argv)
     ctx.surface = SDL_LoadBMP("sample.bmp");
 
     if (ctx.surface) {
-
         SDL_Log("Image size %d*%d\n", ctx.surface->w, ctx.surface->h);
 
         ctx.window = SDL_CreateWindow(
@@ -747,7 +727,6 @@ main(int argc, char **argv)
             SDL_WINDOW_FULLSCREEN);
 
         if (ctx.window) {
-
             checkPixelFormat(&ctx);
 
             if (ctx.rendname) {
