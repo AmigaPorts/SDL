@@ -26,7 +26,7 @@
 extern int OS4_SetClipboardText(_THIS, const char *text);
 extern char * OS4_GetClipboardText(_THIS);
 extern SDL_bool OS4_HasClipboardText(_THIS);
-extern uint32 OS4_TranslateUnicode(_THIS, uint16 code, uint32 qualifier);
+extern uint32 OS4_TranslateUnicode(_THIS, uint16 code, uint32 qualifier, APTR iaddress);
 
 extern void OS4_InitKeyboard(_THIS);
 extern void OS4_QuitKeyboard(_THIS);

@@ -62,7 +62,7 @@ OS4_MapRawKey(_THIS, int code)
 }
 
 uint32
-OS4_TranslateUnicode(SDL_VideoDevice *_this, uint16 code, uint32 qualifier)
+OS4_TranslateUnicode(SDL_VideoDevice *_this, uint16 code, uint32 qualifier, APTR iaddress)
 {
     struct InputEvent ie;
     char buffer[10];
@@ -71,7 +71,7 @@ OS4_TranslateUnicode(SDL_VideoDevice *_this, uint16 code, uint32 qualifier)
     ie.ie_SubClass = 0;
     ie.ie_Code  = code & ~(IECODE_UP_PREFIX);
     ie.ie_Qualifier = qualifier;
-    ie.ie_EventAddress = NULL;
+    ie.ie_EventAddress = iaddress; /* Enables dead key support */
 
     const WORD res = IKeymap->MapRawKey(&ie, buffer, sizeof(buffer), 0);
 

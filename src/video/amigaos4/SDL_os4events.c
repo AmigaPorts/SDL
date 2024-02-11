@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -53,7 +53,7 @@ struct MyIntuiMessage
     uint16 Code;
     uint16 Qualifier;
 
-    struct Gadget *Gadget;
+    APTR   IAddress;
     struct Window *IDCMPWindow;
 
     int16  RelativeMouseX;
@@ -233,7 +233,7 @@ OS4_HandleKeyboard(_THIS, struct MyIntuiMessage * imsg)
             OS4_DetectNumLock(s);
             SDL_SendKeyboardKey(SDL_PRESSED, s);
 
-            const uint32 unicode = OS4_TranslateUnicode(_this, imsg->Code, imsg->Qualifier);
+            const uint32 unicode = OS4_TranslateUnicode(_this, imsg->Code, imsg->Qualifier, (APTR)*((ULONG*)imsg->IAddress));
 
             if (unicode) {
                 SDL_UCS4ToUTF8(unicode, text);
@@ -494,7 +494,7 @@ OS4_HandleMouseWheel(_THIS, struct MyIntuiMessage * imsg)
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
     if (sdlwin) {
-        struct IntuiWheelData *data = (struct IntuiWheelData *)imsg->Gadget;
+        struct IntuiWheelData *data = (struct IntuiWheelData *)imsg->IAddress;
 
         if (data->WheelY < 0) {
             SDL_SendMouseWheel(sdlwin, 0, 0, 1, SDL_MOUSEWHEEL_NORMAL);
@@ -619,9 +619,10 @@ OS4_HandleTicks(_THIS, struct MyIntuiMessage * imsg)
 static void
 OS4_HandleGadget(_THIS, struct MyIntuiMessage * msg)
 {
-    dprintf("Gadget event %p\n", msg->Gadget);
+    struct Gadget *gadget = msg->IAddress;
+    dprintf("Gadget event %p\n", gadget);
 
-    if (msg->Gadget->GadgetID == GID_ICONIFY) {
+    if (gadget->GadgetID == GID_ICONIFY) {
         SDL_Window *sdlwin = OS4_FindWindow(_this, msg->IDCMPWindow);
 
         if (sdlwin) {
@@ -670,7 +671,7 @@ OS4_CopyIdcmpMessage(struct IntuiMessage * src, struct MyIntuiMessage * dst)
     dst->Code            = src->Code;
     dst->Qualifier       = src->Qualifier;
 
-    dst->Gadget          = (struct Gadget *) src->IAddress;
+    dst->IAddress        = src->IAddress;
 
     dst->RelativeMouseX  = src->MouseX;
     dst->RelativeMouseY  = src->MouseY;
