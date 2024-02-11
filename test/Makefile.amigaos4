@@ -2,7 +2,7 @@
 
 CC     = ppc-amigaos-gcc
 CFLAGS = -gstabs -O2 -Wall -g -I../include -I../src -DHAVE_OPENGL
-LIBS   = -L.. -use-dynld -lSDL3_test -lSDL3 -athread=native
+LIBS   = -L.. -lSDL3_test -lSDL3 -athread=native
 
 TARGETS = \
 	checkkeys \
@@ -15,6 +15,7 @@ TARGETS = \
 	testaudioinfo \
 	testautomation \
 	testbounds \
+	testcolorspace \
 	testcontroller \
 	testcustomcursor \
 	testdisplayinfo \
@@ -296,6 +297,9 @@ testvulkan: testvulkan.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testurl: testurl.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testcolorspace: testcolorspace.o
 	$(CC) -o $@ $^ $(LIBS)
 
 clean:
