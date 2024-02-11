@@ -4,6 +4,13 @@ echo Copying shared object ...
 copy SDK/local/newlib/lib/libSDL3-3.0.so SObjs:
 copy SDK/local/newlib/lib/libSDL3-3.0_debug.so SObjs:
 
+echo Copying documentation ...
+makedir SYS:Documentation/SDL3/
+copy README-amigaos4.md SYS:Documentation/SDL3/
+copy README-SDL.txt SYS:Documentation/SDL3/
+Copy WhatsNew.txt SYS:Documentation/SDL3/
+Copy LICENSE.txt SYS:Documentation/SDL3/
+
 echo Copying prefs program ...
 copy SDL3 SDL3.info SYS:Prefs/
 
@@ -24,18 +31,16 @@ If $option eq 1
 
   protect SDK:local/newlib/bin/sdl3-config +rweds
 
-  cd SDK:local/newlib/lib
-  delete libSDL3.so
-  makelink from=libSDL3.so to=SObjs:libSDL3-3.0.so soft
+  delete SDK:local/newlib/lib/libSDL3.so
+  makelink from=SDK:local/newlib/lib/libSDL3.so to=SObjs:libSDL3-3.0.so soft
 Else
   echo Skipped SDK installation ...
 EndIf
 
 echo Setting up link ...
 
-cd SObjs:
-delete libSDL3.so
-makelink from=libSDL3.so to=libSDL3-3.0.so soft
+delete SObjs:libSDL3.so
+makelink from=SObjs:libSDL3.so to=SObjs:libSDL3-3.0.so soft
 
 echo SDL3 is installed :)
 
