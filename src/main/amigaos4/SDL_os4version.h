@@ -18,10 +18,9 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+#ifndef SDL_OS4VERSION_H
+#define SDL_OS4VERSION_H
 
-#include "SDL_os4version.h"
+#define VERSION_STRING "0.0"
 
-#ifdef __AMIGADATE__
-static const char* const version __attribute__ ((used)) = "\0$VER: libSDL3.so " VERSION_STRING " (" __AMIGADATE__ ")\0";
-#endif
-
+#endif /* SDL_OS4VERSION_H */

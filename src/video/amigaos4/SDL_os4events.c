@@ -24,8 +24,12 @@
 
 #include <proto/exec.h>
 #include <proto/dos.h>
+#include <proto/intuition.h>
 #include <proto/keymap.h>
 #include <proto/wb.h>
+
+#include <intuition/menuclass.h>
+#include <classes/requester.h>
 
 #include <workbench/startup.h>
 
@@ -43,6 +47,7 @@
 
 //#undef DEBUG
 #include "../../main/amigaos4/SDL_os4debug.h"
+#include "../../main/amigaos4/SDL_os4version.h"
 
 extern SDL_bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window);
 
@@ -362,14 +367,20 @@ OS4_IsHitTestResize(HitTestInfo * hti)
 }
 
 static void
-OS4_UpdateMousePointer(SDL_Window * sdlwin, struct MyIntuiMessage * imsg)
+OS4_UpdateMousePointer(SDL_VideoDevice * _this, SDL_Window * sdlwin, struct MyIntuiMessage * imsg)
 {
     // Resets mouse pointer when it leaves its window area. For example,
     // a hidden pointer becomes visible outside.
-    if (SDL_GetMouse()->focus == sdlwin) {
+    const BOOL focus = SDL_GetMouse()->focus == sdlwin;
+
+    if (focus) {
         OS4_RestoreSdlCursorForWindow(imsg->IDCMPWindow);
     } else {
         OS4_ResetCursorForWindow(imsg->IDCMPWindow);
+    }
+
+    if (IIntuition->SetWindowAttrs(imsg->IDCMPWindow, WA_RMBTrap, focus, TAG_DONE) != 0) {
+        dprintf("Failed to set WA_RMBTrap\n");
     }
 }
 
@@ -401,7 +412,7 @@ OS4_HandleMouseMotion(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
             OS4_HandleHitTestMotion(_this, sdlwin, imsg);
         }
 
-        OS4_UpdateMousePointer(sdlwin, imsg);
+        OS4_UpdateMousePointer(_this, sdlwin, imsg);
     }
 }
 
@@ -579,7 +590,7 @@ OS4_HandleActivation(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg, SDL_b
             }
         }
 
-        OS4_UpdateMousePointer(sdlwin, imsg);
+        OS4_UpdateMousePointer(_this, sdlwin, imsg);
 
         dprintf("Window %p activation %d\n", sdlwin, activated);
     }
@@ -618,18 +629,77 @@ OS4_HandleTicks(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
 }
 
 static void
-OS4_HandleGadget(SDL_VideoDevice *_this, struct MyIntuiMessage * msg)
+OS4_HandleIconify(SDL_VideoDevice *_this, struct MyIntuiMessage *imsg)
 {
-    struct Gadget *gadget = msg->IAddress;
+    SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
+
+    if (sdlwin) {
+        OS4_IconifyWindow(_this, sdlwin);
+    }
+}
+
+static void
+OS4_HandleGadget(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
+{
+    struct Gadget *gadget = imsg->IAddress;
     dprintf("Gadget event %p\n", gadget);
 
     if (gadget->GadgetID == GID_ICONIFY) {
-        SDL_Window *sdlwin = OS4_FindWindow(_this, msg->IDCMPWindow);
+        dprintf("Iconify button pressed\n");
+        OS4_HandleIconify(_this, imsg);
+    }
+}
 
-        if (sdlwin) {
-            dprintf("Iconify button pressed\n");
-            OS4_IconifyWindow(_this, sdlwin);
+// TODO: localization
+static void
+OS4_ShowAboutWindow(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
+{
+    Object* aboutWindow = IIntuition->NewObject(NULL, "requester.class",
+        REQ_TitleText, "SDL3 application",
+        REQ_BodyText, "SDL3 version " VERSION_STRING " (" __AMIGADATE__ ")",
+        REQ_GadgetText, "OK",
+        REQ_Image, REQIMAGE_INFO,
+        REQ_TimeOutSecs, 5,
+        TAG_DONE);
+
+    if (aboutWindow) {
+        IIntuition->SetWindowPointer(imsg->IDCMPWindow, WA_BusyPointer, TRUE, TAG_DONE);
+        IIntuition->IDoMethod(aboutWindow, RM_OPENREQ, NULL, imsg->IDCMPWindow, NULL, TAG_DONE);
+        IIntuition->SetWindowPointer(imsg->IDCMPWindow, WA_BusyPointer, FALSE, TAG_DONE);
+        IIntuition->DisposeObject(aboutWindow);
+    }
+}
+
+static void
+OS4_HandleMenuPick(SDL_VideoDevice *_this, struct MyIntuiMessage *imsg)
+{
+    uint32 id = NO_MENU_ID;
+    BOOL quit = FALSE;
+
+    struct Window *window = imsg->IDCMPWindow;
+
+    while (window && window->MenuStrip && ((id = IIntuition->IDoMethod((Object *)window->MenuStrip, MM_NEXTSELECT, 0, id))) != NO_MENU_ID) {
+        switch (id) {
+            case MID_Iconify:
+                dprintf("Menu Iconify\n");
+                OS4_HandleIconify(_this, imsg);
+                break;
+
+            case MID_About:
+                dprintf("Menu About\n");
+                // TODO: this should probably be asynchronous requester
+                OS4_ShowAboutWindow(_this, imsg);
+                break;
+
+            case MID_Quit:
+                dprintf("Menu Quit\n");
+                quit = TRUE;
+                break;
         }
+    }
+
+    if (quit) {
+        SDL_SendQuit();
     }
 }
 
@@ -749,6 +819,10 @@ OS4_HandleIdcmpMessages(SDL_VideoDevice *_this, struct MsgPort * msgPort)
 
             case IDCMP_GADGETUP:
                 OS4_HandleGadget(_this, &msg);
+                break;
+
+            case IDCMP_MENUPICK:
+                OS4_HandleMenuPick(_this, &msg);
                 break;
 
             default:
