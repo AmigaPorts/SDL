@@ -5,7 +5,12 @@ copy SDK/local/newlib/lib/libSDL2-2.31.so SObjs:
 copy SDK/local/newlib/lib/libSDL2-2.31_debug.so SObjs:
 
 echo Copying documentation ...
-copy README-amigaos4.md SYS:Documentation/SDL2.txt
+delete SYS:Documentation/SDL2.txt
+makedir SYS:Documentation/SDL2/
+copy README-amigaos4.md SYS:Documentation/SDL2/
+copy README-SDL.txt SYS:Documentation/SDL2/
+Copy WhatsNew.txt SYS:Documentation/SDL2/
+Copy LICENSE.txt SYS:Documentation/SDL2/
 
 echo Copying prefs program ...
 copy SDL2 SDL2.info SYS:Prefs/
@@ -27,18 +32,16 @@ If $option eq 1
 
   protect SDK:local/newlib/bin/sdl2-config +rweds
 
-  cd SDK:local/newlib/lib
-  delete libSDL2.so
-  makelink from=libSDL2.so to=SObjs:libSDL2-2.31.so soft
+  delete SDK:local/newlib/lib/libSDL2.so
+  makelink from=SDK:local/newlib/lib/libSDL2.so to=SObjs:libSDL2-2.31.so soft
 Else
   echo Skipped SDK installation ...
 EndIf
 
 echo Setting up link ...
 
-cd SObjs:
-delete libSDL2.so
-makelink from=libSDL2.so to=libSDL2-2.31.so soft
+delete SObjs:libSDL2.so
+makelink from=SObjs:libSDL2.so to=SObjs:libSDL2-2.31.so soft
 
 echo SDL2 is installed :)
 
