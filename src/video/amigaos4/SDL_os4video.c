@@ -50,6 +50,7 @@
 #include "SDL_os4modes.h"
 #include "SDL_os4keyboard.h"
 #include "SDL_os4library.h"
+#include "SDL_os4locale.h"
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
@@ -135,7 +136,7 @@ OS4_RegisterApplication(SDL_VideoDevice *_this)
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
     data->appId = IApplication->RegisterApplication(data->appName,
-                                                    REGAPP_Description, "SDL2 application",
+                                                    REGAPP_Description, "SDL3 application",
                                                     TAG_DONE);
 
     if (data->appId) {
@@ -528,6 +529,7 @@ OS4_VideoInit(SDL_VideoDevice *_this)
 
     OS4_InitKeyboard(_this);
     OS4_InitMouse(_this);
+    OS4_LocaleInit();
 
     // We don't want SDL to change  window setup in SDL_OnWindowFocusLost()
     SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0");
@@ -553,6 +555,7 @@ OS4_VideoQuit(SDL_VideoDevice *_this)
 {
     dprintf("Called\n");
 
+    OS4_LocaleQuit();
     OS4_QuitMouse(_this);
     OS4_QuitKeyboard(_this);
     OS4_QuitModes(_this);

@@ -40,6 +40,7 @@
 #include "SDL_os4opengl.h"
 #include "SDL_os4mouse.h"
 #include "SDL_os4events.h"
+#include "SDL_os4locale.h"
 
 #include "SDL_timer.h"
 
@@ -47,6 +48,9 @@
 #include "../../events/SDL_events_c.h"
 
 #include "../../main/amigaos4/SDL_os4debug.h"
+
+#define CATCOMP_NUMBERS
+#include "../../amiga-extra/locale_generated.h"
 
 #define MIN_WINDOW_SIZE 100
 
@@ -409,7 +413,6 @@ OS4_CreateIconifyGadgetForWindow(SDL_VideoDevice *_this, SDL_Window * window)
     }
 }
 
-// TODO: localization
 static void
 OS4_CreateMenu(SDL_VideoDevice *_this, SDL_Window * window)
 {
@@ -422,15 +425,15 @@ OS4_CreateMenu(SDL_VideoDevice *_this, SDL_Window * window)
             MA_Type, T_ROOT,
             MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
                 MA_Type, T_MENU,
-                MA_Label, "SDL3 application",
+                MA_Label, OS4_GetString(MSG_SDL3_APPLICATION),
                 MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
                     MA_Type, T_ITEM,
-                    MA_Label, "I|Iconify",
+                    MA_Label, OS4_GetString(MSG_SDL3_ICONIFY),
                     MA_ID, MID_Iconify,
                     TAG_DONE),
                 MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
                     MA_Type, T_ITEM,
-                    MA_Label, "A|About...",
+                    MA_Label, OS4_GetString(MSG_SDL3_ABOUT),
                     MA_ID, MID_About,
                     TAG_DONE),
                 MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
@@ -439,7 +442,7 @@ OS4_CreateMenu(SDL_VideoDevice *_this, SDL_Window * window)
                     TAG_DONE),
                 MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
                     MA_Type, T_ITEM,
-                    MA_Label, "Q|Quit",
+                    MA_Label, OS4_GetString(MSG_SDL3_QUIT),
                     MA_ID, MID_Quit,
                     TAG_DONE),
                 TAG_DONE),

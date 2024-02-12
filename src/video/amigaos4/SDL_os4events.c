@@ -38,6 +38,7 @@
 #include "SDL_os4window.h"
 #include "SDL_os4events.h"
 #include "SDL_os4keyboard.h"
+#include "SDL_os4locale.h"
 
 #include "../../events/SDL_keyboard_c.h"
 #include "../../events/SDL_mouse_c.h"
@@ -48,6 +49,9 @@
 //#undef DEBUG
 #include "../../main/amigaos4/SDL_os4debug.h"
 #include "../../main/amigaos4/SDL_os4version.h"
+
+#define CATCOMP_NUMBERS
+#include "../../amiga-extra/locale_generated.h"
 
 extern SDL_bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window);
 
@@ -650,14 +654,24 @@ OS4_HandleGadget(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
     }
 }
 
-// TODO: localization
 static void
-OS4_ShowAboutWindow(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
+OS4_ShowAboutWindow(struct MyIntuiMessage * imsg)
 {
+    SDL_version version;
+    SDL_VERSION(&version);
+
+    static char buffer[64];
+    snprintf(buffer, sizeof(buffer),
+             "%s %d.%d.%d (" __AMIGADATE__ ")",
+             OS4_GetString(MSG_SDL3_LIBRARY_VERSION),
+             version.major,
+             version.minor,
+             version.patch);
+
     Object* aboutWindow = IIntuition->NewObject(NULL, "requester.class",
-        REQ_TitleText, "SDL3 application",
-        REQ_BodyText, "SDL3 version " VERSION_STRING " (" __AMIGADATE__ ")",
-        REQ_GadgetText, "OK",
+        REQ_TitleText, OS4_GetString(MSG_SDL3_APPLICATION),
+        REQ_BodyText, buffer,
+        REQ_GadgetText, OS4_GetString(MSG_SDL3_OK),
         REQ_Image, REQIMAGE_INFO,
         REQ_TimeOutSecs, 5,
         TAG_DONE);
@@ -667,6 +681,8 @@ OS4_ShowAboutWindow(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
         IIntuition->IDoMethod(aboutWindow, RM_OPENREQ, NULL, imsg->IDCMPWindow, NULL, TAG_DONE);
         IIntuition->SetWindowPointer(imsg->IDCMPWindow, WA_BusyPointer, FALSE, TAG_DONE);
         IIntuition->DisposeObject(aboutWindow);
+    } else {
+        dprintf("Failed to open requester\n");
     }
 }
 
@@ -688,7 +704,7 @@ OS4_HandleMenuPick(SDL_VideoDevice *_this, struct MyIntuiMessage *imsg)
             case MID_About:
                 dprintf("Menu About\n");
                 // TODO: this should probably be asynchronous requester
-                OS4_ShowAboutWindow(_this, imsg);
+                OS4_ShowAboutWindow(imsg);
                 break;
 
             case MID_Quit:
