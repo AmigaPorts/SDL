@@ -37,7 +37,7 @@
 
 static struct TimeVal OS4_StartTime;
 
-static struct TimerIFace* SDL2_ITimer;
+static struct TimerIFace* SDL3_ITimer;
 
 static ULONG OS4_TimerFrequency;
 
@@ -56,19 +56,19 @@ void OS4_InitTimerSubSystem(void)
     struct ExecBase* sysbase = (struct ExecBase *)IExec->Data.LibBase;
     struct Library* timerBase = (struct Library *)IExec->FindName(&sysbase->DeviceList, "timer.device");
 
-    SDL2_ITimer = (struct TimerIFace *)IExec->GetInterface(timerBase, "main", 1, NULL);
+    SDL3_ITimer = (struct TimerIFace *)IExec->GetInterface(timerBase, "main", 1, NULL);
 
-    dprintf("ITimer %p\n", SDL2_ITimer);
+    dprintf("ITimer %p\n", SDL3_ITimer);
 
-    if (!SDL2_ITimer) {
+    if (!SDL3_ITimer) {
         dprintf("Failed to get ITimer\n");
         return;
     }
 
-    SDL2_ITimer->GetSysTime(&OS4_StartTime);
+    SDL3_ITimer->GetSysTime(&OS4_StartTime);
 
     struct EClockVal cv;
-    OS4_TimerFrequency = SDL2_ITimer->ReadEClock(&cv);
+    OS4_TimerFrequency = SDL3_ITimer->ReadEClock(&cv);
 
     dprintf("Timer frequency %u Hz\n", OS4_TimerFrequency);
 }
@@ -77,8 +77,8 @@ void OS4_QuitTimerSubSystem(void)
 {
     dprintf("Called\n");
 
-    IExec->DropInterface((struct Interface *)SDL2_ITimer);
-    SDL2_ITimer = NULL;
+    IExec->DropInterface((struct Interface *)SDL3_ITimer);
+    SDL3_ITimer = NULL;
 }
 
 static void
@@ -161,7 +161,7 @@ OS4_TimerSetAlarm(OS4_TimerInstance * timer, Uint32 alarmTicks)
     const ULONG seconds = alarmTicks / 1000;
     struct TimeVal now;
 
-    if (!SDL2_ITimer) {
+    if (!SDL3_ITimer) {
         dprintf("Timer subsystem not initialized\n");
         return 0;
     }
@@ -173,8 +173,8 @@ OS4_TimerSetAlarm(OS4_TimerInstance * timer, Uint32 alarmTicks)
         timer->request->Time.Seconds = seconds;
         timer->request->Time.Microseconds  = (alarmTicks - (seconds * 1000)) * 1000;
 
-        SDL2_ITimer->GetSysTime(&now);
-        SDL2_ITimer->AddTime(&timer->request->Time, &now);
+        SDL3_ITimer->GetSysTime(&now);
+        SDL3_ITimer->AddTime(&timer->request->Time, &now);
 
         IExec->SetSignal(0, 1L << timer->port->mp_SigBit);
         IExec->SendIO((struct IORequest *)timer->request);
@@ -226,15 +226,15 @@ OS4_TimerGetTime(struct TimeVal * timeval)
         return;
     }
 
-    if (!SDL2_ITimer) {
+    if (!SDL3_ITimer) {
         dprintf("Timer subsystem not initialized\n");
         timeval->Seconds = 0;
         timeval->Microseconds = 0;
         return;
     }
 
-    SDL2_ITimer->GetSysTime(timeval);
-    SDL2_ITimer->SubTime(timeval, &OS4_StartTime);
+    SDL3_ITimer->GetSysTime(timeval);
+    SDL3_ITimer->SubTime(timeval, &OS4_StartTime);
 }
 
 Uint64
@@ -242,12 +242,12 @@ OS4_TimerGetCounter(void)
 {
     OS4_ClockVal value;
 
-    if (!SDL2_ITimer) {
+    if (!SDL3_ITimer) {
         dprintf("Timer subsystem not initialized\n");
         return 0;
     }
 
-    SDL2_ITimer->ReadEClock(&value.u.cv);
+    SDL3_ITimer->ReadEClock(&value.u.cv);
 
     return value.u.ticks;
 }

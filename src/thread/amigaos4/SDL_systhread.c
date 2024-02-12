@@ -93,7 +93,7 @@ void OS4_QuitThreadSubSystem(void)
         IExec->MutexObtain(control.children.mutex);
 
         if (IsMinListEmpty(&control.children.list)) {
-            dprintf("No child threads left - proceed with SDL2 shutdown\n");
+            dprintf("No child threads left - proceed with SDL3 shutdown\n");
             IExec->MutexRelease(control.children.mutex);
             break;
         } else {
