@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -26,6 +26,7 @@
 #include <proto/exec.h>
 #include <proto/icon.h>
 #include <proto/intuition.h>
+#include <proto/locale.h>
 #include <proto/chooser.h>
 
 #include <intuition/classes.h>
@@ -43,11 +44,28 @@
 #include <string.h>
 
 #define NAME "SDL3 Prefs"
-#define VERSION "1.4"
+#define VERSION "1.0"
 #define MAX_PATH_LEN 1024
 #define MAX_VARIABLE_NAME_LEN 32
+#define NAME_VERSION_DATE NAME " " VERSION " (" __AMIGADATE__ ")"
 
-static const char* const versingString __attribute__((used)) = "$VER: " NAME " " VERSION " (" __AMIGADATE__ ")";
+static const char* const versingString __attribute__((used)) = "$VER: " NAME_VERSION_DATE;
+static const int minVersion = 53;
+
+struct Library *IntuitionBase;
+struct Library *IconBase;
+struct Library *LocaleBase;
+
+struct IntuitionIFace *IIntuition;
+struct IconIFace *IIcon;
+struct LocaleIFace *ILocale;
+
+#define CATCOMP_NUMBERS
+#define CATCOMP_BLOCK
+#define CATCOMP_CODE
+#include "locale_generated.h"
+
+static struct LocaleInfo localeInfo;
 
 static struct ClassLibrary* WindowBase;
 static struct ClassLibrary* RequesterBase;
@@ -55,6 +73,7 @@ static struct ClassLibrary* ButtonBase;
 static struct ClassLibrary* LayoutBase;
 static struct ClassLibrary* LabelBase;
 
+struct Library* ChooserBase;
 struct ChooserIFace* IChooser;
 
 static Class* WindowClass;
@@ -68,9 +87,7 @@ enum EGadgetID
 {
     GID_DriverList = 1,
     GID_VsyncList,
-    //GID_BatchingList,
     GID_ScaleQualityList,
-    //GID_LogicalSizeModeList,
     GID_ScreenSaverList,
     GID_SaveButton,
     GID_ResetButton,
@@ -88,63 +105,42 @@ static struct Window* window;
 
 struct OptionName
 {
-    const char* const displayName;
+    const LONG stringId;
     const char* const envName;
     const char* const envNameAlias;
 };
 
 static const struct OptionName driverNames[] =
 {
-    { "default", NULL, NULL },
-    { "compositing", "compositing", NULL },
-    { "opengl", "opengl", NULL },
-    { "opengles2", "opengles2", NULL },
-    { "software", "software", NULL },
-    { NULL, NULL, NULL }
+    { MSG_DRIVER_DEFAULT, NULL, NULL },
+    { MSG_DRIVER_COMPOSITING, "compositing", NULL },
+    { MSG_DRIVER_OPENGLES2, "opengles2", NULL },
+    { MSG_DRIVER_SOFTWARE, "software", NULL },
+    { -1, NULL, NULL }
 };
 
 static const struct OptionName vsyncNames[] =
 {
-    { "default", NULL, NULL },
-    { "enabled", "1", NULL },
-    { "disabled", "0", NULL },
-    { NULL, NULL, NULL }
+    { MSG_VERTICAL_SYNC_DEFAULT, NULL, NULL },
+    { MSG_VERTICAL_SYNC_ENABLED, "1", NULL },
+    { MSG_VERTICAL_SYNC_DISABLED, "0", NULL },
+    { -1, NULL, NULL }
 };
-
-/*
-static const struct OptionName batchingNames[] =
-{
-    { "default", NULL, NULL },
-    { "enabled", "1", NULL },
-    { "disabled", "0", NULL },
-    { NULL, NULL, NULL }
-};
-*/
 
 static const struct OptionName scaleQualityNames[] =
 {
-    { "default", NULL, NULL },
-    { "nearest", "0", "nearest" },
-    { "linear", "1", "linear" },
-    { NULL, NULL, NULL }
+    { MSG_SCALE_QUALITY_DEFAULT, NULL, NULL },
+    { MSG_SCALE_QUALITY_NEAREST, "0", "nearest" },
+    { MSG_SCALE_QUALITY_LINEAR, "1", "linear" },
+    { -1, NULL, NULL }
 };
-
-/*
-static const struct OptionName logicalSizeModeNames[] =
-{
-    { "default", NULL, NULL },
-    { "letterbox / sidebars", "0", "letterbox" },
-    { "overscan", "1", "overscan" },
-    { NULL, NULL, NULL }
-};
-*/
 
 static const struct OptionName screenSaverNames[] =
 {
-    { "default", NULL, NULL },
-    { "enabled", "1", NULL },
-    { "disabled", "0", NULL },
-    { NULL, NULL, NULL }
+    { MSG_SCREEN_SAVER_DEFAULT, NULL, NULL },
+    { MSG_SCREEN_SAVER_ENABLED, "1", NULL },
+    { MSG_SCREEN_SAVER_DISABLED, "0", NULL },
+    { -1, NULL, NULL }
 };
 
 struct Variable
@@ -160,9 +156,7 @@ struct Variable
 
 static struct Variable driverVar = { GID_DriverList, 0, SDL_HINT_RENDER_DRIVER, "", NULL, NULL, driverNames };
 static struct Variable vsyncVar = { GID_VsyncList, 0, SDL_HINT_RENDER_VSYNC, "", NULL, NULL, vsyncNames };
-//static struct Variable batchingVar = { GID_BatchingList, 0, SDL_HINT_RENDER_BATCHING, "", NULL, NULL, batchingNames };
 static struct Variable scaleQualityVar = { GID_ScaleQualityList, 0, SDL_HINT_RENDER_SCALE_QUALITY, "", NULL, NULL, scaleQualityNames };
-//static struct Variable logicalSizeModeVar = { GID_LogicalSizeModeList, 0, SDL_HINT_RENDER_LOGICAL_SIZE_MODE, "", NULL, NULL, logicalSizeModeNames };
 static struct Variable screenSaverVar = { GID_ScreenSaverList, 0, SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "", NULL, NULL, screenSaverNames };
 
 static char*
@@ -188,7 +182,7 @@ SaveVariable(const char* const name, const char* const value, uint32 control)
 #ifdef DEBUG
     const int32 success =
 #endif
-    IDOS->SetVar(name, value, -1, LV_VAR | GVF_GLOBAL_ONLY | control);
+        IDOS->SetVar(name, value, -1, LV_VAR | GVF_GLOBAL_ONLY | control);
 
     dprintf("name '%s', value '%s', success %ld\n", name, value, success);
 }
@@ -199,7 +193,7 @@ DeleteVariable(const char* const name, uint32 control)
 #ifdef DEBUG
     const int32 success =
 #endif
-    IDOS->DeleteVar(name, LV_VAR | GVF_GLOBAL_ONLY | control);
+        IDOS->DeleteVar(name, LV_VAR | GVF_GLOBAL_ONLY | control);
 
     dprintf("name '%s', success %d\n", name, success);
 }
@@ -237,9 +231,7 @@ LoadVariables()
 {
     LoadVariable(&driverVar);
     LoadVariable(&vsyncVar);
-    //LoadVariable(&batchingVar);
     LoadVariable(&scaleQualityVar);
-    //LoadVariable(&logicalSizeModeVar);
     LoadVariable(&screenSaverVar);
 }
 
@@ -258,38 +250,98 @@ SaveVariables()
 {
     SaveOrDeleteVariable(&driverVar);
     SaveOrDeleteVariable(&vsyncVar);
-    //SaveOrDeleteVariable(&batchingVar);
     SaveOrDeleteVariable(&scaleQualityVar);
-    //SaveOrDeleteVariable(&logicalSizeModeVar);
     SaveOrDeleteVariable(&screenSaverVar);
+}
+
+static CONST_STRPTR
+GetString(LONG stringNum)
+{
+    return GetStringGenerated(&localeInfo, stringNum);
+}
+
+static BOOL
+OpenLibs()
+{
+    IntuitionBase = IExec->OpenLibrary("intuition.library", minVersion);
+    if (!IntuitionBase) {
+        return FALSE;
+    }
+
+    IIntuition = (struct IntuitionIFace *)IExec->GetInterface(IntuitionBase, "main", 1, NULL);
+    if (!IIntuition) {
+        return FALSE;
+    }
+
+    IconBase = IExec->OpenLibrary("icon.library", minVersion);
+    if (!IconBase) {
+        return FALSE;
+    }
+
+    IIcon = (struct IconIFace *)IExec->GetInterface(IconBase, "main", 1, NULL);
+    if (!IIcon) {
+        return FALSE;
+    }
+
+    LocaleBase = IExec->OpenLibrary("locale.library", minVersion);
+    ILocale = (struct LocaleIFace *)IExec->GetInterface(LocaleBase, "main", 1, NULL);
+
+    localeInfo.li_Catalog = NULL;
+    if (LocaleBase && ILocale) {
+        localeInfo.li_ILocale = ILocale;
+        localeInfo.li_Catalog = ILocale->OpenCatalog(NULL, "sdl3.catalog",
+                                                     OC_BuiltInLanguage, "english",
+                                                     OC_PreferExternal, TRUE,
+                                                     TAG_END);
+    } else {
+        puts("Failed to use catalog system. Using built-in strings.");
+    }
+
+    return TRUE;
+}
+
+static void
+CloseLibs()
+{
+    if (ILocale) {
+        ILocale->CloseCatalog(localeInfo.li_Catalog);
+    }
+
+    IExec->DropInterface((struct Interface *)ILocale);
+    IExec->CloseLibrary(LocaleBase);
+
+    IExec->DropInterface((struct Interface *)IIcon);
+    IExec->CloseLibrary(IconBase);
+
+    IExec->DropInterface((struct Interface *)IIntuition);
+    IExec->CloseLibrary(IntuitionBase);
+}
+
+static struct ClassLibrary*
+MyOpenClass(const char* const name, Class** class)
+{
+    struct ClassLibrary* cl = IIntuition->OpenClass(name, minVersion, class);
+
+    if (!cl) {
+        dprintf("Failed to open %s", name);
+    }
+
+    return cl;
 }
 
 static BOOL
 OpenClasses()
 {
-    const int version = 53;
-
     dprintf("\n");
 
-    WindowBase = IIntuition->OpenClass("window.class", version, &WindowClass);
-    if (!WindowBase) dprintf("Failed to open window.class\n");
+    WindowBase = MyOpenClass("window.class", &WindowClass);
+    RequesterBase = MyOpenClass("requester.class", &RequesterClass);
+    ButtonBase = MyOpenClass("gadgets/button.gadget", &ButtonClass);
+    LayoutBase = MyOpenClass("gadgets/layout.gadget", &LayoutClass);
+    LabelBase = MyOpenClass("images/label.image", &LabelClass);
+    ChooserBase = (struct Library *)MyOpenClass("gadgets/chooser.gadget", &ChooserClass);
 
-    RequesterBase = IIntuition->OpenClass("requester.class", version, &RequesterClass);
-    if (!RequesterBase) dprintf("Failed to open requester.class\n");
-
-    ButtonBase = IIntuition->OpenClass("gadgets/button.gadget", version, &ButtonClass);
-    if (!ButtonBase) dprintf("Failed to open button.gadget\n");
-
-    LayoutBase = IIntuition->OpenClass("gadgets/layout.gadget", version, &LayoutClass);
-    if (!LayoutBase) dprintf("Failed to open layout.gadget\n");
-
-    LabelBase = IIntuition->OpenClass("images/label.image", version, &LabelClass);
-    if (!LabelBase) dprintf("Failed to open label.image\n");
-
-    ChooserBase = (struct Library *)IIntuition->OpenClass("gadgets/chooser.gadget", version, &ChooserClass);
-    if (!ChooserBase) dprintf("Failed to open chooser.gadget\n");
-
-    IChooser = (struct ChooserIFace *)IExec->GetInterface((struct Library *)ChooserBase, "main", 1, NULL);
+    IChooser = (struct ChooserIFace *)IExec->GetInterface(ChooserBase, "main", 1, NULL);
     if (!IChooser) {
         dprintf("Failed to get ChooserIFace\n");
     }
@@ -370,10 +422,12 @@ PurgeChooserList(struct List* list)
 static void
 PopulateChooserList(struct Variable * var)
 {
-    const char* name;
     int i = 0;
+    LONG id = 0;
+    while ((id = var->names[i++].stringId) > -1) {
+        const char* name = GetString(id);
+        // dprintf("%d : '%s'\n", i, name);
 
-    while ((name = var->names[i++].displayName)) {
         AllocChooserNode(var->list, name);
     }
 }
@@ -408,52 +462,25 @@ CreateChooserButtons(struct Variable* var, const char* const name, const char* c
 static Object*
 CreateDriverButtons()
 {
-    return CreateChooserButtons(&driverVar, "driver",
-        "Select driver implementation:\n"
-        "- compositing doesn't support some blend modes\n"
-        "- opengl (MiniGL) doesn't support render targets and some blend modes\n"
-        "- opengles2 supports most features\n"
-        "- software supports most features but is not accelerated");
+    return CreateChooserButtons(&driverVar, "driver", GetString(MSG_DRIVER_HELP));
 }
 
 static Object*
 CreateVsyncButtons()
 {
-    return CreateChooserButtons(&vsyncVar, "vsync",
-        "Synchronize display update to monitor refresh rate");
+    return CreateChooserButtons(&vsyncVar, "vsync", GetString(MSG_VERTICAL_SYNC_HELP));
 }
-
-/*
-static Object*
-CreateBatchingButtons()
-{
-    return CreateChooserButtons(&batchingVar, "batching",
-        "Batching may improve drawing speed if application does many operations per frame "
-        "and SDL2 is able to combine those");
-}
-*/
 
 static Object*
 CreateScaleQualityButtons()
 {
-    return CreateChooserButtons(&scaleQualityVar, "scale quality",
-        "Nearest pixel sampling or linear filtering");
+    return CreateChooserButtons(&scaleQualityVar, "scale quality", GetString(MSG_SCALE_QUALITY_HELP));
 }
-
-/*
-static Object*
-CreateLogicalSizeModeButtons()
-{
-    return CreateChooserButtons(&logicalSizeModeVar, "logical size mode",
-        "Scaling policy for SDL_RenderSetLogicalSize");
-}
-*/
 
 static Object*
 CreateScreenSaverButtons()
 {
-    return CreateChooserButtons(&screenSaverVar, "allow screensaver",
-        "Allow screensaver (disabled by default)");
+    return CreateChooserButtons(&screenSaverVar, "allow screensaver", GetString(MSG_SCREEN_SAVER_HELP));
 }
 
 static Object*
@@ -478,19 +505,19 @@ CreateButton(enum EGadgetID gid, const char* const name, const char* const hint)
 static Object*
 CreateSaveButton()
 {
-    return CreateButton(GID_SaveButton, "_Save", "Store settings to ENVARC: and exit");
+    return CreateButton(GID_SaveButton, GetString(MSG_SAVE_GAD), GetString(MSG_SAVE_HELP));
 }
 
 static Object*
 CreateResetButton()
 {
-    return CreateButton(GID_ResetButton, "_Reset", "Reset GUI to default values");
+    return CreateButton(GID_ResetButton, GetString(MSG_RESET_GAD), GetString(MSG_RESET_HELP));
 }
 
 static Object*
 CreateCancelButton()
 {
-    return CreateButton(GID_CancelButton, "_Cancel", "Exit program");
+    return CreateButton(GID_CancelButton, GetString(MSG_CANCEL_GAD), GetString(MSG_CANCEL_HELP));
 }
 
 static Object*
@@ -513,21 +540,17 @@ CreateRendererLayout()
     Object* layout = IIntuition->NewObject(LayoutClass, NULL,
         LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
         LAYOUT_BevelStyle, BVS_GROUP,
-        LAYOUT_Label, "2D Renderer Options",
+        LAYOUT_Label, GetString(MSG_RENDERER_OPTIONS_GROUP),
         LAYOUT_AddChild, IIntuition->NewObject(LayoutClass, NULL,
             LAYOUT_HorizAlignment, LALIGN_CENTER,
             LAYOUT_AddChild, IIntuition->NewObject(LayoutClass, NULL,
                 LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
                 LAYOUT_AddChild, CreateDriverButtons(),
-                CHILD_Label, CreateLabel("_Driver"),
+                CHILD_Label, CreateLabel(GetString(MSG_DRIVER_GAD)),
                 LAYOUT_AddChild, CreateVsyncButtons(),
-                CHILD_Label, CreateLabel("_Vertical Sync"),
-                //LAYOUT_AddChild, CreateBatchingButtons(),
-                //CHILD_Label, CreateLabel("_Batching Mode"),
+                CHILD_Label, CreateLabel(GetString(MSG_VERTICAL_SYNC_GAD)),
                 LAYOUT_AddChild, CreateScaleQualityButtons(),
-                CHILD_Label, CreateLabel("Scale _Quality"),
-                //LAYOUT_AddChild, CreateLogicalSizeModeButtons(),
-                //CHILD_Label, CreateLabel("_Logical Size Mode"),
+                CHILD_Label, CreateLabel(GetString(MSG_SCALE_QUALITY_GAD)),
                 TAG_DONE), // vertical layout
                 CHILD_WeightedWidth, 0,
             TAG_DONE),
@@ -546,13 +569,14 @@ CreateVideoLayout()
     Object* layout = IIntuition->NewObject(LayoutClass, NULL,
         LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
         LAYOUT_BevelStyle, BVS_GROUP,
-        LAYOUT_Label, "Video Options",
+        LAYOUT_Label, GetString(MSG_VIDEO_OPTIONS_GROUP),
+
         LAYOUT_AddChild, IIntuition->NewObject(LayoutClass, NULL,
             LAYOUT_HorizAlignment, LALIGN_CENTER,
             LAYOUT_AddChild, IIntuition->NewObject(LayoutClass, NULL,
                 LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
                 LAYOUT_AddChild, CreateScreenSaverButtons(),
-                CHILD_Label, CreateLabel("_Allow Screen Saver"),
+                CHILD_Label, CreateLabel(GetString(MSG_SCREEN_SAVER_GAD)),
                 TAG_DONE), // vertical layout
                 CHILD_WeightedWidth, 0,
             TAG_DONE),
@@ -571,7 +595,7 @@ CreateSettingsLayout()
     Object* layout = IIntuition->NewObject(LayoutClass, NULL,
         LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
         LAYOUT_BevelStyle, BVS_GROUP,
-        LAYOUT_Label, "Settings",
+        LAYOUT_Label, GetString(MSG_SETTINGS_GROUP),
         LAYOUT_AddChild, CreateSaveButton(),
         LAYOUT_AddChild, CreateResetButton(),
         LAYOUT_AddChild, CreateCancelButton(),
@@ -615,15 +639,15 @@ CreateMenu()
         // Main
         MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
             MA_Type, T_MENU,
-            MA_Label, "Main",
+            MA_Label, GetString(MSG_MAIN_MENU),
             MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
                 MA_Type, T_ITEM,
-                MA_Label, "I|Iconify",
+                MA_Label, GetString(MSG_MAIN_ICONIFY),
                 MA_ID, MID_Iconify,
                 TAG_DONE),
             MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
                 MA_Type, T_ITEM,
-                MA_Label, "A|About...",
+                MA_Label, GetString(MSG_MAIN_ABOUT),
                 MA_ID, MID_About,
                 TAG_DONE),
             MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
@@ -632,7 +656,7 @@ CreateMenu()
                 TAG_DONE),
             MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
                 MA_Type, T_ITEM,
-                MA_Label, "Q|Quit",
+                MA_Label, GetString(MSG_MAIN_QUIT),
                 MA_ID, MID_Quit,
                 TAG_DONE),
             TAG_DONE),
@@ -687,8 +711,8 @@ CreateWindow(Object* menuObject, struct MsgPort* appPort)
 
     Object* w = IIntuition->NewObject(WindowClass, NULL,
         WA_Activate, TRUE,
-        WA_Title, NAME,
-        WA_ScreenTitle, NAME,
+        WA_Title, GetString(MSG_APPLICATION_NAME),
+        WA_ScreenTitle, GetString(MSG_APPLICATION_NAME),
         WA_IDCMP, IDCMP_CLOSEWINDOW | IDCMP_RAWKEY | IDCMP_MENUPICK,
         WA_CloseGadget, TRUE,
         WA_DragBar, TRUE,
@@ -697,7 +721,6 @@ CreateWindow(Object* menuObject, struct MsgPort* appPort)
         WA_MenuStrip, menuObject,
         WINDOW_IconifyGadget, TRUE,
         WINDOW_Icon, MyGetDiskObject(),
-        WINDOW_IconTitle, NAME,
         WINDOW_AppPort, appPort, // Iconification needs it
         WINDOW_Position, WPOS_CENTERSCREEN,
         WINDOW_Layout, CreateLayout(),
@@ -716,7 +739,7 @@ HandleIconify(Object* windowObject)
 {
     dprintf("\n");
     window = NULL;
-	IIntuition->IDoMethod(windowObject, WM_ICONIFY);
+    IIntuition->IDoMethod(windowObject, WM_ICONIFY);
 }
 
 static void
@@ -734,12 +757,21 @@ HandleUniconify(Object* windowObject)
 static void
 ShowAboutWindow()
 {
+    char aboutStr[128];
+
+    snprintf(aboutStr, sizeof(aboutStr), "\033b%s %s (%s)\033n\n%s\n%s",
+             GetString(MSG_APPLICATION_NAME),
+             VERSION,
+             __AMIGADATE__,
+             GetString(MSG_ABOUT_AUTHOR),
+             GetString(MSG_ABOUT_TRANSLATOR));
+
     dprintf("\n");
 
     Object* object = IIntuition->NewObject(RequesterClass, NULL,
-        REQ_TitleText, "About " NAME,
-        REQ_BodyText, NAME " " VERSION " (" __AMIGADATE__ ")\nWritten by Juha Niemimaki",
-        REQ_GadgetText, "_Ok",
+        REQ_TitleText, GetString(MSG_ABOUT_WINDOW),
+        REQ_BodyText, aboutStr,
+        REQ_GadgetText, GetString(MSG_OK),
         REQ_Image, REQIMAGE_INFO,
         REQ_TimeOutSecs, 10,
         TAG_DONE);
@@ -817,15 +849,9 @@ HandleGadgets(enum EGadgetID gid)
         case GID_VsyncList:
             ReadSelection(&vsyncVar);
             break;
-        //case GID_BatchingList:
-        //    ReadSelection(&batchingVar);
-        //    break;
         case GID_ScaleQualityList:
             ReadSelection(&scaleQualityVar);
             break;
-        //case GID_LogicalSizeModeList:
-            //ReadSelection(&logicalSizeModeVar);
-            //break;
         case GID_ScreenSaverList:
             ReadSelection(&screenSaverVar);
             break;
@@ -836,9 +862,7 @@ HandleGadgets(enum EGadgetID gid)
         case GID_ResetButton:
             ResetSelection(&driverVar);
             ResetSelection(&vsyncVar);
-            //ResetSelection(&batchingVar);
             ResetSelection(&scaleQualityVar);
-            //ResetSelection(&logicalSizeModeVar);
             ResetSelection(&screenSaverVar);
             break;
         case GID_CancelButton:
@@ -869,33 +893,33 @@ HandleEvents(Object* windowObject)
         running = FALSE;
     }
 
-	uint32 result;
-	int16 code = 0;
+    uint32 result;
+    int16 code = 0;
 
     while ((result = IIntuition->IDoMethod(windowObject, WM_HANDLEINPUT, &code)) != WMHI_LASTMSG) {
         switch (result & WMHI_CLASSMASK) {
             case WMHI_CLOSEWINDOW:
                 running = FALSE;
-            	break;
+                break;
             case WMHI_ICONIFY:
-            	HandleIconify(windowObject);
-            	break;
+                HandleIconify(windowObject);
+                break;
             case WMHI_UNICONIFY:
-            	HandleUniconify(windowObject);
-            	break;
+                HandleUniconify(windowObject);
+                break;
             case WMHI_MENUPICK:
-            	if (!HandleMenuPick(windowObject)) {
+                if (!HandleMenuPick(windowObject)) {
                     running = FALSE;
                 }
-            	break;
+                break;
             case WMHI_GADGETUP:
                 if (!HandleGadgets(result & WMHI_GADGETMASK)) {
                     running = FALSE;
                 }
                 break;
-        	default:
-        		//dprintf("Unhandled event result %lx, code %x\n", result, code);
-        		break;
+            default:
+                //dprintf("Unhandled event result %lx, code %x\n", result, code);
+                break;
         }
     }
 
@@ -905,9 +929,9 @@ HandleEvents(Object* windowObject)
 int
 main(int argc, char** argv)
 {
-    LoadVariables();
+    if (OpenLibs() && OpenClasses()) {
+        LoadVariables();
 
-    if (OpenClasses()) {
         struct MsgPort* appPort = IExec->AllocSysObjectTags(ASOT_PORT, TAG_DONE);
 
         Object* menuObject = CreateMenu();
@@ -939,13 +963,12 @@ main(int argc, char** argv)
 
         PurgeChooserList(driverVar.list);
         PurgeChooserList(vsyncVar.list);
-        //PurgeChooserList(batchingVar.list);
         PurgeChooserList(scaleQualityVar.list);
-        //PurgeChooserList(logicalSizeModeVar.list);
         PurgeChooserList(screenSaverVar.list);
     }
 
     CloseClasses();
+    CloseLibs();
 
     return 0;
 }

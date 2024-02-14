@@ -1,0 +1,168 @@
+## function GetStringGenerated
+;SDL2Prefs.cd - SDL2Prefs Catalog Descriptor File
+;
+; $VER: SDL2Prefs.catalog 1.5 (16.04.2023)
+;
+;
+;------------------ General ------------------
+MSG_APPLICATION_NAME (//)
+SDL2 Prefs
+;
+MSG_OK (//)
+_OK
+;
+;------------------ GUI ------------------
+MSG_RENDERER_OPTIONS_GROUP (10//)
+2D Renderer Options
+;
+MSG_DRIVER_GAD (//)
+_Driver
+;
+MSG_DRIVER_DEFAULT (//)
+default
+;
+MSG_DRIVER_COMPOSITING (//)
+compositing
+;
+MSG_DRIVER_OPENGL (//)
+opengl
+;
+MSG_DRIVER_OPENGLES2 (//)
+opengles2
+;
+MSG_DRIVER_SOFTWARE (//)
+software
+;
+MSG_VERTICAL_SYNC_GAD (//)
+_Vertical Sync
+;
+MSG_VERTICAL_SYNC_DEFAULT (//)
+default
+;
+MSG_VERTICAL_SYNC_ENABLED (//)
+enabled
+;
+MSG_VERTICAL_SYNC_DISABLED (//)
+disabled
+;
+MSG_BATCHING_MODE_GAD (//)
+_Batching Mode
+;
+MSG_BATCHING_MODE_DEFAULT (//)
+default
+;
+MSG_BATCHING_MODE_ENABLED (//)
+enabled
+;
+MSG_BATCHING_MODE_DISABLED (//)
+disabled
+;
+MSG_SCALE_QUALITY_GAD (//)
+Scale _Quality
+;
+MSG_SCALE_QUALITY_DEFAULT (//)
+default
+;
+MSG_SCALE_QUALITY_NEAREST (//)
+nearest
+;
+MSG_SCALE_QUALITY_LINEAR (//)
+linear
+;
+MSG_LOGICAL_SIZE_MODE_GAD (//)
+_Logical Size Mode
+;
+MSG_LOGICAL_SIZE_MODE_DEFAULT (//)
+default
+;
+MSG_LOGICAL_SIZE_MODE_LETTERBOX_OR_SIDEBARS (//)
+letterbox / sidebars
+;
+MSG_LOGICAL_SIZE_MODE_OVERSCAN (//)
+overscan
+;
+MSG_VIDEO_OPTIONS_GROUP (//)
+Video Options
+;
+MSG_SCREEN_SAVER_GAD (//)
+_Allow Screen Saver
+;
+MSG_SCREEN_SAVER_DEFAULT (//)
+default
+;
+MSG_SCREEN_SAVER_ENABLED (//)
+enabled
+;
+MSG_SCREEN_SAVER_DISABLED (//)
+disabled
+;
+MSG_SETTINGS_GROUP (//)
+Settings
+;
+MSG_SAVE_GAD (//)
+_Save
+;
+MSG_RESET_GAD (//)
+_Reset
+;
+MSG_CANCEL_GAD (//)
+_Cancel
+;
+;------------------ Menu ------------------
+MSG_MAIN_MENU (100//)
+Main
+;
+MSG_MAIN_ICONIFY (//)
+I\0Iconify
+;
+MSG_MAIN_ABOUT (//)
+?\0About...
+;
+MSG_MAIN_QUIT (//)
+Q\0Quit
+;
+;------------------ About ------------------
+;
+MSG_ABOUT_WINDOW (150//)
+About SDL2 Prefs
+;
+MSG_ABOUT_AUTHOR (//)
+Written by Juha Niemimaki
+;
+MSG_ABOUT_TRANSLATOR (//)
+(using built-in strings)
+;
+;------------------ Help ------------------
+;
+MSG_DRIVER_HELP (200//)
+Select driver implementation:\n\
+ \033bcompositing \033ndoesn't support some blend modes\n\
+ \033bopengl \033n(MiniGL) doesn't support render targets and some blend modes\n\
+ \033bopengles2 \033nsupports most features\n\
+ \033bsoftware \033nsupports most features but is not accelerated
+;
+MSG_VERTICAL_SYNC_HELP (//)
+Synchronize display update to monitor refresh rate
+;
+MSG_BATCHING_MODE_HELP (//)
+Batching may improve drawing speed if application does many \
+operations per frame and SDL2 is able to combine those
+;
+MSG_SCALE_QUALITY_HELP (//)
+Nearest pixel sampling or linear filtering
+;
+MSG_LOGICAL_SIZE_MODE_HELP (//)
+Scaling policy for SDL_RenderSetLogicalSize
+;
+MSG_SCREEN_SAVER_HELP (//)
+Allow screen saver (disabled by default)
+;
+MSG_SAVE_HELP (//)
+Store settings to ENVARC: and exit
+;
+MSG_RESET_HELP (//)
+Reset GUI to default values
+;
+MSG_CANCEL_HELP (//)
+Exit program
+;
