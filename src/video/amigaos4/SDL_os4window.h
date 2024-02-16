@@ -40,6 +40,7 @@ typedef struct HitTestInfo
 typedef enum EMenu {
     MID_Iconify = 1,
     MID_About,
+    MID_LaunchPrefs,
     MID_Quit
 } EMenu;
 

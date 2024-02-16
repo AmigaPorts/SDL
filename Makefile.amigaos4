@@ -1,5 +1,7 @@
 # Makefile to build the AmigaOS4 SDL library
 
+# TODO: dependency tracking
+
 AR = ppc-amigaos-ar
 RANLIB = ppc-amigaos-ranlib
 CC = ppc-amigaos-gcc
@@ -7,6 +9,7 @@ CXX = ppc-amigaos-g++
 STRIP = ppc-amigaos-strip
 CRT ?= newlib
 INSTALL_PATH ?=
+CATCOMP = catcomp # TODO: is there a cross-compiler version?
 
 AMIGADATE = $(shell date +"%-d.%-m.%Y")
 
@@ -74,7 +77,7 @@ LOCALE_DESCRIPTOR = amiga-extra/sdl3.cd
 LOCALE_TEMPLATE = amiga-extra/sdl3.ct
 LOCALE_GENERATED = amiga-extra/locale_generated.h
 
-all: locale $(TARGET_STATIC) $(TARGET_SHARED) $(TESTLIB_STATIC) $(PREFS_PROGRAM)
+all: $(TARGET_STATIC) $(TARGET_SHARED) $(TESTLIB_STATIC) $(PREFS_PROGRAM)
 
 debug: CFLAGS += -DDEBUG
 
@@ -96,11 +99,13 @@ $(TARGET_SHARED): $(OBJECTS) $(VERSION_OBJECT)
 $(PREFS_PROGRAM): $(PREFS_OBJECT)
 	$(CC) -o $@ $^ -lauto
 
+$(PREFS_OBJECT): amiga-extra/prefs.c $(LOCALE_GENERATED)
+
 $(LOCALE_GENERATED): $(LOCALE_DESCRIPTOR)
-	CATCOMP $(LOCALE_DESCRIPTOR) CFILE $@
+	$(CATCOMP) $(LOCALE_DESCRIPTOR) CFILE $@
 
 $(LOCALE_TEMPLATE): $(LOCALE_DESCRIPTOR)
-	CATCOMP $< CTFILE $(LOCALE_TEMPLATE)
+	$(CATCOMP) $< CTFILE $(LOCALE_TEMPLATE)
 
 clean:
 	rm -f $(TARGET_STATIC) $(TARGET_SHARED)* $(TESTLIB_STATIC) $(ALL_OBJECTS) $(PREFS_PROGRAM)

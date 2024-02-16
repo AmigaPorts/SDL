@@ -663,15 +663,15 @@ OS4_ShowAboutWindow(struct MyIntuiMessage * imsg)
     static char buffer[64];
     snprintf(buffer, sizeof(buffer),
              "%s %d.%d.%d (" __AMIGADATE__ ")",
-             OS4_GetString(MSG_SDL3_LIBRARY_VERSION),
+             OS4_GetString(MSG_APP_LIBRARY_VERSION),
              version.major,
              version.minor,
              version.patch);
 
     Object* aboutWindow = IIntuition->NewObject(NULL, "requester.class",
-        REQ_TitleText, OS4_GetString(MSG_SDL3_APPLICATION),
+        REQ_TitleText, OS4_GetString(MSG_APP_APPLICATION),
         REQ_BodyText, buffer,
-        REQ_GadgetText, OS4_GetString(MSG_SDL3_OK),
+        REQ_GadgetText, OS4_GetString(MSG_APP_OK),
         REQ_Image, REQIMAGE_INFO,
         REQ_TimeOutSecs, 5,
         TAG_DONE);
@@ -683,6 +683,15 @@ OS4_ShowAboutWindow(struct MyIntuiMessage * imsg)
         IIntuition->DisposeObject(aboutWindow);
     } else {
         dprintf("Failed to open requester\n");
+    }
+}
+
+static void
+OS4_LaunchPrefs(void)
+{
+    const int32 error = IDOS->System("SDL3", TAG_DONE);
+    if (error != 0) {
+        dprintf("System() returned %d\n", error);
     }
 }
 
@@ -705,6 +714,10 @@ OS4_HandleMenuPick(SDL_VideoDevice *_this, struct MyIntuiMessage *imsg)
                 dprintf("Menu About\n");
                 // TODO: this should probably be asynchronous requester
                 OS4_ShowAboutWindow(imsg);
+                break;
+
+            case MID_LaunchPrefs:
+                OS4_LaunchPrefs();
                 break;
 
             case MID_Quit:
