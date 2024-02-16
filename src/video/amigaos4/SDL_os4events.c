@@ -687,6 +687,15 @@ OS4_ShowAboutWindow(struct MyIntuiMessage * imsg)
 }
 
 static void
+OS4_LaunchPrefs(void)
+{
+    const int32 error = IDOS->System("SDL3", TAG_DONE);
+    if (error != 0) {
+        dprintf("System() returned %d\n", error);
+    }
+}
+
+static void
 OS4_HandleMenuPick(SDL_VideoDevice *_this, struct MyIntuiMessage *imsg)
 {
     uint32 id = NO_MENU_ID;
@@ -705,6 +714,10 @@ OS4_HandleMenuPick(SDL_VideoDevice *_this, struct MyIntuiMessage *imsg)
                 dprintf("Menu About\n");
                 // TODO: this should probably be asynchronous requester
                 OS4_ShowAboutWindow(imsg);
+                break;
+
+            case MID_LaunchPrefs:
+                OS4_LaunchPrefs();
                 break;
 
             case MID_Quit:

@@ -10,6 +10,10 @@ MSG_APP_ABOUT
 
 ; A|About...
 ;
+MSG_APP_LAUNCH_PREFS
+
+; P|Launch Prefs...
+;
 MSG_APP_QUIT
 
 ; Q|Quit
