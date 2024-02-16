@@ -663,15 +663,15 @@ OS4_ShowAboutWindow(struct MyIntuiMessage * imsg)
     static char buffer[64];
     snprintf(buffer, sizeof(buffer),
              "%s %d.%d.%d (" __AMIGADATE__ ")",
-             OS4_GetString(MSG_SDL3_LIBRARY_VERSION),
+             OS4_GetString(MSG_APP_LIBRARY_VERSION),
              version.major,
              version.minor,
              version.patch);
 
     Object* aboutWindow = IIntuition->NewObject(NULL, "requester.class",
-        REQ_TitleText, OS4_GetString(MSG_SDL3_APPLICATION),
+        REQ_TitleText, OS4_GetString(MSG_APP_APPLICATION),
         REQ_BodyText, buffer,
-        REQ_GadgetText, OS4_GetString(MSG_SDL3_OK),
+        REQ_GadgetText, OS4_GetString(MSG_APP_OK),
         REQ_Image, REQIMAGE_INFO,
         REQ_TimeOutSecs, 5,
         TAG_DONE);

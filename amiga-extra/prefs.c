@@ -112,34 +112,34 @@ struct OptionName
 
 static const struct OptionName driverNames[] =
 {
-    { MSG_DRIVER_DEFAULT, NULL, NULL },
-    { MSG_DRIVER_COMPOSITING, "compositing", NULL },
-    { MSG_DRIVER_OPENGLES2, "opengles2", NULL },
-    { MSG_DRIVER_SOFTWARE, "software", NULL },
+    { MSG_PREFS_DRIVER_DEFAULT, NULL, NULL },
+    { MSG_PREFS_DRIVER_COMPOSITING, "compositing", NULL },
+    { MSG_PREFS_DRIVER_OPENGLES2, "opengles2", NULL },
+    { MSG_PREFS_DRIVER_SOFTWARE, "software", NULL },
     { -1, NULL, NULL }
 };
 
 static const struct OptionName vsyncNames[] =
 {
-    { MSG_VERTICAL_SYNC_DEFAULT, NULL, NULL },
-    { MSG_VERTICAL_SYNC_ENABLED, "1", NULL },
-    { MSG_VERTICAL_SYNC_DISABLED, "0", NULL },
+    { MSG_PREFS_VERTICAL_SYNC_DEFAULT, NULL, NULL },
+    { MSG_PREFS_VERTICAL_SYNC_ENABLED, "1", NULL },
+    { MSG_PREFS_VERTICAL_SYNC_DISABLED, "0", NULL },
     { -1, NULL, NULL }
 };
 
 static const struct OptionName scaleQualityNames[] =
 {
-    { MSG_SCALE_QUALITY_DEFAULT, NULL, NULL },
-    { MSG_SCALE_QUALITY_NEAREST, "0", "nearest" },
-    { MSG_SCALE_QUALITY_LINEAR, "1", "linear" },
+    { MSG_PREFS_SCALE_QUALITY_DEFAULT, NULL, NULL },
+    { MSG_PREFS_SCALE_QUALITY_NEAREST, "0", "nearest" },
+    { MSG_PREFS_SCALE_QUALITY_LINEAR, "1", "linear" },
     { -1, NULL, NULL }
 };
 
 static const struct OptionName screenSaverNames[] =
 {
-    { MSG_SCREEN_SAVER_DEFAULT, NULL, NULL },
-    { MSG_SCREEN_SAVER_ENABLED, "1", NULL },
-    { MSG_SCREEN_SAVER_DISABLED, "0", NULL },
+    { MSG_PREFS_SCREEN_SAVER_DEFAULT, NULL, NULL },
+    { MSG_PREFS_SCREEN_SAVER_ENABLED, "1", NULL },
+    { MSG_PREFS_SCREEN_SAVER_DISABLED, "0", NULL },
     { -1, NULL, NULL }
 };
 
@@ -462,25 +462,25 @@ CreateChooserButtons(struct Variable* var, const char* const name, const char* c
 static Object*
 CreateDriverButtons()
 {
-    return CreateChooserButtons(&driverVar, "driver", GetString(MSG_DRIVER_HELP));
+    return CreateChooserButtons(&driverVar, "driver", GetString(MSG_PREFS_DRIVER_HELP));
 }
 
 static Object*
 CreateVsyncButtons()
 {
-    return CreateChooserButtons(&vsyncVar, "vsync", GetString(MSG_VERTICAL_SYNC_HELP));
+    return CreateChooserButtons(&vsyncVar, "vsync", GetString(MSG_PREFS_VERTICAL_SYNC_HELP));
 }
 
 static Object*
 CreateScaleQualityButtons()
 {
-    return CreateChooserButtons(&scaleQualityVar, "scale quality", GetString(MSG_SCALE_QUALITY_HELP));
+    return CreateChooserButtons(&scaleQualityVar, "scale quality", GetString(MSG_PREFS_SCALE_QUALITY_HELP));
 }
 
 static Object*
 CreateScreenSaverButtons()
 {
-    return CreateChooserButtons(&screenSaverVar, "allow screensaver", GetString(MSG_SCREEN_SAVER_HELP));
+    return CreateChooserButtons(&screenSaverVar, "allow screensaver", GetString(MSG_PREFS_SCREEN_SAVER_HELP));
 }
 
 static Object*
@@ -505,19 +505,19 @@ CreateButton(enum EGadgetID gid, const char* const name, const char* const hint)
 static Object*
 CreateSaveButton()
 {
-    return CreateButton(GID_SaveButton, GetString(MSG_SAVE_GAD), GetString(MSG_SAVE_HELP));
+    return CreateButton(GID_SaveButton, GetString(MSG_PREFS_SAVE_GAD), GetString(MSG_PREFS_SAVE_HELP));
 }
 
 static Object*
 CreateResetButton()
 {
-    return CreateButton(GID_ResetButton, GetString(MSG_RESET_GAD), GetString(MSG_RESET_HELP));
+    return CreateButton(GID_ResetButton, GetString(MSG_PREFS_RESET_GAD), GetString(MSG_PREFS_RESET_HELP));
 }
 
 static Object*
 CreateCancelButton()
 {
-    return CreateButton(GID_CancelButton, GetString(MSG_CANCEL_GAD), GetString(MSG_CANCEL_HELP));
+    return CreateButton(GID_CancelButton, GetString(MSG_PREFS_CANCEL_GAD), GetString(MSG_PREFS_CANCEL_HELP));
 }
 
 static Object*
@@ -540,17 +540,17 @@ CreateRendererLayout()
     Object* layout = IIntuition->NewObject(LayoutClass, NULL,
         LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
         LAYOUT_BevelStyle, BVS_GROUP,
-        LAYOUT_Label, GetString(MSG_RENDERER_OPTIONS_GROUP),
+        LAYOUT_Label, GetString(MSG_PREFS_RENDERER_OPTIONS_GROUP),
         LAYOUT_AddChild, IIntuition->NewObject(LayoutClass, NULL,
             LAYOUT_HorizAlignment, LALIGN_CENTER,
             LAYOUT_AddChild, IIntuition->NewObject(LayoutClass, NULL,
                 LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
                 LAYOUT_AddChild, CreateDriverButtons(),
-                CHILD_Label, CreateLabel(GetString(MSG_DRIVER_GAD)),
+                CHILD_Label, CreateLabel(GetString(MSG_PREFS_DRIVER_GAD)),
                 LAYOUT_AddChild, CreateVsyncButtons(),
-                CHILD_Label, CreateLabel(GetString(MSG_VERTICAL_SYNC_GAD)),
+                CHILD_Label, CreateLabel(GetString(MSG_PREFS_VERTICAL_SYNC_GAD)),
                 LAYOUT_AddChild, CreateScaleQualityButtons(),
-                CHILD_Label, CreateLabel(GetString(MSG_SCALE_QUALITY_GAD)),
+                CHILD_Label, CreateLabel(GetString(MSG_PREFS_SCALE_QUALITY_GAD)),
                 TAG_DONE), // vertical layout
                 CHILD_WeightedWidth, 0,
             TAG_DONE),
@@ -569,14 +569,14 @@ CreateVideoLayout()
     Object* layout = IIntuition->NewObject(LayoutClass, NULL,
         LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
         LAYOUT_BevelStyle, BVS_GROUP,
-        LAYOUT_Label, GetString(MSG_VIDEO_OPTIONS_GROUP),
+        LAYOUT_Label, GetString(MSG_PREFS_VIDEO_OPTIONS_GROUP),
 
         LAYOUT_AddChild, IIntuition->NewObject(LayoutClass, NULL,
             LAYOUT_HorizAlignment, LALIGN_CENTER,
             LAYOUT_AddChild, IIntuition->NewObject(LayoutClass, NULL,
                 LAYOUT_Orientation, LAYOUT_ORIENT_VERT,
                 LAYOUT_AddChild, CreateScreenSaverButtons(),
-                CHILD_Label, CreateLabel(GetString(MSG_SCREEN_SAVER_GAD)),
+                CHILD_Label, CreateLabel(GetString(MSG_PREFS_SCREEN_SAVER_GAD)),
                 TAG_DONE), // vertical layout
                 CHILD_WeightedWidth, 0,
             TAG_DONE),
@@ -595,7 +595,7 @@ CreateSettingsLayout()
     Object* layout = IIntuition->NewObject(LayoutClass, NULL,
         LAYOUT_Orientation, LAYOUT_ORIENT_HORIZ,
         LAYOUT_BevelStyle, BVS_GROUP,
-        LAYOUT_Label, GetString(MSG_SETTINGS_GROUP),
+        LAYOUT_Label, GetString(MSG_PREFS_SETTINGS_GROUP),
         LAYOUT_AddChild, CreateSaveButton(),
         LAYOUT_AddChild, CreateResetButton(),
         LAYOUT_AddChild, CreateCancelButton(),
@@ -639,15 +639,15 @@ CreateMenu()
         // Main
         MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
             MA_Type, T_MENU,
-            MA_Label, GetString(MSG_MAIN_MENU),
+            MA_Label, GetString(MSG_PREFS_MAIN_MENU),
             MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
                 MA_Type, T_ITEM,
-                MA_Label, GetString(MSG_MAIN_ICONIFY),
+                MA_Label, GetString(MSG_PREFS_MAIN_ICONIFY),
                 MA_ID, MID_Iconify,
                 TAG_DONE),
             MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
                 MA_Type, T_ITEM,
-                MA_Label, GetString(MSG_MAIN_ABOUT),
+                MA_Label, GetString(MSG_PREFS_MAIN_ABOUT),
                 MA_ID, MID_About,
                 TAG_DONE),
             MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
@@ -656,7 +656,7 @@ CreateMenu()
                 TAG_DONE),
             MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
                 MA_Type, T_ITEM,
-                MA_Label, GetString(MSG_MAIN_QUIT),
+                MA_Label, GetString(MSG_PREFS_MAIN_QUIT),
                 MA_ID, MID_Quit,
                 TAG_DONE),
             TAG_DONE),
@@ -711,8 +711,8 @@ CreateWindow(Object* menuObject, struct MsgPort* appPort)
 
     Object* w = IIntuition->NewObject(WindowClass, NULL,
         WA_Activate, TRUE,
-        WA_Title, GetString(MSG_APPLICATION_NAME),
-        WA_ScreenTitle, GetString(MSG_APPLICATION_NAME),
+        WA_Title, GetString(MSG_PREFS_APPLICATION),
+        WA_ScreenTitle, GetString(MSG_PREFS_APPLICATION),
         WA_IDCMP, IDCMP_CLOSEWINDOW | IDCMP_RAWKEY | IDCMP_MENUPICK,
         WA_CloseGadget, TRUE,
         WA_DragBar, TRUE,
@@ -760,18 +760,18 @@ ShowAboutWindow()
     char aboutStr[128];
 
     snprintf(aboutStr, sizeof(aboutStr), "\033b%s %s (%s)\033n\n%s\n%s",
-             GetString(MSG_APPLICATION_NAME),
+             GetString(MSG_PREFS_APPLICATION),
              VERSION,
              __AMIGADATE__,
-             GetString(MSG_ABOUT_AUTHOR),
-             GetString(MSG_ABOUT_TRANSLATOR));
+             GetString(MSG_PREFS_ABOUT_AUTHOR),
+             GetString(MSG_PREFS_ABOUT_TRANSLATOR));
 
     dprintf("\n");
 
     Object* object = IIntuition->NewObject(RequesterClass, NULL,
-        REQ_TitleText, GetString(MSG_ABOUT_WINDOW),
+        REQ_TitleText, GetString(MSG_PREFS_ABOUT_WINDOW),
         REQ_BodyText, aboutStr,
-        REQ_GadgetText, GetString(MSG_OK),
+        REQ_GadgetText, GetString(MSG_PREFS_OK),
         REQ_Image, REQIMAGE_INFO,
         REQ_TimeOutSecs, 10,
         TAG_DONE);
