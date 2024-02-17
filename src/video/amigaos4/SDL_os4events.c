@@ -633,7 +633,7 @@ OS4_HandleTicks(_THIS, struct MyIntuiMessage * imsg)
 }
 
 static void
-OS4_HandleIconify(SDL_VideoDevice *_this, struct MyIntuiMessage *imsg)
+OS4_HandleIconify(_THIS, struct MyIntuiMessage *imsg)
 {
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
@@ -643,7 +643,7 @@ OS4_HandleIconify(SDL_VideoDevice *_this, struct MyIntuiMessage *imsg)
 }
 
 static void
-OS4_HandleGadget(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
+OS4_HandleGadget(_THIS, struct MyIntuiMessage * imsg)
 {
     struct Gadget *gadget = imsg->IAddress;
     dprintf("Gadget event %p\n", gadget);
@@ -696,7 +696,7 @@ OS4_LaunchPrefs(void)
 }
 
 static void
-OS4_HandleMenuPick(SDL_VideoDevice *_this, struct MyIntuiMessage *imsg)
+OS4_HandleMenuPick(_THIS, struct MyIntuiMessage *imsg)
 {
     uint32 id = NO_MENU_ID;
     BOOL quit = FALSE;
