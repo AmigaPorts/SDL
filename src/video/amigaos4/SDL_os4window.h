@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,6 +23,8 @@
 #ifndef _SDL_os4window_h
 #define _SDL_os4window_h
 
+#include "intuition/classusr.h" /* Object */
+
 #include "../SDL_sysvideo.h"
 
 #define POINTER_GRAB_TIMEOUT        20  /* Number of ticks before pointer grab needs to be reactivated */
@@ -35,6 +37,13 @@ typedef struct HitTestInfo
     SDL_Point point;
 } HitTestInfo;
 
+typedef enum EMenu {
+    MID_Iconify = 1,
+    MID_About,
+    MID_LaunchPrefs,
+    MID_Quit
+} EMenu;
+
 typedef struct
 {
     SDL_Window      * sdlwin;
@@ -42,6 +51,7 @@ typedef struct
     struct BitMap   * bitmap;
     struct AppWindow * appWin;
     struct AppIcon  * appIcon;
+    Object          * menuObject;
 
     Uint32            pointerGrabTicks;
 

@@ -24,8 +24,12 @@
 
 #include <proto/exec.h>
 #include <proto/dos.h>
+#include <proto/intuition.h>
 #include <proto/keymap.h>
 #include <proto/wb.h>
+
+#include <intuition/menuclass.h>
+#include <classes/requester.h>
 
 #include <workbench/startup.h>
 
@@ -35,6 +39,7 @@
 #include "SDL_os4window.h"
 #include "SDL_os4events.h"
 #include "SDL_os4keyboard.h"
+#include "SDL_os4locale.h"
 
 #include "../../events/SDL_keyboard_c.h"
 #include "../../events/SDL_mouse_c.h"
@@ -42,8 +47,13 @@
 #include "../../events/scancodes_amiga.h"
 #include "../../events/SDL_events_c.h"
 
+#include "SDL_version.h"
+
 //#undef DEBUG
 #include "../../main/amigaos4/SDL_os4debug.h"
+
+#define CATCOMP_NUMBERS
+#include "../../../amiga-extra/locale_generated.h"
 
 extern SDL_bool (*OS4_ResizeGlContext)(_THIS, SDL_Window * window);
 
@@ -361,10 +371,16 @@ OS4_UpdateMousePointer(SDL_Window * sdlwin, struct MyIntuiMessage * imsg)
 {
     // Resets mouse pointer when it leaves its window area. For example,
     // a hidden pointer becomes visible outside.
-    if (SDL_GetMouse()->focus == sdlwin) {
+    const BOOL focus = SDL_GetMouse()->focus == sdlwin;
+
+    if (focus) {
         OS4_RestoreSdlCursorForWindow(imsg->IDCMPWindow);
     } else {
         OS4_ResetCursorForWindow(imsg->IDCMPWindow);
+    }
+
+    if (IIntuition->SetWindowAttrs(imsg->IDCMPWindow, WA_RMBTrap, focus, TAG_DONE) != 0) {
+        dprintf("Failed to set WA_RMBTrap\n");
     }
 }
 
@@ -617,18 +633,102 @@ OS4_HandleTicks(_THIS, struct MyIntuiMessage * imsg)
 }
 
 static void
-OS4_HandleGadget(_THIS, struct MyIntuiMessage * msg)
+OS4_HandleIconify(SDL_VideoDevice *_this, struct MyIntuiMessage *imsg)
 {
-    struct Gadget *gadget = msg->IAddress;
+    SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
+
+    if (sdlwin) {
+        OS4_IconifyWindow(_this, sdlwin);
+    }
+}
+
+static void
+OS4_HandleGadget(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
+{
+    struct Gadget *gadget = imsg->IAddress;
     dprintf("Gadget event %p\n", gadget);
 
     if (gadget->GadgetID == GID_ICONIFY) {
-        SDL_Window *sdlwin = OS4_FindWindow(_this, msg->IDCMPWindow);
+        dprintf("Iconify button pressed\n");
+        OS4_HandleIconify(_this, imsg);
+    }
+}
 
-        if (sdlwin) {
-            dprintf("Iconify button pressed\n");
-            OS4_IconifyWindow(_this, sdlwin);
+static void
+OS4_ShowAboutWindow(struct MyIntuiMessage * imsg)
+{
+    SDL_version version;
+    SDL_VERSION(&version);
+
+    static char buffer[64];
+    snprintf(buffer, sizeof(buffer),
+             "%s %d.%d.%d (" __AMIGADATE__ ")",
+             OS4_GetString(MSG_APP_LIBRARY_VERSION),
+             version.major,
+             version.minor,
+             version.patch);
+
+    Object* aboutWindow = IIntuition->NewObject(NULL, "requester.class",
+        REQ_TitleText, OS4_GetString(MSG_APP_APPLICATION),
+        REQ_BodyText, buffer,
+        REQ_GadgetText, OS4_GetString(MSG_APP_OK),
+        REQ_Image, REQIMAGE_INFO,
+        REQ_TimeOutSecs, 5,
+        TAG_DONE);
+
+    if (aboutWindow) {
+        IIntuition->SetWindowPointer(imsg->IDCMPWindow, WA_BusyPointer, TRUE, TAG_DONE);
+        IIntuition->IDoMethod(aboutWindow, RM_OPENREQ, NULL, imsg->IDCMPWindow, NULL, TAG_DONE);
+        IIntuition->SetWindowPointer(imsg->IDCMPWindow, WA_BusyPointer, FALSE, TAG_DONE);
+        IIntuition->DisposeObject(aboutWindow);
+    } else {
+        dprintf("Failed to open requester\n");
+    }
+}
+
+static void
+OS4_LaunchPrefs(void)
+{
+    const int32 error = IDOS->System("SDL2", TAG_DONE);
+    if (error != 0) {
+        dprintf("System() returned %d\n", error);
+    }
+}
+
+static void
+OS4_HandleMenuPick(SDL_VideoDevice *_this, struct MyIntuiMessage *imsg)
+{
+    uint32 id = NO_MENU_ID;
+    BOOL quit = FALSE;
+
+    struct Window *window = imsg->IDCMPWindow;
+
+    while (window && window->MenuStrip && ((id = IIntuition->IDoMethod((Object *)window->MenuStrip, MM_NEXTSELECT, 0, id))) != NO_MENU_ID) {
+        switch (id) {
+            case MID_Iconify:
+                dprintf("Menu Iconify\n");
+                OS4_HandleIconify(_this, imsg);
+                break;
+
+            case MID_About:
+                dprintf("Menu About\n");
+                // TODO: this should probably be asynchronous requester
+                OS4_ShowAboutWindow(imsg);
+                break;
+
+            case MID_LaunchPrefs:
+                OS4_LaunchPrefs();
+                break;
+
+            case MID_Quit:
+                dprintf("Menu Quit\n");
+                quit = TRUE;
+                break;
         }
+    }
+
+    if (quit) {
+        SDL_SendQuit();
     }
 }
 
@@ -748,6 +848,10 @@ OS4_HandleIdcmpMessages(_THIS, struct MsgPort * msgPort)
 
             case IDCMP_GADGETUP:
                 OS4_HandleGadget(_this, &msg);
+                break;
+
+            case IDCMP_MENUPICK:
+                OS4_HandleMenuPick(_this, &msg);
                 break;
 
             default:
