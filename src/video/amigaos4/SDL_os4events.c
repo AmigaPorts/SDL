@@ -48,7 +48,6 @@
 
 //#undef DEBUG
 #include "../../main/amigaos4/SDL_os4debug.h"
-#include "../../main/amigaos4/SDL_os4version.h"
 
 #define CATCOMP_NUMBERS
 #include "../../amiga-extra/locale_generated.h"
