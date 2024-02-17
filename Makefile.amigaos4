@@ -11,7 +11,7 @@ CRT ?= newlib
 INSTALL_PATH ?=
 CATCOMP = catcomp # TODO: is there a cross-compiler version?
 
-AMIGADATE = $(shell date +"%-d.%-m.%Y")
+AMIGADATE = $(shell date +"%-d.%m.%Y")
 
 CFLAGS  = -mcrt=$(CRT) -gstabs -O2 -Wall -Werror -Wshadow -fPIC -fcommon -I./include -I./include/SDL3 -I./src -D__AMIGADATE__=\"$(AMIGADATE)\"
 
@@ -97,7 +97,7 @@ $(TARGET_SHARED): $(OBJECTS) $(VERSION_OBJECT)
 	$(CC) -mcrt=$(CRT) -shared -Wl,-soname,$(TARGET_SHARED) -o $(TARGET_SHARED) $(OBJECTS) $(VERSION_OBJECT)
 
 $(PREFS_PROGRAM): $(PREFS_OBJECT)
-	$(CC) -o $@ $^ -lauto
+	$(CC) -o $@ $^ # -lauto
 
 $(PREFS_OBJECT): amiga-extra/prefs.c $(LOCALE_GENERATED)
 
@@ -108,7 +108,7 @@ $(LOCALE_TEMPLATE): $(LOCALE_DESCRIPTOR)
 	$(CATCOMP) $< CTFILE $(LOCALE_TEMPLATE)
 
 clean:
-	rm -f $(TARGET_STATIC) $(TARGET_SHARED)* $(TESTLIB_STATIC) $(ALL_OBJECTS) $(PREFS_PROGRAM)
+	rm -f $(TARGET_STATIC) $(TARGET_SHARED) $(TESTLIB_STATIC) $(ALL_OBJECTS) $(PREFS_PROGRAM)
 
 install:
 	mkdir -p $(INSTALL_PATH)/SDK/local/$(CRT)/lib
