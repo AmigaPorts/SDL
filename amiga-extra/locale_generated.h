@@ -43,9 +43,9 @@
 
 #define MSG_APP_ICONIFY 0
 #define MSG_APP_ABOUT 1
-#define MSG_APP_LAUNCH_PREFS 2
+#define MSG_APP_LAUNCH_PREFERENCES 2
 #define MSG_APP_QUIT 3
-#define MSG_APP_ABOUT_REQ 4
+#define MSG_APP_ABOUT_WINDOW 4
 #define MSG_APP_OK 5
 #define MSG_APP_APPLICATION 6
 #define MSG_APP_LIBRARY_VERSION 7
@@ -98,16 +98,16 @@
 #ifdef CATCOMP_STRINGS
 
 #define MSG_APP_ICONIFY_STR "I|Iconify"
-#define MSG_APP_ABOUT_STR "A|About..."
-#define MSG_APP_LAUNCH_PREFS_STR "P|Launch Prefs..."
+#define MSG_APP_ABOUT_STR "?|About..."
+#define MSG_APP_LAUNCH_PREFERENCES_STR "P|Launch preferences..."
 #define MSG_APP_QUIT_STR "Q|Quit"
-#define MSG_APP_ABOUT_REQ_STR "About SDL3 Library"
+#define MSG_APP_ABOUT_WINDOW_STR "About SDL3 library"
 #define MSG_APP_OK_STR "_Ok"
 #define MSG_APP_APPLICATION_STR "SDL3 application"
 #define MSG_APP_LIBRARY_VERSION_STR "SDL library version"
-#define MSG_PREFS_APPLICATION_STR "SDL3 Preferences"
+#define MSG_PREFS_APPLICATION_STR "SDL3 preferences"
 #define MSG_PREFS_OK_STR "_OK"
-#define MSG_PREFS_RENDERER_OPTIONS_GROUP_STR "2D Renderer Options"
+#define MSG_PREFS_RENDERER_OPTIONS_GROUP_STR "2D renderer options"
 #define MSG_PREFS_DRIVER_GAD_STR "_Driver"
 #define MSG_PREFS_DRIVER_DEFAULT_STR "default"
 #define MSG_PREFS_DRIVER_COMPOSITING_STR "compositing"
@@ -117,12 +117,12 @@
 #define MSG_PREFS_VERTICAL_SYNC_DEFAULT_STR "default"
 #define MSG_PREFS_VERTICAL_SYNC_ENABLED_STR "enabled"
 #define MSG_PREFS_VERTICAL_SYNC_DISABLED_STR "disabled"
-#define MSG_PREFS_SCALE_QUALITY_GAD_STR "Scale _Quality"
+#define MSG_PREFS_SCALE_QUALITY_GAD_STR "Scale _quality"
 #define MSG_PREFS_SCALE_QUALITY_DEFAULT_STR "default"
 #define MSG_PREFS_SCALE_QUALITY_NEAREST_STR "nearest"
 #define MSG_PREFS_SCALE_QUALITY_LINEAR_STR "linear"
-#define MSG_PREFS_VIDEO_OPTIONS_GROUP_STR "Video Options"
-#define MSG_PREFS_SCREEN_SAVER_GAD_STR "_Allow Screen Saver"
+#define MSG_PREFS_VIDEO_OPTIONS_GROUP_STR "Video options"
+#define MSG_PREFS_SCREEN_SAVER_GAD_STR "_Allow screen saver"
 #define MSG_PREFS_SCREEN_SAVER_DEFAULT_STR "default"
 #define MSG_PREFS_SCREEN_SAVER_ENABLED_STR "enabled"
 #define MSG_PREFS_SCREEN_SAVER_DISABLED_STR "disabled"
@@ -131,10 +131,10 @@
 #define MSG_PREFS_RESET_GAD_STR "_Reset"
 #define MSG_PREFS_CANCEL_GAD_STR "_Cancel"
 #define MSG_PREFS_MAIN_MENU_STR "Main"
-#define MSG_PREFS_MAIN_ICONIFY_STR "I\0Iconify"
-#define MSG_PREFS_MAIN_ABOUT_STR "?\0About..."
-#define MSG_PREFS_MAIN_QUIT_STR "Q\0Quit"
-#define MSG_PREFS_ABOUT_WINDOW_STR "About SDL2 Prefs"
+#define MSG_PREFS_MAIN_ICONIFY_STR "I|Iconify"
+#define MSG_PREFS_MAIN_ABOUT_STR "?|About..."
+#define MSG_PREFS_MAIN_QUIT_STR "Q|Quit"
+#define MSG_PREFS_ABOUT_WINDOW_STR "About SDL3 preferences"
 #define MSG_PREFS_ABOUT_AUTHOR_STR "Written by Juha Niemimaki"
 #define MSG_PREFS_ABOUT_TRANSLATOR_STR "(using built-in strings)"
 #define MSG_PREFS_DRIVER_HELP_STR "Select driver implementation:\n \033bcompositing \033ndoesn't support some blend modes\n \033bopengles2 \033nsupports most features\n \033bsoftware \033nsupports most features but is not accelerated"
@@ -163,9 +163,9 @@ STATIC CONST struct CatCompArrayType CatCompArray[] =
 {
     {MSG_APP_ICONIFY,(CONST_STRPTR)MSG_APP_ICONIFY_STR},
     {MSG_APP_ABOUT,(CONST_STRPTR)MSG_APP_ABOUT_STR},
-    {MSG_APP_LAUNCH_PREFS,(CONST_STRPTR)MSG_APP_LAUNCH_PREFS_STR},
+    {MSG_APP_LAUNCH_PREFERENCES,(CONST_STRPTR)MSG_APP_LAUNCH_PREFERENCES_STR},
     {MSG_APP_QUIT,(CONST_STRPTR)MSG_APP_QUIT_STR},
-    {MSG_APP_ABOUT_REQ,(CONST_STRPTR)MSG_APP_ABOUT_REQ_STR},
+    {MSG_APP_ABOUT_WINDOW,(CONST_STRPTR)MSG_APP_ABOUT_WINDOW_STR},
     {MSG_APP_OK,(CONST_STRPTR)MSG_APP_OK_STR},
     {MSG_APP_APPLICATION,(CONST_STRPTR)MSG_APP_APPLICATION_STR},
     {MSG_APP_LIBRARY_VERSION,(CONST_STRPTR)MSG_APP_LIBRARY_VERSION_STR},
@@ -224,12 +224,12 @@ STATIC CONST UBYTE CatCompBlock[] =
     MSG_APP_ICONIFY_STR "\x00"
     "\x00\x00\x00\x01\x00\x0C"
     MSG_APP_ABOUT_STR "\x00\x00"
-    "\x00\x00\x00\x02\x00\x12"
-    MSG_APP_LAUNCH_PREFS_STR "\x00"
+    "\x00\x00\x00\x02\x00\x18"
+    MSG_APP_LAUNCH_PREFERENCES_STR "\x00"
     "\x00\x00\x00\x03\x00\x08"
     MSG_APP_QUIT_STR "\x00\x00"
     "\x00\x00\x00\x04\x00\x14"
-    MSG_APP_ABOUT_REQ_STR "\x00\x00"
+    MSG_APP_ABOUT_WINDOW_STR "\x00\x00"
     "\x00\x00\x00\x05\x00\x04"
     MSG_APP_OK_STR "\x00"
     "\x00\x00\x00\x06\x00\x12"
@@ -294,7 +294,7 @@ STATIC CONST UBYTE CatCompBlock[] =
     MSG_PREFS_MAIN_ABOUT_STR "\x00\x00"
     "\x00\x00\x00\x67\x00\x08"
     MSG_PREFS_MAIN_QUIT_STR "\x00\x00"
-    "\x00\x00\x00\x96\x00\x12"
+    "\x00\x00\x00\x96\x00\x18"
     MSG_PREFS_ABOUT_WINDOW_STR "\x00\x00"
     "\x00\x00\x00\x97\x00\x1A"
     MSG_PREFS_ABOUT_AUTHOR_STR "\x00"

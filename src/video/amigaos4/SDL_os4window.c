@@ -433,7 +433,7 @@ OS4_CreateMenu(SDL_VideoDevice *_this, SDL_Window * window)
                     TAG_DONE),
                 MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
                     MA_Type, T_ITEM,
-                    MA_Label, OS4_GetString(MSG_APP_LAUNCH_PREFS),
+                    MA_Label, OS4_GetString(MSG_APP_LAUNCH_PREFERENCES),
                     MA_ID, MID_LaunchPrefs,
                     TAG_DONE),
                 MA_AddChild, IIntuition->NewObject(NULL, "menuclass",

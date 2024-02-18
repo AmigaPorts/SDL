@@ -8,19 +8,19 @@ MSG_APP_ICONIFY
 ;
 MSG_APP_ABOUT
 
-; A|About...
+; ?|About...
 ;
-MSG_APP_LAUNCH_PREFS
+MSG_APP_LAUNCH_PREFERENCES
 
-; P|Launch Prefs...
+; P|Launch preferences...
 ;
 MSG_APP_QUIT
 
 ; Q|Quit
 ;
-MSG_APP_ABOUT_REQ
+MSG_APP_ABOUT_WINDOW
 
-; About SDL3 Library
+; About SDL3 library
 ;
 MSG_APP_OK
 
@@ -36,7 +36,7 @@ MSG_APP_LIBRARY_VERSION
 ;
 MSG_PREFS_APPLICATION
 
-; SDL3 Preferences
+; SDL3 preferences
 ;
 MSG_PREFS_OK
 
@@ -44,7 +44,7 @@ MSG_PREFS_OK
 ;
 MSG_PREFS_RENDERER_OPTIONS_GROUP
 
-; 2D Renderer Options
+; 2D renderer options
 ;
 MSG_PREFS_DRIVER_GAD
 
@@ -84,7 +84,7 @@ MSG_PREFS_VERTICAL_SYNC_DISABLED
 ;
 MSG_PREFS_SCALE_QUALITY_GAD
 
-; Scale _Quality
+; Scale _quality
 ;
 MSG_PREFS_SCALE_QUALITY_DEFAULT
 
@@ -100,11 +100,11 @@ MSG_PREFS_SCALE_QUALITY_LINEAR
 ;
 MSG_PREFS_VIDEO_OPTIONS_GROUP
 
-; Video Options
+; Video options
 ;
 MSG_PREFS_SCREEN_SAVER_GAD
 
-; _Allow Screen Saver
+; _Allow screen saver
 ;
 MSG_PREFS_SCREEN_SAVER_DEFAULT
 
@@ -140,19 +140,19 @@ MSG_PREFS_MAIN_MENU
 ;
 MSG_PREFS_MAIN_ICONIFY
 
-; I\0Iconify
+; I|Iconify
 ;
 MSG_PREFS_MAIN_ABOUT
 
-; ?\0About...
+; ?|About...
 ;
 MSG_PREFS_MAIN_QUIT
 
-; Q\0Quit
+; Q|Quit
 ;
 MSG_PREFS_ABOUT_WINDOW
 
-; About SDL2 Prefs
+; About SDL3 preferences
 ;
 MSG_PREFS_ABOUT_AUTHOR
 

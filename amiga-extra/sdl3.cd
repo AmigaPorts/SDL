@@ -2,22 +2,22 @@
 ## language english
 ## function GetStringGenerated
 ;
-; --- SDL3 Application ---
+; --- SDL3 application ---
 ;
 MSG_APP_ICONIFY (//)
 I|Iconify
 ;
 MSG_APP_ABOUT (//)
-A|About...
+?|About...
 ;
-MSG_APP_LAUNCH_PREFS (//)
-P|Launch Prefs...
+MSG_APP_LAUNCH_PREFERENCES (//)
+P|Launch preferences...
 ;
 MSG_APP_QUIT (//)
 Q|Quit
 ;
-MSG_APP_ABOUT_REQ (//)
-About SDL3 Library
+MSG_APP_ABOUT_WINDOW (//)
+About SDL3 library
 ;
 MSG_APP_OK (//)
 _Ok
@@ -28,16 +28,16 @@ SDL3 application
 MSG_APP_LIBRARY_VERSION (//)
 SDL library version
 ;
-; --- SDL3 Preferences ---
+; --- SDL3 preferences ---
 ;
 MSG_PREFS_APPLICATION (//)
-SDL3 Preferences
+SDL3 preferences
 ;
 MSG_PREFS_OK (//)
 _OK
 ;
 MSG_PREFS_RENDERER_OPTIONS_GROUP (10//)
-2D Renderer Options
+2D renderer options
 ;
 MSG_PREFS_DRIVER_GAD (//)
 _Driver
@@ -67,7 +67,7 @@ MSG_PREFS_VERTICAL_SYNC_DISABLED (//)
 disabled
 ;
 MSG_PREFS_SCALE_QUALITY_GAD (//)
-Scale _Quality
+Scale _quality
 ;
 MSG_PREFS_SCALE_QUALITY_DEFAULT (//)
 default
@@ -79,10 +79,10 @@ MSG_PREFS_SCALE_QUALITY_LINEAR (//)
 linear
 ;
 MSG_PREFS_VIDEO_OPTIONS_GROUP (//)
-Video Options
+Video options
 ;
 MSG_PREFS_SCREEN_SAVER_GAD (//)
-_Allow Screen Saver
+_Allow screen saver
 ;
 MSG_PREFS_SCREEN_SAVER_DEFAULT (//)
 default
@@ -105,23 +105,23 @@ _Reset
 MSG_PREFS_CANCEL_GAD (//)
 _Cancel
 ;
-;------------------ Prefs Menu ------------------
+;------------------ Preferences menu ------------------
 MSG_PREFS_MAIN_MENU (100//)
 Main
 ;
 MSG_PREFS_MAIN_ICONIFY (//)
-I\0Iconify
+I|Iconify
 ;
 MSG_PREFS_MAIN_ABOUT (//)
-?\0About...
+?|About...
 ;
 MSG_PREFS_MAIN_QUIT (//)
-Q\0Quit
+Q|Quit
 ;
-;------------------ Prefs About ------------------
+;------------------ Preferences about ------------------
 ;
 MSG_PREFS_ABOUT_WINDOW (150//)
-About SDL2 Prefs
+About SDL3 preferences
 ;
 MSG_PREFS_ABOUT_AUTHOR (//)
 Written by Juha Niemimaki
@@ -129,7 +129,7 @@ Written by Juha Niemimaki
 MSG_PREFS_ABOUT_TRANSLATOR (//)
 (using built-in strings)
 ;
-;------------------ Prefs Help ------------------
+;------------------ Preferences help ------------------
 ;
 MSG_PREFS_DRIVER_HELP (200//)
 Select driver implementation:\n\
