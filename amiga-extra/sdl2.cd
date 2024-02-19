@@ -4,16 +4,19 @@
 ;
 ; --- SDL2 application ---
 ;
-MSG_APP_ICONIFY (//)
+MSG_APP_MAIN_MENU (//)
+Main
+;
+MSG_APP_MAIN_ICONIFY (//)
 I|Iconify
 ;
-MSG_APP_ABOUT (//)
-A|About...
+MSG_APP_MAIN_ABOUT (//)
+?|About...
 ;
-MSG_APP_LAUNCH_PREFERENCES (//)
+MSG_APP_MAIN_LAUNCH_PREFERENCES (//)
 P|Launch preferences...
 ;
-MSG_APP_QUIT (//)
+MSG_APP_MAIN_QUIT (//)
 Q|Quit
 ;
 MSG_APP_ABOUT_WINDOW (//)
@@ -30,13 +33,13 @@ SDL library version
 ;
 ; --- SDL2 preferences ---
 ;
-MSG_PREFS_APPLICATION (//)
+MSG_PREFS_APPLICATION (1000//)
 SDL2 preferences
 ;
 MSG_PREFS_OK (//)
 _OK
 ;
-MSG_PREFS_RENDERER_OPTIONS_GROUP (10//)
+MSG_PREFS_RENDERER_OPTIONS_GROUP (//)
 2D renderer options
 ;
 MSG_PREFS_DRIVER_GAD (//)
@@ -132,23 +135,23 @@ _Reset
 MSG_PREFS_CANCEL_GAD (//)
 _Cancel
 ;
-;------------------ Prefs menu ------------------
+; --- Preferences menu ---
 ;
-MSG_PREFS_MAIN_MENU (100//)
+MSG_PREFS_MAIN_MENU (//)
 Main
 ;
 MSG_PREFS_MAIN_ICONIFY (//)
-I\0Iconify
+I|Iconify
 ;
 MSG_PREFS_MAIN_ABOUT (//)
-?\0About...
+?|About...
 ;
 MSG_PREFS_MAIN_QUIT (//)
-Q\0Quit
+Q|Quit
 ;
-;------------------ Prefs about ------------------
+; --- Preferences about ---
 ;
-MSG_PREFS_ABOUT_WINDOW (150//)
+MSG_PREFS_ABOUT_WINDOW (//)
 About SDL2 preferences
 ;
 MSG_PREFS_ABOUT_AUTHOR (//)
@@ -157,9 +160,9 @@ Written by Juha Niemimaki
 MSG_PREFS_ABOUT_TRANSLATOR (//)
 (using built-in strings)
 ;
-;------------------ Prefs help ------------------
+; --- Preferences help ---
 ;
-MSG_PREFS_DRIVER_HELP (200//)
+MSG_PREFS_DRIVER_HELP (//)
 Select driver implementation:\n\
  \033bcompositing \033ndoesn't support some blend modes\n\
  \033bopengles2 \033nsupports most features\n\

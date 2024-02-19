@@ -43,7 +43,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define NAME "SDL2 Preferences"
+#define NAME "SDL2 preferences"
 #define VERSION "1.6"
 #define MAX_PATH_LEN 1024
 #define MAX_VARIABLE_NAME_LEN 32
