@@ -4,16 +4,19 @@
 ;
 ; --- SDL3 application ---
 ;
-MSG_APP_ICONIFY (//)
+MSG_APP_MAIN_MENU (//)
+Main
+;
+MSG_APP_MAIN_ICONIFY (//)
 I|Iconify
 ;
-MSG_APP_ABOUT (//)
+MSG_APP_MAIN_ABOUT (//)
 ?|About...
 ;
-MSG_APP_LAUNCH_PREFERENCES (//)
+MSG_APP_MAIN_LAUNCH_PREFERENCES (//)
 P|Launch preferences...
 ;
-MSG_APP_QUIT (//)
+MSG_APP_MAIN_QUIT (//)
 Q|Quit
 ;
 MSG_APP_ABOUT_WINDOW (//)
