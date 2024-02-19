@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -30,6 +30,7 @@
 
 #include <intuition/imageclass.h>
 #include <intuition/gadgetclass.h>
+#include <intuition/menuclass.h>
 
 #include <unistd.h>
 
@@ -40,6 +41,7 @@
 #include "SDL_os4opengl.h"
 #include "SDL_os4mouse.h"
 #include "SDL_os4events.h"
+#include "SDL_os4locale.h"
 
 #include "SDL_syswm.h"
 #include "SDL_timer.h"
@@ -48,6 +50,9 @@
 #include "../../events/SDL_events_c.h"
 
 #include "../../main/amigaos4/SDL_os4debug.h"
+
+#define CATCOMP_NUMBERS
+#include "../../../amiga-extra/locale_generated.h"
 
 #define MIN_WINDOW_SIZE 100
 
@@ -135,6 +140,22 @@ OS4_RemoveAppIcon(_THIS, SDL_WindowData *data)
 }
 
 static void
+OS4_RemoveMenuObject(_THIS, SDL_WindowData *data)
+{
+    if (data->menuObject) {
+        if (IIntuition->SetWindowAttrs(data->syswin,
+                                       WA_MenuStrip, NULL,
+                                       TAG_DONE) != 0) {
+            dprintf("Failed to remove menu strip (window %p)\n", data->syswin);
+        }
+
+        dprintf("Dispose window menu %p\n", data->menuObject);
+        IIntuition->DisposeObject(data->menuObject);
+        data->menuObject = NULL;
+    }
+}
+
+static void
 OS4_CreateAppWindow(_THIS, SDL_Window * window)
 {
     SDL_VideoData *videodata = (SDL_VideoData *) _this->driverdata;
@@ -203,7 +224,7 @@ OS4_GetIDCMPFlags(SDL_Window * window, SDL_bool fullscreen)
 
     if (!fullscreen) {
         if (!(window->flags & SDL_WINDOW_BORDERLESS)) {
-            IDCMPFlags |= IDCMP_CLOSEWINDOW | IDCMP_GADGETUP | IDCMP_CHANGEWINDOW;
+            IDCMPFlags |= IDCMP_CLOSEWINDOW | IDCMP_GADGETUP | IDCMP_CHANGEWINDOW | IDCMP_MENUPICK;
         }
 
         if (window->flags & SDL_WINDOW_RESIZABLE) {
@@ -378,6 +399,63 @@ OS4_CreateIconifyGadgetForWindow(_THIS, SDL_Window * window)
     }
 }
 
+static void
+OS4_CreateMenu(_THIS, SDL_Window * window)
+{
+    SDL_WindowData *data = window->driverdata;
+
+    OS4_RemoveMenuObject(_this, data);
+
+    if (!OS4_IsFullscreen(window)) {
+        data->menuObject = IIntuition->NewObject(NULL, "menuclass",
+            MA_Type, T_ROOT,
+            MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
+                MA_Type, T_MENU,
+                MA_Label, OS4_GetString(MSG_APP_MAIN_MENU),
+                MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
+                    MA_Type, T_ITEM,
+                    MA_Label, OS4_GetString(MSG_APP_MAIN_ICONIFY),
+                    MA_ID, MID_Iconify,
+                    TAG_DONE),
+                MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
+                    MA_Type, T_ITEM,
+                    MA_Label, OS4_GetString(MSG_APP_MAIN_LAUNCH_PREFERENCES),
+                    MA_ID, MID_LaunchPrefs,
+                    TAG_DONE),
+                MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
+                    MA_Type, T_ITEM,
+                    MA_Separator, TRUE,
+                    TAG_DONE),
+                MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
+                    MA_Type, T_ITEM,
+                    MA_Label, OS4_GetString(MSG_APP_MAIN_ABOUT),
+                    MA_ID, MID_About,
+                    TAG_DONE),
+                MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
+                    MA_Type, T_ITEM,
+                    MA_Separator, TRUE,
+                    TAG_DONE),
+                MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
+                    MA_Type, T_ITEM,
+                    MA_Label, OS4_GetString(MSG_APP_MAIN_QUIT),
+                    MA_ID, MID_Quit,
+                    TAG_DONE),
+                TAG_DONE),
+            TAG_DONE);
+
+        if (data->menuObject) {
+            dprintf("Menu object %p\n", data->menuObject);
+            if (IIntuition->SetWindowAttrs(data->syswin,
+                                           WA_MenuStrip, data->menuObject,
+                                           TAG_DONE) != 0) {
+                dprintf("Failed add menu strip %p\n", data->menuObject);
+            }
+        } else {
+            dprintf("Failed to create menu\n");
+        }
+    }
+}
+
 static int max(int a, int b)
 {
     return (a > b) ? a : b;
@@ -431,6 +509,7 @@ OS4_CreateSystemWindow(_THIS, SDL_Window * window, SDL_VideoDisplay * display)
     dprintf("Opening window '%s' at (%d,%d) of size (%dx%d) on screen %p\n",
         window->title, box.x, box.y, box.w, box.h, screen);
 
+    // TODO: consider window.class
     syswin = IIntuition->OpenWindowTags(
         NULL,
         WA_PubScreen, screen,
@@ -488,6 +567,7 @@ OS4_CreateWindow(_THIS, SDL_Window * window)
 
     OS4_CreateIconifyGadgetForWindow(_this, window);
     OS4_CreateAppWindow(_this, window);
+    OS4_CreateMenu(_this, window);
 
     return 0;
 }
@@ -682,6 +762,7 @@ OS4_CloseWindow(_THIS, SDL_Window * sdlwin)
 
     OS4_RemoveAppWindow(_this, data);
     OS4_RemoveAppIcon(_this, data);
+    OS4_RemoveMenuObject(_this, data);
 
     if (data->syswin) {
         OS4_CloseSystemWindow(_this, data->syswin);
@@ -751,6 +832,7 @@ OS4_SetWindowFullscreen(_THIS, SDL_Window * window, SDL_VideoDisplay * display, 
             if (data->syswin) {
                 OS4_CreateIconifyGadgetForWindow(_this, window);
                 OS4_CreateAppWindow(_this, window);
+                OS4_CreateMenu(_this, window);
 
                 // Make sure the new window is active
                 OS4_ShowWindow(_this, window);
@@ -944,7 +1026,7 @@ void
 OS4_SetWindowMinMaxSize(_THIS, SDL_Window * window)
 {
     if (window->flags & SDL_WINDOW_RESIZABLE) {
-       SDL_WindowData *data = window->driverdata;
+        SDL_WindowData *data = window->driverdata;
 
         OS4_SetWindowLimits(_this, window, data->syswin);
     } else {
@@ -1134,6 +1216,7 @@ OS4_RecreateWindow(_THIS, SDL_Window * window)
     if (data->syswin) {
         OS4_CreateIconifyGadgetForWindow(_this, window);
         OS4_CreateAppWindow(_this, window);
+        OS4_CreateMenu(_this, window);
 
         // Make sure the new window is active
         OS4_ShowWindow(_this, window);

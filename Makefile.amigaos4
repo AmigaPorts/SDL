@@ -1,15 +1,19 @@
 # Makefile to build the AmigaOS4 SDL library
 
+# TODO: dependency tracking
+
 AR = ppc-amigaos-ar
 RANLIB = ppc-amigaos-ranlib
 CC = ppc-amigaos-gcc
 CXX = ppc-amigaos-g++
 STRIP = ppc-amigaos-strip
-CATCOMP = catcomp
+CRT ?= newlib
+INSTALL_PATH ?=
+CATCOMP = catcomp # TODO: is there a cross-compiler version?
 
 AMIGADATE = $(shell date +"%-d.%m.%Y")
 
-CFLAGS  = -gstabs -O2 -Wall -Werror -Wshadow -fPIC -fcommon -I./include -D__AMIGADATE__=\"$(AMIGADATE)\"
+CFLAGS  = -mcrt=$(CRT) -gstabs -O2 -Wall -Werror -Wshadow -fPIC -fcommon -I./include -D__AMIGADATE__=\"$(AMIGADATE)\"
 
 TARGET_STATIC  = libSDL2.a
 TARGET_SHARED  = libSDL2-2.31.so
@@ -64,11 +68,17 @@ VERSION_OBJECT = src/main/amigaos4/SDL_os4version.o
 PREFS_OBJECT = amiga-extra/prefs.o
 ALL_OBJECTS = $(OBJECTS) $(TESTLIB_OBJECTS) $(VERSION_OBJECT) $(PREFS_OBJECT)
 
+LOCALE_DESCRIPTOR = amiga-extra/sdl2.cd
+LOCALE_TEMPLATE = amiga-extra/sdl2.ct
+LOCALE_GENERATED = amiga-extra/locale_generated.h
+
 all: $(TARGET_STATIC) $(TARGET_SHARED) $(TESTLIB_STATIC) $(PREFS_PROGRAM)
 
 debug: CFLAGS += -DDEBUG
 
 debug: all
+
+locale: $(LOCALE_TEMPLATE) $(LOCALE_GENERATED)
 
 $(TESTLIB_STATIC): $(TESTLIB_OBJECTS)
 	$(AR) crv $@ $^
@@ -79,25 +89,28 @@ $(TARGET_STATIC): $(OBJECTS)
 	$(RANLIB) $@
 
 $(TARGET_SHARED): $(OBJECTS) $(VERSION_OBJECT)
-	$(CC) -shared -Wl,-soname,$(TARGET_SHARED) -o $(TARGET_SHARED) $(OBJECTS) $(VERSION_OBJECT)
+	$(CC) -mcrt=$(CRT) -shared -Wl,-soname,$(TARGET_SHARED) -o $(TARGET_SHARED) $(OBJECTS) $(VERSION_OBJECT)
 
 $(PREFS_PROGRAM): $(PREFS_OBJECT)
 	$(CC) -o $@ $^ # -lauto
 
-$(PREFS_OBJECT): amiga-extra/prefs.c amiga-extra/sdl2prefs_strings.h
+$(PREFS_OBJECT): amiga-extra/prefs.c $(LOCALE_GENERATED)
+
+$(LOCALE_GENERATED): $(LOCALE_DESCRIPTOR)
+	$(CATCOMP) $(LOCALE_DESCRIPTOR) CFILE $@
+
+$(LOCALE_TEMPLATE): $(LOCALE_DESCRIPTOR)
+	$(CATCOMP) $< CTFILE $(LOCALE_TEMPLATE)
 
 clean:
 	rm -f $(TARGET_STATIC) $(TARGET_SHARED) $(TESTLIB_STATIC) $(ALL_OBJECTS) $(PREFS_PROGRAM)
 
 install:
-	mkdir -p /SDK/local/newlib/lib
-	mkdir -p /SDK/local/newlib/include/SDL2
-	cp -f $(TARGET_STATIC) /SDK/local/newlib/lib
-	cp -f $(TARGET_SHARED) /SDK/local/newlib/lib
-	cp -f $(TESTLIB_STATIC) /SDK/local/newlib/lib
-	cp -f include/*.h /SDK/local/newlib/include/SDL2/
+	mkdir -p $(INSTALL_PATH)/SDK/local/$(CRT)/lib
+	mkdir -p $(INSTALL_PATH)/SDK/local/$(CRT)/include/SDL2
+	cp -f $(TARGET_STATIC) $(INSTALL_PATH)/SDK/local/$(CRT)/lib
+	cp -f $(TARGET_SHARED) $(INSTALL_PATH)/SDK/local/$(CRT)/lib
+	cp -f $(TESTLIB_STATIC) $(INSTALL_PATH)/SDK/local/$(CRT)/lib
+	cp -f include/*.h $(INSTALL_PATH)/SDK/local/$(CRT)/include/SDL2/
 	cp -f $(PREFS_PROGRAM) /SYS/Prefs/
 
-
-amiga-extra/sdl2prefs_strings.h: amiga-extra/sdl2prefs.cd
-	$(CATCOMP) $^ CFILE $@
