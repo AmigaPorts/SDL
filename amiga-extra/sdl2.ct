@@ -2,19 +2,23 @@
 ## codeset X
 ## language X
 ;
-MSG_APP_ICONIFY
+MSG_APP_MAIN_MENU
+
+; Main
+;
+MSG_APP_MAIN_ICONIFY
 
 ; I|Iconify
 ;
-MSG_APP_ABOUT
+MSG_APP_MAIN_ABOUT
 
-; A|About...
+; ?|About...
 ;
-MSG_APP_LAUNCH_PREFERENCES
+MSG_APP_MAIN_LAUNCH_PREFERENCES
 
 ; P|Launch preferences...
 ;
-MSG_APP_QUIT
+MSG_APP_MAIN_QUIT
 
 ; Q|Quit
 ;
@@ -176,15 +180,15 @@ MSG_PREFS_MAIN_MENU
 ;
 MSG_PREFS_MAIN_ICONIFY
 
-; I\0Iconify
+; I|Iconify
 ;
 MSG_PREFS_MAIN_ABOUT
 
-; ?\0About...
+; ?|About...
 ;
 MSG_PREFS_MAIN_QUIT
 
-; Q\0Quit
+; Q|Quit
 ;
 MSG_PREFS_ABOUT_WINDOW
 
