@@ -1,4 +1,4 @@
-## version $VER: sdl2.catalog 1.0 (19.02.2024)
+## version $VER: sdl3.catalog 1.0 (19.02.2024)
 ## codeset 4
 ## language spanish
 ;
@@ -167,7 +167,7 @@ MSG_PREFS_ABOUT_TRANSLATOR
 ; (using built-in strings)
 ;
 MSG_PREFS_DRIVER_HELP
-Controlador a usar por SDL2:\n\
+Controlador a usar por SDL3:\n\
  \033bcomposición \033nsoporta pocos modos de mezclado (\"blend\")\n\
  \033bopengles2 \033nsoporta la mayoría de opciones\n\
  \033bsoftware \033ncomo \"opengles2\" pero sin aceleración por hw
