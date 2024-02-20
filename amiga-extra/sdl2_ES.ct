@@ -42,7 +42,7 @@ MSG_PREFS_APPLICATION
 
 ; SDL2 preferences
 ;
-MSG_OK
+MSG_PREFS_OK
 _Aceptar
 ; _OK
 ;
