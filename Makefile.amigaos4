@@ -1,7 +1,5 @@
 # Makefile to build the AmigaOS4 SDL library
 
-# TODO: dependency tracking
-
 AR = ppc-amigaos-ar
 RANLIB = ppc-amigaos-ranlib
 CC = ppc-amigaos-gcc
@@ -72,12 +70,17 @@ TESTLIB_OBJECTS = $(shell echo $(TESTLIB_SOURCES) | sed -e 's,\.c,\.o,g')
 VERSION_OBJECT = src/main/amigaos4/SDL_os4version.o
 PREFS_OBJECT = amiga-extra/prefs.o
 ALL_OBJECTS = $(OBJECTS) $(TESTLIB_OBJECTS) $(VERSION_OBJECT) $(PREFS_OBJECT)
+DEPS = $(ALL_OBJECTS:.o=.d)
 
 LOCALE_DESCRIPTOR = amiga-extra/sdl3.cd
 LOCALE_TEMPLATE = amiga-extra/sdl3.ct
 LOCALE_GENERATED = amiga-extra/locale_generated.h
 
-all: $(TARGET_STATIC) $(TARGET_SHARED) $(TESTLIB_STATIC) $(PREFS_PROGRAM)
+all: info $(TARGET_STATIC) $(TARGET_SHARED) $(TESTLIB_STATIC) $(PREFS_PROGRAM)
+	@echo All done 
+
+info:
+	@echo Compiler flags: $(CFLAGS)
 
 debug: CFLAGS += -DDEBUG
 
@@ -86,18 +89,21 @@ debug: all
 locale: $(LOCALE_TEMPLATE) $(LOCALE_GENERATED)
 
 $(TESTLIB_STATIC): $(TESTLIB_OBJECTS)
-	$(AR) crv $@ $^
-	$(RANLIB) $@
+	@echo Creating $@
+	@$(AR) crv $@ $^
+	@$(RANLIB) $@
 
 $(TARGET_STATIC): $(OBJECTS)
-	$(AR) crv $@ $^
-	$(RANLIB) $@
+	@echo Creating $@
+	@$(AR) crv $@ $^
+	@$(RANLIB) $@
 
 $(TARGET_SHARED): $(OBJECTS) $(VERSION_OBJECT)
-	$(CC) -mcrt=$(CRT) -shared -Wl,-soname,$(TARGET_SHARED) -o $(TARGET_SHARED) $(OBJECTS) $(VERSION_OBJECT)
-
+	@echo Linking $@
+	@$(CC) -mcrt=$(CRT) -shared -Wl,-soname,$(TARGET_SHARED) -o $(TARGET_SHARED) $(OBJECTS) $(VERSION_OBJECT)
+	
 $(PREFS_PROGRAM): $(PREFS_OBJECT)
-	$(CC) -o $@ $^ # -lauto
+	$(CC) -o $@ $^
 
 $(PREFS_OBJECT): amiga-extra/prefs.c $(LOCALE_GENERATED)
 
@@ -108,7 +114,8 @@ $(LOCALE_TEMPLATE): $(LOCALE_DESCRIPTOR)
 	$(CATCOMP) $< CTFILE $(LOCALE_TEMPLATE)
 
 clean:
-	rm -f $(TARGET_STATIC) $(TARGET_SHARED) $(TESTLIB_STATIC) $(ALL_OBJECTS) $(PREFS_PROGRAM)
+	@echo Cleaning
+	@rm -f $(TARGET_STATIC) $(TARGET_SHARED) $(TESTLIB_STATIC) $(ALL_OBJECTS) $(PREFS_PROGRAM) $(DEPS)
 
 install:
 	mkdir -p $(INSTALL_PATH)/SDK/local/$(CRT)/lib
@@ -119,3 +126,15 @@ install:
 	cp -f include/SDL3/*.h $(INSTALL_PATH)/SDK/local/$(CRT)/include/SDL3/
 	cp -f $(PREFS_PROGRAM) /SYS/Prefs/
 
+%.o : %.c
+	@echo Compiling $<
+	@$(CC) -o $@ -c $< $(CFLAGS)
+	
+%.d : %.c
+	@echo Making dependencies for $<
+	@$(CC) -MM -MP -MT $(@:.d=.o) -o $@ $< $(CFLAGS)
+
+# Load .d files
+ifneq ($(MAKECMDGOALS),clean)
+-include $(DEPS)
+endif
