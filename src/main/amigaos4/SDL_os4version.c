@@ -19,9 +19,7 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "SDL_os4version.h"
-
 #ifdef __AMIGADATE__
-static const char* const version __attribute__ ((used)) = "\0$VER: libSDL3.so " VERSION_STRING " (" __AMIGADATE__ ")\0";
+static const char* const version __attribute__ ((used)) = "\0$VER: libSDL3.so 0.0 (" __AMIGADATE__ ")\0";
 #endif
 
