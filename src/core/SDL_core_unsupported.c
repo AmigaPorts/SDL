@@ -161,12 +161,14 @@ void *SDL_AndroidGetJNIEnv()
     return NULL;
 }
 
-DECLSPEC SDL_bool SDLCALL SDL_AndroidRequestPermission(const char *permission);
-SDL_bool SDL_AndroidRequestPermission(const char *permission)
+typedef void (SDLCALL *SDL_AndroidRequestPermissionCallback)(void *userdata, const char *permission, SDL_bool granted);
+DECLSPEC int SDLCALL SDL_AndroidRequestPermission(const char *permission, SDL_AndroidRequestPermissionCallback cb, void *userdata);
+int SDL_AndroidRequestPermission(const char *permission, SDL_AndroidRequestPermissionCallback cb, void *userdata)
 {
     (void)permission;
-    SDL_Unsupported();
-    return SDL_FALSE;
+    (void)cb;
+    (void)userdata;
+    return SDL_Unsupported();
 }
 
 DECLSPEC int SDLCALL SDL_AndroidSendMessage(Uint32 command, int param);

@@ -158,6 +158,9 @@ typedef struct SDL_JoystickDriver
     /* Function to cause any queued joystick insertions to be processed */
     void (*Detect)(void);
 
+    /* Function to determine whether a device is currently detected by this driver */
+    SDL_bool (*IsDevicePresent)(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name);
+
     /* Function to get the device-dependent name of a joystick */
     const char *(*GetDeviceName)(int device_index);
 
@@ -246,6 +249,7 @@ extern SDL_JoystickDriver SDL_PS2_JoystickDriver;
 extern SDL_JoystickDriver SDL_PSP_JoystickDriver;
 extern SDL_JoystickDriver SDL_VITA_JoystickDriver;
 extern SDL_JoystickDriver SDL_N3DS_JoystickDriver;
+extern SDL_JoystickDriver SDL_GAMEINPUT_JoystickDriver;
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

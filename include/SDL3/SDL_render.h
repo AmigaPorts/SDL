@@ -242,11 +242,11 @@ extern DECLSPEC SDL_Renderer * SDLCALL SDL_CreateRenderer(SDL_Window *window, co
  *   is displayed, if you want a software renderer without a window
  * - `SDL_PROP_RENDERER_CREATE_OUTPUT_COLORSPACE_NUMBER`: an SDL_ColorSpace
  *   value describing the colorspace for output to the display, defaults to
- *   SDL_COLORSPACE_SRGB. The direct3d11 and direct3d12 renderers support
- *   SDL_COLORSPACE_SCRGB, which is a linear color space and supports HDR
- *   output. If you select SDL_COLORSPACE_SCRGB, drawing still uses the sRGB
- *   colorspace, but values can go beyond 1.0 and float (linear) format
- *   textures can be used for HDR content.
+ *   SDL_COLORSPACE_SRGB. The direct3d11, direct3d12, and metal renderers
+ *   support SDL_COLORSPACE_SRGB_LINEAR, which is a linear color space and
+ *   supports HDR output. If you select SDL_COLORSPACE_SRGB_LINEAR, drawing
+ *   still uses the sRGB colorspace, but values can go beyond 1.0 and float
+ *   (linear) format textures can be used for HDR content.
  * - `SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_BOOLEAN`: true if you want
  *   present synchronized with the refresh rate
  *
@@ -342,6 +342,15 @@ extern DECLSPEC int SDLCALL SDL_GetRendererInfo(SDL_Renderer *renderer, SDL_Rend
  * - `SDL_PROP_RENDERER_OUTPUT_COLORSPACE_NUMBER`: an SDL_ColorSpace value
  *   describing the colorspace for output to the display, defaults to
  *   SDL_COLORSPACE_SRGB.
+ * - `SDL_PROP_RENDERER_HDR_ENABLED_BOOLEAN`: true if the output colorspace is
+ *   SDL_COLORSPACE_SRGB_LINEAR and the renderer is showing on a display with
+ *   HDR enabled.
+ * - `SDL_PROP_RENDERER_SDR_WHITE_POINT_FLOAT`: the value of SDR white in the
+ *   SDL_COLORSPACE_SRGB_LINEAR colorspace. When HDR is enabled, this value is
+ *   automatically multiplied into the color scale.
+ * - `SDL_PROP_RENDERER_HDR_HEADROOM_FLOAT`: the additional high dynamic range
+ *   that can be displayed, in terms of the SDR white point. When HDR is not
+ *   enabled, this will be 1.0.
  * - `SDL_PROP_RENDERER_D3D9_DEVICE_POINTER`: the IDirect3DDevice9 associated
  *   with the renderer
  * - `SDL_PROP_RENDERER_D3D11_DEVICE_POINTER`: the ID3D11Device associated
@@ -366,6 +375,9 @@ extern DECLSPEC SDL_PropertiesID SDLCALL SDL_GetRendererProperties(SDL_Renderer 
 #define SDL_PROP_RENDERER_WINDOW_POINTER                "SDL.renderer.window"
 #define SDL_PROP_RENDERER_SURFACE_POINTER               "SDL.renderer.surface"
 #define SDL_PROP_RENDERER_OUTPUT_COLORSPACE_NUMBER      "SDL.renderer.output_colorspace"
+#define SDL_PROP_RENDERER_HDR_ENABLED_BOOLEAN           "SDL.renderer.HDR_enabled"
+#define SDL_PROP_RENDERER_SDR_WHITE_POINT_FLOAT         "SDL.renderer.SDR_white_point"
+#define SDL_PROP_RENDERER_HDR_HEADROOM_FLOAT            "SDL.renderer.HDR_headroom"
 #define SDL_PROP_RENDERER_D3D9_DEVICE_POINTER           "SDL.renderer.d3d9.device"
 #define SDL_PROP_RENDERER_D3D11_DEVICE_POINTER          "SDL.renderer.d3d11.device"
 #define SDL_PROP_RENDERER_D3D12_DEVICE_POINTER          "SDL.renderer.d3d12.device"
@@ -468,8 +480,8 @@ extern DECLSPEC SDL_Texture *SDLCALL SDL_CreateTextureFromSurface(SDL_Renderer *
  * These are the supported properties:
  *
  * - `SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER`: an SDL_ColorSpace value
- *   describing the texture colorspace, defaults to SDL_COLORSPACE_SCRGB for
- *   floating point textures, SDL_COLORSPACE_HDR10 for 10-bit textures,
+ *   describing the texture colorspace, defaults to SDL_COLORSPACE_SRGB_LINEAR
+ *   for floating point textures, SDL_COLORSPACE_HDR10 for 10-bit textures,
  *   SDL_COLORSPACE_SRGB for other RGB textures and SDL_COLORSPACE_JPEG for
  *   YUV textures.
  * - `SDL_PROP_TEXTURE_CREATE_FORMAT_NUMBER`: one of the enumerated values in
@@ -480,6 +492,17 @@ extern DECLSPEC SDL_Texture *SDLCALL SDL_CreateTextureFromSurface(SDL_Renderer *
  *   pixels, required
  * - `SDL_PROP_TEXTURE_CREATE_HEIGHT_NUMBER`: the height of the texture in
  *   pixels, required
+ * - `SDL_PROP_TEXTURE_CREATE_SDR_WHITE_POINT_FLOAT`: for HDR10 and floating
+ *   point textures, this defines the value of 100% diffuse white, with higher
+ *   values being displayed in the High Dynamic Range headroom. This defaults
+ *   to 100 for HDR10 textures and 1.0 for floating point textures.
+ * - `SDL_PROP_TEXTURE_CREATE_HDR_HEADROOM_FLOAT`: for HDR10 and floating
+ *   point textures, this defines the maximum dynamic range used by the
+ *   content, in terms of the SDR white point. This would be equivalent to
+ *   maxCLL / SDL_PROP_TEXTURE_CREATE_SDR_WHITE_POINT_FLOAT for HDR10 content.
+ *   If this is defined, any values outside the range supported by the display
+ *   will be scaled into the available HDR headroom, otherwise they are
+ *   clipped.
  *
  * With the direct3d11 renderer:
  *
@@ -560,6 +583,8 @@ extern DECLSPEC SDL_Texture *SDLCALL SDL_CreateTextureWithProperties(SDL_Rendere
 #define SDL_PROP_TEXTURE_CREATE_ACCESS_NUMBER               "access"
 #define SDL_PROP_TEXTURE_CREATE_WIDTH_NUMBER                "width"
 #define SDL_PROP_TEXTURE_CREATE_HEIGHT_NUMBER               "height"
+#define SDL_PROP_TEXTURE_CREATE_SDR_WHITE_POINT_FLOAT       "SDR_white_point"
+#define SDL_PROP_TEXTURE_CREATE_HDR_HEADROOM_FLOAT          "HDR_headroom"
 #define SDL_PROP_TEXTURE_CREATE_D3D11_TEXTURE_POINTER       "d3d11.texture"
 #define SDL_PROP_TEXTURE_CREATE_D3D11_TEXTURE_U_POINTER     "d3d11.texture_u"
 #define SDL_PROP_TEXTURE_CREATE_D3D11_TEXTURE_V_POINTER     "d3d11.texture_v"
@@ -577,7 +602,6 @@ extern DECLSPEC SDL_Texture *SDLCALL SDL_CreateTextureWithProperties(SDL_Rendere
 #define SDL_PROP_TEXTURE_CREATE_OPENGLES2_TEXTURE_U_NUMBER  "opengles2.texture_u"
 #define SDL_PROP_TEXTURE_CREATE_OPENGLES2_TEXTURE_V_NUMBER  "opengles2.texture_v"
 
-
 /**
  * Get the properties associated with a texture.
  *
@@ -585,6 +609,17 @@ extern DECLSPEC SDL_Texture *SDLCALL SDL_CreateTextureWithProperties(SDL_Rendere
  *
  * - `SDL_PROP_TEXTURE_COLORSPACE_NUMBER`: an SDL_ColorSpace value describing
  *   the colorspace used by the texture
+ * - `SDL_PROP_TEXTURE_SDR_WHITE_POINT_FLOAT`: for HDR10 and floating point
+ *   textures, this defines the value of 100% diffuse white, with higher
+ *   values being displayed in the High Dynamic Range headroom. This defaults
+ *   to 100 for HDR10 textures and 1.0 for other textures.
+ * - `SDL_PROP_TEXTURE_HDR_HEADROOM_FLOAT`: for HDR10 and floating point
+ *   textures, this defines the maximum dynamic range used by the content, in
+ *   terms of the SDR white point. If this is defined, any values outside the
+ *   range supported by the display will be scaled into the available HDR
+ *   headroom, otherwise they are clipped. This defaults to 1.0 for SDR
+ *   textures, 4.0 for HDR10 textures, and no default for floating point
+ *   textures.
  *
  * With the direct3d11 renderer:
  *
@@ -604,6 +639,17 @@ extern DECLSPEC SDL_Texture *SDLCALL SDL_CreateTextureWithProperties(SDL_Rendere
  * - `SDL_PROP_TEXTURE_D3D12_TEXTURE_V_POINTER`: the ID3D12Resource associated
  *   with the V plane of a YUV texture
  *
+ * With the vulkan renderer:
+ *
+ * - `SDL_PROP_TEXTURE_VULKAN_TEXTURE_POINTER`: the VkImage associated with
+ *   the texture
+ * - `SDL_PROP_TEXTURE_VULKAN_TEXTURE_U_POINTER`: the VkImage associated with
+ *   the U plane of a YUV texture
+ * - `SDL_PROP_TEXTURE_VULKAN_TEXTURE_V_POINTER`: the VkImage associated with
+ *   the V plane of a YUV texture
+ * - `SDL_PROP_TEXTURE_VULKAN_TEXTURE_UV_POINTER`: the VkImage associated with
+ *   the UV plane of a NV12/NV21 texture
+ *
  * With the opengl renderer:
  *
  * - `SDL_PROP_TEXTURE_OPENGL_TEXTURE_NUMBER`: the GLuint texture associated
@@ -614,8 +660,8 @@ extern DECLSPEC SDL_Texture *SDLCALL SDL_CreateTextureWithProperties(SDL_Rendere
  *   with the U plane of a YUV texture
  * - `SDL_PROP_TEXTURE_OPENGL_TEXTURE_V_NUMBER`: the GLuint texture associated
  *   with the V plane of a YUV texture
- * - `SDL_PROP_TEXTURE_OPENGL_TEXTURE_TARGET`: the GLenum for the texture
- *   target (`GL_TEXTURE_2D`, `GL_TEXTURE_RECTANGLE_ARB`, etc)
+ * - `SDL_PROP_TEXTURE_OPENGL_TEXTURE_TARGET_NUMBER`: the GLenum for the
+ *   texture target (`GL_TEXTURE_2D`, `GL_TEXTURE_RECTANGLE_ARB`, etc)
  * - `SDL_PROP_TEXTURE_OPENGL_TEX_W_FLOAT`: the texture coordinate width of
  *   the texture (0.0 - 1.0)
  * - `SDL_PROP_TEXTURE_OPENGL_TEX_H_FLOAT`: the texture coordinate height of
@@ -631,8 +677,8 @@ extern DECLSPEC SDL_Texture *SDLCALL SDL_CreateTextureWithProperties(SDL_Rendere
  *   associated with the U plane of a YUV texture
  * - `SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_V_NUMBER`: the GLuint texture
  *   associated with the V plane of a YUV texture
- * - `SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_TARGET`: the GLenum for the texture
- *   target (`GL_TEXTURE_2D`, `GL_TEXTURE_EXTERNAL_OES`, etc)
+ * - `SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_TARGET_NUMBER`: the GLenum for the
+ *   texture target (`GL_TEXTURE_2D`, `GL_TEXTURE_EXTERNAL_OES`, etc)
  *
  * \param texture the texture to query
  * \returns a valid property ID on success or 0 on failure; call
@@ -646,6 +692,8 @@ extern DECLSPEC SDL_Texture *SDLCALL SDL_CreateTextureWithProperties(SDL_Rendere
 extern DECLSPEC SDL_PropertiesID SDLCALL SDL_GetTextureProperties(SDL_Texture *texture);
 
 #define SDL_PROP_TEXTURE_COLORSPACE_NUMBER                  "SDL.texture.colorspace"
+#define SDL_PROP_TEXTURE_SDR_WHITE_POINT_FLOAT              "SDL.texture.SDR_white_point"
+#define SDL_PROP_TEXTURE_HDR_HEADROOM_FLOAT                 "SDL.texture.HDR_headroom"
 #define SDL_PROP_TEXTURE_D3D11_TEXTURE_POINTER              "SDL.texture.d3d11.texture"
 #define SDL_PROP_TEXTURE_D3D11_TEXTURE_U_POINTER            "SDL.texture.d3d11.texture_u"
 #define SDL_PROP_TEXTURE_D3D11_TEXTURE_V_POINTER            "SDL.texture.d3d11.texture_v"
@@ -656,14 +704,18 @@ extern DECLSPEC SDL_PropertiesID SDLCALL SDL_GetTextureProperties(SDL_Texture *t
 #define SDL_PROP_TEXTURE_OPENGL_TEXTURE_UV_NUMBER           "SDL.texture.opengl.texture_uv"
 #define SDL_PROP_TEXTURE_OPENGL_TEXTURE_U_NUMBER            "SDL.texture.opengl.texture_u"
 #define SDL_PROP_TEXTURE_OPENGL_TEXTURE_V_NUMBER            "SDL.texture.opengl.texture_v"
-#define SDL_PROP_TEXTURE_OPENGL_TEXTURE_TARGET              "SDL.texture.opengl.target"
+#define SDL_PROP_TEXTURE_OPENGL_TEXTURE_TARGET_NUMBER       "SDL.texture.opengl.target"
 #define SDL_PROP_TEXTURE_OPENGL_TEX_W_FLOAT                 "SDL.texture.opengl.tex_w"
 #define SDL_PROP_TEXTURE_OPENGL_TEX_H_FLOAT                 "SDL.texture.opengl.tex_h"
 #define SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_NUMBER           "SDL.texture.opengles2.texture"
 #define SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_UV_NUMBER        "SDL.texture.opengles2.texture_uv"
 #define SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_U_NUMBER         "SDL.texture.opengles2.texture_u"
 #define SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_V_NUMBER         "SDL.texture.opengles2.texture_v"
-#define SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_TARGET           "SDL.texture.opengles2.target"
+#define SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_TARGET_NUMBER    "SDL.texture.opengles2.target"
+#define SDL_PROP_TEXTURE_VULKAN_TEXTURE_POINTER             "SDL.texture.vulkan.texture"
+#define SDL_PROP_TEXTURE_VULKAN_TEXTURE_U_POINTER           "SDL.texture.vulkan.texture_u"
+#define SDL_PROP_TEXTURE_VULKAN_TEXTURE_V_POINTER           "SDL.texture.vulkan.texture_v"
+#define SDL_PROP_TEXTURE_VULKAN_TEXTURE_UV_POINTER          "SDL.texture.vulkan.texture_uv"
 
 /**
  * Get the renderer that created an SDL_Texture.
@@ -912,6 +964,8 @@ extern DECLSPEC int SDLCALL SDL_GetTextureBlendMode(SDL_Texture *texture, SDL_Bl
 
 /**
  * Set the scale mode used for texture scale operations.
+ *
+ * The default texture scale mode is SDL_SCALEMODE_LINEAR.
  *
  * If the scale mode is not supported, the closest supported mode is chosen.
  *

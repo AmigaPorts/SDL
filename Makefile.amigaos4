@@ -24,6 +24,7 @@ SOURCES = \
 	./src/audio/*.c \
 	./src/audio/amigaos4/*.c \
 	./src/audio/dummy/*.c \
+	./src/camera/*.c \
 	./src/core/SDL_runapp.c \
 	./src/cpuinfo/*.c \
 	./src/events/*.c \

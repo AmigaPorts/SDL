@@ -698,7 +698,7 @@ int
 main(int argc, char **argv)
 {
     Context ctx;
-    SDL_version linked;
+    SDL_Version linked;
 
     if (SDL_Init(SDL_INIT_VIDEO)) {
         SDL_Log("Init failed: %s\n", SDL_GetError());

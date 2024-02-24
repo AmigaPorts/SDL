@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -101,9 +101,9 @@ OS4_ShowMessageBox(const SDL_MessageBoxData * messageboxdata, int * buttonid)
             if (amigaButton >= 0 && amigaButton < LAST_BUTTON) {
                 if (amigaButton == 0) {
                     /* Last */
-                    *buttonid = messageboxdata->buttons[LAST_BUTTON - 1].buttonid;
+                    *buttonid = messageboxdata->buttons[LAST_BUTTON - 1].buttonID;
                 } else {
-                    *buttonid = messageboxdata->buttons[amigaButton - 1].buttonid;
+                    *buttonid = messageboxdata->buttons[amigaButton - 1].buttonID;
                 }
 
                 dprintf("Mapped button %d\n", *buttonid);

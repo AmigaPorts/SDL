@@ -30,6 +30,7 @@
 #include <limits.h>
 
 #include "../SDL_sysvideo.h"
+#include "../SDL_video_c.h"
 
 #include "../../events/SDL_mouse_c.h"
 #include "SDL_waylandvideo.h"
@@ -262,6 +263,8 @@ static SDL_bool wayland_get_system_cursor(SDL_VideoData *vdata, Wayland_CursorDa
 {
     struct wl_cursor_theme *theme = NULL;
     struct wl_cursor *cursor;
+    const char *css_name = "default";
+    const char *fallback_name = NULL;
 
     int size = dbus_cursor_size;
 
@@ -316,94 +319,22 @@ static SDL_bool wayland_get_system_cursor(SDL_VideoData *vdata, Wayland_CursorDa
         vdata->cursor_themes[vdata->num_cursor_themes++].theme = theme;
     }
 
-    /* Next, find the cursor from the theme. Names taken from: */
-    /*   https://www.freedesktop.org/wiki/Specifications/cursor-spec/ */
-    switch (cdata->system_cursor) {
-    case SDL_SYSTEM_CURSOR_ARROW:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "default");
-        break;
-    case SDL_SYSTEM_CURSOR_IBEAM:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "text");
-        break;
-    case SDL_SYSTEM_CURSOR_WAIT:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "wait");
-        break;
-    case SDL_SYSTEM_CURSOR_CROSSHAIR:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "crosshair");
-        break;
-    case SDL_SYSTEM_CURSOR_WAITARROW:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "progress");
-        break;
-    case SDL_SYSTEM_CURSOR_SIZENWSE:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "nwse-resize");
-        if (!cursor) {
-            /* only a single arrow */
-            cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "nw-resize");
-        }
-        break;
-    case SDL_SYSTEM_CURSOR_SIZENESW:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "nesw-resize");
-        if (!cursor) {
-            /* only a single arrow */
-            cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "ne-resize");
-        }
-        break;
-    case SDL_SYSTEM_CURSOR_SIZEWE:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "ew-resize");
-        if (!cursor) {
-            cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "col-resize");
-        }
-        break;
-    case SDL_SYSTEM_CURSOR_SIZENS:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "ns-resize");
-        if (!cursor) {
-            cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "row-resize");
-        }
-        break;
-    case SDL_SYSTEM_CURSOR_SIZEALL:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "all-scroll");
-        break;
-    case SDL_SYSTEM_CURSOR_NO:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "not-allowed");
-        break;
-    case SDL_SYSTEM_CURSOR_HAND:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "pointer");
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_TOPLEFT:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "nw-resize");
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_TOP:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "n-resize");
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_TOPRIGHT:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "ne-resize");
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_RIGHT:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "e-resize");
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_BOTTOMRIGHT:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "se-resize");
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_BOTTOM:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "s-resize");
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_BOTTOMLEFT:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "sw-resize");
-        break;
-    case SDL_SYSTEM_CURSOR_WINDOW_LEFT:
-        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "w-resize");
-        break;
-    default:
-        SDL_assert(0);
-        return SDL_FALSE;
+    css_name = SDL_GetCSSCursorName(cdata->system_cursor, &fallback_name);
+    cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, css_name);
+    if (!cursor && fallback_name) {
+        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, fallback_name);
     }
 
     /* Fallback to the default cursor if the chosen one wasn't found */
     if (!cursor) {
+        cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "default");
+    }
+    /* Try the old X11 name as a last resort */
+    if (!cursor) {
         cursor = WAYLAND_wl_cursor_theme_get_cursor(theme, "left_ptr");
-        if (!cursor) {
-            return SDL_FALSE;
-        }
+    }
+    if (!cursor) {
+        return SDL_FALSE;
     }
 
     /* ... Set the cursor data, finally. */

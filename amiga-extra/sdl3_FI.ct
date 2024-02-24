@@ -86,22 +86,6 @@ MSG_PREFS_VERTICAL_SYNC_DISABLED
 pois p‰‰lt‰
 ; disabled
 ;
-MSG_PREFS_SCALE_QUALITY_GAD
-_Skaalauksen laatu
-; Scale _quality
-;
-MSG_PREFS_SCALE_QUALITY_DEFAULT
-oletus
-; default
-;
-MSG_PREFS_SCALE_QUALITY_NEAREST
-l‰hin kuvapiste
-; nearest
-;
-MSG_PREFS_SCALE_QUALITY_LINEAR
-lineaarinen
-; linear
-;
 MSG_PREFS_VIDEO_OPTIONS_GROUP
 Videovalinnat
 ; Video options
@@ -176,10 +160,6 @@ Valitse ajuritoteutus:\n \
 MSG_PREFS_VERTICAL_SYNC_HELP
 Synkronoi n‰ytˆn p‰ivitys monitorin virkistystaajuuteen
 ; Synchronize display update to monitor refresh rate
-;
-MSG_PREFS_SCALE_QUALITY_HELP
-Ota l‰himm‰inen kuvapiste tai suodata lineaarisesti
-; Nearest pixel sampling or linear filtering
 ;
 MSG_PREFS_SCREEN_SAVER_HELP
 Salli ruuduns‰‰st‰j‰ (oletuksena pois p‰‰lt‰)

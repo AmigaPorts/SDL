@@ -86,22 +86,6 @@ MSG_PREFS_VERTICAL_SYNC_DISABLED
 
 ; disabled
 ;
-MSG_PREFS_SCALE_QUALITY_GAD
-
-; Scale _quality
-;
-MSG_PREFS_SCALE_QUALITY_DEFAULT
-
-; default
-;
-MSG_PREFS_SCALE_QUALITY_NEAREST
-
-; nearest
-;
-MSG_PREFS_SCALE_QUALITY_LINEAR
-
-; linear
-;
 MSG_PREFS_VIDEO_OPTIONS_GROUP
 
 ; Video options
@@ -177,10 +161,7 @@ MSG_PREFS_VERTICAL_SYNC_HELP
 
 ; Synchronize display update to monitor refresh rate
 ;
-MSG_PREFS_SCALE_QUALITY_HELP
 
-; Nearest pixel sampling or linear filtering
-;
 MSG_PREFS_SCREEN_SAVER_HELP
 
 ; Allow screen saver (disabled by default)

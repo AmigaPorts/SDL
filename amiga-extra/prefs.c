@@ -87,7 +87,6 @@ enum EGadgetID
 {
     GID_DriverList = 1,
     GID_VsyncList,
-    GID_ScaleQualityList,
     GID_ScreenSaverList,
     GID_SaveButton,
     GID_ResetButton,
@@ -127,14 +126,6 @@ static const struct OptionName vsyncNames[] =
     { -1, NULL, NULL }
 };
 
-static const struct OptionName scaleQualityNames[] =
-{
-    { MSG_PREFS_SCALE_QUALITY_DEFAULT, NULL, NULL },
-    { MSG_PREFS_SCALE_QUALITY_NEAREST, "0", "nearest" },
-    { MSG_PREFS_SCALE_QUALITY_LINEAR, "1", "linear" },
-    { -1, NULL, NULL }
-};
-
 static const struct OptionName screenSaverNames[] =
 {
     { MSG_PREFS_SCREEN_SAVER_DEFAULT, NULL, NULL },
@@ -156,7 +147,6 @@ struct Variable
 
 static struct Variable driverVar = { GID_DriverList, 0, SDL_HINT_RENDER_DRIVER, "", NULL, NULL, driverNames };
 static struct Variable vsyncVar = { GID_VsyncList, 0, SDL_HINT_RENDER_VSYNC, "", NULL, NULL, vsyncNames };
-static struct Variable scaleQualityVar = { GID_ScaleQualityList, 0, SDL_HINT_RENDER_SCALE_QUALITY, "", NULL, NULL, scaleQualityNames };
 static struct Variable screenSaverVar = { GID_ScreenSaverList, 0, SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "", NULL, NULL, screenSaverNames };
 
 static char*
@@ -231,7 +221,6 @@ LoadVariables()
 {
     LoadVariable(&driverVar);
     LoadVariable(&vsyncVar);
-    LoadVariable(&scaleQualityVar);
     LoadVariable(&screenSaverVar);
 }
 
@@ -250,7 +239,6 @@ SaveVariables()
 {
     SaveOrDeleteVariable(&driverVar);
     SaveOrDeleteVariable(&vsyncVar);
-    SaveOrDeleteVariable(&scaleQualityVar);
     SaveOrDeleteVariable(&screenSaverVar);
 }
 
@@ -472,12 +460,6 @@ CreateVsyncButtons()
 }
 
 static Object*
-CreateScaleQualityButtons()
-{
-    return CreateChooserButtons(&scaleQualityVar, "scale quality", GetString(MSG_PREFS_SCALE_QUALITY_HELP));
-}
-
-static Object*
 CreateScreenSaverButtons()
 {
     return CreateChooserButtons(&screenSaverVar, "allow screensaver", GetString(MSG_PREFS_SCREEN_SAVER_HELP));
@@ -549,8 +531,6 @@ CreateRendererLayout()
                 CHILD_Label, CreateLabel(GetString(MSG_PREFS_DRIVER_GAD)),
                 LAYOUT_AddChild, CreateVsyncButtons(),
                 CHILD_Label, CreateLabel(GetString(MSG_PREFS_VERTICAL_SYNC_GAD)),
-                LAYOUT_AddChild, CreateScaleQualityButtons(),
-                CHILD_Label, CreateLabel(GetString(MSG_PREFS_SCALE_QUALITY_GAD)),
                 TAG_DONE), // vertical layout
                 CHILD_WeightedWidth, 0,
             TAG_DONE),
@@ -849,9 +829,6 @@ HandleGadgets(enum EGadgetID gid)
         case GID_VsyncList:
             ReadSelection(&vsyncVar);
             break;
-        case GID_ScaleQualityList:
-            ReadSelection(&scaleQualityVar);
-            break;
         case GID_ScreenSaverList:
             ReadSelection(&screenSaverVar);
             break;
@@ -862,7 +839,6 @@ HandleGadgets(enum EGadgetID gid)
         case GID_ResetButton:
             ResetSelection(&driverVar);
             ResetSelection(&vsyncVar);
-            ResetSelection(&scaleQualityVar);
             ResetSelection(&screenSaverVar);
             break;
         case GID_CancelButton:
@@ -963,7 +939,6 @@ main(int argc, char** argv)
 
         PurgeChooserList(driverVar.list);
         PurgeChooserList(vsyncVar.list);
-        PurgeChooserList(scaleQualityVar.list);
         PurgeChooserList(screenSaverVar.list);
     }
 

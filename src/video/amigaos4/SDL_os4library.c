@@ -79,7 +79,7 @@ static int initCount = 0;
 static void
 OS4_LogVersion(void)
 {
-    SDL_version version;
+    SDL_Version version;
 
     SDL_GetVersion(&version);
 
