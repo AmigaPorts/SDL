@@ -29,7 +29,7 @@
 #endif
 void *SDL_memcpy(SDL_OUT_BYTECAP(len) void *dst, SDL_IN_BYTECAP(len) const void *src, size_t len)
 {
-#ifdef __GNUC__
+#if defined(__GNUC__) && (defined(HAVE_LIBC) && HAVE_LIBC)
     /* Presumably this is well tuned for speed.
        On my machine this is twice as fast as the C code below.
      */
@@ -76,12 +76,12 @@ void *SDL_memcpy(SDL_OUT_BYTECAP(len) void *dst, SDL_IN_BYTECAP(len) const void 
         }
     }
     return dst;
-#endif /* __GNUC__ */
+#endif /* HAVE_MEMCPY */
 }
 
 /* The optimizer on Visual Studio 2005 and later generates memcpy() and memset() calls.
    We will provide our own implementation if we're not building with a C runtime. */
-#if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(_MT)
+#ifndef HAVE_LIBC
 /* NOLINTNEXTLINE(readability-redundant-declaration) */
 extern void *memcpy(void *dst, const void *src, size_t len);
 #ifndef __INTEL_LLVM_COMPILER
@@ -96,4 +96,4 @@ void *memcpy(void *dst, const void *src, size_t len)
 {
     return SDL_memcpy(dst, src, len);
 }
-#endif /* (_MSC_VER >= 1400) && !defined(_MT) */
+#endif /* !HAVE_LIBC */

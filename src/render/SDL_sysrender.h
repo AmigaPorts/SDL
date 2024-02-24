@@ -64,6 +64,8 @@ struct SDL_Texture
 {
     const void *magic;
     SDL_Colorspace colorspace;  /**< The colorspace of the texture */
+    float SDR_white_point;      /**< The SDR white point for this content */
+    float HDR_headroom;         /**< The HDR headroom needed by this content */
     Uint32 format;              /**< The pixel format of the texture */
     int access;                 /**< SDL_TextureAccess */
     int w;                      /**< The width of the texture */
@@ -99,7 +101,6 @@ typedef enum
     SDL_RENDERCMD_SETVIEWPORT,
     SDL_RENDERCMD_SETCLIPRECT,
     SDL_RENDERCMD_SETDRAWCOLOR,
-    SDL_RENDERCMD_SETCOLORSCALE,
     SDL_RENDERCMD_CLEAR,
     SDL_RENDERCMD_DRAW_POINTS,
     SDL_RENDERCMD_DRAW_LINES,
@@ -167,7 +168,6 @@ struct SDL_Renderer
     int (*CreateTexture)(SDL_Renderer *renderer, SDL_Texture *texture, SDL_PropertiesID create_props);
     int (*QueueSetViewport)(SDL_Renderer *renderer, SDL_RenderCommand *cmd);
     int (*QueueSetDrawColor)(SDL_Renderer *renderer, SDL_RenderCommand *cmd);
-    int (*QueueSetColorScale)(SDL_Renderer *renderer, SDL_RenderCommand *cmd);
     int (*QueueDrawPoints)(SDL_Renderer *renderer, SDL_RenderCommand *cmd, const SDL_FPoint *points,
                            int count);
     int (*QueueDrawLines)(SDL_Renderer *renderer, SDL_RenderCommand *cmd, const SDL_FPoint *points,
@@ -254,6 +254,8 @@ struct SDL_Renderer
     SDL_Mutex *target_mutex;
 
     SDL_Colorspace output_colorspace;
+    float SDR_white_point;
+    float HDR_headroom;
 
     float color_scale;
     SDL_FColor color;        /**< Color for drawing operations values */
@@ -303,6 +305,7 @@ extern SDL_RenderDriver D3D12_RenderDriver;
 extern SDL_RenderDriver GL_RenderDriver;
 extern SDL_RenderDriver GLES2_RenderDriver;
 extern SDL_RenderDriver METAL_RenderDriver;
+extern SDL_RenderDriver VULKAN_RenderDriver;
 extern SDL_RenderDriver PS2_RenderDriver;
 extern SDL_RenderDriver PSP_RenderDriver;
 extern SDL_RenderDriver OS4_RenderDriver;

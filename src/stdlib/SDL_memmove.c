@@ -29,7 +29,7 @@
 #endif
 void *SDL_memmove(SDL_OUT_BYTECAP(len) void *dst, SDL_IN_BYTECAP(len) const void *src, size_t len)
 {
-#ifdef __GNUC__
+#if defined(__GNUC__) && (defined(HAVE_LIBC) && HAVE_LIBC)
     /* Presumably this is well tuned for speed. */
     return __builtin_memmove(dst, src, len);
 #elif defined(HAVE_MEMMOVE)
@@ -52,4 +52,22 @@ void *SDL_memmove(SDL_OUT_BYTECAP(len) void *dst, SDL_IN_BYTECAP(len) const void
     return dst;
 #endif /* HAVE_MEMMOVE */
 }
+
+
+#ifndef HAVE_LIBC
+/* NOLINTNEXTLINE(readability-redundant-declaration) */
+extern void *memmove(void *dst, const void *src, size_t len);
+#ifndef __INTEL_LLVM_COMPILER
+#pragma intrinsic(memmove)
+#endif
+
+#ifndef __clang__
+#pragma function(memmove)
+#endif
+/* NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name) */
+void *memmove(void *dst, const void *src, size_t len)
+{
+    return SDL_memmove(dst, src, len);
+}
+#endif /* !HAVE_LIBC */
 

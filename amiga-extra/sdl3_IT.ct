@@ -97,22 +97,6 @@ MSG_PREFS_VERTICAL_SYNC_DISABLED
 disattivato
 ; disabled
 ;
-MSG_PREFS_SCALE_QUALITY_GAD
-_Qualità Ridim.
-; Scale _quality
-;
-MSG_PREFS_SCALE_QUALITY_DEFAULT
-predefinita
-; default
-;
-MSG_PREFS_SCALE_QUALITY_NEAREST
-più vicina (nearest)
-; nearest
-;
-MSG_PREFS_SCALE_QUALITY_LINEAR
-lineare
-; linear
-;
 MSG_PREFS_VIDEO_OPTIONS_GROUP
 Opzioni Video
 ; Video options
@@ -197,11 +181,6 @@ MSG_PREFS_VERTICAL_SYNC_HELP
 Sincronizza aggiornamento del display alla frequenza\n\
 di aggiornamento del monitor
 ; Synchronize display update to monitor refresh rate
-;
-MSG_PREFS_SCALE_QUALITY_HELP
-Filtro di ridimensionamento per il pixel più vicino\n\
-(\"nearest\") o lineare
-; Nearest pixel sampling or linear filtering
 ;
 MSG_PREFS_SCREEN_SAVER_HELP
 Permette lo screensaver (disattivato come predefinito)

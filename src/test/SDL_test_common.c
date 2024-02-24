@@ -1497,8 +1497,6 @@ SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state)
                 }
             }
 
-            SDL_ShowWindow(state->windows[i]);
-
             if (!SDL_RectEmpty(&state->confine)) {
                 SDL_SetWindowMouseRect(state->windows[i], &state->confine);
             }
@@ -1530,6 +1528,8 @@ SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state)
                     SDLTest_PrintRenderer(&info);
                 }
             }
+
+            SDL_ShowWindow(state->windows[i]);
         }
     }
 
@@ -1565,6 +1565,10 @@ SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state)
             SDL_Log("Couldn't open audio: %s\n", SDL_GetError());
             return SDL_FALSE;
         }
+    }
+
+    if (state->flags & SDL_INIT_CAMERA) {
+        SDL_InitSubSystem(SDL_INIT_CAMERA);
     }
 
     return SDL_TRUE;
@@ -1890,8 +1894,8 @@ static void SDLTest_PrintEvent(const SDL_Event *event)
 
     case SDL_EVENT_FINGER_MOTION:
         SDL_Log("SDL EVENT: Finger: motion touch=%" SDL_PRIu64 ", finger=%" SDL_PRIu64 ", x=%f, y=%f, dx=%f, dy=%f, pressure=%f",
-                event->tfinger.touchId,
-                event->tfinger.fingerId,
+                event->tfinger.touchID,
+                event->tfinger.fingerID,
                 event->tfinger.x, event->tfinger.y,
                 event->tfinger.dx, event->tfinger.dy, event->tfinger.pressure);
         break;
@@ -1899,8 +1903,8 @@ static void SDLTest_PrintEvent(const SDL_Event *event)
     case SDL_EVENT_FINGER_UP:
         SDL_Log("SDL EVENT: Finger: %s touch=%" SDL_PRIu64 ", finger=%" SDL_PRIu64 ", x=%f, y=%f, dx=%f, dy=%f, pressure=%f",
                 (event->type == SDL_EVENT_FINGER_DOWN) ? "down" : "up",
-                event->tfinger.touchId,
-                event->tfinger.fingerId,
+                event->tfinger.touchID,
+                event->tfinger.fingerID,
                 event->tfinger.x, event->tfinger.y,
                 event->tfinger.dx, event->tfinger.dy, event->tfinger.pressure);
         break;
@@ -2561,6 +2565,9 @@ void SDLTest_CommonQuit(SDLTest_CommonState *state)
             SDL_DestroyWindow(state->windows[i]);
         }
         SDL_free(state->windows);
+    }
+    if (state->flags & SDL_INIT_CAMERA) {
+        SDL_QuitSubSystem(SDL_INIT_CAMERA);
     }
     if (state->flags & SDL_INIT_VIDEO) {
         SDL_QuitSubSystem(SDL_INIT_VIDEO);

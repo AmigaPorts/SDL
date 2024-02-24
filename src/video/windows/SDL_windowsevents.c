@@ -402,7 +402,7 @@ static void WIN_UpdateFocus(SDL_Window *window, SDL_bool expect_focus)
 
 static SDL_bool ShouldGenerateWindowCloseOnAltF4(void)
 {
-    return !SDL_GetHintBoolean(SDL_HINT_WINDOWS_NO_CLOSE_ON_ALT_F4, SDL_FALSE);
+    return SDL_GetHintBoolean(SDL_HINT_WINDOWS_CLOSE_ON_ALT_F4, SDL_TRUE);
 }
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
@@ -1687,7 +1687,10 @@ void SDL_SetWindowsMessageHook(SDL_WindowsMessageHook callback, void *userdata)
 int WIN_WaitEventTimeout(SDL_VideoDevice *_this, Sint64 timeoutNS)
 {
     if (g_WindowsEnableMessageLoop) {
-        if (MsgWaitForMultipleObjects(0, NULL, FALSE, (DWORD)SDL_NS_TO_MS(timeoutNS), QS_ALLINPUT)) {
+        DWORD timeout, ret;
+        timeout = timeoutNS < 0 ? INFINITE : (DWORD)SDL_NS_TO_MS(timeoutNS);
+        ret = MsgWaitForMultipleObjects(0, NULL, FALSE, timeout, QS_ALLINPUT);
+        if (ret == WAIT_OBJECT_0) {
             return 1;
         } else {
             return 0;

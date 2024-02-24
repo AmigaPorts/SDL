@@ -113,7 +113,7 @@ int Android_JNI_SendMessage(int command, int param);
 JNIEXPORT void JNICALL SDL_Android_Init(JNIEnv *mEnv, jclass cls);
 
 /* MessageBox */
-int Android_JNI_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid);
+int Android_JNI_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID);
 
 /* Cursor support */
 int Android_JNI_CreateCustomCursor(SDL_Surface *surface, int hot_x, int hot_y);
@@ -124,9 +124,6 @@ SDL_bool Android_JNI_SetSystemCursor(int cursorID);
 /* Relative mouse support */
 SDL_bool Android_JNI_SupportsRelativeMouse(void);
 SDL_bool Android_JNI_SetRelativeMouseEnabled(SDL_bool enabled);
-
-/* Request permission */
-SDL_bool Android_JNI_RequestPermission(const char *permission);
 
 /* Show toast notification */
 int Android_JNI_ShowToast(const char *message, int duration, int gravity, int xOffset, int yOffset);

@@ -49,6 +49,7 @@
 #define HAVE_WCHAR_H 1
 
 /* C library functions */
+#define HAVE_LIBC   1
 #define HAVE_DLOPEN 1
 #define HAVE_MALLOC 1
 #define HAVE_CALLOC 1
@@ -260,13 +261,15 @@
 #endif
 #endif
 
-#define HAVE_COREMEDIA  1
-
 /* Enable system power support */
 #define SDL_POWER_MACOSX 1
 
 /* enable filesystem support */
 #define SDL_FILESYSTEM_COCOA   1
+
+/* enable camera support */
+#define SDL_CAMERA_DRIVER_COREMEDIA 1
+#define SDL_CAMERA_DRIVER_DUMMY 1
 
 /* Enable assembly routines */
 #ifdef __ppc__

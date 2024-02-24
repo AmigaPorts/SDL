@@ -889,10 +889,6 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
                 // Nothing to do
                 break;
 
-            case SDL_RENDERCMD_SETCOLORSCALE:
-                // Nothing to do
-                break;
-
             case SDL_RENDERCMD_SETVIEWPORT: {
                 SDL_Rect *viewport = &data->viewport;
                 if (SDL_memcmp(viewport, &cmd->data.viewport.rect, sizeof(SDL_Rect)) != 0) {
@@ -1123,7 +1119,6 @@ OS4_CreateRenderer(SDL_Window * window, SDL_PropertiesID create_props)
     renderer->SetRenderTarget = OS4_SetRenderTarget;
     renderer->QueueSetViewport = OS4_QueueNop;
     renderer->QueueSetDrawColor = OS4_QueueNop;
-    renderer->QueueSetColorScale = OS4_QueueNop;
     renderer->QueueDrawPoints = OS4_QueueDrawPoints;
     renderer->QueueDrawLines = OS4_QueueDrawLines;
     renderer->QueueFillRects = OS4_QueueFillRects;

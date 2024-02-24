@@ -220,6 +220,13 @@ AMIGAINPUT_Detect(void)
     //dprintf("Called\n");
 }
 
+static SDL_bool
+AMIGAINPUT_IsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
+{
+    dprintf("Called\n");
+    return SDL_TRUE; // TODO
+}
+
 /* Function to get the device-dependent name of a joystick */
 static const char *
 AMIGAINPUT_GetDeviceName(int device_index)
@@ -532,6 +539,7 @@ SDL_JoystickDriver SDL_AMIGAINPUT_JoystickDriver =
     AMIGAINPUT_Init,
     AMIGAINPUT_GetCount,
     AMIGAINPUT_Detect,
+    AMIGAINPUT_IsDevicePresent,
     AMIGAINPUT_GetDeviceName,
     AMIGAINPUT_GetDevicePath,
     AMIGAINPUT_GetDeviceSteamVirtualGamepadSlot,

@@ -52,6 +52,7 @@
 #define HAVE_WCHAR_H 1
 
 /* C library functions */
+#define HAVE_LIBC   1
 #define HAVE_DLOPEN 1
 #define HAVE_MALLOC 1
 #define HAVE_CALLOC 1
@@ -188,5 +189,9 @@
 
 /* Enable the filesystem driver */
 #define SDL_FILESYSTEM_ANDROID   1
+
+/* Enable the camera driver */
+#define SDL_CAMERA_DRIVER_ANDROID 1
+#define SDL_CAMERA_DRIVER_DUMMY 1
 
 #endif /* SDL_build_config_android_h_ */

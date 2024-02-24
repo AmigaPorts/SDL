@@ -656,7 +656,7 @@ OS4_HandleGadget(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
 static void
 OS4_ShowAboutWindow(struct MyIntuiMessage * imsg)
 {
-    SDL_version version;
+    SDL_Version version;
     SDL_VERSION(&version);
 
     static char buffer[64];

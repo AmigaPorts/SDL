@@ -236,6 +236,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\SDL3\SDL_begin_code.h" />
+    <ClInclude Include="..\..\include\SDL3\SDL_camera.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_close_code.h" />
     <ClInclude Include="..\..\include\SDL3\SDL.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_assert.h" />
@@ -320,6 +321,8 @@
     <ClInclude Include="..\..\src\audio\SDL_audioresample.h" />
     <ClInclude Include="..\..\src\audio\SDL_wave.h" />
     <ClInclude Include="..\..\src\audio\wasapi\SDL_wasapi.h" />
+    <ClInclude Include="..\..\src\camera\SDL_camera_c.h" />
+    <ClInclude Include="..\..\src\camera\SDL_syscamera.h" />
     <ClInclude Include="..\..\src\core\windows\SDL_directx.h" />
     <ClInclude Include="..\..\src\core\windows\SDL_hid.h" />
     <ClInclude Include="..\..\src\core\windows\SDL_immdevice.h" />
@@ -385,6 +388,7 @@
     <ClInclude Include="..\..\src\render\software\SDL_render_sw_c.h" />
     <ClInclude Include="..\..\src\render\software\SDL_rotate.h" />
     <ClInclude Include="..\..\src\render\software\SDL_triangle.h" />
+    <ClInclude Include="..\..\src\render\vulkan\SDL_shaders_vulkan.h" />
     <ClInclude Include="..\..\src\SDL_assert_c.h" />
     <ClInclude Include="..\..\src\SDL_error_c.h" />
     <ClCompile Include="..\..\src\core\windows\pch.c">
@@ -393,8 +397,13 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\..\src\camera\dummy\SDL_camera_dummy.c" />
+    <ClCompile Include="..\..\src\camera\mediafoundation\SDL_camera_mediafoundation.c" />
+    <ClCompile Include="..\..\src\camera\SDL_camera.c" />
     <ClCompile Include="..\..\src\main\generic\SDL_sysmain_callbacks.c" />
     <ClCompile Include="..\..\src\main\SDL_main_callbacks.c" />
+    <ClCompile Include="..\..\src\render\vulkan\SDL_render_vulkan.c" />
+    <ClCompile Include="..\..\src\render\vulkan\SDL_shaders_vulkan.c" />
     <ClCompile Include="..\..\src\SDL_guid.c" />
     <ClInclude Include="..\..\src\SDL_hashtable.h" />
     <ClInclude Include="..\..\src\SDL_hints_c.h" />
@@ -520,6 +529,7 @@
     <ClCompile Include="..\..\src\hidapi\SDL_hidapi.c" />
     <ClCompile Include="..\..\src\joystick\controller_type.c" />
     <ClCompile Include="..\..\src\joystick\dummy\SDL_sysjoystick.c" />
+    <ClCompile Include="..\..\src\joystick\gdk\SDL_gameinputjoystick.c" />
     <ClCompile Include="..\..\src\joystick\hidapi\SDL_hidapijoystick.c" />
     <ClCompile Include="..\..\src\joystick\hidapi\SDL_hidapi_combined.c" />
     <ClCompile Include="..\..\src\joystick\hidapi\SDL_hidapi_gamecube.c" />
@@ -657,7 +667,6 @@
     <ClCompile Include="..\..\src\video\SDL_surface.c" />
     <ClCompile Include="..\..\src\video\SDL_video.c" />
     <ClCompile Include="..\..\src\video\SDL_video_unsupported.c" />
-    <ClCompile Include="..\..\src\video\SDL_video_capture.c" />
     <ClCompile Include="..\..\src\video\SDL_vulkan_utils.c" />
     <ClCompile Include="..\..\src\video\SDL_yuv.c" />
     <ClCompile Include="..\..\src\video\windows\SDL_windowsclipboard.c" />

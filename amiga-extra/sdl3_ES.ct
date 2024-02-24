@@ -86,22 +86,6 @@ MSG_PREFS_VERTICAL_SYNC_DISABLED
 desactivada
 ; disabled
 ;
-MSG_PREFS_SCALE_QUALITY_GAD
-Calidad _Escalado
-; Scale _quality
-;
-MSG_PREFS_SCALE_QUALITY_DEFAULT
-por defecto
-; default
-;
-MSG_PREFS_SCALE_QUALITY_NEAREST
-\"nearest\"
-; nearest
-;
-MSG_PREFS_SCALE_QUALITY_LINEAR
-lineal
-; linear
-;
 MSG_PREFS_VIDEO_OPTIONS_GROUP
 Opciones De Video
 ; Video options
@@ -179,10 +163,6 @@ Controlador a usar por SDL3:\n\
 MSG_PREFS_VERTICAL_SYNC_HELP
 Sincronizar imágenes según el refresco del monitor
 ; Synchronize display update to monitor refresh rate
-;
-MSG_PREFS_SCALE_QUALITY_HELP
-Filtrado de escalado por pixel cercano (\"nearest\") o lineal
-; Nearest pixel sampling or linear filtering
 ;
 MSG_PREFS_SCREEN_SAVER_HELP
 Permitir salvapantallas (por defecto: No)
