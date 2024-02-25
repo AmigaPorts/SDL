@@ -273,7 +273,7 @@ OS4_GL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext co
 void
 OS4_GL_GetDrawableSize(SDL_VideoDevice *_this, SDL_Window * window, int * w, int * h)
 {
-    OS4_WaitForResize(_this, window, w, h);
+    OS4_WaitForResize(window, w, h);
 }
 
 int
@@ -327,7 +327,7 @@ OS4_GL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 
             ((struct GLContextIFace *)data->glContext)->MGLWaitGL(); // TODO: still needed?
 
-            OS4_GetWindowSize(_this, data->syswin, &w, &h);
+            OS4_GetWindowSize(data->syswin, &w, &h);
 
             if (videodata->vsyncEnabled) {
                 IGraphics->WaitTOF();

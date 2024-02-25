@@ -31,7 +31,7 @@
 #include "../../main/amigaos4/SDL_os4debug.h"
 
 static SDL_bool
-OS4_GetDisplayMode(SDL_VideoDevice *_this, ULONG id, SDL_DisplayMode * mode)
+OS4_GetDisplayMode(ULONG id, SDL_DisplayMode * mode)
 {
     SDL_DisplayModeData *data;
     APTR handle;
@@ -149,7 +149,7 @@ OS4_InitModes(SDL_VideoDevice *_this)
     }
 
     IIntuition->GetScreenAttrs(data->publicScreen, SA_DisplayID, &modeid, TAG_DONE);
-    if (!OS4_GetDisplayMode(_this, modeid, &current_mode)) {
+    if (!OS4_GetDisplayMode(modeid, &current_mode)) {
         dprintf("Failed to get display mode for %d\n", modeid);
         SDL_free(displaydata);
         return SDL_SetError("Couldn't get display mode\n");
@@ -191,7 +191,7 @@ OS4_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay * display)
     dprintf("Called\n");
 
     while ((id = IGraphics->NextDisplayInfo(id)) != INVALID_ID) {
-        if (OS4_GetDisplayMode(_this, id, &mode)) {
+        if (OS4_GetDisplayMode(id, &mode)) {
             if (mode.format != SDL_PIXELFORMAT_UNKNOWN) {
                 if (!SDL_AddFullscreenDisplayMode(display, &mode)) {
                     SDL_free(mode.driverdata);
