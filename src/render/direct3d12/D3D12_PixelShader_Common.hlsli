@@ -1,8 +1,9 @@
+#include "D3D12_Shader_Common.hlsli"
 
+Texture2D texture0 : register(t0);
+Texture2D texture1 : register(t1);
+Texture2D texture2 : register(t2);
 SamplerState sampler0 : register(s0);
-Texture2D texture0 : register(t1);
-Texture2D texture1 : register(t2);
-Texture2D texture2 : register(t3);
 
 struct PixelShaderInput
 {
@@ -27,7 +28,7 @@ static const float INPUTTYPE_SRGB = 1;
 static const float INPUTTYPE_SCRGB = 2;
 static const float INPUTTYPE_HDR10 = 3;
 
-cbuffer Constants : register(b4)
+cbuffer Constants : register(b1)
 {
     float scRGB_output;
     float texture_type;

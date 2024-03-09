@@ -37,7 +37,6 @@ SDL3_0.0.0 {
     SDL_CleanupTLS;
     SDL_ClearComposition;
     SDL_ClearError;
-    SDL_ClearHints;
     SDL_CloseGamepad;
     SDL_CloseJoystick;
     SDL_CloseSensor;
@@ -972,6 +971,9 @@ SDL3_0.0.0 {
     SDL_CloseCamera;
     SDL_GetCameraPermissionState;
     SDL_GetCameraDevicePosition;
+    SDL_qsort_r;
+    SDL_bsearch_r;
+    SDL_AddVulkanRenderSemaphores;
     # extra symbols go here (don't modify this line)
   local: *;
 };

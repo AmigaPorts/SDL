@@ -338,6 +338,8 @@ SDL_QUERY, SDL_IGNORE, SDL_ENABLE, and SDL_DISABLE have been removed. You can us
 
 SDL_AddEventWatch() now returns -1 if it fails because it ran out of memory and couldn't add the event watch callback.
 
+SDL_RegisterEvents() now returns 0 if it couldn't allocate any user events.
+
 The following symbols have been renamed:
 * SDL_APP_DIDENTERBACKGROUND => SDL_EVENT_DID_ENTER_BACKGROUND
 * SDL_APP_DIDENTERFOREGROUND => SDL_EVENT_DID_ENTER_FOREGROUND
@@ -740,6 +742,9 @@ The following hints have been renamed:
 * SDL_HINT_LINUX_JOYSTICK_DEADZONES => SDL_HINT_JOYSTICK_LINUX_DEADZONES
 * SDL_HINT_PS2_DYNAMIC_VSYNC => SDL_HINT_RENDER_PS2_DYNAMIC_VSYNC
 
+The following functions have been removed:
+* SDL_ClearHints() - replaced with SDL_ResetHints()
+
 ## SDL_init.h
 
 The following symbols have been renamed:
@@ -854,6 +859,8 @@ The following functions have been renamed:
 
 ## SDL_keycode.h
 
+SDL_Keycode is now an enum instead of Sint32.
+
 The following symbols have been renamed:
 * KMOD_ALT => SDL_KMOD_ALT
 * KMOD_CAPS => SDL_KMOD_CAPS
@@ -940,6 +947,8 @@ The following symbols have been renamed:
 SDL_CalculateGammaRamp has been removed, because SDL_SetWindowGammaRamp has been removed as well due to poor support in modern operating systems (see [SDL_video.h](#sdl_videoh)).
 
 The BitsPerPixel and BytesPerPixel fields of SDL_PixelFormat have been renamed bits_per_pixel and bytes_per_pixel.
+
+SDL_PixelFormatEnum is used instead of Uint32 for API functions that refer to pixel format by enumerated value.
 
 The following functions have been renamed:
 * SDL_AllocFormat() => SDL_CreatePixelFormat()
@@ -1397,6 +1406,8 @@ SDL_BlitSurfaceScaled() and SDL_BlitSurfaceUncheckedScaled() now take a scale pa
 
 SDL_SoftStretch() now takes a scale paramater.
 
+SDL_PixelFormatEnum is used instead of Uint32 for API functions that refer to pixel format by enumerated value.
+
 The following functions have been renamed:
 * SDL_FillRect() => SDL_FillSurfaceRect()
 * SDL_FillRects() => SDL_FillSurfaceRects()
@@ -1653,6 +1664,9 @@ SDL_GL_GetDrawableSize() has been removed. SDL_GetWindowSizeInPixels() can be us
 
 The SDL_WINDOW_TOOLTIP and SDL_WINDOW_POPUP_MENU window flags are now supported on Windows, Mac (Cocoa), X11, and Wayland. Creating windows with these flags must happen via the `SDL_CreatePopupWindow()` function. This function requires passing in the handle to a valid parent window for the popup, and the popup window is positioned relative to the parent.
 
+
+SDL_WindowFlags is used instead of Uint32 for API functions that refer to window flags.
+
 The following functions have been renamed:
 * SDL_GetClosestDisplayMode() => SDL_GetClosestFullscreenDisplayMode()
 * SDL_GetDisplayOrientation() => SDL_GetCurrentDisplayOrientation()
@@ -1675,7 +1689,6 @@ The following functions have been removed:
 * SDL_CreateWindowFrom() - use SDL_CreateWindowWithProperties() with the properties that allow you to wrap an existing window
 
 The SDL_Window id type is named SDL_WindowID
-The SDL_WindowFlags enum should be replaced with Uint32
 
 The following symbols have been renamed:
 * SDL_WINDOW_ALLOW_HIGHDPI => SDL_WINDOW_HIGH_PIXEL_DENSITY

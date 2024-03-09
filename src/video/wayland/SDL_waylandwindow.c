@@ -1244,7 +1244,7 @@ static void Wayland_MaybeUpdateScaleFactor(SDL_WindowData *window)
             factor = SDL_max(factor, driverdata->scale_factor);
         }
     } else {
-        /* No monitor (somehow)? Just fall back. */
+        /* All outputs removed, just fall back. */
         factor = window->windowed_scale_factor;
     }
 
@@ -1304,8 +1304,37 @@ static void Wayland_move_window(SDL_Window *window, SDL_DisplayData *driverdata)
     }
 }
 
-static void handle_surface_enter(void *data, struct wl_surface *surface,
-                                 struct wl_output *output)
+void Wayland_RemoveOutputFromWindow(SDL_WindowData *window, SDL_DisplayData *display_data)
+{
+    SDL_bool send_move_event = SDL_FALSE;
+
+    for (int i = 0; i < window->num_outputs; i++) {
+        if (window->outputs[i] == display_data) { /* remove this one */
+            if (i == (window->num_outputs - 1)) {
+                window->outputs[i] = NULL;
+                send_move_event = SDL_TRUE;
+            } else {
+                SDL_memmove(&window->outputs[i],
+                            &window->outputs[i + 1],
+                            sizeof(SDL_DisplayData *) * ((window->num_outputs - i) - 1));
+            }
+            window->num_outputs--;
+            i--;
+        }
+    }
+
+    if (window->num_outputs == 0) {
+        SDL_free(window->outputs);
+        window->outputs = NULL;
+    } else if (send_move_event) {
+        Wayland_move_window(window->sdlwindow,
+                            window->outputs[window->num_outputs - 1]);
+    }
+
+    Wayland_MaybeUpdateScaleFactor(window);
+}
+
+static void handle_surface_enter(void *data, struct wl_surface *surface, struct wl_output *output)
 {
     SDL_WindowData *window = data;
     SDL_DisplayData *driverdata = wl_output_get_user_data(output);
@@ -1328,41 +1357,15 @@ static void handle_surface_enter(void *data, struct wl_surface *surface,
     Wayland_MaybeUpdateScaleFactor(window);
 }
 
-static void handle_surface_leave(void *data, struct wl_surface *surface,
-                                 struct wl_output *output)
+static void handle_surface_leave(void *data, struct wl_surface *surface, struct wl_output *output)
 {
-    SDL_WindowData *window = data;
-    int i, send_move_event = 0;
-    SDL_DisplayData *driverdata = wl_output_get_user_data(output);
+    SDL_WindowData *window = (SDL_WindowData *)data;
 
     if (!SDL_WAYLAND_own_output(output) || !SDL_WAYLAND_own_surface(surface)) {
         return;
     }
 
-    for (i = 0; i < window->num_outputs; i++) {
-        if (window->outputs[i] == driverdata) { /* remove this one */
-            if (i == (window->num_outputs - 1)) {
-                window->outputs[i] = NULL;
-                send_move_event = 1;
-            } else {
-                SDL_memmove(&window->outputs[i],
-                            &window->outputs[i + 1],
-                            sizeof(SDL_DisplayData *) * ((window->num_outputs - i) - 1));
-            }
-            window->num_outputs--;
-            i--;
-        }
-    }
-
-    if (window->num_outputs == 0) {
-        SDL_free(window->outputs);
-        window->outputs = NULL;
-    } else if (send_move_event) {
-        Wayland_move_window(window->sdlwindow,
-                            window->outputs[window->num_outputs - 1]);
-    }
-
-    Wayland_MaybeUpdateScaleFactor(window);
+    Wayland_RemoveOutputFromWindow(window, (SDL_DisplayData *)wl_output_get_user_data(output));
 }
 
 static void handle_preferred_buffer_scale(void *data, struct wl_surface *wl_surface, int32_t factor)
@@ -2092,7 +2095,7 @@ void Wayland_MinimizeWindow(SDL_VideoDevice *_this, SDL_Window *window)
     }
 }
 
-void Wayland_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window)
+int Wayland_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window)
 {
     SDL_VideoData *data = _this->driverdata;
 
@@ -2105,31 +2108,33 @@ void Wayland_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window)
      * lets you confine without a rect.
      */
     if (SDL_RectEmpty(&window->mouse_rect) && !(window->flags & SDL_WINDOW_MOUSE_GRABBED)) {
-        Wayland_input_unconfine_pointer(data->input, window);
+        return Wayland_input_unconfine_pointer(data->input, window);
     } else {
-        Wayland_input_confine_pointer(data->input, window);
+        return Wayland_input_confine_pointer(data->input, window);
     }
 }
 
-void Wayland_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
+int Wayland_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
 {
     SDL_VideoData *data = _this->driverdata;
 
     if (grabbed) {
-        Wayland_input_confine_pointer(data->input, window);
+        return Wayland_input_confine_pointer(data->input, window);
     } else if (SDL_RectEmpty(&window->mouse_rect)) {
-        Wayland_input_unconfine_pointer(data->input, window);
+        return Wayland_input_unconfine_pointer(data->input, window);
     }
+
+    return 0;
 }
 
-void Wayland_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
+int Wayland_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
 {
     SDL_VideoData *data = _this->driverdata;
 
     if (grabbed) {
-        Wayland_input_grab_keyboard(window, data->input);
+        return Wayland_input_grab_keyboard(window, data->input);
     } else {
-        Wayland_input_ungrab_keyboard(window);
+        return Wayland_input_ungrab_keyboard(window);
     }
 }
 

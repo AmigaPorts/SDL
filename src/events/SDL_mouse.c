@@ -571,7 +571,7 @@ static int SDL_PrivateSendMouseMotion(Uint64 timestamp, SDL_Window *window, SDL_
             if (window) {
                 float normalized_x = x / (float)window->w;
                 float normalized_y = y / (float)window->h;
-                SDL_SendTouchMotion(timestamp, SDL_MOUSE_TOUCHID, 0, window, normalized_x, normalized_y, 1.0f);
+                SDL_SendTouchMotion(timestamp, SDL_MOUSE_TOUCHID, SDL_BUTTON_LEFT, window, normalized_x, normalized_y, 1.0f);
             }
         }
     }
@@ -754,7 +754,7 @@ static int SDL_PrivateSendMouseButton(Uint64 timestamp, SDL_Window *window, SDL_
             if (window) {
                 float normalized_x = mouse->x / (float)window->w;
                 float normalized_y = mouse->y / (float)window->h;
-                SDL_SendTouch(timestamp, SDL_MOUSE_TOUCHID, 0, window, track_mouse_down, normalized_x, normalized_y, 1.0f);
+                SDL_SendTouch(timestamp, SDL_MOUSE_TOUCHID, SDL_BUTTON_LEFT, window, track_mouse_down, normalized_x, normalized_y, 1.0f);
             }
         }
     }
@@ -879,7 +879,7 @@ int SDL_SendMouseWheel(Uint64 timestamp, SDL_Window *window, SDL_MouseID mouseID
         event.wheel.which = mouseID;
         event.wheel.x = x;
         event.wheel.y = y;
-        event.wheel.direction = (Uint32)direction;
+        event.wheel.direction = direction;
         event.wheel.mouse_x = mouse->x;
         event.wheel.mouse_y = mouse->y;
         posted = (SDL_PushEvent(&event) > 0);
@@ -1163,7 +1163,7 @@ int SDL_UpdateMouseCapture(SDL_bool force_release)
         if (SDL_GetMessageBoxCount() == 0 &&
             (mouse->capture_desired || (mouse->auto_capture && GetButtonState(mouse, SDL_FALSE) != 0))) {
             if (!mouse->relative_mode) {
-                capture_window = SDL_GetKeyboardFocus();
+                capture_window = mouse->focus;
             }
         }
     }
@@ -1306,7 +1306,7 @@ SDL_Cursor *SDL_CreateColorCursor(SDL_Surface *surface, int hot_x, int hot_y)
     if (mouse->CreateCursor) {
         cursor = mouse->CreateCursor(surface, hot_x, hot_y);
     } else {
-        cursor = SDL_calloc(1, sizeof(*cursor));
+        cursor = (SDL_Cursor *)SDL_calloc(1, sizeof(*cursor));
     }
     if (cursor) {
         cursor->next = mouse->cursors;

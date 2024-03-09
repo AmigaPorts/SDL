@@ -83,7 +83,7 @@ Uint8 *SDL_expand_byte[9] = {
 #define CASE(X) \
     case X:     \
         return #X;
-const char *SDL_GetPixelFormatName(Uint32 format)
+const char *SDL_GetPixelFormatName(SDL_PixelFormatEnum format)
 {
     switch (format) {
 
@@ -123,6 +123,24 @@ const char *SDL_GetPixelFormatName(Uint32 format)
         CASE(SDL_PIXELFORMAT_XBGR2101010)
         CASE(SDL_PIXELFORMAT_ARGB2101010)
         CASE(SDL_PIXELFORMAT_ABGR2101010)
+        CASE(SDL_PIXELFORMAT_RGB48)
+        CASE(SDL_PIXELFORMAT_BGR48)
+        CASE(SDL_PIXELFORMAT_RGBA64)
+        CASE(SDL_PIXELFORMAT_ARGB64)
+        CASE(SDL_PIXELFORMAT_BGRA64)
+        CASE(SDL_PIXELFORMAT_ABGR64)
+        CASE(SDL_PIXELFORMAT_RGB48_FLOAT)
+        CASE(SDL_PIXELFORMAT_BGR48_FLOAT)
+        CASE(SDL_PIXELFORMAT_RGBA64_FLOAT)
+        CASE(SDL_PIXELFORMAT_ARGB64_FLOAT)
+        CASE(SDL_PIXELFORMAT_BGRA64_FLOAT)
+        CASE(SDL_PIXELFORMAT_ABGR64_FLOAT)
+        CASE(SDL_PIXELFORMAT_RGB96_FLOAT)
+        CASE(SDL_PIXELFORMAT_BGR96_FLOAT)
+        CASE(SDL_PIXELFORMAT_RGBA128_FLOAT)
+        CASE(SDL_PIXELFORMAT_ARGB128_FLOAT)
+        CASE(SDL_PIXELFORMAT_BGRA128_FLOAT)
+        CASE(SDL_PIXELFORMAT_ABGR128_FLOAT)
         CASE(SDL_PIXELFORMAT_YV12)
         CASE(SDL_PIXELFORMAT_IYUV)
         CASE(SDL_PIXELFORMAT_YUY2)
@@ -130,6 +148,7 @@ const char *SDL_GetPixelFormatName(Uint32 format)
         CASE(SDL_PIXELFORMAT_YVYU)
         CASE(SDL_PIXELFORMAT_NV12)
         CASE(SDL_PIXELFORMAT_NV21)
+        CASE(SDL_PIXELFORMAT_P010)
         CASE(SDL_PIXELFORMAT_EXTERNAL_OES)
 
     default:
@@ -138,7 +157,7 @@ const char *SDL_GetPixelFormatName(Uint32 format)
 }
 #undef CASE
 
-SDL_bool SDL_GetMasksForPixelFormatEnum(Uint32 format, int *bpp, Uint32 *Rmask,
+SDL_bool SDL_GetMasksForPixelFormatEnum(SDL_PixelFormatEnum format, int *bpp, Uint32 *Rmask,
                                         Uint32 *Gmask, Uint32 *Bmask, Uint32 *Amask)
 {
     Uint32 masks[4];
@@ -314,7 +333,7 @@ SDL_bool SDL_GetMasksForPixelFormatEnum(Uint32 format, int *bpp, Uint32 *Rmask,
     return SDL_TRUE;
 }
 
-Uint32 SDL_GetPixelFormatEnumForMasks(int bpp, Uint32 Rmask, Uint32 Gmask, Uint32 Bmask, Uint32 Amask)
+SDL_PixelFormatEnum SDL_GetPixelFormatEnumForMasks(int bpp, Uint32 Rmask, Uint32 Gmask, Uint32 Bmask, Uint32 Amask)
 {
     switch (bpp) {
     case 1:
@@ -555,7 +574,7 @@ Uint32 SDL_GetPixelFormatEnumForMasks(int bpp, Uint32 Rmask, Uint32 Gmask, Uint3
 static SDL_PixelFormat *formats;
 static SDL_SpinLock formats_lock = 0;
 
-SDL_PixelFormat *SDL_CreatePixelFormat(Uint32 pixel_format)
+SDL_PixelFormat *SDL_CreatePixelFormat(SDL_PixelFormatEnum pixel_format)
 {
     SDL_PixelFormat *format;
 
@@ -571,7 +590,7 @@ SDL_PixelFormat *SDL_CreatePixelFormat(Uint32 pixel_format)
     }
 
     /* Allocate an empty pixel format structure, and initialize it */
-    format = SDL_malloc(sizeof(*format));
+    format = (SDL_PixelFormat *)SDL_malloc(sizeof(*format));
     if (!format) {
         SDL_UnlockSpinlock(&formats_lock);
         return NULL;
@@ -593,7 +612,7 @@ SDL_PixelFormat *SDL_CreatePixelFormat(Uint32 pixel_format)
     return format;
 }
 
-int SDL_InitFormat(SDL_PixelFormat *format, Uint32 pixel_format)
+int SDL_InitFormat(SDL_PixelFormat *format, SDL_PixelFormatEnum pixel_format)
 {
     int bpp;
     Uint32 Rmask, Gmask, Bmask, Amask;
@@ -701,10 +720,14 @@ void SDL_DestroyPixelFormat(SDL_PixelFormat *format)
     return;
 }
 
-SDL_Colorspace SDL_GetDefaultColorspaceForFormat(Uint32 format)
+SDL_Colorspace SDL_GetDefaultColorspaceForFormat(SDL_PixelFormatEnum format)
 {
     if (SDL_ISPIXELFORMAT_FOURCC(format)) {
-        return SDL_COLORSPACE_YUV_DEFAULT;
+        if (format == SDL_PIXELFORMAT_P010) {
+            return SDL_COLORSPACE_HDR10;
+        } else {
+            return SDL_COLORSPACE_YUV_DEFAULT;
+        }
     } else if (SDL_ISPIXELFORMAT_FLOAT(format)) {
         return SDL_COLORSPACE_SRGB_LINEAR;
     } else if (SDL_ISPIXELFORMAT_10BIT(format)) {
@@ -854,14 +877,13 @@ const float *SDL_GetYCbCRtoRGBConversionMatrix(SDL_Colorspace colorspace, int w,
 
     switch (SDL_COLORSPACEMATRIX(colorspace)) {
     case SDL_MATRIX_COEFFICIENTS_BT601:
+    case SDL_MATRIX_COEFFICIENTS_BT470BG:
         return SDL_GetBT601ConversionMatrix(colorspace);
 
     case SDL_MATRIX_COEFFICIENTS_BT709:
         return SDL_GetBT709ConversionMatrix(colorspace);
 
-    /* FIXME: Are these the same? */
     case SDL_MATRIX_COEFFICIENTS_BT2020_NCL:
-    case SDL_MATRIX_COEFFICIENTS_BT2020_CL:
         return SDL_GetBT2020ConversionMatrix(colorspace);
 
     case SDL_MATRIX_COEFFICIENTS_UNSPECIFIED:
@@ -1371,7 +1393,7 @@ SDL_BlitMap *SDL_AllocBlitMap(void)
 
 void SDL_InvalidateAllBlitMap(SDL_Surface *surface)
 {
-    SDL_ListNode *l = surface->list_blitmap;
+    SDL_ListNode *l = (SDL_ListNode *)surface->list_blitmap;
 
     surface->list_blitmap = NULL;
 

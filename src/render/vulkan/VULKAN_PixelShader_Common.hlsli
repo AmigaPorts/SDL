@@ -1,8 +1,5 @@
-
-Texture2D texture0 : register(t0);
-Texture2D texture1 : register(t1);
-Texture2D texture2 : register(t2);
 SamplerState sampler0 : register(s0);
+Texture2D texture0 : register(t0);
 
 struct PixelShaderInput
 {
@@ -11,16 +8,10 @@ struct PixelShaderInput
     float4 color : COLOR0;
 };
 
-// These should mirror the definitions in SDL_render_d3d12.c
+// These should mirror the definitions in SDL_render_vulkan.c
 static const float TONEMAP_NONE = 0;
 static const float TONEMAP_LINEAR = 1;
 static const float TONEMAP_CHROME = 2;
-
-static const float TEXTURETYPE_NONE = 0;
-static const float TEXTURETYPE_RGB = 1;
-static const float TEXTURETYPE_NV12 = 2;
-static const float TEXTURETYPE_NV21 = 3;
-static const float TEXTURETYPE_YUV = 4;
 
 static const float INPUTTYPE_UNSPECIFIED = 0;
 static const float INPUTTYPE_SRGB = 1;
@@ -30,19 +21,14 @@ static const float INPUTTYPE_HDR10 = 3;
 cbuffer Constants : register(b1)
 {
     float scRGB_output;
-    float texture_type;
     float input_type;
     float color_scale;
+    float unused_pad0;
 
     float tonemap_method;
     float tonemap_factor1;
     float tonemap_factor2;
     float sdr_white_point;
-
-    float4 Yoffset;
-    float4 Rcoeff;
-    float4 Gcoeff;
-    float4 Bcoeff;
 };
 
 static const float3x3 mat709to2020 = {
@@ -118,48 +104,8 @@ float4 GetInputColor(PixelShaderInput input)
 {
     float4 rgba;
 
-    if (texture_type == TEXTURETYPE_NONE) {
-        rgba = 1.0;
-    } else if (texture_type == TEXTURETYPE_RGB) {
-        rgba = texture0.Sample(sampler0, input.tex);
-    } else if (texture_type == TEXTURETYPE_NV12) {
-        float3 yuv;
-        yuv.x = texture0.Sample(sampler0, input.tex).r;
-        yuv.yz = texture1.Sample(sampler0, input.tex).rg;
+    rgba = texture0.Sample(sampler0, input.tex).rgba;
 
-        yuv += Yoffset.xyz;
-        rgba.r = dot(yuv, Rcoeff.xyz);
-        rgba.g = dot(yuv, Gcoeff.xyz);
-        rgba.b = dot(yuv, Bcoeff.xyz);
-        rgba.a = 1.0;
-    } else if (texture_type == TEXTURETYPE_NV21) {
-        float3 yuv;
-        yuv.x = texture0.Sample(sampler0, input.tex).r;
-        yuv.yz = texture1.Sample(sampler0, input.tex).gr;
-
-        yuv += Yoffset.xyz;
-        rgba.r = dot(yuv, Rcoeff.xyz);
-        rgba.g = dot(yuv, Gcoeff.xyz);
-        rgba.b = dot(yuv, Bcoeff.xyz);
-        rgba.a = 1.0;
-    } else if (texture_type == TEXTURETYPE_YUV) {
-        float3 yuv;
-        yuv.x = texture0.Sample(sampler0, input.tex).r;
-        yuv.y = texture1.Sample(sampler0, input.tex).r;
-        yuv.z = texture2.Sample(sampler0, input.tex).r;
-
-        yuv += Yoffset.xyz;
-        rgba.r = dot(yuv, Rcoeff.xyz);
-        rgba.g = dot(yuv, Gcoeff.xyz);
-        rgba.b = dot(yuv, Bcoeff.xyz);
-        rgba.a = 1.0;
-    } else {
-        // Error!
-        rgba.r = 1.0;
-        rgba.g = 0.0;
-        rgba.b = 0.0;
-        rgba.a = 1.0;
-    }
     return rgba;
 }
 

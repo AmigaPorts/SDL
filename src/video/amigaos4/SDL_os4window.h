@@ -94,8 +94,8 @@ extern int OS4_SetWindowFullscreen(SDL_VideoDevice *this, SDL_Window * window, S
 //extern int OS4_SetWindowGammaRamp(SDL_VideoDevice *this, SDL_Window * window, const Uint16 * ramp);
 //extern int OS4_GetWindowGammaRamp(SDL_VideoDevice *this, SDL_Window * window, Uint16 * ramp);
 
-extern void OS4_SetWindowGrabPrivate(SDL_VideoDevice *this, struct Window * w, SDL_bool activate);
-extern void OS4_SetWindowMouseGrab(SDL_VideoDevice *this, SDL_Window * window, SDL_bool grabbed);
+extern int OS4_SetWindowGrabPrivate(SDL_VideoDevice *this, struct Window * w, SDL_bool activate);
+extern int OS4_SetWindowMouseGrab(SDL_VideoDevice *this, SDL_Window * window, SDL_bool grabbed);
 //extern void OS4_SetWindowKeyboardGrab(SDL_VideoDevice *this, SDL_Window * window, SDL_bool grabbed);
 
 extern void OS4_DestroyWindow(SDL_VideoDevice *this, SDL_Window * window);

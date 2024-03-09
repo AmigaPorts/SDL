@@ -74,7 +74,7 @@ static int SDL_CalculateRGBSize(Uint32 format, size_t width, size_t height, size
     return 0;
 }
 
-int SDL_CalculateSize(Uint32 format, int width, int height, size_t *size, size_t *pitch, SDL_bool minimalPitch)
+int SDL_CalculateSurfaceSize(SDL_PixelFormatEnum format, int width, int height, size_t *size, size_t *pitch, SDL_bool minimalPitch)
 {
     size_t p = 0, sz = 0;
 
@@ -113,7 +113,7 @@ int SDL_CalculateSize(Uint32 format, int width, int height, size_t *size, size_t
  * Create an empty RGB surface of the appropriate depth using the given
  * enum SDL_PIXELFORMAT_* format
  */
-SDL_Surface *SDL_CreateSurface(int width, int height, Uint32 format)
+SDL_Surface *SDL_CreateSurface(int width, int height, SDL_PixelFormatEnum format)
 {
     size_t pitch, size;
     SDL_Surface *surface;
@@ -128,7 +128,7 @@ SDL_Surface *SDL_CreateSurface(int width, int height, Uint32 format)
         return NULL;
     }
 
-    if (SDL_CalculateSize(format, width, height, &size, &pitch, SDL_FALSE /* not minimal pitch */) < 0) {
+    if (SDL_CalculateSurfaceSize(format, width, height, &size, &pitch, SDL_FALSE /* not minimal pitch */) < 0) {
         /* Overflow... */
         return NULL;
     }
@@ -202,7 +202,7 @@ SDL_Surface *SDL_CreateSurface(int width, int height, Uint32 format)
  * Create an RGB surface from an existing memory buffer using the given
  * enum SDL_PIXELFORMAT_* format
  */
-SDL_Surface *SDL_CreateSurfaceFrom(void *pixels, int width, int height, int pitch, Uint32 format)
+SDL_Surface *SDL_CreateSurfaceFrom(void *pixels, int width, int height, int pitch, SDL_PixelFormatEnum format)
 {
     SDL_Surface *surface;
 
@@ -221,7 +221,7 @@ SDL_Surface *SDL_CreateSurfaceFrom(void *pixels, int width, int height, int pitc
     } else {
         size_t minimalPitch;
 
-        if (SDL_CalculateSize(format, width, height, NULL, &minimalPitch, SDL_TRUE /* minimal pitch */) < 0) {
+        if (SDL_CalculateSurfaceSize(format, width, height, NULL, &minimalPitch, SDL_TRUE /* minimal pitch */) < 0) {
             /* Overflow... */
             return NULL;
         }
@@ -354,11 +354,6 @@ float SDL_GetSurfaceHDRHeadroom(SDL_Surface *surface, SDL_Colorspace colorspace)
             props = SDL_GetSurfaceProperties(surface);
         } else {
             props = 0;
-        }
-        if (transfer == SDL_TRANSFER_CHARACTERISTICS_PQ) {
-            /* The official definition is 10000, but PQ game content is often mastered for 400 or 1000 nits */
-            const int DEFAULT_PQ_MAXCLL = 1000;
-            default_value = (float)SDL_GetNumberProperty(props, SDL_PROP_SURFACE_MAXCLL_NUMBER, DEFAULT_PQ_MAXCLL) / SDL_GetSurfaceSDRWhitePoint(surface, colorspace);
         }
         return SDL_GetFloatProperty(props, SDL_PROP_SURFACE_HDR_HEADROOM_FLOAT, default_value);
     }
@@ -1085,7 +1080,7 @@ int SDL_BlitSurfaceUncheckedScaled(SDL_Surface *src, const SDL_Rect *srcrect,
             /* Change source format if not appropriate for scaling */
             if (src->format->bytes_per_pixel != 4 || src->format->format == SDL_PIXELFORMAT_ARGB2101010) {
                 SDL_Rect tmprect;
-                int fmt;
+                SDL_PixelFormatEnum fmt;
                 tmprect.x = 0;
                 tmprect.y = 0;
                 tmprect.w = src->w;
@@ -1255,7 +1250,7 @@ int SDL_FlipSurface(SDL_Surface *surface, SDL_FlipMode flip)
     }
 }
 
-static SDL_Surface *SDL_ConvertSurfaceWithPixelFormatAndColorspace(SDL_Surface *surface, const SDL_PixelFormat *format, Uint32 colorspace, SDL_PropertiesID props)
+static SDL_Surface *SDL_ConvertSurfaceWithPixelFormatAndColorspace(SDL_Surface *surface, const SDL_PixelFormat *format, SDL_Colorspace colorspace, SDL_PropertiesID props)
 {
     SDL_Surface *convert;
     SDL_Colorspace src_colorspace;
@@ -1551,7 +1546,7 @@ SDL_Surface *SDL_ConvertSurface(SDL_Surface *surface, const SDL_PixelFormat *for
     return SDL_ConvertSurfaceWithPixelFormatAndColorspace(surface, format, colorspace, 0);
 }
 
-SDL_Surface *SDL_ConvertSurfaceFormat(SDL_Surface *surface, Uint32 pixel_format)
+SDL_Surface *SDL_ConvertSurfaceFormat(SDL_Surface *surface, SDL_PixelFormatEnum pixel_format)
 {
     SDL_Colorspace colorspace;
     SDL_PropertiesID props;
@@ -1572,7 +1567,7 @@ SDL_Surface *SDL_ConvertSurfaceFormat(SDL_Surface *surface, Uint32 pixel_format)
     return SDL_ConvertSurfaceFormatAndColorspace(surface, pixel_format, colorspace, props);
 }
 
-SDL_Surface *SDL_ConvertSurfaceFormatAndColorspace(SDL_Surface *surface, Uint32 pixel_format, SDL_Colorspace colorspace, SDL_PropertiesID props)
+SDL_Surface *SDL_ConvertSurfaceFormatAndColorspace(SDL_Surface *surface, SDL_PixelFormatEnum pixel_format, SDL_Colorspace colorspace, SDL_PropertiesID props)
 {
     SDL_PixelFormat *format;
     SDL_Surface *convert = NULL;
@@ -1588,7 +1583,7 @@ SDL_Surface *SDL_ConvertSurfaceFormatAndColorspace(SDL_Surface *surface, Uint32 
 /*
  * Create a surface on the stack for quick blit operations
  */
-static SDL_bool SDL_CreateSurfaceOnStack(int width, int height, Uint32 pixel_format, SDL_Colorspace colorspace, SDL_PropertiesID props, void *pixels, int pitch, SDL_Surface *surface, SDL_PixelFormat *format, SDL_BlitMap *blitmap)
+static SDL_bool SDL_CreateSurfaceOnStack(int width, int height, SDL_PixelFormatEnum pixel_format, SDL_Colorspace colorspace, SDL_PropertiesID props, void *pixels, int pitch, SDL_Surface *surface, SDL_PixelFormat *format, SDL_BlitMap *blitmap)
 {
     if (SDL_ISPIXELFORMAT_INDEXED(pixel_format)) {
         SDL_SetError("Indexed pixel formats not supported");
@@ -1640,7 +1635,7 @@ static void SDL_DestroySurfaceOnStack(SDL_Surface *surface)
     }
 }
 
-SDL_Surface *SDL_DuplicatePixels(int width, int height, Uint32 format, SDL_Colorspace colorspace, void *pixels, int pitch)
+SDL_Surface *SDL_DuplicatePixels(int width, int height, SDL_PixelFormatEnum format, SDL_Colorspace colorspace, void *pixels, int pitch)
 {
     SDL_Surface *surface = SDL_CreateSurface(width, height, format);
     if (surface) {
@@ -1660,8 +1655,8 @@ SDL_Surface *SDL_DuplicatePixels(int width, int height, Uint32 format, SDL_Color
 }
 
 int SDL_ConvertPixelsAndColorspace(int width, int height,
-                      Uint32 src_format, SDL_Colorspace src_colorspace, SDL_PropertiesID src_properties, const void *src, int src_pitch,
-                      Uint32 dst_format, SDL_Colorspace dst_colorspace, SDL_PropertiesID dst_properties, void *dst, int dst_pitch)
+                      SDL_PixelFormatEnum src_format, SDL_Colorspace src_colorspace, SDL_PropertiesID src_properties, const void *src, int src_pitch,
+                      SDL_PixelFormatEnum dst_format, SDL_Colorspace dst_colorspace, SDL_PropertiesID dst_properties, void *dst, int dst_pitch)
 {
     SDL_Surface src_surface, dst_surface;
     SDL_PixelFormat src_fmt, dst_fmt;
@@ -1739,8 +1734,8 @@ int SDL_ConvertPixelsAndColorspace(int width, int height,
 }
 
 int SDL_ConvertPixels(int width, int height,
-                      Uint32 src_format, const void *src, int src_pitch,
-                      Uint32 dst_format, void *dst, int dst_pitch)
+                      SDL_PixelFormatEnum src_format, const void *src, int src_pitch,
+                      SDL_PixelFormatEnum dst_format, void *dst, int dst_pitch)
 {
     return SDL_ConvertPixelsAndColorspace(width, height,
                       src_format, SDL_COLORSPACE_UNKNOWN, 0, src, src_pitch,
@@ -1757,8 +1752,8 @@ int SDL_ConvertPixels(int width, int height,
  * https://developer.arm.com/documentation/101964/0201/Pre-multiplied-alpha-channel-data
  */
 int SDL_PremultiplyAlpha(int width, int height,
-                         Uint32 src_format, const void *src, int src_pitch,
-                         Uint32 dst_format, void *dst, int dst_pitch)
+                         SDL_PixelFormatEnum src_format, const void *src, int src_pitch,
+                         SDL_PixelFormatEnum dst_format, void *dst, int dst_pitch)
 {
     int c;
     Uint32 srcpixel;
