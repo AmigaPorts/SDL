@@ -892,7 +892,7 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
 }
 
 // This may be called from os4events.c
-void
+int
 OS4_SetWindowGrabPrivate(SDL_VideoDevice *_this, struct Window * w, SDL_bool activate)
 {
     if (w) {
@@ -926,17 +926,20 @@ OS4_SetWindowGrabPrivate(SDL_VideoDevice *_this, struct Window * w, SDL_bool act
         } else {
             dprintf("Window %p ('%s') input was %s\n",
                 w, w->Title, activate ? "grabbed" : "released");
+	    return 0;
         }
     }
+
+    return -1;
 }
 
-void
+int
 OS4_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window * window, SDL_bool grabbed)
 {
     SDL_WindowData *data = window->driverdata;
 
-    OS4_SetWindowGrabPrivate(_this, data->syswin, grabbed);
     data->pointerGrabTicks = 0;
+    return OS4_SetWindowGrabPrivate(_this, data->syswin, grabbed);
 }
 
 void

@@ -822,7 +822,7 @@ static void SDLTest_PrintWindowFlag(char *text, size_t maxlen, Uint32 flag)
 
 static void SDLTest_PrintWindowFlags(char *text, size_t maxlen, Uint32 flags)
 {
-    const Uint32 window_flags[] = {
+    const SDL_WindowFlags window_flags[] = {
         SDL_WINDOW_FULLSCREEN,
         SDL_WINDOW_OPENGL,
         SDL_WINDOW_HIDDEN,
@@ -972,115 +972,14 @@ static void SDLTest_PrintRendererFlag(char *text, size_t maxlen, Uint32 flag)
 
 static void SDLTest_PrintPixelFormat(char *text, size_t maxlen, Uint32 format)
 {
-    switch (format) {
-    case SDL_PIXELFORMAT_UNKNOWN:
-        SDL_snprintfcat(text, maxlen, "Unknown");
-        break;
-    case SDL_PIXELFORMAT_INDEX1LSB:
-        SDL_snprintfcat(text, maxlen, "Index1LSB");
-        break;
-    case SDL_PIXELFORMAT_INDEX1MSB:
-        SDL_snprintfcat(text, maxlen, "Index1MSB");
-        break;
-    case SDL_PIXELFORMAT_INDEX2LSB:
-        SDL_snprintfcat(text, maxlen, "Index2LSB");
-        break;
-    case SDL_PIXELFORMAT_INDEX2MSB:
-        SDL_snprintfcat(text, maxlen, "Index2MSB");
-        break;
-    case SDL_PIXELFORMAT_INDEX4LSB:
-        SDL_snprintfcat(text, maxlen, "Index4LSB");
-        break;
-    case SDL_PIXELFORMAT_INDEX4MSB:
-        SDL_snprintfcat(text, maxlen, "Index4MSB");
-        break;
-    case SDL_PIXELFORMAT_INDEX8:
-        SDL_snprintfcat(text, maxlen, "Index8");
-        break;
-    case SDL_PIXELFORMAT_RGB332:
-        SDL_snprintfcat(text, maxlen, "RGB332");
-        break;
-    case SDL_PIXELFORMAT_RGB444:
-        SDL_snprintfcat(text, maxlen, "RGB444");
-        break;
-    case SDL_PIXELFORMAT_BGR444:
-        SDL_snprintfcat(text, maxlen, "BGR444");
-        break;
-    case SDL_PIXELFORMAT_RGB555:
-        SDL_snprintfcat(text, maxlen, "RGB555");
-        break;
-    case SDL_PIXELFORMAT_BGR555:
-        SDL_snprintfcat(text, maxlen, "BGR555");
-        break;
-    case SDL_PIXELFORMAT_ARGB4444:
-        SDL_snprintfcat(text, maxlen, "ARGB4444");
-        break;
-    case SDL_PIXELFORMAT_ABGR4444:
-        SDL_snprintfcat(text, maxlen, "ABGR4444");
-        break;
-    case SDL_PIXELFORMAT_ARGB1555:
-        SDL_snprintfcat(text, maxlen, "ARGB1555");
-        break;
-    case SDL_PIXELFORMAT_ABGR1555:
-        SDL_snprintfcat(text, maxlen, "ABGR1555");
-        break;
-    case SDL_PIXELFORMAT_RGB565:
-        SDL_snprintfcat(text, maxlen, "RGB565");
-        break;
-    case SDL_PIXELFORMAT_BGR565:
-        SDL_snprintfcat(text, maxlen, "BGR565");
-        break;
-    case SDL_PIXELFORMAT_RGB24:
-        SDL_snprintfcat(text, maxlen, "RGB24");
-        break;
-    case SDL_PIXELFORMAT_BGR24:
-        SDL_snprintfcat(text, maxlen, "BGR24");
-        break;
-    case SDL_PIXELFORMAT_XRGB8888:
-        SDL_snprintfcat(text, maxlen, "XRGB8888");
-        break;
-    case SDL_PIXELFORMAT_XBGR8888:
-        SDL_snprintfcat(text, maxlen, "XBGR8888");
-        break;
-    case SDL_PIXELFORMAT_ARGB8888:
-        SDL_snprintfcat(text, maxlen, "ARGB8888");
-        break;
-    case SDL_PIXELFORMAT_RGBA8888:
-        SDL_snprintfcat(text, maxlen, "RGBA8888");
-        break;
-    case SDL_PIXELFORMAT_ABGR8888:
-        SDL_snprintfcat(text, maxlen, "ABGR8888");
-        break;
-    case SDL_PIXELFORMAT_BGRA8888:
-        SDL_snprintfcat(text, maxlen, "BGRA8888");
-        break;
-    case SDL_PIXELFORMAT_ARGB2101010:
-        SDL_snprintfcat(text, maxlen, "ARGB2101010");
-        break;
-    case SDL_PIXELFORMAT_YV12:
-        SDL_snprintfcat(text, maxlen, "YV12");
-        break;
-    case SDL_PIXELFORMAT_IYUV:
-        SDL_snprintfcat(text, maxlen, "IYUV");
-        break;
-    case SDL_PIXELFORMAT_YUY2:
-        SDL_snprintfcat(text, maxlen, "YUY2");
-        break;
-    case SDL_PIXELFORMAT_UYVY:
-        SDL_snprintfcat(text, maxlen, "UYVY");
-        break;
-    case SDL_PIXELFORMAT_YVYU:
-        SDL_snprintfcat(text, maxlen, "YVYU");
-        break;
-    case SDL_PIXELFORMAT_NV12:
-        SDL_snprintfcat(text, maxlen, "NV12");
-        break;
-    case SDL_PIXELFORMAT_NV21:
-        SDL_snprintfcat(text, maxlen, "NV21");
-        break;
-    default:
+    const char *name = SDL_GetPixelFormatName(format);
+    if (name) {
+        if (SDL_strncmp(name, "SDL_PIXELFORMAT_", 16) == 0) {
+            name += 16;
+        }
+        SDL_snprintfcat(text, maxlen, name);
+    } else {
         SDL_snprintfcat(text, maxlen, "0x%8.8x", format);
-        break;
     }
 }
 
@@ -1149,8 +1048,8 @@ static void SDLTest_PrintRenderer(SDL_RendererInfo *info)
     SDL_snprintfcat(text, sizeof(text), ")");
     SDL_Log("%s\n", text);
 
-    (void)SDL_snprintf(text, sizeof(text), "    Texture formats (%" SDL_PRIu32 "): ", info->num_texture_formats);
-    for (i = 0; i < (int)info->num_texture_formats; ++i) {
+    (void)SDL_snprintf(text, sizeof(text), "    Texture formats (%d): ", info->num_texture_formats);
+    for (i = 0; i < info->num_texture_formats; ++i) {
         if (i > 0) {
             SDL_snprintfcat(text, sizeof(text), ", ");
         }
@@ -1809,7 +1708,7 @@ static void SDLTest_PrintEvent(const SDL_Event *event)
                 event->button.windowID);
         break;
     case SDL_EVENT_MOUSE_WHEEL:
-        SDL_Log("SDL EVENT: Mouse: wheel scrolled %g in x and %g in y (reversed: %" SDL_PRIu32 ") in window %" SDL_PRIu32,
+        SDL_Log("SDL EVENT: Mouse: wheel scrolled %g in x and %g in y (reversed: %d) in window %" SDL_PRIu32,
                 event->wheel.x, event->wheel.y, event->wheel.direction, event->wheel.windowID);
         break;
     case SDL_EVENT_JOYSTICK_ADDED:
@@ -2094,7 +1993,7 @@ static void FullscreenTo(SDLTest_CommonState *state, int index, int windowId)
     int num_displays;
     SDL_DisplayID *displays;
     SDL_Window *window;
-    Uint32 flags;
+    SDL_WindowFlags flags;
     const SDL_DisplayMode *mode;
     struct SDL_Rect rect = { 0, 0, 0, 0 };
 
@@ -2398,7 +2297,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 /* Ctrl-M maximize */
                 SDL_Window *window = SDL_GetWindowFromID(event->key.windowID);
                 if (window) {
-                    Uint32 flags = SDL_GetWindowFlags(window);
+                    SDL_WindowFlags flags = SDL_GetWindowFlags(window);
                     if (flags & SDL_WINDOW_MAXIMIZED) {
                         SDL_RestoreWindow(window);
                     } else {
@@ -2426,7 +2325,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 /* Ctrl-T toggle topmost mode */
                 SDL_Window *window = SDL_GetWindowFromID(event->key.windowID);
                 if (window) {
-                    Uint32 flags = SDL_GetWindowFlags(window);
+                    SDL_WindowFlags flags = SDL_GetWindowFlags(window);
                     if (flags & SDL_WINDOW_ALWAYS_ON_TOP) {
                         SDL_SetWindowAlwaysOnTop(window, SDL_FALSE);
                     } else {
@@ -2449,7 +2348,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 /* Ctrl-Enter toggle fullscreen */
                 SDL_Window *window = SDL_GetWindowFromID(event->key.windowID);
                 if (window) {
-                    Uint32 flags = SDL_GetWindowFlags(window);
+                    SDL_WindowFlags flags = SDL_GetWindowFlags(window);
                     if (!(flags & SDL_WINDOW_FULLSCREEN) ||
 						!SDL_GetWindowFullscreenMode(window)) {
                         SDL_SetWindowFullscreenMode(window, &state->fullscreen_mode);
@@ -2462,7 +2361,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 /* Alt-Enter toggle fullscreen desktop */
                 SDL_Window *window = SDL_GetWindowFromID(event->key.windowID);
                 if (window) {
-                    Uint32 flags = SDL_GetWindowFlags(window);
+                    SDL_WindowFlags flags = SDL_GetWindowFlags(window);
                     if (!(flags & SDL_WINDOW_FULLSCREEN) ||
 						SDL_GetWindowFullscreenMode(window)) {
                         SDL_SetWindowFullscreenMode(window, NULL);
@@ -2479,7 +2378,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 /* Ctrl-B toggle window border */
                 SDL_Window *window = SDL_GetWindowFromID(event->key.windowID);
                 if (window) {
-                    const Uint32 flags = SDL_GetWindowFlags(window);
+                    const SDL_WindowFlags flags = SDL_GetWindowFlags(window);
                     const SDL_bool b = (flags & SDL_WINDOW_BORDERLESS) ? SDL_TRUE : SDL_FALSE;
                     SDL_SetWindowBordered(window, b);
                 }
@@ -2523,6 +2422,8 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
     }
     case SDL_EVENT_QUIT:
         return 1;
+    default:
+        break;
     }
 
     return 0;  /* keep going */
@@ -2530,7 +2431,9 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
 
 void SDLTest_CommonEvent(SDLTest_CommonState *state, SDL_Event *event, int *done)
 {
-    *done = SDLTest_CommonEventMainCallbacks(state, event) ? 1 : 0;
+    if (SDLTest_CommonEventMainCallbacks(state, event)) {
+        *done = 1;
+    }
 }
 
 void SDLTest_CommonQuit(SDLTest_CommonState *state)

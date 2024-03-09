@@ -543,7 +543,7 @@ static SDL_bool METAL_SupportsBlendMode(SDL_Renderer *renderer, SDL_BlendMode bl
     return SDL_TRUE;
 }
 
-size_t GetBT601ConversionMatrix( SDL_Colorspace colorspace )
+size_t GetBT601ConversionMatrix(SDL_Colorspace colorspace)
 {
     switch (SDL_COLORSPACERANGE(colorspace)) {
     case SDL_COLOR_RANGE_LIMITED:
@@ -590,15 +590,14 @@ size_t GetYCbCRtoRGBConversionMatrix(SDL_Colorspace colorspace, int w, int h, in
     const int YUV_SD_THRESHOLD = 576;
 
     switch (SDL_COLORSPACEMATRIX(colorspace)) {
+    case SDL_MATRIX_COEFFICIENTS_BT470BG:
     case SDL_MATRIX_COEFFICIENTS_BT601:
         return GetBT601ConversionMatrix(colorspace);
 
     case SDL_MATRIX_COEFFICIENTS_BT709:
         return GetBT709ConversionMatrix(colorspace);
 
-    /* FIXME: Are these the same? */
     case SDL_MATRIX_COEFFICIENTS_BT2020_NCL:
-    case SDL_MATRIX_COEFFICIENTS_BT2020_CL:
         return GetBT2020ConversionMatrix(colorspace);
 
     case SDL_MATRIX_COEFFICIENTS_UNSPECIFIED:
@@ -2216,7 +2215,7 @@ SDL_RenderDriver METAL_RenderDriver = {
     {
         "metal",
         (SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC),
-        9,
+        10,
         { SDL_PIXELFORMAT_ARGB8888,
           SDL_PIXELFORMAT_ABGR8888,
           SDL_PIXELFORMAT_XBGR2101010,

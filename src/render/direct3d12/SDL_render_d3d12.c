@@ -31,7 +31,6 @@
 #include "../../video/windows/SDL_windowswindow.h"
 #include "../SDL_sysrender.h"
 #include "../SDL_d3dmath.h"
-#include "../../video/SDL_pixels_c.h"
 
 #if defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)
 #include "SDL_render_d3d12_xbox.h"
@@ -78,6 +77,9 @@
 extern "C" {
 #endif
 
+/* This must be included here as the function definitions in SDL_pixels.c/_c.h are C, not C++ */
+#include "../../video/SDL_pixels_c.h"
+
 /* !!! FIXME: vertex buffer bandwidth could be lower; only use UV coords when
    !!! FIXME:  textures are needed. */
 
@@ -88,7 +90,7 @@ typedef struct
     Float4X4 projectionAndView;
 } VertexShaderConstants;
 
-/* These should mirror the definitions in D3D12_PixelShader_Common.incl */
+/* These should mirror the definitions in D3D12_PixelShader_Common.hlsli */
 //static const float TONEMAP_NONE = 0;
 //static const float TONEMAP_LINEAR = 1;
 static const float TONEMAP_CHROME = 2;
@@ -301,12 +303,12 @@ static const GUID SDL_IID_ID3D12InfoQueue = { 0x0742a90b, 0xc387, 0x483f, { 0xb9
 #pragma GCC diagnostic pop
 #endif
 
-UINT D3D12_Align(UINT location, UINT alignment)
+static UINT D3D12_Align(UINT location, UINT alignment)
 {
     return (location + (alignment - 1)) & ~(alignment - 1);
 }
 
-Uint32 D3D12_DXGIFormatToSDLPixelFormat(DXGI_FORMAT dxgiFormat)
+static SDL_PixelFormatEnum D3D12_DXGIFormatToSDLPixelFormat(DXGI_FORMAT dxgiFormat)
 {
     switch (dxgiFormat) {
     case DXGI_FORMAT_B8G8R8A8_UNORM:
@@ -1080,32 +1082,23 @@ static HRESULT D3D12_CreateDeviceResources(SDL_Renderer *renderer)
         }
     }
 
-#if 0 /* Actually, don't do this, it causes a huge startup time on some systems */
     {
         const SDL_BlendMode defaultBlendModes[] = {
-            SDL_BLENDMODE_NONE,
             SDL_BLENDMODE_BLEND,
-            SDL_BLENDMODE_ADD,
-            SDL_BLENDMODE_MOD,
-            SDL_BLENDMODE_MUL
         };
         const DXGI_FORMAT defaultRTVFormats[] = {
-            DXGI_FORMAT_R16G16B16A16_FLOAT,
-            DXGI_FORMAT_R10G10B10A2_UNORM,
             DXGI_FORMAT_B8G8R8A8_UNORM,
-            DXGI_FORMAT_B8G8R8X8_UNORM,
-            DXGI_FORMAT_R8_UNORM
         };
-        int i, j, k, l;
+        int j, k, l;
 
-        /* Create all the default pipeline state objects
-           (will add everything except custom blend states) */
+        /* Create a few default pipeline state objects, to verify that this renderer will work */
         for (i = 0; i < NUM_SHADERS; ++i) {
             for (j = 0; j < SDL_arraysize(defaultBlendModes); ++j) {
                 for (k = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT; k < D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH; ++k) {
                     for (l = 0; l < SDL_arraysize(defaultRTVFormats); ++l) {
                         if (!D3D12_CreatePipelineState(renderer, (D3D12_Shader)i, defaultBlendModes[j], (D3D12_PRIMITIVE_TOPOLOGY_TYPE)k, defaultRTVFormats[l])) {
                             /* D3D12_CreatePipelineState will set the SDL error, if it fails */
+                            result = E_FAIL;
                             goto done;
                         }
                     }
@@ -1113,7 +1106,6 @@ static HRESULT D3D12_CreateDeviceResources(SDL_Renderer *renderer)
             }
         }
     }
-#endif /* 0 */
 
     /* Create default vertex buffers  */
     for (i = 0; i < SDL_D3D12_NUM_VERTEX_BUFFERS; ++i) {
@@ -1985,7 +1977,12 @@ static int D3D12_UpdateTexture(SDL_Renderer *renderer, SDL_Texture *texture,
         /* Skip to the correct offset into the next texture */
         srcPixels = (const void *)((const Uint8 *)srcPixels + rect->h * srcPitch);
 
-        if (D3D12_UpdateTextureInternal(rendererData, textureData->mainTexture, 1, rect->x, rect->y, (rect->w + 1) & ~1, (rect->h + 1) & ~1, srcPixels, (srcPitch + 1) & ~1, &textureData->mainResourceState) < 0) {
+        if (texture->format == SDL_PIXELFORMAT_P010) {
+            srcPitch = (srcPitch + 3) & ~3;
+        } else {
+            srcPitch = (srcPitch + 1) & ~1;
+        }
+        if (D3D12_UpdateTextureInternal(rendererData, textureData->mainTexture, 1, rect->x, rect->y, (rect->w + 1) & ~1, (rect->h + 1) & ~1, srcPixels, srcPitch, &textureData->mainResourceState) < 0) {
             return -1;
         }
     }
@@ -2833,6 +2830,7 @@ static int D3D12_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd,
             if (SDL_memcmp(viewport, &cmd->data.viewport.rect, sizeof(cmd->data.viewport.rect)) != 0) {
                 SDL_copyp(viewport, &cmd->data.viewport.rect);
                 rendererData->viewportDirty = SDL_TRUE;
+                rendererData->cliprectDirty = SDL_TRUE;
             }
             break;
         }

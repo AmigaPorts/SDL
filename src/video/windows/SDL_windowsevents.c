@@ -1410,7 +1410,7 @@ WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
     case WM_NCCALCSIZE:
     {
-        Uint32 window_flags = SDL_GetWindowFlags(data->window);
+        SDL_WindowFlags window_flags = SDL_GetWindowFlags(data->window);
         if (wParam == TRUE && (window_flags & SDL_WINDOW_BORDERLESS) && !(window_flags & SDL_WINDOW_FULLSCREEN)) {
             /* When borderless, need to tell windows that the size of the non-client area is 0 */
             if (!(window_flags & SDL_WINDOW_RESIZABLE)) {
@@ -1687,6 +1687,7 @@ void SDL_SetWindowsMessageHook(SDL_WindowsMessageHook callback, void *userdata)
 int WIN_WaitEventTimeout(SDL_VideoDevice *_this, Sint64 timeoutNS)
 {
     if (g_WindowsEnableMessageLoop) {
+#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
         DWORD timeout, ret;
         timeout = timeoutNS < 0 ? INFINITE : (DWORD)SDL_NS_TO_MS(timeoutNS);
         ret = MsgWaitForMultipleObjects(0, NULL, FALSE, timeout, QS_ALLINPUT);
@@ -1695,6 +1696,37 @@ int WIN_WaitEventTimeout(SDL_VideoDevice *_this, Sint64 timeoutNS)
         } else {
             return 0;
         }
+#else
+        /* MsgWaitForMultipleObjects is desktop-only. */
+        MSG msg;
+        BOOL message_result;
+        UINT_PTR timer_id = 0;
+        if (timeoutNS > 0) {
+            timer_id = SetTimer(NULL, 0, (UINT)SDL_NS_TO_MS(timeoutNS), NULL);
+            message_result = GetMessage(&msg, 0, 0, 0);
+            KillTimer(NULL, timer_id);
+        } else if (timeoutNS == 0) {
+            message_result = PeekMessage(&msg, NULL, 0, 0, PM_REMOVE);
+        } else {
+            message_result = GetMessage(&msg, 0, 0, 0);
+        }
+        if (message_result) {
+            if (msg.message == WM_TIMER && !msg.hwnd && msg.wParam == timer_id) {
+                return 0;
+            }
+            if (g_WindowsMessageHook) {
+                if (!g_WindowsMessageHook(g_WindowsMessageHookData, &msg)) {
+                    return 1;
+                }
+            }
+            /* Always translate the message in case it's a non-SDL window (e.g. with Qt integration) */
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+            return 1;
+        } else {
+            return 0;
+        }
+#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
     } else {
         /* Fail the wait so the caller falls back to polling */
         return -1;
@@ -1849,7 +1881,7 @@ int SDL_RegisterApp(const char *name, Uint32 style, void *hInst)
     }
     SDL_Appname = WIN_UTF8ToString(name);
     SDL_Appstyle = style;
-    SDL_Instance = hInst ? hInst : GetModuleHandle(NULL);
+    SDL_Instance = hInst ? (HINSTANCE)hInst : GetModuleHandle(NULL);
 
     /* Register the application class */
     wcex.cbSize = sizeof(WNDCLASSEX);

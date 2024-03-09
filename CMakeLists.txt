@@ -262,6 +262,12 @@ if(SDL_FRAMEWORK)
   set(SDL_STATIC_AVAILABLE FALSE)
 endif()
 
+if(UNIX AND NOT ANDROID AND NOT RISCOS AND NOT SDL_FRAMEWORK)
+  set(SDL_RPATH_DEFAULT ON)
+else()
+  set(SDL_RPATH_DEFAULT OFF)
+endif()
+
 # Allow some projects to be built conditionally.
 set_option(SDL_DISABLE_INSTALL    "Disable installation of SDL3" ${SDL3_SUBPROJECT})
 cmake_dependent_option(SDL_DISABLE_INSTALL_CPACK "Create binary SDL3 archive using CPack" ${SDL3_SUBPROJECT} "NOT SDL_DISABLE_INSTALL" ON)
@@ -312,9 +318,9 @@ dep_option(SDL_PULSEAUDIO          "Use PulseAudio" ${UNIX_SYS} "SDL_AUDIO" OFF)
 dep_option(SDL_PULSEAUDIO_SHARED   "Dynamically load PulseAudio support" ON "SDL_PULSEAUDIO" OFF)
 dep_option(SDL_SNDIO               "Support the sndio audio API" ${UNIX_SYS} "SDL_AUDIO" OFF)
 dep_option(SDL_SNDIO_SHARED        "Dynamically load the sndio audio API" ON "SDL_SNDIO" OFF)
-set_option(SDL_RPATH               "Use an rpath when linking SDL" ${UNIX_SYS})
+set_option(SDL_RPATH               "Use an rpath when linking SDL" ${SDL_RPATH_DEFAULT})
 set_option(SDL_CLOCK_GETTIME       "Use clock_gettime() instead of gettimeofday()" ${SDL_CLOCK_GETTIME_DEFAULT})
-dep_option(SDL_X11                 "Use X11 video driver" ${UNIX_SYS} "SDL_AUDIO" OFF)
+dep_option(SDL_X11                 "Use X11 video driver" ${UNIX_SYS} "SDL_VIDEO" OFF)
 dep_option(SDL_X11_SHARED          "Dynamically load X11 support" ON "SDL_X11" OFF)
 set(SDL_X11_OPTIONS Xcursor Xdbe XInput Xfixes Xrandr Xscrnsaver XShape)
 foreach(_SUB ${SDL_X11_OPTIONS})
@@ -583,7 +589,6 @@ if(USE_GCC OR USE_CLANG OR USE_INTELCC OR USE_QCC)
   cmake_pop_check_state()
 
   if(APPLE)
-    # FIXME: don't use deprecated declarations
     check_c_compiler_flag(-Wno-error=deprecated-declarations COMPILER_SUPPORTS_WNO_ERROR_DEPRECATED_DECLARATIONS)
     if(COMPILER_SUPPORTS_WNO_ERROR_DEPRECATED_DECLARATIONS)
       sdl_compile_options(PRIVATE "-Wno-error=deprecated-declarations")
@@ -1052,7 +1057,7 @@ if(SDL_LIBC)
 
   set(symbols_to_check
     abs acos acosf asin asinf atan atan2 atan2f atanf atof atoi
-    bcopy bsearch
+    bcopy
     calloc ceil ceilf copysign copysignf cos cosf
     _Exit exp expf
     fabs fabsf floor floorf fmod fmodf fopen64 free fseeko fseeko64
@@ -1061,7 +1066,6 @@ if(SDL_LIBC)
     log log10 log10f logf lround lroundf _ltoa
     malloc memcmp memcpy memmove memset modf modff
     pow powf putenv
-    qsort
     realloc rindex round roundf
     scalbn scalbnf setenv sin sinf sqr sqrt sqrtf sscanf strchr
     strcmp strlcat strlcpy strlen strncmp strnlen
@@ -1763,10 +1767,11 @@ elseif(UNIX AND NOT APPLE AND NOT RISCOS AND NOT HAIKU)
       else()
         set(SDL_RLD_FLAGS "-Wl,-rpath,\${libdir}")
       endif()
+      set(HAVE_RPATH TRUE)
     elseif(SOLARIS)
       set(SDL_RLD_FLAGS "-R\${libdir}")
+      set(HAVE_RPATH TRUE)
     endif()
-    set(HAVE_RPATH TRUE)
   endif()
 
   if(QNX)
@@ -2010,6 +2015,7 @@ elseif(WINDOWS)
       set(HAVE_VULKAN TRUE)
       if(SDL_RENDER_VULKAN)
         set(SDL_VIDEO_RENDER_VULKAN 1)
+        set(HAVE_RENDER_VULKAN TRUE)
       endif()
     endif()
   endif()
@@ -2254,6 +2260,7 @@ elseif(APPLE)
           set(HAVE_VULKAN TRUE)
           if(SDL_RENDER_VULKAN)
             set(SDL_VIDEO_RENDER_VULKAN 1)
+            set(HAVE_RENDER_VULKAN TRUE)
           endif()
         endif()
         if(SDL_METAL)
@@ -2344,6 +2351,11 @@ elseif(APPLE)
   endif()
 
   CheckPTHREAD()
+
+  if(SDL_RPATH AND SDL_SHARED)
+    set(SDL_RLD_FLAGS "-Wl,-rpath,\${libdir}")
+    set(HAVE_RPATH TRUE)
+  endif()
 
 elseif(HAIKU)
   if(SDL_AUDIO)

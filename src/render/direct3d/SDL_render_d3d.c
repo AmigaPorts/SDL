@@ -209,7 +209,7 @@ static D3DFORMAT PixelFormatToD3DFMT(Uint32 format)
     }
 }
 
-static Uint32 D3DFMTToPixelFormat(D3DFORMAT format)
+static SDL_PixelFormatEnum D3DFMTToPixelFormat(D3DFORMAT format)
 {
     switch (format) {
     case D3DFMT_R5G6B5:
@@ -1187,6 +1187,7 @@ static int D3D_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
             if (SDL_memcmp(viewport, &cmd->data.viewport.rect, sizeof(cmd->data.viewport.rect)) != 0) {
                 SDL_copyp(viewport, &cmd->data.viewport.rect);
                 data->drawstate.viewport_dirty = SDL_TRUE;
+                data->drawstate.cliprect_dirty = SDL_TRUE;
             }
             break;
         }
@@ -1551,7 +1552,7 @@ static int D3D_Reset(SDL_Renderer *renderer)
 
 static int D3D_SetVSync(SDL_Renderer *renderer, const int vsync)
 {
-    D3D_RenderData *data = renderer->driverdata;
+    D3D_RenderData *data = (D3D_RenderData *)renderer->driverdata;
     if (vsync) {
         data->pparams.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
         renderer->info.flags |= SDL_RENDERER_PRESENTVSYNC;

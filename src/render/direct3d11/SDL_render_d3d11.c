@@ -75,7 +75,7 @@ typedef struct
     Float4X4 projectionAndView;
 } VertexShaderConstants;
 
-/* These should mirror the definitions in D3D11_PixelShader_Common.incl */
+/* These should mirror the definitions in D3D11_PixelShader_Common.hlsli */
 //static const float TONEMAP_NONE = 0;
 //static const float TONEMAP_LINEAR = 1;
 static const float TONEMAP_CHROME = 2;
@@ -242,7 +242,7 @@ static const GUID SDL_DXGI_DEBUG_ALL = { 0xe48ae283, 0xda80, 0x490b, { 0x87, 0xe
 #pragma GCC diagnostic pop
 #endif
 
-Uint32 D3D11_DXGIFormatToSDLPixelFormat(DXGI_FORMAT dxgiFormat)
+SDL_PixelFormatEnum D3D11_DXGIFormatToSDLPixelFormat(DXGI_FORMAT dxgiFormat)
 {
     switch (dxgiFormat) {
     case DXGI_FORMAT_B8G8R8A8_UNORM:
@@ -1549,8 +1549,13 @@ static int D3D11_UpdateTextureInternal(D3D11_RenderData *rendererData, ID3D11Tex
         stagingTextureDesc.Format == DXGI_FORMAT_P010) {
         /* Copy the UV plane as well */
         h = (h + 1) / 2;
-        length = (length + 1) & ~1;
-        pitch = (pitch + 1) & ~1;
+        if (stagingTextureDesc.Format == DXGI_FORMAT_P010) {
+            length = (length + 3) & ~3;
+            pitch = (pitch + 3) & ~3;
+        } else {
+            length = (length + 1) & ~1;
+            pitch = (pitch + 1) & ~1;
+        }
         dst = (Uint8 *)textureMemory.pData + stagingTextureDesc.Height * textureMemory.RowPitch;
         for (row = 0; row < h; ++row) {
             SDL_memcpy(dst, src, length);
@@ -2479,6 +2484,7 @@ static int D3D11_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd,
             if (SDL_memcmp(viewport, &cmd->data.viewport.rect, sizeof(cmd->data.viewport.rect)) != 0) {
                 SDL_copyp(viewport, &cmd->data.viewport.rect);
                 rendererData->viewportDirty = SDL_TRUE;
+                rendererData->cliprectDirty = SDL_TRUE;
             }
             break;
         }

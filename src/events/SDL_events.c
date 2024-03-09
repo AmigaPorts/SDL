@@ -48,6 +48,9 @@
 /* Determines how often we wake to call SDL_PumpEvents() in SDL_WaitEventTimeout_Device() */
 #define PERIODIC_POLL_INTERVAL_NS (3 * SDL_NS_PER_SECOND)
 
+/* Make sure the type in the SDL_Event aligns properly across the union */
+SDL_COMPILE_TIME_ASSERT(SDL_Event_type, sizeof(Uint32) == sizeof(SDL_EventType));
+
 typedef struct SDL_EventWatcher
 {
     SDL_EventFilter callback;
@@ -1308,7 +1311,7 @@ int SDL_AddEventWatch(SDL_EventFilter filter, void *userdata)
     {
         SDL_EventWatcher *event_watchers;
 
-        event_watchers = SDL_realloc(SDL_event_watchers, (SDL_event_watchers_count + 1) * sizeof(*event_watchers));
+        event_watchers = (SDL_EventWatcher *)SDL_realloc(SDL_event_watchers, (SDL_event_watchers_count + 1) * sizeof(*event_watchers));
         if (event_watchers) {
             SDL_EventWatcher *watcher;
 
@@ -1447,13 +1450,11 @@ SDL_bool SDL_EventEnabled(Uint32 type)
 
 Uint32 SDL_RegisterEvents(int numevents)
 {
-    Uint32 event_base;
+    Uint32 event_base = 0;
 
     if ((numevents > 0) && (SDL_userevents + numevents <= SDL_EVENT_LAST)) {
         event_base = SDL_userevents;
         SDL_userevents += numevents;
-    } else {
-        event_base = (Uint32)-1;
     }
     return event_base;
 }

@@ -453,7 +453,7 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwnd
     }
     if (!(window->flags & SDL_WINDOW_MINIMIZED)) {
         RECT rect;
-        if (GetClientRect(hwnd, &rect) && !IsRectEmpty(&rect)) {
+        if (GetClientRect(hwnd, &rect) && !WIN_IsRectEmpty(&rect)) {
             int w = rect.right;
             int h = rect.bottom;
 
@@ -1376,23 +1376,27 @@ void WIN_UngrabKeyboard(SDL_Window *window)
     }
 }
 
-void WIN_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window)
+int WIN_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window)
 {
     WIN_UpdateClipCursor(window);
+    return 0;
 }
 
-void WIN_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
+int WIN_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
 {
     WIN_UpdateClipCursor(window);
+    return 0;
 }
 
-void WIN_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
+int WIN_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
 {
     if (grabbed) {
         WIN_GrabKeyboard(window);
     } else {
         WIN_UngrabKeyboard(window);
     }
+
+    return 0;
 }
 #endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
 
@@ -1573,8 +1577,9 @@ void WIN_UpdateClipCursor(SDL_Window *window)
         if (PtInRect(&data->cursor_clipped_rect, first) &&
             PtInRect(&data->cursor_clipped_rect, second)) {
             ClipCursor(NULL);
-            SDL_zero(data->cursor_clipped_rect);
         }
+        /* Note that we don't have the cursor clipped anymore, even if it's not us that reset it */
+        SDL_zero(data->cursor_clipped_rect);
     }
     data->last_updated_clipcursor = SDL_GetTicks();
 }

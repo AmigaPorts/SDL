@@ -1381,7 +1381,7 @@ static void Wayland_ReconcileModifiers(struct SDL_WaylandInput *input)
 
 static void Wayland_HandleModifierKeys(struct SDL_WaylandInput *input, SDL_Scancode scancode, SDL_bool pressed)
 {
-    const SDL_KeyCode keycode = SDL_GetKeyFromScancode(scancode);
+    const SDL_Keycode keycode = SDL_GetKeyFromScancode(scancode);
     SDL_Keymod mod;
 
     switch (keycode) {
@@ -1458,7 +1458,7 @@ static void keyboard_handle_enter(void *data, struct wl_keyboard *keyboard,
 
     wl_array_for_each (key, keys) {
         const SDL_Scancode scancode = Wayland_get_scancode_from_key(input, *key + 8);
-        const SDL_KeyCode keycode = SDL_GetKeyFromScancode(scancode);
+        const SDL_Keycode keycode = SDL_GetKeyFromScancode(scancode);
 
         switch (keycode) {
         case SDLK_LSHIFT:
@@ -3303,11 +3303,11 @@ int Wayland_input_confine_pointer(struct SDL_WaylandInput *input, SDL_Window *wi
     struct wl_region *confine_rect;
 
     if (!d->pointer_constraints) {
-        return -1;
+        return SDL_SetError("Failed to confine pointer: compositor lacks support for the required zwp_pointer_constraints_v1 protocol");
     }
 
     if (!input->pointer) {
-        return -1;
+        return SDL_SetError("No pointer to confine");
     }
 
     /* A confine may already be active, in which case we should destroy it and
@@ -3375,7 +3375,7 @@ int Wayland_input_grab_keyboard(SDL_Window *window, struct SDL_WaylandInput *inp
     SDL_VideoData *d = input->display;
 
     if (!d->key_inhibitor_manager) {
-        return -1;
+        return SDL_SetError("Failed to grab keyboard: compositor lacks support for the required zwp_keyboard_shortcuts_inhibit_manager_v1 protocol");
     }
 
     if (w->key_inhibitor) {
