@@ -45,9 +45,9 @@
 #ifndef SDL_pen_h_
 #define SDL_pen_h_
 
-#include "SDL_error.h"
-#include "SDL_guid.h"
-#include "SDL_stdinc.h"
+#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_guid.h>
+#include <SDL3/SDL_stdinc.h>
 
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus
@@ -191,8 +191,6 @@ extern DECLSPEC Uint32 SDLCALL SDL_GetPenStatus(SDL_PenID instance_id, float *x,
  *          SDL_PenID.
  *
  * \since This function is available since SDL 3.0.0
- *
- * \sa SDL_GUID
  */
 extern DECLSPEC SDL_PenID SDLCALL SDL_GetPenFromGUID(SDL_GUID guid);
 
@@ -204,8 +202,6 @@ extern DECLSPEC SDL_PenID SDLCALL SDL_GetPenFromGUID(SDL_GUID guid);
  *          If "instance_id" is ::SDL_PEN_INVALID, returns an all-zeroes GUID.
  *
  * \since This function is available since SDL 3.0.0
- *
- * \sa SDL_PenForID
  */
 extern DECLSPEC SDL_GUID SDLCALL SDL_GetPenGUID(SDL_PenID instance_id);
 

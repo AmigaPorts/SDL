@@ -199,6 +199,9 @@
 #define SDL_THREAD_GENERIC_RWLOCK_SUFFIX 1
 #define SDL_THREAD_WINDOWS  1
 
+/* Enable various time systems */
+#define SDL_TIME_WINDOWS   1
+
 /* Enable various timer systems */
 #define SDL_TIMER_WINDOWS   1
 
@@ -244,6 +247,7 @@
 
 /* Enable filesystem support */
 #define SDL_FILESYSTEM_WINDOWS  1
+#define SDL_FSOPS_WINDOWS 1
 
 /* Enable the camera driver (src/camera/dummy/\*.c) */  /* !!! FIXME */
 #define SDL_CAMERA_DRIVER_DUMMY  1

@@ -95,6 +95,7 @@ struct SDL_WindowData
     struct xdg_activation_token_v1 *activation_token;
     struct wp_viewport *viewport;
     struct wp_fractional_scale_v1 *fractional_scale;
+    struct zxdg_exported_v2 *exported;
 
     SDL_AtomicInt swap_interval_ready;
 

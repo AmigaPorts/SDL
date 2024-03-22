@@ -20,9 +20,9 @@
 */
 #include "SDL_internal.h"
 
-#ifndef SDL_rwopsromfs_h_
-#define SDL_rwopsromfs_h_
+#ifndef SDL_iostreamromfs_h_
+#define SDL_iostreamromfs_h_
 
 FILE *N3DS_FileOpen(const char *file, const char *mode);
 
-#endif /* SDL_rwopsromfs_h_ */
+#endif /* SDL_iostreamromfs_h_ */

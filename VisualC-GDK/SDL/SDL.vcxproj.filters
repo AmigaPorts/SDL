@@ -4,6 +4,12 @@
     <ClCompile Include="..\..\src\core\gdk\SDL_gdk.cpp" />
     <ClCompile Include="..\..\src\core\windows\pch.c" />
     <ClCompile Include="..\..\src\core\windows\pch_cpp.cpp" />
+    <ClCompile Include="..\..\src\filesystem\SDL_filesystem.c">
+      <Filter>filesystem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\filesystem\windows\SDL_sysfsops.c">
+      <Filter>filesystem\windows</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\render\direct3d12\SDL_render_d3d12_xbox.cpp" />
     <ClCompile Include="..\..\src\render\direct3d12\SDL_shaders_d3d12_xboxone.cpp" />
     <ClCompile Include="..\..\src\render\direct3d12\SDL_shaders_d3d12_xboxseries.cpp" />
@@ -43,7 +49,7 @@
     <ClCompile Include="..\..\src\events\SDL_quit.c" />
     <ClCompile Include="..\..\src\events\SDL_touch.c" />
     <ClCompile Include="..\..\src\events\SDL_windowevents.c" />
-    <ClCompile Include="..\..\src\file\SDL_rwops.c" />
+    <ClCompile Include="..\..\src\file\SDL_iostream.c" />
     <ClCompile Include="..\..\src\filesystem\gdk\SDL_sysfilesystem.cpp" />
     <ClCompile Include="..\..\src\haptic\dummy\SDL_syshaptic.c" />
     <ClCompile Include="..\..\src\haptic\SDL_haptic.c" />
@@ -165,6 +171,12 @@
     <ClCompile Include="..\..\src\thread\windows\SDL_systls.c" />
     <ClCompile Include="..\..\src\timer\SDL_timer.c" />
     <ClCompile Include="..\..\src\timer\windows\SDL_systimer.c" />
+    <ClCompile Include="..\..\src\time\SDL_time.c">
+      <Filter>time</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\time\windows\SDL_systime.c">
+      <Filter>time\windows</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\video\dummy\SDL_nullevents.c" />
     <ClCompile Include="..\..\src\video\dummy\SDL_nullframebuffer.c" />
     <ClCompile Include="..\..\src\video\dummy\SDL_nullvideo.c" />
@@ -258,7 +270,7 @@
     <ClInclude Include="..\..\include\SDL3\SDL_rect.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_render.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_revision.h" />
-    <ClInclude Include="..\..\include\SDL3\SDL_rwops.h" />
+    <ClInclude Include="..\..\include\SDL3\SDL_iostream.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_scancode.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_sensor.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_stdinc.h" />
@@ -313,6 +325,9 @@
     <ClInclude Include="..\..\src\events\SDL_mouse_c.h" />
     <ClInclude Include="..\..\src\events\SDL_touch_c.h" />
     <ClInclude Include="..\..\src\events\SDL_windowevents_c.h" />
+    <ClInclude Include="..\..\src\filesystem\SDL_filesystem.h">
+      <Filter>filesystem</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\haptic\SDL_haptic_c.h" />
     <ClInclude Include="..\..\src\haptic\SDL_syshaptic.h" />
     <ClInclude Include="..\..\src\haptic\windows\SDL_dinputhaptic_c.h" />

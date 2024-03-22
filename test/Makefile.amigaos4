@@ -101,6 +101,7 @@ testautomation: testautomation.o \
 		      testautomation_hints.o \
 		      testautomation_images.o \
 		      testautomation_intrinsics.o \
+		      testautomation_iostream.o \
 		      testautomation_joystick.o \
 		      testautomation_keyboard.o \
 		      testautomation_log.o \
@@ -113,11 +114,11 @@ testautomation: testautomation.o \
 		      testautomation_properties.o \
 		      testautomation_rect.o \
 		      testautomation_render.o \
-		      testautomation_rwops.o \
 		      testautomation_sdltest.o \
 		      testautomation_stdlib.o \
 		      testautomation_subsystems.o \
 		      testautomation_surface.o \
+		      testautomation_time.o \
 		      testautomation_timer.o \
 		      testautomation_video.o
 	$(CC) -o $@ $^ $(LIBS) 
