@@ -1316,13 +1316,15 @@ const char *SDL_JoystickName(SDL_Joystick *joystick)
     const SDL_SteamVirtualGamepadInfo *info;
 
     SDL_LockJoysticks();
-    info = SDL_GetJoystickInstanceVirtualGamepadInfo(joystick->instance_id);
-    if (info) {
-        retval = info->name;
-    } else {
+    {
         CHECK_JOYSTICK_MAGIC(joystick, NULL);
 
-        retval = joystick->name;
+        info = SDL_GetJoystickInstanceVirtualGamepadInfo(joystick->instance_id);
+        if (info) {
+            retval = info->name;
+        } else {
+            retval = joystick->name;
+        }
     }
     SDL_UnlockJoysticks();
 
@@ -3105,13 +3107,17 @@ Uint16 SDL_JoystickGetVendor(SDL_Joystick *joystick)
     const SDL_SteamVirtualGamepadInfo *info;
 
     SDL_LockJoysticks();
-    info = SDL_GetJoystickInstanceVirtualGamepadInfo(joystick->instance_id);
-    if (info) {
-        vendor = info->vendor_id;
-    } else {
-        SDL_JoystickGUID guid = SDL_JoystickGetGUID(joystick);
+    {
+        CHECK_JOYSTICK_MAGIC(joystick, 0);
 
-        SDL_GetJoystickGUIDInfo(guid, &vendor, NULL, NULL, NULL);
+        info = SDL_GetJoystickInstanceVirtualGamepadInfo(joystick->instance_id);
+        if (info) {
+            vendor = info->vendor_id;
+        } else {
+            SDL_JoystickGUID guid = SDL_JoystickGetGUID(joystick);
+
+            SDL_GetJoystickGUIDInfo(guid, &vendor, NULL, NULL, NULL);
+        }
     }
     SDL_UnlockJoysticks();
 
@@ -3124,13 +3130,17 @@ Uint16 SDL_JoystickGetProduct(SDL_Joystick *joystick)
     const SDL_SteamVirtualGamepadInfo *info;
 
     SDL_LockJoysticks();
-    info = SDL_GetJoystickInstanceVirtualGamepadInfo(joystick->instance_id);
-    if (info) {
-        product = info->product_id;
-    } else {
-        SDL_JoystickGUID guid = SDL_JoystickGetGUID(joystick);
+    {
+        CHECK_JOYSTICK_MAGIC(joystick, 0);
 
-        SDL_GetJoystickGUIDInfo(guid, NULL, &product, NULL, NULL);
+        info = SDL_GetJoystickInstanceVirtualGamepadInfo(joystick->instance_id);
+        if (info) {
+            product = info->product_id;
+        } else {
+            SDL_JoystickGUID guid = SDL_JoystickGetGUID(joystick);
+
+            SDL_GetJoystickGUIDInfo(guid, NULL, &product, NULL, NULL);
+        }
     }
     SDL_UnlockJoysticks();
 
