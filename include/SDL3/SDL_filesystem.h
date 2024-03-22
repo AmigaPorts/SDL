@@ -231,10 +231,91 @@ typedef enum
  *          folder, or NULL if an error happened.
  *
  * \since This function is available since SDL 3.0.0.
- *
- * \sa SDL_Folder
  */
 extern DECLSPEC char *SDLCALL SDL_GetUserFolder(SDL_Folder folder);
+
+
+/* Abstract filesystem interface */
+
+typedef enum SDL_PathType
+{
+    SDL_PATHTYPE_NONE,      /**< path does not exist */
+    SDL_PATHTYPE_FILE,      /**< a normal file */
+    SDL_PATHTYPE_DIRECTORY, /**< a directory */
+    SDL_PATHTYPE_OTHER      /**< something completely different like a device node (not a symlink, those are always followed) */
+} SDL_PathType;
+
+typedef struct SDL_PathInfo
+{
+    SDL_PathType type;          /* the path type */
+    Uint64 size;                /* the file size in bytes */
+    SDL_Time create_time;   /* the time when the path was created */
+    SDL_Time modify_time;   /* the last time the path was modified */
+    SDL_Time access_time;   /* the last time the path was read */
+} SDL_PathInfo;
+
+/**
+ * Create a directory.
+ *
+ * \param path the path of the directory to create
+ * \returns 0 on success or a negative error code on failure; call
+ *          SDL_GetError() for more information.
+ *
+ * \since This function is available since SDL 3.0.0.
+ */
+extern DECLSPEC int SDLCALL SDL_CreateDirectory(const char *path);
+
+/* Callback for directory enumeration. Return 1 to keep enumerating, 0 to stop enumerating (no error), -1 to stop enumerating and report an error. `dirname` is the directory being enumerated, `fname` is the enumerated entry. */
+typedef int (SDLCALL *SDL_EnumerateDirectoryCallback)(void *userdata, const char *dirname, const char *fname);
+
+/**
+ * Enumerate a directory.
+ *
+ * \param path the path of the directory to enumerate
+ * \param callback a function that is called for each entry in the directory
+ * \param userdata a pointer that is passed to `callback`
+ * \returns 0 on success or a negative error code on failure; call
+ *          SDL_GetError() for more information.
+ *
+ * \since This function is available since SDL 3.0.0.
+ */
+extern DECLSPEC int SDLCALL SDL_EnumerateDirectory(const char *path, SDL_EnumerateDirectoryCallback callback, void *userdata);
+
+/**
+ * Remove a file or an empty directory.
+ *
+ * \param path the path of the directory to enumerate
+ * \returns 0 on success or a negative error code on failure; call
+ *          SDL_GetError() for more information.
+ *
+ * \since This function is available since SDL 3.0.0.
+ */
+extern DECLSPEC int SDLCALL SDL_RemovePath(const char *path);
+
+/**
+ * Rename a file or directory.
+ *
+ * \param oldpath the old path
+ * \param newpath the new path
+ * \returns 0 on success or a negative error code on failure; call
+ *          SDL_GetError() for more information.
+ *
+ * \since This function is available since SDL 3.0.0.
+ */
+extern DECLSPEC int SDLCALL SDL_RenamePath(const char *oldpath, const char *newpath);
+
+/**
+ * Get information about a filesystem path.
+ *
+ * \param path the path to query
+ * \param info a pointer filled in with information about the path, or NULL to
+ *             check for the existence of a file
+ * \returns 0 on success or a negative error code if the file doesn't exist,
+ *          or another failure; call SDL_GetError() for more information.
+ *
+ * \since This function is available since SDL 3.0.0.
+ */
+extern DECLSPEC int SDLCALL SDL_GetPathInfo(const char *path, SDL_PathInfo *info);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

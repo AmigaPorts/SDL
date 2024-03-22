@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -138,6 +138,33 @@ SDL_GetPrefPath(const char *org, const char *app)
     SDL_free(buffer);
     return NULL;
 }
+
+// TODO:
+int SDL_SYS_EnumerateDirectory(const char *path, const char *dirname, SDL_EnumerateDirectoryCallback cb, void *userdata)
+{
+    return 0;
+}
+
+int SDL_SYS_RemovePath(const char *path)
+{
+    return 0;
+}
+
+int SDL_SYS_RenamePath(const char *oldpath, const char *newpath)
+{
+    return 0;
+}
+
+int SDL_SYS_CreateDirectory(const char *path)
+{
+    return 0;
+}
+
+int SDL_SYS_GetPathInfo(const char *path, SDL_PathInfo *info)
+{
+    return 0;
+}
+
 
 #endif /* SDL_FILESYSTEM_AMIGAOS4 */
 

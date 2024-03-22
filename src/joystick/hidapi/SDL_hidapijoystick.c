@@ -53,6 +53,7 @@ static SDL_HIDAPI_DeviceDriver *SDL_HIDAPI_drivers[] = {
 #ifdef SDL_JOYSTICK_HIDAPI_PS3
     &SDL_HIDAPI_DriverPS3,
     &SDL_HIDAPI_DriverPS3ThirdParty,
+    &SDL_HIDAPI_DriverPS3SonySixaxis,
 #endif
 #ifdef SDL_JOYSTICK_HIDAPI_PS4
     &SDL_HIDAPI_DriverPS4,
@@ -163,6 +164,10 @@ SDL_bool HIDAPI_SupportsPlaystationDetection(Uint16 vendor, Uint16 product)
         }
         return SDL_TRUE;
     case USB_VENDOR_MADCATZ:
+        if (product == USB_PRODUCT_MADCATZ_SAITEK_SIDE_PANEL_CONTROL_DECK) {
+            /* This is not a Playstation compatible device */
+            return SDL_FALSE;
+        }
         return SDL_TRUE;
     case USB_VENDOR_MAYFLASH:
         return SDL_TRUE;

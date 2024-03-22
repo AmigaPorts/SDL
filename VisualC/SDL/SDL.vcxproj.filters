@@ -190,6 +190,12 @@
     <Filter Include="render\vulkan">
       <UniqueIdentifier>{5115ba31-20f8-4eab-a8c5-6a572ab78ff7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="time">
+      <UniqueIdentifier>{00003288226ff86b99eee5b443e90000}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="time\windows">
+      <UniqueIdentifier>{0000d7fda065b13b0ca4ab262c380000}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\SDL3\SDL_begin_code.h">
@@ -342,7 +348,7 @@
     <ClInclude Include="..\..\include\SDL3\SDL_revision.h">
       <Filter>API Headers</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\SDL3\SDL_rwops.h">
+    <ClInclude Include="..\..\include\SDL3\SDL_iostream.h">
       <Filter>API Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\SDL3\SDL_scancode.h">
@@ -416,6 +422,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\camera\SDL_syscamera.h">
       <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\filesystem\SDL_filesystem.h">
+      <Filter>filesystem</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\main\SDL_main_callbacks.h">
       <Filter>main</Filter>
@@ -871,6 +880,12 @@
     <ClCompile Include="..\..\src\camera\SDL_camera.c">
       <Filter>camera</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\filesystem\SDL_filesystem.c">
+      <Filter>filesystem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\filesystem\windows\SDL_sysfsops.c">
+      <Filter>filesystem\windows</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\main\generic\SDL_sysmain_callbacks.c">
       <Filter>main\generic</Filter>
     </ClCompile>
@@ -937,6 +952,9 @@
     <ClCompile Include="..\..\src\cpuinfo\SDL_cpuinfo.c">
       <Filter>cpuinfo</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\dialog\windows\SDL_windowsdialog.c">
+      <Filter>dialog</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\dynapi\SDL_dynapi.c">
       <Filter>dynapi</Filter>
     </ClCompile>
@@ -970,7 +988,7 @@
     <ClCompile Include="..\..\src\events\SDL_windowevents.c">
       <Filter>events</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\file\SDL_rwops.c">
+    <ClCompile Include="..\..\src\file\SDL_iostream.c">
       <Filter>file</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\filesystem\windows\SDL_sysfilesystem.c">
@@ -1170,6 +1188,12 @@
     </ClCompile>
     <ClCompile Include="..\..\src\joystick\virtual\SDL_virtualjoystick.c">
       <Filter>joystick\virtual</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\time\SDL_time.c">
+      <Filter>time</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\time\windows\SDL_systime.c">
+      <Filter>time\windows</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\video\SDL_RLEaccel.c">
       <Filter>video</Filter>

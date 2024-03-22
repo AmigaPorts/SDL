@@ -29,6 +29,7 @@ SOURCES = \
 	./src/cpuinfo/*.c \
 	./src/events/*.c \
 	./src/file/*.c \
+	./src/filesystem/SDL_filesystem.c \
 	./src/filesystem/amigaos4/*.c \
 	./src/haptic/*.c \
 	./src/haptic/dummy/*.c \
@@ -57,6 +58,8 @@ SOURCES = \
 	./src/thread/generic/SDL_syscond.c \
 	./src/thread/generic/SDL_sysrwlock.c \
 	./src/thread/generic/SDL_systls.c \
+	./src/time/SDL_time.c \
+	./src/time/unix/SDL_systime.c \
 	./src/timer/*.c \
 	./src/timer/amigaos4/*.c \
 	./src/video/*.c \
