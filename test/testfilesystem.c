@@ -23,6 +23,9 @@ static int SDLCALL enum_callback(void *userdata, const char *origdir, const char
     /* you can use '/' for a path separator on Windows, but to make the log output look correct, we'll #ifdef this... */
     #ifdef SDL_PLATFORM_WINDOWS
     const char *pathsep = "\\";
+    #elif SDL_PLATFORM_AMIGAOS4
+    const size_t len = strlen(origdir);
+    const char *pathsep = (origdir[len - 1] == ':') ? "" : "/";
     #else
     const char *pathsep = "/";
     #endif

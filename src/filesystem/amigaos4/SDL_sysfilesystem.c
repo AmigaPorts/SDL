@@ -58,6 +58,11 @@ OS4_CreateDirTree(const char* path)
 {
     BOOL success = FALSE;
 
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return FALSE;
+    }
+
     char* temp = SDL_strdup(path);
 
     if (!temp) {
@@ -101,11 +106,6 @@ SDL_GetPrefPath(const char *org, const char *app)
     size_t len = SDL_strlen(envPath) + 1;
     char* buffer = NULL;
 
-    if (!IDOS) {
-        dprintf("IDOS nullptr\n");
-        return NULL;
-    }
-
     if (org) {
         len += SDL_strlen(org) + 1;
     }
@@ -139,29 +139,160 @@ SDL_GetPrefPath(const char *org, const char *app)
     return NULL;
 }
 
-// TODO:
+char *
+SDL_GetUserFolder(SDL_Folder folder)
+{
+    const char* const path = "PROGDIR:";
+    const size_t pathLen = strlen(path) + 1;
+    char* folderPath = NULL;
+
+    switch (folder) {
+        case SDL_FOLDER_HOME:
+        case SDL_FOLDER_DOCUMENTS:
+            folderPath = SDL_malloc(pathLen);
+            if (folderPath) {
+                SDL_snprintf(folderPath, pathLen, "%s", path);
+            } else {
+                SDL_OutOfMemory();
+            }
+            break;
+        default:
+            dprintf("Unsupported user folder %d\n", folder);
+            SDL_SetError("Unsupported user folder");
+            break;
+    }
+
+    return folderPath;
+}
+
 int SDL_SYS_EnumerateDirectory(const char *path, const char *dirname, SDL_EnumerateDirectoryCallback cb, void *userdata)
 {
-    return 0;
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return -1;
+    }
+
+    APTR context = IDOS->ObtainDirContextTags(EX_StringNameInput, path, EX_DataFields, (EXF_NAME|EXF_LINK|EXF_TYPE), TAG_DONE);
+
+    int success = 0;
+
+    if (context) {
+        struct ExamineData *data;
+
+        while ((data = IDOS->ExamineDir(context))) {
+            // TODO: link handling
+            if (EXD_IS_FILE(data) || EXD_IS_DIRECTORY(data)) {
+                const int result = cb(userdata, dirname, data->Name);
+                if (result == 0) {
+                    dprintf("Enumerating dir '%s' stopped after item '%s'\n", dirname, data->Name);
+                    success = 0;
+                    break;
+                } else if (result == -1) {
+                    dprintf("Callback returned error while enumerating dir '%s', item '%s'\n", dirname, data->Name);
+                    SDL_SetError("Callback returned error");
+                    success = -1;
+                    break;
+                }
+            }
+        }
+
+        const int32 err = IDOS->IoErr();
+
+        if (ERROR_NO_MORE_ENTRIES != err) {
+            dprintf("Error %d while examining path '%s'\n", err, path);
+            SDL_SetError("Error while examining path");
+            success = -1;
+        }
+
+        IDOS->ReleaseDirContext(context);
+    } else {
+        dprintf("Failed to obtain dir context for '%s' (err %d)\n", path, IDOS->IoErr());
+        SDL_SetError("Failed to obtain dir context");
+        success = -1;
+    }
+
+    return success;
 }
 
 int SDL_SYS_RemovePath(const char *path)
 {
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return -1;
+    }
+
+    const int32 success = IDOS->Delete(path);
+
+    if (success) {
+        dprintf("'%s' deleted\n", path);
+    } else {
+        const int32 err = IDOS->IoErr();
+        dprintf("Failed to delete '%s' (err %d)\n", path, err);
+        if (err == ERROR_OBJECT_NOT_FOUND) {
+            dprintf("Object doesn't exist -> success\n");
+        } else {
+            SDL_SetError("Failed to delete path");
+            return -1;
+        }
+    }
+
     return 0;
 }
 
 int SDL_SYS_RenamePath(const char *oldpath, const char *newpath)
 {
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return -1;
+    }
+
+    const int32 success = IDOS->Rename(oldpath, newpath);
+
+    if (success) {
+        dprintf("'%s' renamed to '%s'\n", oldpath, newpath);
+    } else {
+        dprintf("Failed to rename '%s' to '%s' (err %d)\n", oldpath, newpath, IDOS->IoErr());
+        SDL_SetError("Failed to rename path");
+        return -1;
+    }
+
     return 0;
 }
 
 int SDL_SYS_CreateDirectory(const char *path)
 {
-    return 0;
+    return OS4_CreateDirTree(path);
 }
 
 int SDL_SYS_GetPathInfo(const char *path, SDL_PathInfo *info)
 {
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return -1;
+    }
+
+    struct ExamineData *data = IDOS->ExamineObjectTags(EX_StringNameInput, path, TAG_DONE);
+
+    if (data) {
+        if (EXD_IS_FILE(data)) {
+            info->type = SDL_PATHTYPE_FILE;
+            info->size = data->FileSize;
+        } else if (EXD_IS_DIRECTORY(data)) {
+            info->type = SDL_PATHTYPE_DIRECTORY;
+        } else {
+            info->type = SDL_PATHTYPE_OTHER;
+        }
+
+        // TODO: time fields are nanoseconds since Jan 1, 1970.
+
+        IDOS->FreeDosObject(DOS_EXAMINEDATA, data);
+    } else {
+        dprintf("Failed to examine object '%s' (err %d)\n", path, IDOS->IoErr());
+        SDL_SetError("Failed to examine object");
+        info->type = SDL_PATHTYPE_NONE;
+        return -1;
+    }
+
     return 0;
 }
 
