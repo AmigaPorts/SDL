@@ -1138,12 +1138,14 @@ OS4_CreateRenderer(SDL_Window * window, SDL_PropertiesID create_props)
 
     IGraphics->InitRastPort(&data->rastport);
 
-    int vsyncEnabled = SDL_GetBooleanProperty(create_props, "present_vsync", SDL_FALSE);
+    const int vsyncEnabled = SDL_GetBooleanProperty(create_props, SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_BOOLEAN, SDL_FALSE);
 
     dprintf("VSYNC: %s\n", vsyncEnabled ? "on" : "off");
 
     if (vsyncEnabled) {
         renderer->info.flags |= SDL_RENDERER_PRESENTVSYNC;
+    } else {
+        renderer->info.flags &= ~SDL_RENDERER_PRESENTVSYNC;
     }
 
     return renderer;
