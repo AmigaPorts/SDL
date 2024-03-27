@@ -44,7 +44,6 @@ TODO:
 
 - SDL_BlendMode_Mod: is it impossible to accelerate?
 - Blended line drawing could probably be optimized
-- Batching RenderCopy(Ex) should be now possible.
 
 NOTE:
 
@@ -60,9 +59,11 @@ typedef struct {
     float s, t, w;
 } OS4_Vertex;
 
-static const uint16 OS4_QuadIndices[] = {
-    0, 1, 2, 2, 3, 0
-};
+// Some of the drivers use stack to process data when doing compositing.
+// Trying to render too many triangles will lock up.
+#define MAX_QUADS 1000
+
+static uint16 OS4_QuadIndices[6 * MAX_QUADS];
 
 typedef struct {
     float srcAlpha;
@@ -465,7 +466,7 @@ OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, int count,
 
 static int
 OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Vertex * vertices,
-    struct BitMap * dst)
+    size_t count, struct BitMap * dst)
 {
     SDL_Texture * texture = cmd->data.draw.texture;
     const SDL_BlendMode mode = cmd->data.draw.blend;
@@ -500,7 +501,7 @@ OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Ver
         COMPTAG_Flags,      params.flags,
         COMPTAG_VertexArray, vertices,
         COMPTAG_VertexFormat, COMPVF_STW0_Present,
-        COMPTAG_NumTriangles, 2,
+        COMPTAG_NumTriangles, 2 * count,
         COMPTAG_IndexArray, OS4_QuadIndices,
         TAG_END);
 
@@ -550,7 +551,6 @@ OS4_RenderGeometry(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_V
         COMPTAG_VertexArray, vertices,
         COMPTAG_VertexFormat, COMPVF_STW0_Present,
         COMPTAG_NumTriangles, cmd->data.draw.count / 3,
-        //COMPTAG_IndexArray, ,
         TAG_END);
 
     if (ret_code) {
@@ -787,7 +787,7 @@ static int
 OS4_QueueCopy(SDL_Renderer * renderer, SDL_RenderCommand * cmd, SDL_Texture * texture,
     const SDL_FRect * srcrect, const SDL_FRect *dstrect)
 {
-    const SDL_FPoint center = { 0.0, 0.0 };
+    const SDL_FPoint center = { 0.0f, 0.0f };
     return OS4_QueueCopyEx(renderer, cmd, texture, srcrect, dstrect, 0.0, &center, SDL_FLIP_NONE, 1.0f, 1.0f);
 }
 
@@ -1010,35 +1010,87 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
 
             case SDL_RENDERCMD_COPY: {
                 OS4_Vertex *verts = (OS4_Vertex *)(((Uint8 *) vertices) + cmd->data.draw.first);
-                const size_t count = cmd->data.draw.count;
+                SDL_Texture *thistexture = cmd->data.draw.texture;
+                SDL_BlendMode thisblend = cmd->data.draw.blend;
+                const SDL_RenderCommandType thiscmdtype = cmd->command;
+                SDL_RenderCommand *finalcmd = cmd;
+                SDL_RenderCommand *nextcmd = cmd->next;
+                size_t count = cmd->data.draw.count;
+
+                while (nextcmd) {
+                    const SDL_RenderCommandType nextcmdtype = nextcmd->command;
+                    if (nextcmdtype != thiscmdtype) {
+                        break; /* can't go any further on this draw call, different render command up next. */
+                    } else if (nextcmd->data.draw.texture != thistexture || nextcmd->data.draw.blend != thisblend) {
+                        break; /* can't go any further on this draw call, different texture/blendmode copy up next. */
+                    } else if (nextcmd->data.draw.color.a != cmd->data.draw.color.a ||
+                               nextcmd->data.draw.color.r != cmd->data.draw.color.r ||
+                               nextcmd->data.draw.color.g != cmd->data.draw.color.g ||
+                               nextcmd->data.draw.color.b != cmd->data.draw.color.b) {
+                        break; /* different color value */
+                    } else if ((count + nextcmd->data.draw.count) > MAX_QUADS) {
+                        //dprintf("Too much data %d\n", count);
+                        break; /* too much data for one call */
+                    } else {
+                        finalcmd = nextcmd; /* we can combine copy operations here. Mark this one as the furthest okay command. */
+                        count += nextcmd->data.draw.count;
+                    }
+                    nextcmd = nextcmd->next;
+                }
 
                 /* Apply viewport */
                 if (data->viewport.x || data->viewport.y) {
-                    int i;
-                    for (i = 0; i < count * 4; i++) {
+                    for (int i = 0; i < count * 4; i++) {
                         verts[i].x += data->viewport.x;
                         verts[i].y += data->viewport.y;
                     }
                 }
 
-                OS4_RenderCopyEx(renderer, cmd, verts, bitmap);
+                OS4_RenderCopyEx(renderer, cmd, verts, count, bitmap);
+                cmd = finalcmd;
                 break;
             }
 
             case SDL_RENDERCMD_COPY_EX: {
                 OS4_Vertex *verts = (OS4_Vertex *)(((Uint8 *) vertices) + cmd->data.draw.first);
-                const size_t count = cmd->data.draw.count;
+                SDL_Texture *thistexture = cmd->data.draw.texture;
+                SDL_BlendMode thisblend = cmd->data.draw.blend;
+                const SDL_RenderCommandType thiscmdtype = cmd->command;
+                SDL_RenderCommand *finalcmd = cmd;
+                SDL_RenderCommand *nextcmd = cmd->next;
+                size_t count = cmd->data.draw.count;
+
+                while (nextcmd) {
+                    const SDL_RenderCommandType nextcmdtype = nextcmd->command;
+                    if (nextcmdtype != thiscmdtype) {
+                        break; /* can't go any further on this draw call, different render command up next. */
+                    } else if (nextcmd->data.draw.texture != thistexture || nextcmd->data.draw.blend != thisblend) {
+                        break; /* can't go any further on this draw call, different texture/blendmode copy up next. */
+                    } else if (nextcmd->data.draw.color.a != cmd->data.draw.color.a ||
+                               nextcmd->data.draw.color.r != cmd->data.draw.color.r ||
+                               nextcmd->data.draw.color.g != cmd->data.draw.color.g ||
+                               nextcmd->data.draw.color.b != cmd->data.draw.color.b) {
+                        break; /* different color value */
+                    } else if ((count + nextcmd->data.draw.count) > MAX_QUADS) {
+                        //dprintf("Too much data %d\n", count);
+                        break; /* too much data for one call */
+                    } else {
+                        finalcmd = nextcmd; /* we can combine copy operations here. Mark this one as the furthest okay command. */
+                        count += nextcmd->data.draw.count;
+                    }
+                    nextcmd = nextcmd->next;
+                }
 
                 /* Apply viewport */
                 if (data->viewport.x || data->viewport.y) {
-                    int i;
-                    for (i = 0; i < count * 4; i++) {
+                    for (int i = 0; i < count * 4; i++) {
                         verts[i].x += data->viewport.x;
                         verts[i].y += data->viewport.y;
                     }
                 }
 
-                OS4_RenderCopyEx(renderer, cmd, verts, bitmap);
+                OS4_RenderCopyEx(renderer, cmd, verts, count, bitmap);
+                cmd = finalcmd;
                 break;
             }
 
@@ -1087,6 +1139,22 @@ static void
 OS4_InvalidateCachedState(SDL_Renderer *renderer)
 {
     // TODO:
+}
+
+static void
+OS4_PrecalculateIndices(void)
+{
+    for (int i = 0; i < MAX_QUADS; i++) {
+        const int index = i * 6;
+        const int vertex = i * 4;
+
+        OS4_QuadIndices[index + 0] = vertex + 0;
+        OS4_QuadIndices[index + 1] = vertex + 1;
+        OS4_QuadIndices[index + 2] = vertex + 2;
+        OS4_QuadIndices[index + 3] = vertex + 2;
+        OS4_QuadIndices[index + 4] = vertex + 3;
+        OS4_QuadIndices[index + 5] = vertex + 0;
+    }
 }
 
 SDL_Renderer *
@@ -1147,6 +1215,8 @@ OS4_CreateRenderer(SDL_Window * window, SDL_PropertiesID create_props)
     } else {
         renderer->info.flags &= ~SDL_RENDERER_PRESENTVSYNC;
     }
+
+    OS4_PrecalculateIndices();
 
     return renderer;
 }
