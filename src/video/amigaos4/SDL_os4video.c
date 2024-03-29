@@ -24,14 +24,7 @@
 
 #include <proto/exec.h>
 #include <proto/application.h>
-#include <proto/wb.h>
-#include <proto/graphics.h>
-#include <proto/layers.h>
-#include <proto/intuition.h>
-#include <proto/icon.h>
-#include <proto/keymap.h>
 #include <proto/dos.h>
-#include <proto/textclip.h>
 
 #include "SDL_video.h"
 #include "SDL_hints.h"
@@ -59,25 +52,6 @@ static void OS4_VideoQuit(SDL_VideoDevice *_this);
 
 SDL_bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window) = NULL;
 void (*OS4_UpdateGlWindowPointer)(SDL_VideoDevice *_this, SDL_Window * window) = NULL;
-
-static SDL_bool
-OS4_CheckInterfaces(SDL_VideoDevice *_this)
-{
-    dprintf("Checking interfaces\n");
-
-    if (IGraphics && ILayers && IIntuition && IIcon &&
-        IWorkbench && IKeymap && ITextClip && IDOS && IApplication) {
-
-        dprintf("All library interfaces OK\n");
-
-        return SDL_TRUE;
-
-    }
-
-    dprintf("Library interface check failed\n");
-
-    return SDL_FALSE;
-}
 
 static void
 OS4_FindApplicationName(SDL_VideoDevice *_this)
@@ -169,7 +143,7 @@ OS4_AllocSystemResources(SDL_VideoDevice *_this)
 
     dprintf("Called\n");
 
-    if (!OS4_CheckInterfaces(_this)) {
+    if (!OS4_CheckInterfaces()) {
         return SDL_FALSE;
     }
 

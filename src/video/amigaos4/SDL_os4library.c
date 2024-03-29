@@ -45,6 +45,7 @@ struct WorkbenchIFace* IWorkbench;
 struct KeymapIFace* IKeymap;
 struct DiskfontIFace* IDiskfont;
 struct LocaleIFace* ILocale;
+struct AslIFace* IAsl;
 
 static struct Library* NewlibBase;
 static struct Library* DOSBase;
@@ -59,6 +60,7 @@ static struct Library* WorkbenchBase;
 static struct Library* KeymapBase;
 static struct Library* DiskfontBase;
 static struct Library* LocaleBase;
+static struct Library* AslBase;
 
 static BOOL newlibOpened = FALSE;
 static BOOL dosOpened = FALSE;
@@ -73,6 +75,7 @@ static BOOL workbenchOpened = FALSE;
 static BOOL keymapOpened = FALSE;
 static BOOL diskfontOpened = FALSE;
 static BOOL localeOpened = FALSE;
+static BOOL aslOpened = FALSE;
 
 static int initCount = 0;
 
@@ -265,6 +268,18 @@ void OS4_INIT(void)
         }
     }
 
+    if (IAsl) {
+        dprintf("IAsl %p\n", IAsl);
+    } else {
+        AslBase = OS4_OpenLibrary("asl.library", 53);
+
+        if (AslBase) {
+            IAsl = (struct AslIFace *)OS4_GetInterface(AslBase);
+            dprintf("IAsl %p initialized\n", IAsl);
+            aslOpened = IAsl != NULL;
+        }
+    }
+
     OS4_LogVersion();
     OS4_InitThreadSubSystem();
 
@@ -283,6 +298,10 @@ void OS4_QUIT(void)
     }
 
     OS4_QuitThreadSubSystem();
+
+    if (aslOpened) {
+        OS4_DropInterface((struct Interface**)&IAsl);
+    }
 
     if (localeOpened) {
         OS4_DropInterface((struct Interface**)&ILocale);
@@ -336,6 +355,7 @@ void OS4_QUIT(void)
         OS4_DropInterface((struct Interface**)&IDOS);
     }
 
+    OS4_CloseLibrary(&AslBase);
     OS4_CloseLibrary(&LocaleBase);
     OS4_CloseLibrary(&DiskfontBase);
     OS4_CloseLibrary(&KeymapBase);
@@ -396,5 +416,26 @@ OS4_CloseLibrary(struct Library ** library)
         *library = NULL;
     }
 }
+
+SDL_bool
+OS4_CheckInterfaces(void)
+{
+    dprintf("Checking interfaces\n");
+
+    if (IGraphics && ILayers && IIntuition && IIcon &&
+        IWorkbench && IKeymap && ITextClip && IDOS && IApplication &&
+        INewlib && IElf && IDiskfont && ILocale && IAsl) {
+
+        dprintf("All library interfaces OK\n");
+
+        return SDL_TRUE;
+
+    }
+
+    dprintf("Library interface check failed\n");
+
+    return SDL_FALSE;
+}
+
 
 #endif

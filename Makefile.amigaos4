@@ -27,6 +27,7 @@ SOURCES = \
 	./src/camera/*.c \
 	./src/core/SDL_runapp.c \
 	./src/cpuinfo/*.c \
+	./src/dialog/amigaos4/SDL_amigaos4dialog.c \
 	./src/events/*.c \
 	./src/file/*.c \
 	./src/filesystem/SDL_filesystem.c \

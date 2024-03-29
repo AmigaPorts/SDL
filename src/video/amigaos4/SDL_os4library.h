@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -31,11 +31,11 @@ extern void OS4_QUIT(void) __attribute__((destructor(101)));
 // A couple of helper functions for dealing with AmigaOS libraries
 
 extern struct Library * OS4_OpenLibrary(STRPTR name, ULONG version);
-
 extern struct Interface * OS4_GetInterface(struct Library * lib);
 
 extern void OS4_DropInterface(struct Interface ** interface);
-
 extern void OS4_CloseLibrary(struct Library ** library);
+
+extern SDL_bool OS4_CheckInterfaces(void);
 
 #endif
