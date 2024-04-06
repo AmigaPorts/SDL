@@ -2369,6 +2369,26 @@ int SDL_InitGamepads(void)
     return 0;
 }
 
+SDL_bool SDL_HasGamepad(void)
+{
+    int num_joysticks = 0;
+    int num_gamepads = 0;
+    SDL_JoystickID *joysticks = SDL_GetJoysticks(&num_joysticks);
+    if (joysticks) {
+        int i;
+        for (i = num_joysticks - 1; i >= 0 && num_gamepads == 0; --i) {
+            if (SDL_IsGamepad(joysticks[i])) {
+                ++num_gamepads;
+            }
+        }
+        SDL_free(joysticks);
+    }
+    if (num_gamepads > 0) {
+        return SDL_TRUE;
+    }
+    return SDL_FALSE;
+}
+
 SDL_JoystickID *SDL_GetGamepads(int *count)
 {
     int num_joysticks = 0;
@@ -3407,14 +3427,27 @@ Uint64 SDL_GetGamepadSteamHandle(SDL_Gamepad *gamepad)
     return handle;
 }
 
-SDL_JoystickPowerLevel SDL_GetGamepadPowerLevel(SDL_Gamepad *gamepad)
+SDL_JoystickConnectionState SDL_GetGamepadConnectionState(SDL_Gamepad *gamepad)
 {
     SDL_Joystick *joystick = SDL_GetGamepadJoystick(gamepad);
 
     if (!joystick) {
-        return SDL_JOYSTICK_POWER_UNKNOWN;
+        return SDL_JOYSTICK_CONNECTION_INVALID;
     }
-    return SDL_GetJoystickPowerLevel(joystick);
+    return SDL_GetJoystickConnectionState(joystick);
+}
+
+SDL_PowerState SDL_GetGamepadPowerInfo(SDL_Gamepad *gamepad, int *percent)
+{
+    SDL_Joystick *joystick = SDL_GetGamepadJoystick(gamepad);
+
+    if (percent) {
+        *percent = -1;
+    }
+    if (!joystick) {
+        return SDL_POWERSTATE_ERROR;
+    }
+    return SDL_GetJoystickPowerInfo(joystick, percent);
 }
 
 /*

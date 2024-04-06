@@ -44,6 +44,7 @@
 #include "SDL_log_c.h"
 #include "SDL_properties_c.h"
 #include "audio/SDL_sysaudio.h"
+#include "cpuinfo/SDL_cpuinfo_c.h"
 #include "video/SDL_video_c.h"
 #include "events/SDL_events_c.h"
 #include "haptic/SDL_haptic_c.h"
@@ -134,7 +135,11 @@ static void SDL_DecrementSubsystemRefCount(Uint32 subsystem)
 {
     const int subsystem_index = SDL_MostSignificantBitIndex32(subsystem);
     if ((subsystem_index >= 0) && (SDL_SubsystemRefCount[subsystem_index] > 0)) {
-        --SDL_SubsystemRefCount[subsystem_index];
+        if (SDL_bInMainQuit) {
+            SDL_SubsystemRefCount[subsystem_index] = 0;
+        } else {
+            --SDL_SubsystemRefCount[subsystem_index];
+        }
     }
 }
 
@@ -553,6 +558,8 @@ void SDL_Quit(void)
 
     SDL_ClearHints();
     SDL_AssertionsQuit();
+
+    SDL_QuitCPUInfo();
 
     SDL_QuitProperties();
     SDL_QuitLog();

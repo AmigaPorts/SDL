@@ -794,16 +794,22 @@ int X11_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesI
     X11_Xinput2SelectTouch(_this, window);
 
     {
+        unsigned int x11_keyboard_events = KeyPressMask | KeyReleaseMask;
         unsigned int x11_pointer_events = ButtonPressMask | ButtonReleaseMask | PointerMotionMask;
-        if (X11_Xinput2SelectMouse(_this, window)) {
-            /* If XInput2 can handle pointer events, we don't track them here */
+
+        X11_Xinput2SelectMouseAndKeyboard(_this, window);
+
+        /* If XInput2 can handle pointer and keyboard events, we don't track them here */
+        if (windowdata->xinput2_keyboard_enabled) {
+            x11_keyboard_events = 0;
+        }
+        if (windowdata->xinput2_mouse_enabled) {
             x11_pointer_events = 0;
         }
 
         X11_XSelectInput(display, w,
                          (FocusChangeMask | EnterWindowMask | LeaveWindowMask | ExposureMask |
-                          x11_pointer_events |
-                          KeyPressMask | KeyReleaseMask |
+                          x11_keyboard_events | x11_pointer_events |
                           PropertyChangeMask | StructureNotifyMask |
                           KeymapStateMask | fevent));
     }

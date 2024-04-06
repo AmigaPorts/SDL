@@ -152,7 +152,7 @@ OS4_ResetNormalKeys(void)
             if (OS4_IsModifier(i)) {
                 dprintf("Ignore pressed modifier key %d\n", i);
             } else {
-                SDL_SendKeyboardKey(0, SDL_RELEASED, i);
+                SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, SDL_RELEASED, i);
             }
         }
         i++;
@@ -222,7 +222,7 @@ OS4_DetectNumLock(const SDL_Scancode s)
     if (currentState != oldState) {
         oldState = currentState;
         dprintf("Toggling numlock state\n");
-        SDL_SendKeyboardKey(0, SDL_PRESSED, SDL_SCANCODE_NUMLOCKCLEAR);
+        SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, SDL_PRESSED, SDL_SCANCODE_NUMLOCKCLEAR);
     }
 }
 
@@ -238,7 +238,7 @@ OS4_HandleKeyboard(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
             char text[5] = { 0 };
 
             OS4_DetectNumLock(s);
-            SDL_SendKeyboardKey(0, SDL_PRESSED, s);
+            SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, SDL_PRESSED, s);
 
             const uint32 unicode = OS4_TranslateUnicode(_this, imsg->Code, imsg->Qualifier, (APTR)*((ULONG*)imsg->IAddress));
 
@@ -251,7 +251,7 @@ OS4_HandleKeyboard(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
                 SDL_SendKeyboardText(text);
             }
         } else {
-            SDL_SendKeyboardKey(0, SDL_RELEASED, s);
+            SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, SDL_RELEASED, s);
         }
     }
 }

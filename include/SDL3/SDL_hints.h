@@ -40,6 +40,7 @@
 #define SDL_hints_h_
 
 #include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_error.h>
 
 #include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
@@ -121,9 +122,9 @@ extern "C" {
  *
  * For *nix platforms, this string should be formatted in reverse-DNS notation and follow some basic rules to be valid:
  *
- * - The application ID must be composed of two or more elements separated by a period (‘.’) character.
+ * - The application ID must be composed of two or more elements separated by a period (.) character.
  *
- * - Each element must contain one or more of the alphanumeric characters (A-Z, a-z, 0-9) plus underscore (‘_’) and hyphen (‘-’) and must not start with a digit. Note that hyphens, while technically allowed, should not be used if possible, as they are not supported by all components that use the ID, such as D-Bus. For maximum compatibility, replace hyphens with an underscore.
+ * - Each element must contain one or more of the alphanumeric characters (A-Z, a-z, 0-9) plus underscore (_) and hyphen (-) and must not start with a digit. Note that hyphens, while technically allowed, should not be used if possible, as they are not supported by all components that use the ID, such as D-Bus. For maximum compatibility, replace hyphens with an underscore.
  *
  * - The empty string is not a valid element (ie: your application ID may not start or end with a period and it is not valid to have two periods in a row).
  *
@@ -372,6 +373,37 @@ extern "C" {
 #define SDL_HINT_CAMERA_DRIVER "SDL_CAMERA_DRIVER"
 
 /**
+ *  A variable that limits what CPU features are available.
+ *
+ *  By default, SDL marks all features the current CPU supports as available.
+ *  This hint allows to limit these to a subset.
+ *
+ *  When the hint is unset, or empty, SDL will enable all detected CPU
+ *  features.
+ *
+ * The variable can be set to a comma separated list containing the following items:
+ *   "all"
+ *   "altivec"
+ *   "sse"
+ *   "sse2"
+ *   "sse3"
+ *   "sse41"
+ *   "sse42"
+ *   "avx"
+ *   "avx2"
+ *   "avx512f"
+ *   "arm-simd"
+ *   "neon"
+ *   "lsx"
+ *   "lasx"
+ *
+ *  The items can be prefixed by '+'/'-' to add/remove features.
+ *
+ *  This hint is available since SDL 3.0.0.
+ */
+#define SDL_HINT_CPU_FEATURE_MASK "SDL_CPU_FEATURE_MASK"
+
+/**
  * A variable controlling whether DirectInput should be used for controllers
  *
  * The variable can be set to the following values:
@@ -381,6 +413,26 @@ extern "C" {
  * This hint should be set before SDL is initialized.
  */
 #define SDL_HINT_JOYSTICK_DIRECTINPUT "SDL_JOYSTICK_DIRECTINPUT"
+
+/**
+ * A variable that specifies a dialog backend to use.
+ *
+ * By default, SDL will try all available dialog backends in a reasonable order until it finds one that can work, but this hint allows the app or user to force a specific target.
+ *
+ * If the specified target does not exist or is not available, the dialog-related function calls will fail.
+ *
+ * This hint currently only applies to platforms using the generic "Unix" dialog implementation, but may be extended to more platforms in the future. Note that some Unix and Unix-like platforms have their own implementation, such as macOS and Haiku.
+ *
+ * The variable can be set to the following values:
+ *   NULL          - Select automatically (default, all platforms)
+ *   "portal"      - Use XDG Portals through DBus (Unix only)
+ *   "zenity"      - Use the Zenity program (Unix only)
+ *
+ * More options may be added in the future.
+ *
+ * This hint can be set anytime.
+ */
+#define SDL_HINT_FILE_DIALOG_DRIVER "SDL_FILE_DIALOG_DRIVER"
 
 /**
  * Override for SDL_GetDisplayUsableBounds()
@@ -439,10 +491,11 @@ extern "C" {
  * A variable that controls whether the on-screen keyboard should be shown when text input is active
  *
  * The variable can be set to the following values:
+ *   "auto"    - The on-screen keyboard will be shown if there is no physical keyboard attached. (default)
  *   "0"       - Do not show the on-screen keyboard.
- *   "1"       - Show the on-screen keyboard. (default)
+ *   "1"       - Show the on-screen keyboard, if available.
  *
- * This hint must be set before text input is activated.
+ * This hint must be set before SDL_StartTextInput() is called
  */
 #define SDL_HINT_ENABLE_SCREEN_KEYBOARD "SDL_ENABLE_SCREEN_KEYBOARD"
 
@@ -471,7 +524,7 @@ extern "C" {
  *
  * This hint can be set anytime.
  */
-#define SDL_HINT_FORCE_RAISEWINDOW    "SDL_HINT_FORCE_RAISEWINDOW"
+#define SDL_HINT_FORCE_RAISEWINDOW    "SDL_FORCE_RAISEWINDOW"
 
 /**
  * A variable controlling how 3D acceleration is used to accelerate the SDL screen surface.
@@ -621,19 +674,6 @@ extern "C" {
  * This hint should be set before calling SDL_StartTextInput()
  */
 #define SDL_HINT_GDK_TEXTINPUT_TITLE "SDL_GDK_TEXTINPUT_TITLE"
-
-/**
- * A variable controlling whether grabbing input grabs the keyboard
- *
- * The variable can be set to the following values:
- *   "0"       - Grab will affect only the mouse. (default)
- *   "1"       - Grab will affect mouse and keyboard.
- *
- * By default SDL will not grab the keyboard so system shortcuts still work.
- *
- * This hint can be set anytime.
- */
-#define SDL_HINT_GRAB_KEYBOARD              "SDL_GRAB_KEYBOARD"
 
 /**
  * A variable to control whether SDL_hid_enumerate() enumerates all HID devices or only controllers.
@@ -1671,7 +1711,7 @@ extern "C" {
  *
  * This hint can be set anytime.
  */
-#define SDL_HINT_PEN_DELAY_MOUSE_BUTTON    "SDL_HINT_PEN_DELAY_MOUSE_BUTTON"
+#define SDL_HINT_PEN_DELAY_MOUSE_BUTTON    "SDL_PEN_DELAY_MOUSE_BUTTON"
 
 /**
  * A variable controlling whether to treat pen movement as separate from mouse movement
@@ -1688,7 +1728,7 @@ extern "C" {
  *
  * This hint can be set anytime.
  */
-#define SDL_HINT_PEN_NOT_MOUSE    "SDL_HINT_PEN_NOT_MOUSE"
+#define SDL_HINT_PEN_NOT_MOUSE    "SDL_PEN_NOT_MOUSE"
 
 /**
  * A variable controlling the use of a sentinel event when polling the event queue
@@ -2264,7 +2304,7 @@ extern "C" {
  *
  * This hint can be set anytime.
  */
-#define SDL_HINT_VITA_TOUCH_MOUSE_DEVICE    "SDL_HINT_VITA_TOUCH_MOUSE_DEVICE"
+#define SDL_HINT_VITA_TOUCH_MOUSE_DEVICE    "SDL_VITA_TOUCH_MOUSE_DEVICE"
 
 /**
  * A variable controlling how the fact chunk affects the loading of a WAVE file.
@@ -2362,6 +2402,17 @@ extern "C" {
 #define SDL_HINT_WINDOW_FRAME_USABLE_WHILE_CURSOR_HIDDEN    "SDL_WINDOW_FRAME_USABLE_WHILE_CURSOR_HIDDEN"
 
 /**
+ * A variable controlling whether SDL generates window-close events for Alt+F4 on Windows.
+ *
+ * The variable can be set to the following values:
+ *   "0"       - SDL will only do normal key handling for Alt+F4.
+ *   "1"       - SDL will generate a window-close event when it sees Alt+F4. (default)
+ *
+ * This hint can be set anytime.
+ */
+#define SDL_HINT_WINDOWS_CLOSE_ON_ALT_F4 "SDL_WINDOWS_CLOSE_ON_ALT_F4"
+
+/**
  * A variable controlling whether menus can be opened with their keyboard shortcut (Alt+mnemonic).
  *
  * If the mnemonics are enabled, then menus can be opened by pressing the Alt key and the corresponding mnemonic (for example, Alt+F opens the File menu). However, in case an invalid mnemonic is pressed, Windows makes an audible beep to convey that nothing happened. This is true even if the window has no menu at all!
@@ -2388,6 +2439,17 @@ extern "C" {
  * This hint can be set anytime.
  */
 #define SDL_HINT_WINDOWS_ENABLE_MESSAGELOOP "SDL_WINDOWS_ENABLE_MESSAGELOOP"
+
+/**
+ * A variable controlling whether raw keyboard events are used on Windows
+ *
+ * The variable can be set to the following values:
+ *   "0"       - The Windows message loop is used for keyboard events.
+ *   "1"       - Low latency raw keyboard events are used. (default)
+ *
+ * This hint can be set anytime.
+ */
+#define SDL_HINT_WINDOWS_RAW_KEYBOARD   "SDL_WINDOWS_RAW_KEYBOARD"
 
 /**
  * A variable controlling whether SDL uses Critical Sections for mutexes on Windows.
@@ -2422,17 +2484,6 @@ extern "C" {
  */
 #define SDL_HINT_WINDOWS_INTRESOURCE_ICON       "SDL_WINDOWS_INTRESOURCE_ICON"
 #define SDL_HINT_WINDOWS_INTRESOURCE_ICON_SMALL "SDL_WINDOWS_INTRESOURCE_ICON_SMALL"
-
-/**
- * A variable controlling whether SDL generates window-close events for Alt+F4 on Windows.
- *
- * The variable can be set to the following values:
- *   "0"       - SDL will only do normal key handling for Alt+F4.
- *   "1"       - SDL will generate a window-close event when it sees Alt+F4. (default)
- *
- * This hint can be set anytime.
- */
-#define SDL_HINT_WINDOWS_CLOSE_ON_ALT_F4 "SDL_WINDOWS_CLOSE_ON_ALT_F4"
 
 /**
  * A variable controlling whether SDL uses the D3D9Ex API introduced in Windows Vista, instead of normal D3D9.

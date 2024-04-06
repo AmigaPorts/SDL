@@ -257,6 +257,7 @@
 #define SDL_GetGamepadButtonFromString SDL_GetGamepadButtonFromString_REAL
 #define SDL_GetGamepadButtonLabel SDL_GetGamepadButtonLabel_REAL
 #define SDL_GetGamepadButtonLabelForType SDL_GetGamepadButtonLabelForType_REAL
+#define SDL_GetGamepadConnectionState SDL_GetGamepadConnectionState_REAL
 #define SDL_GetGamepadFirmwareVersion SDL_GetGamepadFirmwareVersion_REAL
 #define SDL_GetGamepadFromInstanceID SDL_GetGamepadFromInstanceID_REAL
 #define SDL_GetGamepadFromPlayerIndex SDL_GetGamepadFromPlayerIndex_REAL
@@ -277,7 +278,7 @@
 #define SDL_GetGamepadName SDL_GetGamepadName_REAL
 #define SDL_GetGamepadPath SDL_GetGamepadPath_REAL
 #define SDL_GetGamepadPlayerIndex SDL_GetGamepadPlayerIndex_REAL
-#define SDL_GetGamepadPowerLevel SDL_GetGamepadPowerLevel_REAL
+#define SDL_GetGamepadPowerInfo SDL_GetGamepadPowerInfo_REAL
 #define SDL_GetGamepadProduct SDL_GetGamepadProduct_REAL
 #define SDL_GetGamepadProductVersion SDL_GetGamepadProductVersion_REAL
 #define SDL_GetGamepadProperties SDL_GetGamepadProperties_REAL
@@ -312,6 +313,7 @@
 #define SDL_GetJoystickAxisInitialState SDL_GetJoystickAxisInitialState_REAL
 #define SDL_GetJoystickBall SDL_GetJoystickBall_REAL
 #define SDL_GetJoystickButton SDL_GetJoystickButton_REAL
+#define SDL_GetJoystickConnectionState SDL_GetJoystickConnectionState_REAL
 #define SDL_GetJoystickFirmwareVersion SDL_GetJoystickFirmwareVersion_REAL
 #define SDL_GetJoystickFromInstanceID SDL_GetJoystickFromInstanceID_REAL
 #define SDL_GetJoystickFromPlayerIndex SDL_GetJoystickFromPlayerIndex_REAL
@@ -332,7 +334,7 @@
 #define SDL_GetJoystickName SDL_GetJoystickName_REAL
 #define SDL_GetJoystickPath SDL_GetJoystickPath_REAL
 #define SDL_GetJoystickPlayerIndex SDL_GetJoystickPlayerIndex_REAL
-#define SDL_GetJoystickPowerLevel SDL_GetJoystickPowerLevel_REAL
+#define SDL_GetJoystickPowerInfo SDL_GetJoystickPowerInfo_REAL
 #define SDL_GetJoystickProduct SDL_GetJoystickProduct_REAL
 #define SDL_GetJoystickProductVersion SDL_GetJoystickProductVersion_REAL
 #define SDL_GetJoystickProperties SDL_GetJoystickProperties_REAL
@@ -344,14 +346,18 @@
 #define SDL_GetKeyFromScancode SDL_GetKeyFromScancode_REAL
 #define SDL_GetKeyName SDL_GetKeyName_REAL
 #define SDL_GetKeyboardFocus SDL_GetKeyboardFocus_REAL
+#define SDL_GetKeyboardInstanceName SDL_GetKeyboardInstanceName_REAL
 #define SDL_GetKeyboardState SDL_GetKeyboardState_REAL
+#define SDL_GetKeyboards SDL_GetKeyboards_REAL
 #define SDL_GetLogOutputFunction SDL_GetLogOutputFunction_REAL
 #define SDL_GetMasksForPixelFormatEnum SDL_GetMasksForPixelFormatEnum_REAL
 #define SDL_GetMaxHapticEffects SDL_GetMaxHapticEffects_REAL
 #define SDL_GetMaxHapticEffectsPlaying SDL_GetMaxHapticEffectsPlaying_REAL
 #define SDL_GetMemoryFunctions SDL_GetMemoryFunctions_REAL
+#define SDL_GetMice SDL_GetMice_REAL
 #define SDL_GetModState SDL_GetModState_REAL
 #define SDL_GetMouseFocus SDL_GetMouseFocus_REAL
+#define SDL_GetMouseInstanceName SDL_GetMouseInstanceName_REAL
 #define SDL_GetMouseState SDL_GetMouseState_REAL
 #define SDL_GetNaturalDisplayOrientation SDL_GetNaturalDisplayOrientation_REAL
 #define SDL_GetNumAllocations SDL_GetNumAllocations_REAL
@@ -483,7 +489,6 @@
 #define SDL_GetWindowFlags SDL_GetWindowFlags_REAL
 #define SDL_GetWindowFromID SDL_GetWindowFromID_REAL
 #define SDL_GetWindowFullscreenMode SDL_GetWindowFullscreenMode_REAL
-#define SDL_GetWindowGrab SDL_GetWindowGrab_REAL
 #define SDL_GetWindowICCProfile SDL_GetWindowICCProfile_REAL
 #define SDL_GetWindowID SDL_GetWindowID_REAL
 #define SDL_GetWindowKeyboardGrab SDL_GetWindowKeyboardGrab_REAL
@@ -501,6 +506,8 @@
 #define SDL_GetWindowSizeInPixels SDL_GetWindowSizeInPixels_REAL
 #define SDL_GetWindowSurface SDL_GetWindowSurface_REAL
 #define SDL_GetWindowTitle SDL_GetWindowTitle_REAL
+#define SDL_GlobDirectory SDL_GlobDirectory_REAL
+#define SDL_GlobStorageDirectory SDL_GlobStorageDirectory_REAL
 #define SDL_HapticEffectSupported SDL_HapticEffectSupported_REAL
 #define SDL_HapticRumbleSupported SDL_HapticRumbleSupported_REAL
 #define SDL_HasARMSIMD SDL_HasARMSIMD_REAL
@@ -512,9 +519,13 @@
 #define SDL_HasClipboardText SDL_HasClipboardText_REAL
 #define SDL_HasEvent SDL_HasEvent_REAL
 #define SDL_HasEvents SDL_HasEvents_REAL
+#define SDL_HasGamepad SDL_HasGamepad_REAL
+#define SDL_HasJoystick SDL_HasJoystick_REAL
+#define SDL_HasKeyboard SDL_HasKeyboard_REAL
 #define SDL_HasLASX SDL_HasLASX_REAL
 #define SDL_HasLSX SDL_HasLSX_REAL
 #define SDL_HasMMX SDL_HasMMX_REAL
+#define SDL_HasMouse SDL_HasMouse_REAL
 #define SDL_HasNEON SDL_HasNEON_REAL
 #define SDL_HasPrimarySelectionText SDL_HasPrimarySelectionText_REAL
 #define SDL_HasProperty SDL_HasProperty_REAL
@@ -768,7 +779,6 @@
 #define SDL_SetWindowFocusable SDL_SetWindowFocusable_REAL
 #define SDL_SetWindowFullscreen SDL_SetWindowFullscreen_REAL
 #define SDL_SetWindowFullscreenMode SDL_SetWindowFullscreenMode_REAL
-#define SDL_SetWindowGrab SDL_SetWindowGrab_REAL
 #define SDL_SetWindowHitTest SDL_SetWindowHitTest_REAL
 #define SDL_SetWindowIcon SDL_SetWindowIcon_REAL
 #define SDL_SetWindowInputFocus SDL_SetWindowInputFocus_REAL
@@ -807,7 +817,6 @@
 #define SDL_SyncWindow SDL_SyncWindow_REAL
 #define SDL_TellIO SDL_TellIO_REAL
 #define SDL_TextInputActive SDL_TextInputActive_REAL
-#define SDL_TextInputShown SDL_TextInputShown_REAL
 #define SDL_TimeFromWindows SDL_TimeFromWindows_REAL
 #define SDL_TimeToDateTime SDL_TimeToDateTime_REAL
 #define SDL_TimeToWindows SDL_TimeToWindows_REAL
