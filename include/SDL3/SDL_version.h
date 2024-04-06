@@ -29,6 +29,7 @@
 #define SDL_version_h_
 
 #include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_error.h>
 
 #include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
@@ -58,8 +59,8 @@ typedef struct SDL_Version
 /* Printable format: "%d.%d.%d", MAJOR, MINOR, PATCHLEVEL
 */
 #define SDL_MAJOR_VERSION   3
-#define SDL_MINOR_VERSION   0
-#define SDL_PATCHLEVEL      0
+#define SDL_MINOR_VERSION   1
+#define SDL_PATCHLEVEL      1
 
 /**
  * Macro to determine SDL version program was compiled against.
@@ -76,11 +77,11 @@ typedef struct SDL_Version
  * \sa SDL_Version
  * \sa SDL_GetVersion
  */
-#define SDL_VERSION(x)                          \
-{                                   \
-    (x)->major = SDL_MAJOR_VERSION;                 \
-    (x)->minor = SDL_MINOR_VERSION;                 \
-    (x)->patch = SDL_PATCHLEVEL;                    \
+#define SDL_VERSION(x)                \
+{                                     \
+    (x)->major = SDL_MAJOR_VERSION;   \
+    (x)->minor = SDL_MINOR_VERSION;   \
+    (x)->patch = SDL_PATCHLEVEL;      \
 }
 
 /**

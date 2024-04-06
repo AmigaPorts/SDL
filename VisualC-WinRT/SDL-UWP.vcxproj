@@ -109,6 +109,7 @@
     <ClInclude Include="..\src\core\winrt\SDL_winrtapp_common.h" />
     <ClInclude Include="..\src\core\winrt\SDL_winrtapp_direct3d.h" />
     <ClInclude Include="..\src\core\winrt\SDL_winrtapp_xaml.h" />
+    <ClInclude Include="..\src\cpuinfo\SDL_cpuinfo_c.h" />
     <ClInclude Include="..\src\dynapi\SDL_dynapi.h" />
     <ClInclude Include="..\src\dynapi\SDL_dynapi_overrides.h" />
     <ClInclude Include="..\src\dynapi\SDL_dynapi_procs.h" />
@@ -122,7 +123,7 @@
     <ClInclude Include="..\src\events\SDL_mouse_c.h" />
     <ClInclude Include="..\src\events\SDL_touch_c.h" />
     <ClInclude Include="..\src\events\SDL_windowevents_c.h" />
-    <ClInclude Include="..\src\filesystem\SDL_filesystem.h" />
+    <ClInclude Include="..\src\filesystem\SDL_sysfilesystem.h" />
     <ClInclude Include="..\src\haptic\SDL_haptic_c.h" />
     <ClInclude Include="..\src\haptic\SDL_syshaptic.h" />
     <ClInclude Include="..\src\haptic\windows\SDL_dinputhaptic_c.h" />
@@ -314,6 +315,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\src\dialog\SDL_dialog_utils.c" />
     <ClCompile Include="..\src\events\SDL_clipboardevents.c" />
     <ClCompile Include="..\src\events\SDL_displayevents.c" />
     <ClCompile Include="..\src\events\SDL_dropevents.c" />

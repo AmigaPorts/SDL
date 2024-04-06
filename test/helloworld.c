@@ -236,7 +236,7 @@ static void testManyWindows()
     SDL_Window * w2 = SDL_CreateWindow("blah2", 100, 100, 0/*SDL_WINDOW_FULLSCREEN*/);
 
     if (w && w2) {
-        SDL_SetWindowGrab(w, SDL_TRUE);
+        SDL_SetWindowMouseGrab(w, SDL_TRUE);
 
         eventLoop();
 
@@ -482,9 +482,9 @@ static void testRenderer()
     SDL_Window * g = SDL_CreateWindow("Green", 100, 100, SDL_WINDOW_RESIZABLE);
     SDL_Window * b = SDL_CreateWindow("Blue", 100, 100, SDL_WINDOW_RESIZABLE);
 
-    SDL_Renderer * rr = SDL_CreateRenderer(r, NULL, SDL_RENDERER_SOFTWARE);
-    SDL_Renderer * gr = SDL_CreateRenderer(g, NULL, SDL_RENDERER_SOFTWARE);
-    SDL_Renderer * br = SDL_CreateRenderer(b, NULL, SDL_RENDERER_ACCELERATED);
+    SDL_Renderer * rr = SDL_CreateRenderer(r, NULL, 0);
+    SDL_Renderer * gr = SDL_CreateRenderer(g, NULL, 0);
+    SDL_Renderer * br = SDL_CreateRenderer(b, NULL, 0);
 
     //SDL_SetRenderLogicalSize(rr, 50, 50);
     //SDL_SetRenderLogicalSize(gr, 80, 80);
@@ -521,7 +521,7 @@ static void testDraw()
 {
     SDL_Window * w = SDL_CreateWindow("Draw", 200, 200, SDL_WINDOW_RESIZABLE);
 
-    SDL_Renderer * r = SDL_CreateRenderer(w, NULL, /*SDL_RENDERER_SOFTWARE*/ SDL_RENDERER_ACCELERATED);
+    SDL_Renderer * r = SDL_CreateRenderer(w, NULL, 0);
 
     if (w && r) {
         while (eventLoopInner()) {
@@ -553,7 +553,7 @@ static void testRenderVsync()
 
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
-    SDL_Renderer * r = SDL_CreateRenderer(w, NULL, /*SDL_RENDERER_SOFTWARE*/ SDL_RENDERER_ACCELERATED);
+    SDL_Renderer * r = SDL_CreateRenderer(w, NULL, 0);
 
     if (w && r) {
         while (eventLoopInner()) {

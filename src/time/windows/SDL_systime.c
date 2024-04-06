@@ -32,6 +32,8 @@
 #define WINDOWS_TICK          10000000ULL
 #define UNIX_EPOCH_OFFSET_SEC 11644473600ULL
 
+typedef void(WINAPI *pfnGetSystemTimePreciseAsFileTime)(FILETIME *);
+
 void SDL_GetSystemTimeLocalePreferences(SDL_DATE_FORMAT *df, SDL_TIME_FORMAT *tf)
 {
     WCHAR str[80]; /* Per the docs, the time and short date format strings can be a max of 80 characters. */
@@ -84,7 +86,29 @@ int SDL_GetCurrentTime(SDL_Time *ticks)
     }
 
     SDL_zero(ft);
+
+#ifdef SDL_PLATFORM_WINRT
     GetSystemTimePreciseAsFileTime(&ft);
+#else
+    static pfnGetSystemTimePreciseAsFileTime pGetSystemTimePreciseAsFileTime = NULL;
+    static SDL_bool load_attempted = SDL_FALSE;
+
+    /* Only available in Win8/Server 2012 or higher. */
+    if (!pGetSystemTimePreciseAsFileTime && !load_attempted) {
+        HANDLE kernel32 = GetModuleHandle(TEXT("kernel32.dll"));
+        if (kernel32) {
+            pGetSystemTimePreciseAsFileTime = (pfnGetSystemTimePreciseAsFileTime)GetProcAddress(kernel32, "GetSystemTimePreciseAsFileTime");
+        }
+        load_attempted = SDL_TRUE;
+    }
+
+    if (pGetSystemTimePreciseAsFileTime) {
+        pGetSystemTimePreciseAsFileTime(&ft);
+    } else {
+        GetSystemTimeAsFileTime(&ft);
+    }
+#endif
+
     *ticks = SDL_TimeFromWindows(ft.dwLowDateTime, ft.dwHighDateTime);
 
     return 0;

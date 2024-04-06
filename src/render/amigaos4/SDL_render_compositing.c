@@ -1223,7 +1223,7 @@ SDL_RenderDriver OS4_RenderDriver = {
     OS4_CreateRenderer,
     {
         "compositing",
-        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC,
+        SDL_RENDERER_PRESENTVSYNC,
         1,
         {
             SDL_PIXELFORMAT_ARGB8888,

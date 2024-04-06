@@ -42,6 +42,7 @@
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_guid.h>
 #include <SDL3/SDL_mutex.h>
+#include <SDL3/SDL_power.h>
 #include <SDL3/SDL_properties.h>
 
 #include <SDL3/SDL_begin_code.h>
@@ -99,14 +100,11 @@ typedef enum
 
 typedef enum
 {
-    SDL_JOYSTICK_POWER_UNKNOWN = -1,
-    SDL_JOYSTICK_POWER_EMPTY,   /* <= 5% */
-    SDL_JOYSTICK_POWER_LOW,     /* <= 20% */
-    SDL_JOYSTICK_POWER_MEDIUM,  /* <= 70% */
-    SDL_JOYSTICK_POWER_FULL,    /* <= 100% */
-    SDL_JOYSTICK_POWER_WIRED,
-    SDL_JOYSTICK_POWER_MAX
-} SDL_JoystickPowerLevel;
+    SDL_JOYSTICK_CONNECTION_INVALID = -1,
+    SDL_JOYSTICK_CONNECTION_UNKNOWN,
+    SDL_JOYSTICK_CONNECTION_WIRED,
+    SDL_JOYSTICK_CONNECTION_WIRELESS,
+} SDL_JoystickConnectionState;
 
 #define SDL_JOYSTICK_AXIS_MAX   32767
 #define SDL_JOYSTICK_AXIS_MIN   -32768
@@ -138,6 +136,17 @@ extern DECLSPEC void SDLCALL SDL_LockJoysticks(void) SDL_ACQUIRE(SDL_joystick_lo
 extern DECLSPEC void SDLCALL SDL_UnlockJoysticks(void) SDL_RELEASE(SDL_joystick_lock);
 
 /**
+ * Return whether a joystick is currently connected.
+ *
+ * \returns SDL_TRUE if a joystick is connected, SDL_FALSE otherwise.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_GetJoysticks
+ */
+extern DECLSPEC SDL_bool SDLCALL SDL_HasJoystick(void);
+
+/**
  * Get a list of currently connected joysticks.
  *
  * \param count a pointer filled in with the number of joysticks returned
@@ -147,6 +156,7 @@ extern DECLSPEC void SDLCALL SDL_UnlockJoysticks(void) SDL_RELEASE(SDL_joystick_
  *
  * \since This function is available since SDL 3.0.0.
  *
+ * \sa SDL_HasJoystick
  * \sa SDL_OpenJoystick
  */
 extern DECLSPEC SDL_JoystickID *SDLCALL SDL_GetJoysticks(int *count);
@@ -204,8 +214,8 @@ extern DECLSPEC int SDLCALL SDL_GetJoystickInstancePlayerIndex(SDL_JoystickID in
  * This can be called before any joysticks are opened.
  *
  * \param instance_id the joystick instance ID
- * \returns the GUID of the selected joystick. If called on an invalid index,
- *          this function returns a zero GUID
+ * \returns the GUID of the selected joystick. If called with an invalid
+ *          instance_id, this function returns a zero GUID.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -221,8 +231,8 @@ extern DECLSPEC SDL_JoystickGUID SDLCALL SDL_GetJoystickInstanceGUID(SDL_Joystic
  * available this function returns 0.
  *
  * \param instance_id the joystick instance ID
- * \returns the USB vendor ID of the selected joystick. If called on an
- *          invalid index, this function returns zero
+ * \returns the USB vendor ID of the selected joystick. If called with an
+ *          invalid instance_id, this function returns 0.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -238,8 +248,8 @@ extern DECLSPEC Uint16 SDLCALL SDL_GetJoystickInstanceVendor(SDL_JoystickID inst
  * available this function returns 0.
  *
  * \param instance_id the joystick instance ID
- * \returns the USB product ID of the selected joystick. If called on an
- *          invalid index, this function returns zero
+ * \returns the USB product ID of the selected joystick. If called with an
+ *          invalid instance_id, this function returns 0.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -255,8 +265,8 @@ extern DECLSPEC Uint16 SDLCALL SDL_GetJoystickInstanceProduct(SDL_JoystickID ins
  * isn't available this function returns 0.
  *
  * \param instance_id the joystick instance ID
- * \returns the product version of the selected joystick. If called on an
- *          invalid index, this function returns zero
+ * \returns the product version of the selected joystick. If called with an
+ *          invalid instance_id, this function returns 0.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -271,8 +281,9 @@ extern DECLSPEC Uint16 SDLCALL SDL_GetJoystickInstanceProductVersion(SDL_Joystic
  * This can be called before any joysticks are opened.
  *
  * \param instance_id the joystick instance ID
- * \returns the SDL_JoystickType of the selected joystick. If called on an
- *          invalid index, this function returns `SDL_JOYSTICK_TYPE_UNKNOWN`
+ * \returns the SDL_JoystickType of the selected joystick. If called with an
+ *          invalid instance_id, this function returns
+ *          `SDL_JOYSTICK_TYPE_UNKNOWN`.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1069,15 +1080,37 @@ extern DECLSPEC int SDLCALL SDL_SendJoystickEffect(SDL_Joystick *joystick, const
 extern DECLSPEC void SDLCALL SDL_CloseJoystick(SDL_Joystick *joystick);
 
 /**
- * Get the battery level of a joystick as SDL_JoystickPowerLevel.
+ * Get the connection state of a joystick.
  *
- * \param joystick the SDL_Joystick to query
- * \returns the current battery level as SDL_JoystickPowerLevel on success or
- *          `SDL_JOYSTICK_POWER_UNKNOWN` if it is unknown
+ * \param joystick The joystick to query
+ * \returns the connection state on success or
+ *          `SDL_JOYSTICK_CONNECTION_INVALID` on failure; call SDL_GetError()
+ *          for more information.
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC SDL_JoystickPowerLevel SDLCALL SDL_GetJoystickPowerLevel(SDL_Joystick *joystick);
+extern DECLSPEC SDL_JoystickConnectionState SDLCALL SDL_GetJoystickConnectionState(SDL_Joystick *joystick);
+
+/**
+ * Get the battery state of a joystick.
+ *
+ * You should never take a battery status as absolute truth. Batteries
+ * (especially failing batteries) are delicate hardware, and the values
+ * reported here are best estimates based on what that hardware reports. It's
+ * not uncommon for older batteries to lose stored power much faster than it
+ * reports, or completely drain when reporting it has 20 percent left, etc.
+ *
+ * \param joystick The joystick to query
+ * \param percent a pointer filled in with the percentage of battery life
+ *                left, between 0 and 100, or NULL to ignore. This will be
+ *                filled in with -1 we can't determine a value or there is no
+ *                battery.
+ * \returns the current battery state or `SDL_POWERSTATE_ERROR` on failure;
+ *          call SDL_GetError() for more information.
+ *
+ * \since This function is available since SDL 3.0.0.
+ */
+extern DECLSPEC SDL_PowerState SDLCALL SDL_GetJoystickPowerInfo(SDL_Joystick *joystick, int *percent);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

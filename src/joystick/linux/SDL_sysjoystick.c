@@ -970,7 +970,7 @@ static void LINUX_JoystickDetect(void)
     } else
 #endif
 #ifdef HAVE_INOTIFY
-        if (inotify_fd >= 0 && last_joy_detect_time != 0) {
+    if (inotify_fd >= 0 && last_joy_detect_time != 0) {
         LINUX_InotifyJoystickDetect();
     } else
 #endif
@@ -1042,21 +1042,24 @@ static int LINUX_JoystickInit(void)
     }
 
     if (enumeration_method == ENUMERATION_LIBUDEV) {
-        if (SDL_UDEV_Init() < 0) {
-            return SDL_SetError("Could not initialize UDEV");
-        }
+        if (SDL_UDEV_Init() == 0) {
+            /* Set up the udev callback */
+            if (SDL_UDEV_AddCallback(joystick_udev_callback) < 0) {
+                SDL_UDEV_Quit();
+                return SDL_SetError("Could not set up joystick <-> udev callback");
+            }
 
-        /* Set up the udev callback */
-        if (SDL_UDEV_AddCallback(joystick_udev_callback) < 0) {
-            SDL_UDEV_Quit();
-            return SDL_SetError("Could not set up joystick <-> udev callback");
+            /* Force a scan to build the initial device list */
+            SDL_UDEV_Scan();
+        } else {
+            SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                         "udev init failed, disabling udev integration");
+            enumeration_method = ENUMERATION_FALLBACK;
         }
-
-        /* Force a scan to build the initial device list */
-        SDL_UDEV_Scan();
-    } else
+    }
 #endif
-    {
+
+    if (enumeration_method != ENUMERATION_LIBUDEV) {
 #ifdef HAVE_INOTIFY
         inotify_fd = SDL_inotify_init1();
 
@@ -1593,7 +1596,6 @@ static int LINUX_JoystickOpen(SDL_Joystick *joystick, int device_index)
         return SDL_SetError("No such device");
     }
 
-    joystick->instance_id = item->device_instance;
     joystick->hwdata = (struct joystick_hwdata *)
         SDL_calloc(1, sizeof(*joystick->hwdata));
     if (!joystick->hwdata) {

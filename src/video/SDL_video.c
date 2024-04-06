@@ -260,7 +260,7 @@ static int SDL_CreateWindowTexture(SDL_VideoDevice *_this, SDL_Window *window, S
         const SDL_bool specific_accelerated_renderer = (hint && *hint != '0' && *hint != '1' &&
                                                         SDL_strcasecmp(hint, "true") != 0 &&
                                                         SDL_strcasecmp(hint, "false") != 0 &&
-                                                        SDL_strcasecmp(hint, "software") != 0);
+                                                        SDL_strcasecmp(hint, SDL_SOFTWARE_RENDERER) != 0);
 
         /* Check to see if there's a specific driver requested */
         if (specific_accelerated_renderer) {
@@ -271,19 +271,14 @@ static int SDL_CreateWindowTexture(SDL_VideoDevice *_this, SDL_Window *window, S
                 }
                 return SDL_SetError("Requested renderer for " SDL_HINT_FRAMEBUFFER_ACCELERATION " is not available");
             }
-            /* if it was specifically requested, even if SDL_RENDERER_ACCELERATED isn't set, we'll accept this renderer. */
         } else {
             const int total = SDL_GetNumRenderDrivers();
             for (i = 0; i < total; ++i) {
                 const char *name = SDL_GetRenderDriver(i);
-                if (name && (SDL_strcmp(name, "software") != 0)) {
+                if (name && (SDL_strcmp(name, SDL_SOFTWARE_RENDERER) != 0)) {
                     renderer = SDL_CreateRenderer(window, name, 0);
-                    if (renderer && (SDL_GetRendererInfo(renderer, &info) == 0) && (info.flags & SDL_RENDERER_ACCELERATED)) {
+                    if (renderer) {
                         break; /* this will work. */
-                    }
-                    if (renderer) { /* wasn't accelerated, etc, skip it. */
-                        SDL_DestroyRenderer(renderer);
-                        renderer = NULL;
                     }
                 }
             }
@@ -321,9 +316,12 @@ static int SDL_CreateWindowTexture(SDL_VideoDevice *_this, SDL_Window *window, S
     *format = info.texture_formats[0];
 
     for (i = 0; i < info.num_texture_formats; ++i) {
-        if (!SDL_ISPIXELFORMAT_FOURCC(info.texture_formats[i]) &&
-            transparent == SDL_ISPIXELFORMAT_ALPHA(info.texture_formats[i])) {
-            *format = info.texture_formats[i];
+        SDL_PixelFormatEnum texture_format = info.texture_formats[i];
+        if (!SDL_ISPIXELFORMAT_FOURCC(texture_format) &&
+            !SDL_ISPIXELFORMAT_10BIT(texture_format) &&
+            !SDL_ISPIXELFORMAT_FLOAT(texture_format) &&
+            transparent == SDL_ISPIXELFORMAT_ALPHA(texture_format)) {
+            *format = texture_format;
             break;
         }
     }
@@ -568,22 +566,6 @@ int SDL_VideoInit(const char *driver_name)
     if (!SDL_GetHintBoolean(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, SDL_FALSE)) {
         SDL_DisableScreenSaver();
     }
-
-#if !defined(SDL_VIDEO_DRIVER_N3DS)
-    {
-        /* In the initial state we don't want to pop up an on-screen keyboard,
-         * but we do want to allow text input from other mechanisms.
-         */
-        const char *hint = SDL_GetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD);
-        if (!hint) {
-            SDL_SetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD, "0");
-        }
-        SDL_StartTextInput();
-        if (!hint) {
-            SDL_SetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD, NULL);
-        }
-    }
-#endif /* !SDL_VIDEO_DRIVER_N3DS */
 
     SDL_PostInitMouse();
 
@@ -1975,12 +1957,7 @@ static void ApplyWindowFlags(SDL_Window *window, SDL_WindowFlags flags)
     }
 
     if (flags & SDL_WINDOW_MOUSE_GRABBED) {
-        /* We must specifically call SDL_SetWindowGrab() and not
-           SDL_SetWindowMouseGrab() here because older applications may use
-           this flag plus SDL_HINT_GRAB_KEYBOARD to indicate that they want
-           the keyboard grabbed too and SDL_SetWindowMouseGrab() won't do that.
-        */
-        SDL_SetWindowGrab(window, SDL_TRUE);
+        SDL_SetWindowMouseGrab(window, SDL_TRUE);
     }
     if (flags & SDL_WINDOW_KEYBOARD_GRABBED) {
         SDL_SetWindowKeyboardGrab(window, SDL_TRUE);
@@ -3124,7 +3101,7 @@ static SDL_Surface *SDL_CreateWindowFramebuffer(SDL_Window *window)
         /* See if the user or application wants to specifically disable the framebuffer */
         const char *hint = SDL_GetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION);
         if (hint) {
-            if ((*hint == '0') || (SDL_strcasecmp(hint, "false") == 0) || (SDL_strcasecmp(hint, "software") == 0)) {
+            if ((*hint == '0') || (SDL_strcasecmp(hint, "false") == 0) || (SDL_strcasecmp(hint, SDL_SOFTWARE_RENDERER) == 0)) {
                 attempt_texture_framebuffer = SDL_FALSE;
             }
         }
@@ -3384,23 +3361,6 @@ void SDL_UpdateWindowGrab(SDL_Window *window)
     }
 }
 
-int SDL_SetWindowGrab(SDL_Window *window, SDL_bool grabbed)
-{
-    int ret_mouse_grab = 0;
-    int ret_keyboard_grab = 0;
-
-    CHECK_WINDOW_MAGIC(window, -1);
-    CHECK_WINDOW_NOT_POPUP(window, -1);
-
-    ret_mouse_grab = SDL_SetWindowMouseGrab(window, grabbed);
-
-    if (SDL_GetHintBoolean(SDL_HINT_GRAB_KEYBOARD, SDL_FALSE)) {
-        ret_keyboard_grab = SDL_SetWindowKeyboardGrab(window, grabbed);
-    }
-
-    return (!ret_mouse_grab && !ret_keyboard_grab) ? 0 : -1;
-}
-
 int SDL_SetWindowKeyboardGrab(SDL_Window *window, SDL_bool grabbed)
 {
     CHECK_WINDOW_MAGIC(window, -1);
@@ -3459,11 +3419,6 @@ int SDL_SetWindowMouseGrab(SDL_Window *window, SDL_bool grabbed)
         return -1;
     }
     return 0;
-}
-
-SDL_bool SDL_GetWindowGrab(SDL_Window *window)
-{
-    return SDL_GetWindowKeyboardGrab(window) || SDL_GetWindowMouseGrab(window);
 }
 
 SDL_bool SDL_GetWindowKeyboardGrab(SDL_Window *window)
@@ -3731,6 +3686,11 @@ void SDL_DestroyWindow(SDL_Window *window)
     }
 
     SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_DESTROYED, 0, 0);
+
+    SDL_Renderer *renderer = SDL_GetRenderer(window);
+    if (renderer) {
+        SDL_DestroyRenderer(renderer);
+    }
 
     SDL_DestroyProperties(window->props);
 
@@ -4870,24 +4830,25 @@ void SDL_WM_SetIcon(SDL_Surface *icon, Uint8 *mask)
 
 void SDL_StartTextInput(void)
 {
-    SDL_Window *window;
+    if (!_this) {
+        return;
+    }
 
-    /* First, enable text events */
-    SDL_SetEventEnabled(SDL_EVENT_TEXT_INPUT, SDL_TRUE);
-    SDL_SetEventEnabled(SDL_EVENT_TEXT_EDITING, SDL_TRUE);
-
-    /* Then show the on-screen keyboard, if any */
-    if (SDL_GetHintBoolean(SDL_HINT_ENABLE_SCREEN_KEYBOARD, SDL_TRUE)) {
-        window = SDL_GetKeyboardFocus();
-        if (window && _this && _this->ShowScreenKeyboard) {
+    /* Show the on-screen keyboard, if desired */
+    const char *hint = SDL_GetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD);
+    if (((!hint || SDL_strcasecmp(hint, "auto") == 0) && !SDL_HasKeyboard()) ||
+        SDL_GetStringBoolean(hint, SDL_FALSE)) {
+        SDL_Window *window = SDL_GetKeyboardFocus();
+        if (window && _this->ShowScreenKeyboard) {
             _this->ShowScreenKeyboard(_this, window);
         }
     }
 
     /* Finally start the text input system */
-    if (_this && _this->StartTextInput) {
+    if (_this->StartTextInput) {
         _this->StartTextInput(_this);
     }
+    _this->text_input_active = SDL_TRUE;
 }
 
 void SDL_ClearComposition(void)
@@ -4897,40 +4858,32 @@ void SDL_ClearComposition(void)
     }
 }
 
-SDL_bool SDL_TextInputShown(void)
-{
-    if (_this && _this->IsTextInputShown) {
-        return _this->IsTextInputShown(_this);
-    }
-
-    return SDL_FALSE;
-}
-
 SDL_bool SDL_TextInputActive(void)
 {
-    return SDL_EventEnabled(SDL_EVENT_TEXT_INPUT);
+    return _this && _this->text_input_active;
 }
 
 void SDL_StopTextInput(void)
 {
-    SDL_Window *window;
-
-    /* Stop the text input system */
-    if (_this && _this->StopTextInput) {
-        _this->StopTextInput(_this);
+    if (!_this) {
+        return;
     }
 
-    /* Hide the on-screen keyboard, if any */
-    if (SDL_GetHintBoolean(SDL_HINT_ENABLE_SCREEN_KEYBOARD, SDL_TRUE)) {
-        window = SDL_GetKeyboardFocus();
-        if (window && _this && _this->HideScreenKeyboard) {
+    /* Stop the text input system */
+    if (_this->StopTextInput) {
+        _this->StopTextInput(_this);
+    }
+    _this->text_input_active = SDL_FALSE;
+
+    /* Hide the on-screen keyboard, if desired */
+    const char *hint = SDL_GetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD);
+    if (((!hint || SDL_strcasecmp(hint, "auto") == 0) && !SDL_HasKeyboard()) ||
+        SDL_GetStringBoolean(hint, SDL_FALSE)) {
+        SDL_Window *window = SDL_GetKeyboardFocus();
+        if (window && _this->HideScreenKeyboard) {
             _this->HideScreenKeyboard(_this, window);
         }
     }
-
-    /* Finally disable text events */
-    SDL_SetEventEnabled(SDL_EVENT_TEXT_INPUT, SDL_FALSE);
-    SDL_SetEventEnabled(SDL_EVENT_TEXT_EDITING, SDL_FALSE);
 }
 
 int SDL_SetTextInputRect(const SDL_Rect *rect)

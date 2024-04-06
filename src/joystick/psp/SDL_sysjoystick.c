@@ -93,6 +93,8 @@ static int PSP_JoystickInit(void)
         analog_map[127 - i] = -1 * analog_map[i + 128];
     }
 
+    SDL_PrivateJoystickAdded(1);
+
     return 1;
 }
 
@@ -164,7 +166,6 @@ static int PSP_JoystickOpen(SDL_Joystick *joystick, int device_index)
     joystick->nbuttons = SDL_arraysize(button_map);
     joystick->naxes = 2;
     joystick->nhats = 0;
-    joystick->instance_id = device_index;
 
     return 0;
 }

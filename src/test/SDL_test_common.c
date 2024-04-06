@@ -955,12 +955,6 @@ static void SDLTest_PrintButtonMask(char *text, size_t maxlen, Uint32 flags)
 static void SDLTest_PrintRendererFlag(char *text, size_t maxlen, Uint32 flag)
 {
     switch (flag) {
-    case SDL_RENDERER_SOFTWARE:
-        SDL_snprintfcat(text, maxlen, "Software");
-        break;
-    case SDL_RENDERER_ACCELERATED:
-        SDL_snprintfcat(text, maxlen, "Accelerated");
-        break;
     case SDL_RENDERER_PRESENTVSYNC:
         SDL_snprintfcat(text, maxlen, "PresentVSync");
         break;
@@ -1661,6 +1655,14 @@ static void SDLTest_PrintEvent(const SDL_Event *event)
     case SDL_EVENT_WINDOW_DESTROYED:
         SDL_Log("SDL EVENT: Window %" SDL_PRIu32 " destroyed", event->window.windowID);
         break;
+    case SDL_EVENT_KEYBOARD_ADDED:
+        SDL_Log("SDL EVENT: Keyboard %" SDL_PRIu32 " attached",
+                event->kdevice.which);
+        break;
+    case SDL_EVENT_KEYBOARD_REMOVED:
+        SDL_Log("SDL EVENT: Keyboard %" SDL_PRIu32 " removed",
+                event->kdevice.which);
+        break;
     case SDL_EVENT_KEY_DOWN:
     case SDL_EVENT_KEY_UP: {
         char modstr[64];
@@ -1691,6 +1693,14 @@ static void SDLTest_PrintEvent(const SDL_Event *event)
     case SDL_EVENT_KEYMAP_CHANGED:
         SDL_Log("SDL EVENT: Keymap changed");
         break;
+    case SDL_EVENT_MOUSE_ADDED:
+        SDL_Log("SDL EVENT: Mouse %" SDL_PRIu32 " attached",
+                event->mdevice.which);
+        break;
+    case SDL_EVENT_MOUSE_REMOVED:
+        SDL_Log("SDL EVENT: Mouse %" SDL_PRIu32 " removed",
+                event->mdevice.which);
+        break;
     case SDL_EVENT_MOUSE_MOTION:
         SDL_Log("SDL EVENT: Mouse: moved to %g,%g (%g,%g) in window %" SDL_PRIu32,
                 event->motion.x, event->motion.y,
@@ -1712,7 +1722,7 @@ static void SDLTest_PrintEvent(const SDL_Event *event)
                 event->wheel.x, event->wheel.y, event->wheel.direction, event->wheel.windowID);
         break;
     case SDL_EVENT_JOYSTICK_ADDED:
-        SDL_Log("SDL EVENT: Joystick index %" SDL_PRIu32 " attached",
+        SDL_Log("SDL EVENT: Joystick %" SDL_PRIu32 " attached",
                 event->jdevice.which);
         break;
     case SDL_EVENT_JOYSTICK_REMOVED:
@@ -1768,7 +1778,7 @@ static void SDLTest_PrintEvent(const SDL_Event *event)
                 event->jbutton.which, event->jbutton.button);
         break;
     case SDL_EVENT_GAMEPAD_ADDED:
-        SDL_Log("SDL EVENT: Gamepad index %" SDL_PRIu32 " attached",
+        SDL_Log("SDL EVENT: Gamepad %" SDL_PRIu32 " attached",
                 event->gdevice.which);
         break;
     case SDL_EVENT_GAMEPAD_REMOVED:
@@ -2284,7 +2294,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 /* Ctrl-G toggle mouse grab */
                 SDL_Window *window = SDL_GetWindowFromID(event->key.windowID);
                 if (window) {
-                    SDL_SetWindowGrab(window, !SDL_GetWindowGrab(window));
+                    SDL_SetWindowMouseGrab(window, !SDL_GetWindowMouseGrab(window));
                 }
             }
             break;

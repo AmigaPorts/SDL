@@ -8,7 +8,7 @@ endif()
 set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)
 
 # See docs/release_checklist.md
-project(SDL3 LANGUAGES C VERSION "3.0.0")
+project(SDL3 LANGUAGES C VERSION "3.1.1")
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   set(SDL3_SUBPROJECT OFF)
@@ -1028,7 +1028,6 @@ if(SDL_LIBC)
   set(available_headers)
   set(HAVE_LIBC TRUE)
   set(headers_to_check
-    ctype.h
     float.h
     iconv.h
     inttypes.h
@@ -1081,11 +1080,11 @@ if(SDL_LIBC)
   )
   if(WINDOWS)
     list(APPEND symbols_to_check
-      _stricmp _strlwr _strnicmp _strrev _strupr _ui64toa _uitoa _ultoa _wcsdup _wcsicmp _wcsnicmp
+      _strrev _ui64toa _uitoa _ultoa _wcsdup
     )
   else()
     list(APPEND symbols_to_check
-        strcasecmp strcasestr strncasecmp wcscasecmp wcsncasecmp
+        strcasestr
     )
   endif()
   check_library_exists(m pow "" HAVE_LIBM)
@@ -2138,6 +2137,7 @@ elseif(APPLE)
   if(DARWIN OR MACOSX)
     set(SDL_FRAMEWORK_COCOA 1)
     set(SDL_FRAMEWORK_CARBON 1)
+    set(SDL_FRAMEWORK_UTTYPES 1)
   endif()
   set(SDL_FRAMEWORK_FOUNDATION 1)
   set(SDL_FRAMEWORK_COREVIDEO 1)
@@ -2873,6 +2873,7 @@ elseif(N3DS)
 endif()
 
 if (SDL_DIALOG)
+  sdl_sources(${SDL3_SOURCE_DIR}/src/dialog/SDL_dialog_utils.c)
   if(UNIX AND NOT APPLE AND NOT RISCOS AND NOT HAIKU)
     sdl_sources(${SDL3_SOURCE_DIR}/src/dialog/unix/SDL_unixdialog.c)
     sdl_sources(${SDL3_SOURCE_DIR}/src/dialog/unix/SDL_portaldialog.c)
@@ -2886,6 +2887,7 @@ if (SDL_DIALOG)
     set(HAVE_SDL_DIALOG TRUE)
   elseif(APPLE)
     sdl_sources(${SDL3_SOURCE_DIR}/src/dialog/cocoa/SDL_cocoadialog.m)
+    sdl_link_dependency(uniformtypeidentifiers LINK_OPTIONS "-Wl,-weak_framework,UniformTypeIdentifiers")
     set(HAVE_SDL_DIALOG TRUE)
   endif()
 endif()
@@ -3208,9 +3210,7 @@ endif()
 
 add_library(SDL3_Headers INTERFACE)
 add_library(SDL3::Headers ALIAS SDL3_Headers)
-set_target_properties(SDL3_Headers PROPERTIES
-  EXPORT_NAME "Headers"
-)
+set_property(TARGET SDL3_Headers PROPERTY EXPORT_NAME "Headers")
 target_include_directories(SDL3_Headers
   INTERFACE
     "$<BUILD_INTERFACE:${SDL3_BINARY_DIR}/include>"
