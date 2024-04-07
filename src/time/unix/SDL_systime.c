@@ -184,6 +184,10 @@ int SDL_TimeToDateTime(SDL_Time ticks, SDL_DateTime *dt, SDL_bool localTime)
         dt->day_of_week = tm->tm_wday;
         dt->utc_offset = (int)tm->tm_gmtoff;
 
+#if defined (SDL_PLATFORM_AMIGAOS4) && defined(__NEWLIB__)
+        // Workaround: newlib 53.84 returns -minutes, convert to seconds
+        dt->utc_offset *= -60;
+#endif
         return 0;
     }
 
