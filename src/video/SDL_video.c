@@ -191,6 +191,11 @@ static SDL_bool DisableUnsetFullscreenOnMinimize(_THIS)
     return !!(_this->quirk_flags & VIDEO_DEVICE_QUIRK_DISABLE_UNSET_FULLSCREEN_ON_MINIMIZE);
 }
 
+static SDL_bool IsFullscreenOnly(_THIS)
+{
+    return !!(_this->quirk_flags & VIDEO_DEVICE_QUIRK_FULLSCREEN_ONLY);
+}
+
 /* Support for framebuffer emulation using an accelerated renderer */
 
 #define SDL_WINDOWTEXTUREDATA "_SDL_WindowTextureData"
@@ -992,7 +997,7 @@ static SDL_DisplayMode *SDL_GetClosestDisplayModeForDisplay(SDL_VideoDisplay *di
             match = current;
             continue;
         }
-        if (current->format != match->format) {
+        if (current->format != match->format && match->format != target_format) {
             /* Sorted highest depth to lowest */
             if (current->format == target_format ||
                 (SDL_BITSPERPIXEL(current->format) >=
@@ -1003,7 +1008,7 @@ static SDL_DisplayMode *SDL_GetClosestDisplayModeForDisplay(SDL_VideoDisplay *di
             }
             continue;
         }
-        if (current->refresh_rate != match->refresh_rate) {
+        if (current->refresh_rate != match->refresh_rate && match->refresh_rate != target_refresh_rate) {
             /* Sorted highest refresh to lowest */
             if (current->refresh_rate >= target_refresh_rate) {
                 match = current;
@@ -1787,7 +1792,7 @@ on the backend side, after we know the screen size. */
     window->windowed.w = window->w;
     window->windowed.h = window->h;
 
-    if (flags & SDL_WINDOW_FULLSCREEN) {
+    if (flags & SDL_WINDOW_FULLSCREEN || IsFullscreenOnly(_this)) {
         SDL_VideoDisplay *display = SDL_GetDisplayForWindow(window);
         int displayIndex;
         SDL_Rect bounds;
@@ -1814,6 +1819,7 @@ on the backend side, after we know the screen size. */
         window->y = bounds.y;
         window->w = bounds.w;
         window->h = bounds.h;
+        flags |= SDL_WINDOW_FULLSCREEN;
     }
 
     window->flags = ((flags & CREATE_FLAGS) | SDL_WINDOW_HIDDEN);
