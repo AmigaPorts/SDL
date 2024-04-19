@@ -101,6 +101,12 @@ static int X11_SafetyNetErrHandler(Display *d, XErrorEvent *e)
     return 0;
 }
 
+static SDL_bool X11_IsXWayland(Display *d)
+{
+    int opcode, event, error;
+    return X11_XQueryExtension(d, "XWAYLAND", &opcode, &event, &error) == True;
+}
+
 static SDL_VideoDevice *X11_CreateDevice(void)
 {
     SDL_VideoDevice *device;
@@ -282,6 +288,11 @@ static SDL_VideoDevice *X11_CreateDevice(void)
 
     device->device_caps = VIDEO_DEVICE_CAPS_HAS_POPUP_WINDOW_SUPPORT |
                           VIDEO_DEVICE_CAPS_SENDS_FULLSCREEN_DIMENSIONS;
+
+    data->is_xwayland = X11_IsXWayland(x11_display);
+    if (data->is_xwayland) {
+        device->device_caps |= VIDEO_DEVICE_CAPS_MODE_SWITCHING_EMULATED;
+    }
 
     return device;
 }

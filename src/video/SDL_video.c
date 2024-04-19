@@ -34,6 +34,7 @@
 #include "../SDL_properties_c.h"
 #include "../timer/SDL_timer_c.h"
 #include "../camera/SDL_camera_c.h"
+#include "../render/SDL_sysrender.h"
 
 #ifdef SDL_VIDEO_OPENGL
 #include <SDL3/SDL_opengl.h>
@@ -184,6 +185,11 @@ static SDL_bool SDL_ModeSwitchingEmulated(SDL_VideoDevice *_this)
 static SDL_bool SDL_SendsFullscreenDimensions(SDL_VideoDevice *_this)
 {
     return !!(_this->device_caps & VIDEO_DEVICE_CAPS_SENDS_FULLSCREEN_DIMENSIONS);
+}
+
+static SDL_bool IsFullscreenOnly(SDL_VideoDevice *_this)
+{
+    return !!(_this->device_caps & VIDEO_DEVICE_CAPS_FULLSCREEN_ONLY);
 }
 
 /* Hint to treat all window ops as synchronous */
@@ -1250,8 +1256,11 @@ const SDL_DisplayMode *SDL_GetCurrentDisplayMode(SDL_DisplayID displayID)
 
 int SDL_SetDisplayModeForDisplay(SDL_VideoDisplay *display, SDL_DisplayMode *mode)
 {
-    /* Mode switching is being emulated per-window; nothing to do and cannot fail. */
-    if (SDL_ModeSwitchingEmulated(_this)) {
+    /* Mode switching is being emulated per-window; nothing to do and cannot fail,
+     * except for XWayland, which still needs the actual mode setting call since
+     * it's emulated via the XRandR interface.
+     */
+    if (SDL_ModeSwitchingEmulated(_this) && SDL_strcmp(_this->name, "x11") != 0) {
         return 0;
     }
 
@@ -1395,7 +1404,7 @@ SDL_DisplayID SDL_GetDisplayForRect(const SDL_Rect *rect)
     return GetDisplayForRect(rect->x, rect->y, rect->w, rect->h);
 }
 
-static SDL_DisplayID SDL_GetDisplayForWindowPosition(SDL_Window *window)
+SDL_DisplayID SDL_GetDisplayForWindowPosition(SDL_Window *window)
 {
     int x, y;
     SDL_DisplayID displayID = 0;
@@ -1413,7 +1422,15 @@ static SDL_DisplayID SDL_GetDisplayForWindowPosition(SDL_Window *window)
     SDL_RelativeToGlobalForWindow(window, window->x, window->y, &x, &y);
 
     if (!displayID) {
-        displayID = GetDisplayForRect(x, y, window->w, window->h);
+        /* Fullscreen windows may be larger than the display if they were moved between differently sized
+         * displays and the new position was received before the new size or vice versa. Using the center
+         * of the window rect in this case can report the wrong display, so use the origin.
+         */
+        if (window->flags & SDL_WINDOW_FULLSCREEN) {
+            displayID = GetDisplayForRect(x, y, 1, 1);
+        } else {
+            displayID = GetDisplayForRect(x, y, window->w, window->h);
+        }
     }
     if (!displayID) {
         /* Use the primary display for a window if we can't find it anywhere else */
@@ -1443,9 +1460,9 @@ SDL_VideoDisplay *SDL_GetVideoDisplayForFullscreenWindow(SDL_Window *window)
     if (!displayID) {
         if (window->flags & SDL_WINDOW_FULLSCREEN && !window->is_repositioning) {
             /* This was a window manager initiated move, use the current position. */
-            displayID = GetDisplayForRect(window->x, window->y, window->w, window->h);
+            displayID = GetDisplayForRect(window->x, window->y, 1, 1);
         } else {
-            displayID = GetDisplayForRect(window->floating.x, window->floating.y, window->w, window->h);
+            displayID = GetDisplayForRect(window->floating.x, window->floating.y, window->floating.w, window->floating.h);
         }
     }
     if (!displayID) {
@@ -2175,7 +2192,7 @@ SDL_Window *SDL_CreateWindowWithProperties(SDL_PropertiesID props)
     window->undefined_x = undefined_x;
     window->undefined_y = undefined_y;
 
-    if (flags & SDL_WINDOW_FULLSCREEN) {
+    if (flags & SDL_WINDOW_FULLSCREEN || IsFullscreenOnly(_this)) {
         SDL_VideoDisplay *display = SDL_GetVideoDisplayForWindow(window);
         SDL_Rect bounds;
 
@@ -2184,6 +2201,7 @@ SDL_Window *SDL_CreateWindowWithProperties(SDL_PropertiesID props)
         window->y = bounds.y;
         window->w = bounds.w;
         window->h = bounds.h;
+        flags |= SDL_WINDOW_FULLSCREEN;
     }
 
     window->flags = ((flags & CREATE_FLAGS) | SDL_WINDOW_HIDDEN);
@@ -3689,7 +3707,7 @@ void SDL_DestroyWindow(SDL_Window *window)
 
     SDL_Renderer *renderer = SDL_GetRenderer(window);
     if (renderer) {
-        SDL_DestroyRenderer(renderer);
+        SDL_DestroyRendererWithoutFreeing(renderer);
     }
 
     SDL_DestroyProperties(window->props);
