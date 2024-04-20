@@ -395,13 +395,22 @@ OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, int count,
 
         for (i = 0; i < count; ++i) {
             //dprintf("rp %p, rect x %f, y %f, w %f, h %f\n", &data->rastport, rects[i].x, rects[i].y, rects[i].w, rects[i].h);
+            SDL_Rect irect, tmp;
+            irect.x = rects[i].x;
+            irect.y = rects[i].y;
+            irect.w = rects[i].w;
+            irect.h = rects[i].h;
+
+            if (!SDL_GetRectIntersection(&irect, &data->cliprect, &tmp)) {
+                continue;
+            }
 
             IGraphics->RectFillColor(
                 &data->rastport,
-                rects[i].x,
-                rects[i].y,
-                rects[i].x + rects[i].w - 1,
-                rects[i].y + rects[i].h - 1,
+                tmp.x,
+                tmp.y,
+                tmp.x + tmp.w - 1,
+                tmp.y + tmp.h - 1,
                 color); // graphics.lib v54!
         }
 
