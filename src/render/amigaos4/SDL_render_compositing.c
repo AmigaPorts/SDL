@@ -315,10 +315,10 @@ OS4_FillVertexData(OS4_Vertex vertices[4], const SDL_FRect * srcrect, const SDL_
 {
     /* Flip texture coordinates if needed */
 
-    float left = srcrect->x + 0.5f;
-    float right = left + srcrect->w - 1.0f;
-    float top = srcrect->y + 0.5f;
-    float bottom = top + srcrect->h - 1.0f;
+    float left = srcrect->x;
+    float right = left + srcrect->w;
+    float top = srcrect->y;
+    float bottom = top + srcrect->h;
 
     if (flip == SDL_FLIP_HORIZONTAL) {
         const float tmp = left;
