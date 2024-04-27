@@ -858,6 +858,35 @@ while (my $d = readdir(DH)) {
                 }
                 next;
             }
+
+            # We assume any `#define`s directly after the typedef are related to it: probably bitflags for an integer typedef.
+            # We'll also allow some other basic preprocessor lines.
+            # Blank lines are allowed, anything else, even comments, are not.
+            my $blank_lines = 0;
+            my $lastpos = tell(FH);
+            my $additional_decl = '';
+            while (<FH>) {
+                chomp;
+
+                if (/\A\s*\Z/) {
+                    $blank_lines++;
+                } elsif (/\A\s*\#(define|if|else|elif|endif)(\s+|\Z)/) {
+                    if ($blank_lines > 0) {
+                        while ($blank_lines > 0) {
+                            $additional_decl .= "\n";
+                            push @decllines, '';
+                            $blank_lines--;
+                        }
+                    }
+                    $additional_decl .= "\n$_";
+                    push @decllines, $_;
+                    $lastpos = tell(FH);
+                } else {
+                    seek(FH, $lastpos, 0);  # re-read eaten lines again next time.
+                    last;
+                }
+            }
+            $decl .= $additional_decl;
         } else {
             die("Unexpected symtype $symtype");
         }
