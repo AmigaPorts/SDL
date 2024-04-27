@@ -50,10 +50,6 @@ typedef Sint32 SDL_Keycode;
 
 #define SDLK_SCANCODE_MASK (1<<30)
 #define SDL_SCANCODE_TO_KEYCODE(X)  (X | SDLK_SCANCODE_MASK)
-
-/**
- * A subset of possible virtual key values.
- */
 #define SDLK_UNKNOWN    0
 #define SDLK_RETURN '\r'
 #define SDLK_ESCAPE '\x1B'
@@ -323,7 +319,7 @@ typedef enum SDL_Keymod
     SDL_KMOD_CTRL = SDL_KMOD_LCTRL | SDL_KMOD_RCTRL,    /**< Any Ctrl key is down. */
     SDL_KMOD_SHIFT = SDL_KMOD_LSHIFT | SDL_KMOD_RSHIFT, /**< Any Shift key is down. */
     SDL_KMOD_ALT = SDL_KMOD_LALT | SDL_KMOD_RALT,       /**< Any Alt key is down. */
-    SDL_KMOD_GUI = SDL_KMOD_LGUI | SDL_KMOD_RGUI,       /**< Any GUI key is down. */
+    SDL_KMOD_GUI = SDL_KMOD_LGUI | SDL_KMOD_RGUI        /**< Any GUI key is down. */
 } SDL_Keymod;
 
 #endif /* SDL_keycode_h_ */

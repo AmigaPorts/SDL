@@ -271,7 +271,7 @@ static int SDL_CreateWindowTexture(SDL_VideoDevice *_this, SDL_Window *window, S
         /* Check to see if there's a specific driver requested */
         if (specific_accelerated_renderer) {
             renderer = SDL_CreateRenderer(window, hint, 0);
-            if (!renderer || (SDL_GetRendererInfo(renderer, &info) == -1)) {
+            if (!renderer || (SDL_GetRendererInfo(renderer, &info) < 0)) {
                 if (renderer) {
                     SDL_DestroyRenderer(renderer);
                 }
@@ -304,10 +304,10 @@ static int SDL_CreateWindowTexture(SDL_VideoDevice *_this, SDL_Window *window, S
         SDL_SetPropertyWithCleanup(props, SDL_PROP_WINDOW_TEXTUREDATA_POINTER, data, SDL_CleanupWindowTextureData, NULL);
 
         data->renderer = renderer;
-    } else {
-        if (SDL_GetRendererInfo(data->renderer, &info) == -1) {
-            return -1;
-        }
+    }
+
+    if (SDL_GetRendererInfo(data->renderer, &info) < 0) {
+        return -1;
     }
 
     /* Free any old texture and pixel data */
@@ -631,6 +631,28 @@ SDL_SystemTheme SDL_GetSystemTheme(void)
     }
 }
 
+static void SDL_UpdateDesktopBounds()
+{
+    SDL_Rect rect;
+    SDL_zero(rect);
+
+    SDL_DisplayID *displays = SDL_GetDisplays(NULL);
+    if (displays) {
+        for (int i = 0; displays[i]; ++i) {
+            SDL_Rect bounds;
+            if (SDL_GetDisplayBounds(displays[i], &bounds) == 0) {
+                if (i == 0) {
+                    SDL_copyp(&rect, &bounds);
+                } else {
+                    SDL_GetRectUnion(&rect, &bounds, &rect);
+                }
+            }
+        }
+        SDL_free(displays);
+    }
+    SDL_copyp(&_this->desktop_bounds, &rect);
+}
+
 static void SDL_FinalizeDisplayMode(SDL_DisplayMode *mode)
 {
     /* Make sure all the fields are set up correctly */
@@ -712,6 +734,8 @@ SDL_DisplayID SDL_AddVideoDisplay(const SDL_VideoDisplay *display, SDL_bool send
         SDL_SetFloatProperty(props, SDL_PROP_DISPLAY_HDR_HEADROOM_FLOAT, display->HDR.HDR_headroom);
     }
 
+    SDL_UpdateDesktopBounds();
+
     return id;
 }
 
@@ -723,6 +747,11 @@ void SDL_OnDisplayAdded(SDL_VideoDisplay *display)
     for (window = _this->windows; window; window = window->next) {
         SDL_CheckWindowDisplayChanged(window);
     }
+}
+
+void SDL_OnDisplayMoved(SDL_VideoDisplay *display)
+{
+    SDL_UpdateDesktopBounds();
 }
 
 void SDL_DelVideoDisplay(SDL_DisplayID displayID, SDL_bool send_event)
@@ -752,6 +781,8 @@ void SDL_DelVideoDisplay(SDL_DisplayID displayID, SDL_bool send_event)
         SDL_memmove(&_this->displays[display_index], &_this->displays[display_index + 1], (_this->num_displays - display_index - 1) * sizeof(_this->displays[display_index]));
     }
     --_this->num_displays;
+
+    SDL_UpdateDesktopBounds();
 }
 
 SDL_DisplayID *SDL_GetDisplays(int *count)
@@ -3149,7 +3180,7 @@ static SDL_Surface *SDL_CreateWindowFramebuffer(SDL_Window *window)
 #endif
 
         if (attempt_texture_framebuffer) {
-            if (SDL_CreateWindowTexture(_this, window, &format, &pixels, &pitch) == -1) {
+            if (SDL_CreateWindowTexture(_this, window, &format, &pixels, &pitch) < 0) {
                 /* !!! FIXME: if this failed halfway (made renderer, failed to make texture, etc),
                    !!! FIXME:  we probably need to clean this up so it doesn't interfere with
                    !!! FIXME:  a software fallback at the system level (can we blit to an

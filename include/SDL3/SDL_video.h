@@ -156,6 +156,7 @@ typedef Uint32 SDL_WindowFlags;
 #define SDL_WINDOW_TRANSPARENT          0x40000000U /**< window with transparent buffer */
 #define SDL_WINDOW_NOT_FOCUSABLE        0x80000000U /**< window should not be focusable */
 
+
 /**
  * Used to indicate that you don't care what the window position is.
  *
@@ -957,13 +958,14 @@ extern DECLSPEC SDL_Window *SDLCALL SDL_CreatePopupWindow(SDL_Window *parent, in
  * - `SDL_PROP_WINDOW_CREATE_WAYLAND_SURFACE_ROLE_CUSTOM_BOOLEAN` - true if
  *   the application wants to use the Wayland surface for a custom role and
  *   does not want it attached to an XDG toplevel window. See
- *   docs/README-wayland.md for more information on using custom surfaces.
- * - `SDL_PROP_WINDOW_CREATE_WAYLAND_CREATE_EGL_WINDOW_BOOLEAN - true if the
+ *   [README/wayland](README/wayland) for more information on using custom
+ *   surfaces.
+ * - `SDL_PROP_WINDOW_CREATE_WAYLAND_CREATE_EGL_WINDOW_BOOLEAN` - true if the
  *   application wants an associated `wl_egl_window` object to be created,
  *   even if the window does not have the OpenGL property or flag set.
  * - `SDL_PROP_WINDOW_CREATE_WAYLAND_WL_SURFACE_POINTER` - the wl_surface
  *   associated with the window, if you want to wrap an existing window. See
- *   docs/README-wayland.md for more information.
+ *   [README/wayland](README/wayland) for more information.
  *
  * These are additional supported properties on Windows:
  *
@@ -980,7 +982,7 @@ extern DECLSPEC SDL_Window *SDLCALL SDL_CreatePopupWindow(SDL_Window *parent, in
  * The window is implicitly shown if the "hidden" property is not set.
  *
  * Windows with the "tooltip" and "menu" properties are popup windows and have
- * the behaviors and guidelines outlined in `SDL_CreatePopupWindow()`.
+ * the behaviors and guidelines outlined in SDL_CreatePopupWindow().
  *
  * \param props the properties to use
  * \returns the window that was created or NULL on failure; call
