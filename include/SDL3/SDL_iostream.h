@@ -375,6 +375,7 @@ extern DECLSPEC int SDLCALL SDL_CloseIO(SDL_IOStream *context);
  */
 extern DECLSPEC SDL_PropertiesID SDLCALL SDL_GetIOProperties(SDL_IOStream *context);
 
+/* Possible `whence` values for SDL_IOStream seeking... */
 #define SDL_IO_SEEK_SET 0       /**< Seek from the beginning of data */
 #define SDL_IO_SEEK_CUR 1       /**< Seek relative to current read point */
 #define SDL_IO_SEEK_END 2       /**< Seek relative to the end of data */
@@ -483,7 +484,7 @@ extern DECLSPEC size_t SDLCALL SDL_ReadIO(SDL_IOStream *context, void *ptr, size
  *
  * This function writes exactly `size` bytes from the area pointed at by `ptr`
  * to the stream. If this fails for any reason, it'll return less than `size`
- * to demonstrate how far the write progressed. On success, it returns `num`.
+ * to demonstrate how far the write progressed. On success, it returns `size`.
  *
  * On error, this function still attempts to write as much as possible, so it
  * might return a positive value less than the requested write size.
@@ -495,7 +496,7 @@ extern DECLSPEC size_t SDLCALL SDL_ReadIO(SDL_IOStream *context, void *ptr, size
  * \param context a pointer to an SDL_IOStream structure
  * \param ptr a pointer to a buffer containing data to write
  * \param size the number of bytes to write
- * \returns the number of bytes written, which will be less than `num` on
+ * \returns the number of bytes written, which will be less than `size` on
  *          error; call SDL_GetError() for more information.
  *
  * \since This function is available since SDL 3.0.0.

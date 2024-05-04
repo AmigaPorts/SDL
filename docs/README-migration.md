@@ -398,7 +398,9 @@ The following symbols have been renamed:
 * SDL_USEREVENT => SDL_EVENT_USER
 
 The following symbols have been removed:
+* SDL_DROPEVENT_DATA_SIZE - drop event data is dynamically allocated
 * SDL_SYSWMEVENT - you can use SDL_SetWindowsMessageHook() and SDL_SetX11EventHook() to watch and modify system events before SDL sees them.
+* SDL_TEXTEDITINGEVENT_TEXT_SIZE - text editing event data is dynamically allocated
 
 The following structures have been renamed:
 * SDL_ControllerAxisEvent => SDL_GamepadAxisEvent
@@ -1425,6 +1427,9 @@ SDL3 attempts to apply consistency to case-insensitive string functions. In SDL2
 
 Please note that the case-folding technique used by SDL3 will not produce correct results for the "Turkish 'I'"; this one letter is a surprisingly hard problem in the Unicode world, and since these functions do not specify the human language in use, we have chosen to ignore this problem.
 
+The following macros have been removed:
+* SDL_TABLESIZE() - use SDL_arraysize() instead
+
 The following functions have been renamed:
 * SDL_strtokr() => SDL_strtok_r()
 
@@ -1832,3 +1837,5 @@ SDL_Vulkan_GetVkGetInstanceProcAddr() now returns `SDL_FunctionPointer` instead 
 SDL_Vulkan_CreateSurface() now takes a VkAllocationCallbacks pointer as its third parameter. If you don't have an allocator to supply, pass a NULL here to use the system default allocator (SDL2 always used the system default allocator here).
 
 SDL_Vulkan_GetDrawableSize() has been removed. SDL_GetWindowSizeInPixels() can be used in its place.
+
+SDL_vulkanInstance and SDL_vulkanSurface have been removed. They were for compatibility with Tizen, who had built their own Vulkan interface into SDL2, but these apps will need changes for the SDL3 API if they are upgraded anyhow.

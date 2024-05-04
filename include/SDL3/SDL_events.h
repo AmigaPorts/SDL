@@ -313,8 +313,6 @@ typedef struct SDL_KeyboardEvent
     SDL_Keysym keysym;  /**< The key that was pressed or released */
 } SDL_KeyboardEvent;
 
-#define SDL_TEXTEDITINGEVENT_TEXT_SIZE 64
-
 /**
  * Keyboard text editing event structure (event.edit.*)
  *
@@ -664,8 +662,6 @@ typedef struct SDL_TouchFingerEvent
 } SDL_TouchFingerEvent;
 
 
-#define SDL_DROPEVENT_DATA_SIZE 64
-
 /**
  * Pressure-sensitive pen touched or stopped touching surface (event.ptip.*)
  *
@@ -900,7 +896,7 @@ SDL_COMPILE_TIME_ASSERT(SDL_Event, sizeof(SDL_Event) == sizeof(((SDL_Event *)NUL
 extern DECLSPEC void SDLCALL SDL_PumpEvents(void);
 
 /* @{ */
-typedef enum SDL_eventaction
+typedef enum SDL_EventAction
 {
     SDL_ADDEVENT,
     SDL_PEEKEVENT,
