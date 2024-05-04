@@ -41,6 +41,7 @@ foreach (@ARGV) {
     $copy_direction = 1, next if $_ eq '--copy-to-header';
     $copy_direction = -1, next if $_ eq '--copy-to-wiki';
     $copy_direction = -2, next if $_ eq '--copy-to-manpages';
+    $copy_direction = -3, next if $_ eq '--report-coverage-gaps';
     if (/\A--options=(.*)\Z/) {
         $optionsfname = $1;
         next;
@@ -541,6 +542,21 @@ my %wikitypes = ();  # contains string of wiki page extension, like $wikitypes{"
 my %wikisyms = ();  # contains references to hash of strings, each string being the full contents of a section of a wiki page, like $wikisyms{"SDL_OpenAudio"}{"Remarks"}.
 my %wikisectionorder = ();   # contains references to array, each array item being a key to a wikipage section in the correct order, like $wikisectionorder{"SDL_OpenAudio"}[2] == 'Remarks'
 
+my %referenceonly = ();  # $referenceonly{"Y"} -> symbol name that this symbol is bound to. This makes wiki pages that say "See X" where "X" is a typedef and "Y" is a define attached to it. These pages are generated in the wiki only and do not bridge to the headers or manpages.
+
+my @coverage_gap = ();  # array of strings that weren't part of documentation, or blank, or basic preprocessor logic. Lets you see what this script is missing!
+
+sub add_coverage_gap {
+    if ($copy_direction == -3) {  # --report-coverage-gaps
+        my $text = shift;
+        my $dent = shift;
+        my $lineno = shift;
+        return if $text =~ /\A\s*\Z/;  # skip blank lines
+        return if $text =~ /\A\s*\#\s*(if|el|endif|include)/; # skip preprocessor floof.
+        push @coverage_gap, "$dent:$lineno: $text";
+    }
+}
+
 sub print_undocumented_section {
     my $fh = shift;
     my $typestr = shift;
@@ -595,9 +611,11 @@ while (my $d = readdir(DH)) {
 
     my @contents = ();
     my $ignoring_lines = 0;
-
+    my $header_comment = -1;
+    my $lineno = 0;
     while (<FH>) {
         chomp;
+        $lineno++;
         my $symtype = 0;  # nothing, yet.
         my $decl;
         my @templines;
@@ -606,6 +624,12 @@ while (my $d = readdir(DH)) {
 
         # Since a lot of macros are just preprocessor logic spam and not all macros are worth documenting anyhow, we only pay attention to them when they have a Doxygen comment attached.
         # Functions and other things are a different story, though!
+
+        if ($header_comment == -1) {
+            $header_comment = /\A\/\*\s*\Z/ ? 1 : 0;
+        } elsif (($header_comment == 1) && (/\A\*\/\s*\Z/)) {
+            $header_comment = 0;
+        }
 
         if ($ignoring_lines && /\A\s*\#\s*endif\s*\Z/) {
             $ignoring_lines = 0;
@@ -618,7 +642,7 @@ while (my $d = readdir(DH)) {
             $ignoring_lines = 1;
             push @contents, $_;
             next;
-        } elsif (/\A\s*extern\s+(SDL_DEPRECATED\s+|)DECLSPEC/) {  # a function declaration without a doxygen comment?
+        } elsif (/\A\s*extern\s+(SDL_DEPRECATED\s+|)(SDLMAIN_)?DECLSPEC/) {  # a function declaration without a doxygen comment?
             $symtype = 1;   # function declaration
             @templines = ();
             $decl = $_;
@@ -632,17 +656,20 @@ while (my $d = readdir(DH)) {
             $has_doxygen = 0;
         } elsif (not /\A\/\*\*\s*\Z/) {  # not doxygen comment start?
             push @contents, $_;
+            add_coverage_gap($_, $dent, $lineno) if ($header_comment == 0);
             next;
         } else {   # Start of a doxygen comment, parse it out.
             @templines = ( $_ );
             while (<FH>) {
                 chomp;
+                $lineno++;
                 push @templines, $_;
                 last if /\A\s*\*\/\Z/;
                 if (s/\A\s*\*\s*\`\`\`/```/) {  # this is a hack, but a lot of other code relies on the whitespace being trimmed, but we can't trim it in code blocks...
                     $str .= "$_\n";
                     while (<FH>) {
                         chomp;
+                        $lineno++;
                         push @templines, $_;
                         s/\A\s*\*\s?//;
                         if (s/\A\s*\`\`\`/```/) {
@@ -659,9 +686,10 @@ while (my $d = readdir(DH)) {
             }
 
             $decl = <FH>;
+            $lineno++ if defined $decl;
             $decl = '' if not defined $decl;
             chomp($decl);
-            if ($decl =~ /\A\s*extern\s+(SDL_DEPRECATED\s+|)DECLSPEC/) {
+            if ($decl =~ /\A\s*extern\s+(SDL_DEPRECATED\s+|)(SDLMAIN_)?DECLSPEC/) {
                 $symtype = 1;   # function declaration
             } elsif ($decl =~ /\A\s*SDL_FORCE_INLINE/) {
                 $symtype = 1;   # (forced-inline) function declaration
@@ -671,14 +699,16 @@ while (my $d = readdir(DH)) {
                 $symtype = 3;   # struct or union
             } elsif ($decl =~ /\A\s*(typedef\s+|)enum/) {
                 $symtype = 4;   # enum
-            } elsif ($decl =~ /\A\s*typedef\s+.*;\Z/) {
+            } elsif ($decl =~ /\A\s*typedef\s+.*\Z/) {
                 $symtype = 5;   # other typedef
             } else {
                 #print "Found doxygen but no function sig:\n$str\n\n";
                 foreach (@templines) {
                     push @contents, $_;
+                    add_coverage_gap($_, $dent, $lineno);
                 }
                 push @contents, $decl;
+                add_coverage_gap($decl, $dent, $lineno);
                 next;
             }
         }
@@ -693,6 +723,7 @@ while (my $d = readdir(DH)) {
                 if (not $decl =~ /\)\s*(\{.*|)\s*\Z/) {
                     while (<FH>) {
                         chomp;
+                        $lineno++;
                         push @decllines, $_;
                         s/\A\s+//;
                         s/\s+\Z//;
@@ -705,6 +736,7 @@ while (my $d = readdir(DH)) {
                 if (not $decl =~ /\)\s*;/) {
                     while (<FH>) {
                         chomp;
+                        $lineno++;
                         push @decllines, $_;
                         s/\A\s+//;
                         s/\s+\Z//;
@@ -717,8 +749,8 @@ while (my $d = readdir(DH)) {
 
             $decl =~ s/\s+\Z//;
 
-            if (!$is_forced_inline && $decl =~ /\A\s*extern\s+(SDL_DEPRECATED\s+|)DECLSPEC\s+(const\s+|)(unsigned\s+|)(.*?)\s*(\*?)\s*SDLCALL\s+(.*?)\s*\((.*?)\);/) {
-                $sym = $6;
+            if (!$is_forced_inline && $decl =~ /\A\s*extern\s+(SDL_DEPRECATED\s+|)(SDLMAIN_)?DECLSPEC\s+(const\s+|)(unsigned\s+|)(.*?)\s*(\*?)\s*SDLCALL\s+(.*?)\s*\((.*?)\);/) {
+                $sym = $7;
                 #$decl =~ s/\A\s*extern\s+DECLSPEC\s+(.*?)\s+SDLCALL/$1/;
             } elsif ($is_forced_inline && $decl =~ /\A\s*SDL_FORCE_INLINE\s+(SDL_DEPRECATED\s+|)(const\s+|)(unsigned\s+|)(.*?)([\*\s]+)(.*?)\s*\((.*?)\);/) {
                 $sym = $6;
@@ -738,7 +770,7 @@ while (my $d = readdir(DH)) {
                 foreach (@decllines) {
                     if ($decl eq '') {
                         $decl = $_;
-                        $decl =~ s/\Aextern\s+(SDL_DEPRECATED\s+|)DECLSPEC\s+(.*?)\s+(\*?)SDLCALL\s+/$2$3 /;
+                        $decl =~ s/\Aextern\s+(SDL_DEPRECATED\s+|)(SDLMAIN_)?DECLSPEC\s+(.*?)\s+(\*?)SDLCALL\s+/$3$4 /;
                     } else {
                         my $trimmed = $_;
                         # !!! FIXME: trim space for SDL_DEPRECATED if it was used, too.
@@ -748,6 +780,58 @@ while (my $d = readdir(DH)) {
                     $decl .= "\n";
                 }
             }
+
+            # !!! FIXME: code duplication with typedef processing, below.
+            # We assume any `#define`s directly after the function are related to it: probably bitflags for an integer typedef.
+            # We'll also allow some other basic preprocessor lines.
+            # Blank lines are allowed, anything else, even comments, are not.
+            my $blank_lines = 0;
+            my $lastpos = tell(FH);
+            my $lastlineno = $lineno;
+            my $additional_decl = '';
+            my $saw_define = 0;
+            while (<FH>) {
+                chomp;
+
+                $lineno++;
+
+                if (/\A\s*\Z/) {
+                    $blank_lines++;
+                } elsif (/\A\s*\#\s*(define|if|else|elif|endif)(\s+|\Z)/) {
+                    if (/\A\s*\#\s*define\s+([a-zA-Z0-9_]*)/) {
+                        $referenceonly{$1} = $sym;
+                        $saw_define = 1;
+                    } elsif (!$saw_define) {
+                        # if the first non-blank thing isn't a #define, assume we're done.
+                        seek(FH, $lastpos, 0);  # re-read eaten lines again next time.
+                        $lineno = $lastlineno;
+                        last;
+                    }
+
+                    # update strings now that we know everything pending is to be applied to this declaration. Add pending blank lines and the new text.
+
+                    # At Sam's request, don't list property defines with functions. (See #9440)
+                    my $is_property = /\A\s*\#\s*define\s+SDL_PROP_/;
+                    if (!$is_property) {
+                        if ($blank_lines > 0) {
+                            while ($blank_lines > 0) {
+                                $additional_decl .= "\n";
+                                push @decllines, '';
+                                $blank_lines--;
+                            }
+                        }
+                        $additional_decl .= "\n$_";
+                        push @decllines, $_;
+                        $lastpos = tell(FH);
+                    }
+                } else {
+                    seek(FH, $lastpos, 0);  # re-read eaten lines again next time.
+                    $lineno = $lastlineno;
+                    last;
+                }
+            }
+            $decl .= $additional_decl;
+
         } elsif ($symtype == 2) {  # a macro
             if ($decl =~ /\A\s*\#\s*define\s+(.*?)(\(.*?\)|)\s+/) {
                 $sym = $1;
@@ -766,6 +850,7 @@ while (my $d = readdir(DH)) {
             while ($decl =~ /\\\Z/) {
                 my $l = <FH>;
                 last if not $l;
+                $lineno++;
                 chomp($l);
                 push @decllines, $l;
                 #$l =~ s/\A\s+//;
@@ -823,6 +908,7 @@ while (my $d = readdir(DH)) {
                     if (!$started || ($brackets != 0)) {
                         $pending = <FH>;
                         die("EOF/error reading $incpath/$dent while parsing $sym\n") if not $pending;
+                        $lineno++;
                         chomp($pending);
                         push @decllines, $pending;
                         $decl .= "\n";
@@ -831,10 +917,26 @@ while (my $d = readdir(DH)) {
                 # this currently assumes the struct/union/enum ends on the line with the final bracket. I'm not writing a C parser here, fix the header!
             }
         } elsif ($symtype == 5) {  # other typedef
-            if ($decl =~ /\A\s*typedef\s+(.*);\Z/) {
+            if ($decl =~ /\A\s*typedef\s+(.*)\Z/) {
                 my $tdstr = $1;
+
+                if (not $decl =~ /;/) {
+                    while (<FH>) {
+                        chomp;
+                        $lineno++;
+                        push @decllines, $_;
+                        s/\A\s+//;
+                        s/\s+\Z//;
+                        $decl .= " $_";
+                        last if /;/;
+                    }
+                }
+                $decl =~ s/\s+(\))?;\Z/$1;/;
+
+                $tdstr =~ s/;\s*\Z//;
+
                 #my $datatype;
-                if ($tdstr =~ /\A(.*?)\s*\((.*?)\s*\*\s*(.*?)\)\s*\((.*?)\)\s*\Z/) {  # a function pointer type
+                if ($tdstr =~ /\A(.*?)\s*\((.*?)\s*\*\s*(.*?)\)\s*\((.*?)(\))?/) {  # a function pointer type
                     $sym = $3;
                     #$datatype = "$1 ($2 *$sym)($4)";
                 } elsif ($tdstr =~ /\A(.*[\s\*]+)(.*?)\s*\Z/) {
@@ -864,13 +966,27 @@ while (my $d = readdir(DH)) {
             # Blank lines are allowed, anything else, even comments, are not.
             my $blank_lines = 0;
             my $lastpos = tell(FH);
+            my $lastlineno = $lineno;
             my $additional_decl = '';
+            my $saw_define = 0;
             while (<FH>) {
                 chomp;
 
+                $lineno++;
+
                 if (/\A\s*\Z/) {
                     $blank_lines++;
-                } elsif (/\A\s*\#(define|if|else|elif|endif)(\s+|\Z)/) {
+                } elsif (/\A\s*\#\s*(define|if|else|elif|endif)(\s+|\Z)/) {
+                    if (/\A\s*\#\s*define\s+([a-zA-Z0-9_]*)/) {
+                        $referenceonly{$1} = $sym;
+                        $saw_define = 1;
+                    } elsif (!$saw_define) {
+                        # if the first non-blank thing isn't a #define, assume we're done.
+                        seek(FH, $lastpos, 0);  # re-read eaten lines again next time.
+                        $lineno = $lastlineno;
+                        last;
+                    }
+                    # update strings now that we know everything pending is to be applied to this declaration. Add pending blank lines and the new text.
                     if ($blank_lines > 0) {
                         while ($blank_lines > 0) {
                             $additional_decl .= "\n";
@@ -883,6 +999,7 @@ while (my $d = readdir(DH)) {
                     $lastpos = tell(FH);
                 } else {
                     seek(FH, $lastpos, 0);  # re-read eaten lines again next time.
+                    $lineno = $lastlineno;
                     last;
                 }
             }
@@ -1726,6 +1843,26 @@ if ($copy_direction == 1) {  # --copy-to-headers
         rename($path, "$wikipath/$_.${wikitype}") or die("Can't rename '$path' to '$wikipath/$_.${wikitype}': $!\n");
     }
 
+    # Write out simple redirector pages if they don't already exist.
+    foreach (keys %referenceonly) {
+        my $sym = $_;
+        my $refersto = $referenceonly{$sym};
+        my $path = "$wikipath/$sym.md";  # we only do Markdown for these.
+        next if (-f $path);  # don't overwrite if it already exists. Delete the file if you need a rebuild!
+        open(FH, '>', $path) or die("Can't open '$path': $!\n");
+
+        if (defined $wikipreamble) {
+            my $wikified_preamble = wikify('md', $wikipreamble);
+            print FH "###### $wikified_preamble\n";
+        }
+
+        print FH "# $sym\n\nPlease refer to [$refersto]($refersto) for details.\n\n";
+        #print FH "----\n";
+        #print FH "[CategoryAPI](CategoryAPI)\n\n";
+
+        close(FH);
+    }
+
     if (defined $readmepath) {
         if ( -d $readmepath ) {
             mkdir($wikireadmepath);  # just in case
@@ -1766,7 +1903,6 @@ if ($copy_direction == 1) {  # --copy-to-headers
     # This only takes from the wiki data, since it has sections we omit from the headers, like code examples.
 
     File::Path::make_path("$manpath/man3");
-    File::Path::make_path("$manpath/man3type");
 
     $dewikify_mode = 'manpage';
     $wordwrap_mode = 'manpage';
@@ -2004,7 +2140,12 @@ if ($copy_direction == 1) {  # --copy-to-headers
                 s/\A\s+//;
                 s/\s+\Z//;
                 next if $_ eq '';
-                $str .= "$nextstr.BR $_ (3)";
+                my $seealso_symtype = $headersymstype{$_};
+                my $seealso_mansection = '3';
+                if (defined($seealso_symtype) && ($seealso_symtype >= 3) && ($seealso_symtype <= 5)) {  # struct/union/enum/typedef
+                    $seealso_mansection = '3type';
+                }
+                $str .= "$nextstr.BR $_ ($seealso_mansection)";
                 $nextstr = ",\n";
             }
             $str .= "\n";
@@ -2030,12 +2171,16 @@ if ($copy_direction == 1) {  # --copy-to-headers
         $str .= ".UE\n";
         }
 
-        my $path = "$manpath/man$mansection/$_.$mansection";
+        my $path = "$manpath/man3/$_.$mansection";
         my $tmppath = "$path.tmp";
         open(FH, '>', $tmppath) or die("Can't open '$tmppath': $!\n");
         print FH $str;
         close(FH);
         rename($tmppath, $path) or die("Can't rename '$tmppath' to '$path': $!\n");
+    }
+} elsif ($copy_direction == -3) { # --report-coverage_gaps
+    foreach (@coverage_gap) {
+        print("$_\n");
     }
 }
 
