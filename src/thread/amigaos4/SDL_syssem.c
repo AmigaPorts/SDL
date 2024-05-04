@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -84,7 +84,7 @@ SDL_DestroySemaphore(SDL_sem * sem)
             IExec->MutexObtain(sem->mutex);
 
 			if (!IsMinListEmpty(&sem->waiters)) {
-                dprintf("Semaphore %p has waiters\n");
+                dprintf("Semaphore %p has waiters\n", sem);
 
                 OS4_WaiterNode* node;
 
