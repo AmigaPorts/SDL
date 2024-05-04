@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -208,11 +208,13 @@ OS4_TimerDelay(Uint32 ticks)
 
     if (timer) {
     	const ULONG alarmSig = OS4_TimerSetAlarm(timer, ticks);
-    	const ULONG sigsReceived = IExec->Wait(alarmSig | SIGBREAKF_CTRL_C);
+        if (alarmSig) {
+        	const ULONG sigsReceived = IExec->Wait(alarmSig | SIGBREAKF_CTRL_C);
 
-    	OS4_TimerClearAlarm(timer);
+        	OS4_TimerClearAlarm(timer);
 
-    	return (sigsReceived & alarmSig) == alarmSig;
+        	return (sigsReceived & alarmSig) == alarmSig;
+        }
     }
 
     return FALSE;
