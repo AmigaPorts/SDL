@@ -198,11 +198,14 @@ OS4_TimerDelay(Uint32 ticks)
 	OS4_TimerInstance* timer = OS4_ThreadGetTimer();
 
 	const ULONG alarmSig = OS4_TimerSetAlarm(timer, ticks);
-	const ULONG sigsReceived = IExec->Wait(alarmSig | SIGBREAKF_CTRL_C);
+    if (alarmSig) {
+    	const ULONG sigsReceived = IExec->Wait(alarmSig | SIGBREAKF_CTRL_C);
 
-	OS4_TimerClearAlarm(timer);
+    	OS4_TimerClearAlarm(timer);
+    	return (sigsReceived & alarmSig) == alarmSig;
+    }
 
-	return (sigsReceived & alarmSig) == alarmSig;
+    return FALSE;
 }
 
 void
