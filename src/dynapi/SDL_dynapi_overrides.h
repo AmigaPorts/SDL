@@ -53,7 +53,6 @@
 #define SDL_AtomicSet SDL_AtomicSet_REAL
 #define SDL_AtomicSetPtr SDL_AtomicSetPtr_REAL
 #define SDL_AttachVirtualJoystick SDL_AttachVirtualJoystick_REAL
-#define SDL_AttachVirtualJoystickEx SDL_AttachVirtualJoystickEx_REAL
 #define SDL_AudioDevicePaused SDL_AudioDevicePaused_REAL
 #define SDL_BindAudioStream SDL_BindAudioStream_REAL
 #define SDL_BindAudioStreams SDL_BindAudioStreams_REAL
@@ -152,7 +151,6 @@
 #define SDL_EnumerateDirectory SDL_EnumerateDirectory_REAL
 #define SDL_EnumerateProperties SDL_EnumerateProperties_REAL
 #define SDL_EnumerateStorageDirectory SDL_EnumerateStorageDirectory_REAL
-#define SDL_Error SDL_Error_REAL
 #define SDL_EventEnabled SDL_EventEnabled_REAL
 #define SDL_FillSurfaceRect SDL_FillSurfaceRect_REAL
 #define SDL_FillSurfaceRects SDL_FillSurfaceRects_REAL
@@ -229,6 +227,7 @@
 #define SDL_GetCurrentTime SDL_GetCurrentTime_REAL
 #define SDL_GetCurrentVideoDriver SDL_GetCurrentVideoDriver_REAL
 #define SDL_GetCursor SDL_GetCursor_REAL
+#define SDL_GetDateTimeLocalePreferences SDL_GetDateTimeLocalePreferences_REAL
 #define SDL_GetDayOfWeek SDL_GetDayOfWeek_REAL
 #define SDL_GetDayOfYear SDL_GetDayOfYear_REAL
 #define SDL_GetDaysInMonth SDL_GetDaysInMonth_REAL
@@ -622,6 +621,7 @@
 #define SDL_OpenTitleStorage SDL_OpenTitleStorage_REAL
 #define SDL_OpenURL SDL_OpenURL_REAL
 #define SDL_OpenUserStorage SDL_OpenUserStorage_REAL
+#define SDL_OutOfMemory SDL_OutOfMemory_REAL
 #define SDL_PauseAudioDevice SDL_PauseAudioDevice_REAL
 #define SDL_PauseHaptic SDL_PauseHaptic_REAL
 #define SDL_PeepEvents SDL_PeepEvents_REAL
@@ -705,6 +705,7 @@
 #define SDL_SeekIO SDL_SeekIO_REAL
 #define SDL_SendGamepadEffect SDL_SendGamepadEffect_REAL
 #define SDL_SendJoystickEffect SDL_SendJoystickEffect_REAL
+#define SDL_SendJoystickVirtualSensorData SDL_SendJoystickVirtualSensorData_REAL
 #define SDL_SetAssertionHandler SDL_SetAssertionHandler_REAL
 #define SDL_SetAudioPostmixCallback SDL_SetAudioPostmixCallback_REAL
 #define SDL_SetAudioStreamFormat SDL_SetAudioStreamFormat_REAL
@@ -732,8 +733,10 @@
 #define SDL_SetJoystickLED SDL_SetJoystickLED_REAL
 #define SDL_SetJoystickPlayerIndex SDL_SetJoystickPlayerIndex_REAL
 #define SDL_SetJoystickVirtualAxis SDL_SetJoystickVirtualAxis_REAL
+#define SDL_SetJoystickVirtualBall SDL_SetJoystickVirtualBall_REAL
 #define SDL_SetJoystickVirtualButton SDL_SetJoystickVirtualButton_REAL
 #define SDL_SetJoystickVirtualHat SDL_SetJoystickVirtualHat_REAL
+#define SDL_SetJoystickVirtualTouchpad SDL_SetJoystickVirtualTouchpad_REAL
 #define SDL_SetLogOutputFunction SDL_SetLogOutputFunction_REAL
 #define SDL_SetMainReady SDL_SetMainReady_REAL
 #define SDL_SetMemoryFunctions SDL_SetMemoryFunctions_REAL
@@ -870,6 +873,7 @@
 #define SDL_WriteS32LE SDL_WriteS32LE_REAL
 #define SDL_WriteS64BE SDL_WriteS64BE_REAL
 #define SDL_WriteS64LE SDL_WriteS64LE_REAL
+#define SDL_WriteStorageFile SDL_WriteStorageFile_REAL
 #define SDL_WriteU16BE SDL_WriteU16BE_REAL
 #define SDL_WriteU16LE SDL_WriteU16LE_REAL
 #define SDL_WriteU32BE SDL_WriteU32BE_REAL
@@ -1038,4 +1042,3 @@
 #define SDL_wcsnstr SDL_wcsnstr_REAL
 #define SDL_wcsstr SDL_wcsstr_REAL
 #define SDL_wcstol SDL_wcstol_REAL
-#define SDL_WriteStorageFile SDL_WriteStorageFile_REAL

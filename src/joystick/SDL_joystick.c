@@ -1170,19 +1170,7 @@ SDL_Joystick *SDL_OpenJoystick(SDL_JoystickID instance_id)
     return joystick;
 }
 
-SDL_JoystickID SDL_AttachVirtualJoystick(SDL_JoystickType type, int naxes, int nbuttons, int nhats)
-{
-    SDL_VirtualJoystickDesc desc;
-
-    SDL_zero(desc);
-    desc.type = (Uint16)type;
-    desc.naxes = (Uint16)naxes;
-    desc.nbuttons = (Uint16)nbuttons;
-    desc.nhats = (Uint16)nhats;
-    return SDL_AttachVirtualJoystickEx(&desc);
-}
-
-SDL_JoystickID SDL_AttachVirtualJoystickEx(const SDL_VirtualJoystickDesc *desc)
+SDL_JoystickID SDL_AttachVirtualJoystick(const SDL_VirtualJoystickDesc *desc)
 {
 #ifdef SDL_JOYSTICK_VIRTUAL
     SDL_JoystickID retval;
@@ -1250,6 +1238,25 @@ int SDL_SetJoystickVirtualAxis(SDL_Joystick *joystick, int axis, Sint16 value)
     return retval;
 }
 
+int SDL_SetJoystickVirtualBall(SDL_Joystick *joystick, int ball, Sint16 xrel, Sint16 yrel)
+{
+    int retval;
+
+    SDL_LockJoysticks();
+    {
+        CHECK_JOYSTICK_MAGIC(joystick, -1);
+
+#ifdef SDL_JOYSTICK_VIRTUAL
+        retval = SDL_SetJoystickVirtualBallInner(joystick, ball, xrel, yrel);
+#else
+        retval = SDL_SetError("SDL not built with virtual-joystick support");
+#endif
+    }
+    SDL_UnlockJoysticks();
+
+    return retval;
+}
+
 int SDL_SetJoystickVirtualButton(SDL_Joystick *joystick, int button, Uint8 value)
 {
     int retval;
@@ -1279,6 +1286,44 @@ int SDL_SetJoystickVirtualHat(SDL_Joystick *joystick, int hat, Uint8 value)
 
 #ifdef SDL_JOYSTICK_VIRTUAL
         retval = SDL_SetJoystickVirtualHatInner(joystick, hat, value);
+#else
+        retval = SDL_SetError("SDL not built with virtual-joystick support");
+#endif
+    }
+    SDL_UnlockJoysticks();
+
+    return retval;
+}
+
+int SDL_SetJoystickVirtualTouchpad(SDL_Joystick *joystick, int touchpad, int finger, Uint8 state, float x, float y, float pressure)
+{
+    int retval;
+
+    SDL_LockJoysticks();
+    {
+        CHECK_JOYSTICK_MAGIC(joystick, -1);
+
+#ifdef SDL_JOYSTICK_VIRTUAL
+        retval = SDL_SetJoystickVirtualTouchpadInner(joystick, touchpad, finger, state, x, y, pressure);
+#else
+        retval = SDL_SetError("SDL not built with virtual-joystick support");
+#endif
+    }
+    SDL_UnlockJoysticks();
+
+    return retval;
+}
+
+int SDL_SendJoystickVirtualSensorData(SDL_Joystick *joystick, SDL_SensorType type, Uint64 sensor_timestamp, const float *data, int num_values)
+{
+    int retval;
+
+    SDL_LockJoysticks();
+    {
+        CHECK_JOYSTICK_MAGIC(joystick, -1);
+
+#ifdef SDL_JOYSTICK_VIRTUAL
+        retval = SDL_SendJoystickVirtualSensorDataInner(joystick, type, sensor_timestamp, data, num_values);
 #else
         retval = SDL_SetError("SDL not built with virtual-joystick support");
 #endif

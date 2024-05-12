@@ -177,6 +177,10 @@ JNIEXPORT jboolean JNICALL SDL_JAVA_INTERFACE(nativeAllowRecreateActivity)(
 JNIEXPORT int JNICALL SDL_JAVA_INTERFACE(nativeCheckSDLThreadCounter)(
     JNIEnv *env, jclass jcls);
 
+JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeFileDialog)(
+    JNIEnv *env, jclass jcls,
+    jint requestCode, jobjectArray fileList, jint filter);
+
 static JNINativeMethod SDLActivity_tab[] = {
     { "nativeGetVersion", "()Ljava/lang/String;", SDL_JAVA_INTERFACE(nativeGetVersion) },
     { "nativeSetupJNI", "()I", SDL_JAVA_INTERFACE(nativeSetupJNI) },
@@ -211,7 +215,8 @@ static JNINativeMethod SDLActivity_tab[] = {
     { "nativeAddTouch", "(ILjava/lang/String;)V", SDL_JAVA_INTERFACE(nativeAddTouch) },
     { "nativePermissionResult", "(IZ)V", SDL_JAVA_INTERFACE(nativePermissionResult) },
     { "nativeAllowRecreateActivity", "()Z", SDL_JAVA_INTERFACE(nativeAllowRecreateActivity) },
-    { "nativeCheckSDLThreadCounter", "()I", SDL_JAVA_INTERFACE(nativeCheckSDLThreadCounter) }
+    { "nativeCheckSDLThreadCounter", "()I", SDL_JAVA_INTERFACE(nativeCheckSDLThreadCounter) },
+    { "onNativeFileDialog", "(I[Ljava/lang/String;I)V", SDL_JAVA_INTERFACE(onNativeFileDialog) }
 };
 
 /* Java class SDLInputConnection */
@@ -345,6 +350,8 @@ static jmethodID midSetWindowStyle;
 static jmethodID midShouldMinimizeOnFocusLoss;
 static jmethodID midShowTextInput;
 static jmethodID midSupportsRelativeMouse;
+static jmethodID midOpenFileDescriptor;
+static jmethodID midShowFileDialog;
 
 /* audio manager */
 static jclass mAudioManagerClass;
@@ -638,6 +645,8 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(nativeSetupJNI)(JNIEnv *env, jclass cl
     midShouldMinimizeOnFocusLoss = (*env)->GetStaticMethodID(env, mActivityClass, "shouldMinimizeOnFocusLoss", "()Z");
     midShowTextInput = (*env)->GetStaticMethodID(env, mActivityClass, "showTextInput", "(IIII)Z");
     midSupportsRelativeMouse = (*env)->GetStaticMethodID(env, mActivityClass, "supportsRelativeMouse", "()Z");
+    midOpenFileDescriptor = (*env)->GetStaticMethodID(env, mActivityClass, "openFileDescriptor", "(Ljava/lang/String;Ljava/lang/String;)I");
+    midShowFileDialog = (*env)->GetStaticMethodID(env, mActivityClass, "showFileDialog", "([Ljava/lang/String;ZZI)Z");
 
     if (!midClipboardGetText ||
         !midClipboardHasText ||
@@ -667,7 +676,9 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(nativeSetupJNI)(JNIEnv *env, jclass cl
         !midSetWindowStyle ||
         !midShouldMinimizeOnFocusLoss ||
         !midShowTextInput ||
-        !midSupportsRelativeMouse) {
+        !midSupportsRelativeMouse ||
+        !midOpenFileDescriptor ||
+        !midShowFileDialog) {
         __android_log_print(ANDROID_LOG_WARN, "SDL", "Missing some Java callbacks, do you have the latest version of SDLActivity.java?");
     }
 
@@ -2764,6 +2775,192 @@ int Android_JNI_OpenURL(const char *url)
     const int ret = (*env)->CallStaticIntMethod(env, mActivityClass, midOpenURL, jurl);
     (*env)->DeleteLocalRef(env, jurl);
     return ret;
+}
+
+int Android_JNI_OpenFileDescriptor(const char *uri, const char *mode)
+{
+    /* Get fopen-style modes */
+    int moderead = 0, modewrite = 0, modeappend = 0, modeupdate = 0;
+
+    for (const char *cmode = mode; *cmode; cmode++) {
+        switch (*cmode) {
+            case 'a':
+                modeappend = 1;
+                break;
+            case 'r':
+                moderead = 1;
+                break;
+            case 'w':
+                modewrite = 1;
+                break;
+            case '+':
+                modeupdate = 1;
+                break;
+            default:
+                break;
+        }
+    }
+
+    /* Translate fopen-style modes to ContentResolver modes. */
+    /* Android only allows "r", "w", "wt", "wa", "rw" or "rwt". */
+    const char *contentResolverMode = "r";
+
+    if (moderead) {
+        if (modewrite) {
+            contentResolverMode = "rwt";
+        } else {
+            contentResolverMode = modeupdate ? "rw" : "r";
+        }
+    } else if (modewrite) {
+        contentResolverMode = modeupdate ? "rwt" : "wt";
+    } else if (modeappend) {
+        contentResolverMode = modeupdate ? "rw" : "wa";
+    }
+
+    JNIEnv *env = Android_JNI_GetEnv();
+    jstring jstringUri = (*env)->NewStringUTF(env, uri);
+    jstring jstringMode = (*env)->NewStringUTF(env, contentResolverMode);
+    jint fd = (*env)->CallStaticIntMethod(env, mActivityClass, midOpenFileDescriptor, jstringUri, jstringMode);
+    (*env)->DeleteLocalRef(env, jstringUri);
+    (*env)->DeleteLocalRef(env, jstringMode);
+
+    if (fd == -1) {
+        SDL_SetError("Unspecified error in JNI");
+    }
+
+    return fd;
+}
+
+static struct AndroidFileDialog
+{
+    int request_code;
+    SDL_DialogFileCallback callback;
+    void *userdata;
+} mAndroidFileDialogData;
+
+JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(onNativeFileDialog)(
+    JNIEnv *env, jclass jcls,
+    jint requestCode, jobjectArray fileList, jint filter)
+{
+    if (mAndroidFileDialogData.callback != NULL && mAndroidFileDialogData.request_code == requestCode) {
+        if (fileList == NULL) {
+            SDL_SetError("Unspecified error in JNI");
+            mAndroidFileDialogData.callback(mAndroidFileDialogData.userdata, NULL, -1);
+            mAndroidFileDialogData.callback = NULL;
+            return;
+        }
+
+        /* Convert fileList to string */
+        size_t count = (*env)->GetArrayLength(env, fileList);
+        char **charFileList = SDL_calloc(sizeof(char*), count + 1);
+
+        if (charFileList == NULL) {
+            mAndroidFileDialogData.callback(mAndroidFileDialogData.userdata, NULL, -1);
+            mAndroidFileDialogData.callback = NULL;
+            return;
+        }
+
+        /* Convert to UTF-8 */
+        /* TODO: Fix modified UTF-8 to classic UTF-8 */
+        for (int i = 0; i < count; i++) {
+            jstring string = (*env)->GetObjectArrayElement(env, fileList, i);
+            if (!string) {
+                continue;
+            }
+
+            const char *utf8string = (*env)->GetStringUTFChars(env, string, NULL);
+            if (!utf8string) {
+                (*env)->DeleteLocalRef(env, string);
+                continue;
+            }
+
+            char *newFile = SDL_strdup(utf8string);
+            if (!newFile) {
+                (*env)->ReleaseStringUTFChars(env, string, utf8string);
+                (*env)->DeleteLocalRef(env, string);
+                mAndroidFileDialogData.callback(mAndroidFileDialogData.userdata, NULL, -1);
+                mAndroidFileDialogData.callback = NULL;
+
+                /* Cleanup memory */
+                for (int j = 0; j < i; j++) {
+                    SDL_free(charFileList[j]);
+                }
+                SDL_free(charFileList);
+                return;
+            }
+
+            charFileList[i] = newFile;
+            (*env)->ReleaseStringUTFChars(env, string, utf8string);
+            (*env)->DeleteLocalRef(env, string);
+        }
+
+        /* Call user-provided callback */
+        SDL_ClearError();
+        mAndroidFileDialogData.callback(mAndroidFileDialogData.userdata, (const char *const *) charFileList, filter);
+        mAndroidFileDialogData.callback = NULL;
+
+        /* Cleanup memory */
+        for (int i = 0; i < count; i++) {
+            SDL_free(charFileList[i]);
+        }
+        SDL_free(charFileList);
+    }
+}
+
+SDL_bool Android_JNI_OpenFileDialog(
+    SDL_DialogFileCallback callback, void* userdata,
+    const SDL_DialogFileFilter *filters, SDL_bool forwrite, SDL_bool multiple)
+{
+    if (mAndroidFileDialogData.callback != NULL) {
+        SDL_SetError("Only one file dialog can be run at a time.");
+        return SDL_FALSE;
+    }
+
+    if (forwrite) {
+        multiple = SDL_FALSE;
+    }
+
+    JNIEnv *env = Android_JNI_GetEnv();
+
+    /* Setup filters */
+    jobjectArray filtersArray = NULL;
+    if (filters) {
+        /* Count how many filters */
+        int count = 0;
+        for (const SDL_DialogFileFilter *f = filters; f->name != NULL && f->pattern != NULL; f++) {
+            count++;
+        }
+
+        jclass stringClass = (*env)->FindClass(env, "java/lang/String");
+        filtersArray = (*env)->NewObjectArray(env, count, stringClass, NULL);
+
+        /* Convert to string */
+        for (int i = 0; i < count; i++) {
+            jstring str = (*env)->NewStringUTF(env, filters[i].pattern);
+            (*env)->SetObjectArrayElement(env, filtersArray, i, str);
+            (*env)->DeleteLocalRef(env, str);
+        }
+    }
+
+    /* Setup data */
+    static SDL_AtomicInt next_request_code;
+    mAndroidFileDialogData.request_code = SDL_AtomicAdd(&next_request_code, 1);
+    mAndroidFileDialogData.userdata = userdata;
+    mAndroidFileDialogData.callback = callback;
+
+    /* Invoke JNI */
+    jboolean success = (*env)->CallStaticBooleanMethod(env, mActivityClass,
+        midShowFileDialog, filtersArray, (jboolean) multiple, (jboolean) forwrite, mAndroidFileDialogData.request_code);
+    (*env)->DeleteLocalRef(env, filtersArray);
+    if (!success) {
+        mAndroidFileDialogData.callback = NULL;
+        SDL_AtomicAdd(&next_request_code, -1);
+        SDL_SetError("Unspecified error in JNI");
+
+        return SDL_FALSE;
+    }
+
+    return SDL_TRUE;
 }
 
 #endif /* SDL_PLATFORM_ANDROID */

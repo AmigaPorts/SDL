@@ -75,6 +75,7 @@ int Android_JNI_FileClose(void *userdata);
 
 /* Environment support */
 void Android_JNI_GetManifestEnvironmentVariables(void);
+int Android_JNI_OpenFileDescriptor(const char *uri, const char *mode);
 
 /* Clipboard support */
 int Android_JNI_SetClipboardText(const char *text);
@@ -140,6 +141,10 @@ SDL_bool SDL_IsDeXMode(void);
 void Android_ActivityMutex_Lock(void);
 void Android_ActivityMutex_Unlock(void);
 void Android_ActivityMutex_Lock_Running(void);
+
+/* File Dialogs */
+SDL_bool Android_JNI_OpenFileDialog(SDL_DialogFileCallback callback, void* userdata,
+    const SDL_DialogFileFilter *filters, SDL_bool forwrite, SDL_bool multiple);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus
