@@ -25,19 +25,19 @@ rename_macros.py source_code_path
 
 
 CMake users should use this snippet to include SDL support in their project:
-```
+```cmake
 find_package(SDL3 REQUIRED CONFIG REQUIRED COMPONENTS SDL3)
 target_link_libraries(mygame PRIVATE SDL3::SDL3)
 ```
 
 Autotools users should use this snippet to include SDL support in their project:
-```
+```m4
 PKG_CHECK_MODULES([SDL3], [sdl3])
 ```
-and then add $SDL3_CFLAGS to their project CFLAGS and $SDL3_LIBS to their project LDFLAGS
+and then add `$SDL3_CFLAGS` to their project `CFLAGS` and `$SDL3_LIBS` to their project `LDFLAGS`.
 
 Makefile users can use this snippet to include SDL support in their project:
-```
+```make
 CFLAGS += $(shell pkg-config sdl3 --cflags)
 LDFLAGS += $(shell pkg-config sdl3 --libs)
 ```
@@ -47,6 +47,8 @@ The SDL3test library has been renamed SDL3_test.
 The SDLmain library has been removed, it's been entirely replaced by SDL_main.h.
 
 The vi format comments have been removed from source code. Vim users can use the [editorconfig plugin](https://github.com/editorconfig/editorconfig-vim) to automatically set tab spacing for the SDL coding style.
+
+Installed SDL CMake configuration files no longer define `SDL3_PREFIX`, `SDL3_EXEC_PREFIX`, `SDL3_INCLUDE_DIR`, `SDL3_INCLUDE_DIRS`, `SDL3_BINDIR` or `SDL3_LIBDIR`. Users are expected to use [CMake generator expressions](https://cmake.org/cmake/help/latest/manual/cmake-generator-expressions.7.html#target-dependent-expressions) with `SDL3::SDL3`, `SDL3::SDL3-shared`, `SDL3::SDL3-static` or `SDL3::Headers`.  By no longer defining these CMake variables, using a system SDL3 or using a vendoring SDL3 behave in the same way.
 
 ## SDL_atomic.h
 
@@ -794,13 +796,12 @@ The SDL_EVENT_JOYSTICK_ADDED event now provides the joystick instance ID in the 
 
 The functions SDL_GetJoysticks(), SDL_GetJoystickInstanceName(), SDL_GetJoystickInstancePath(), SDL_GetJoystickInstancePlayerIndex(), SDL_GetJoystickInstanceGUID(), SDL_GetJoystickInstanceVendor(), SDL_GetJoystickInstanceProduct(), SDL_GetJoystickInstanceProductVersion(), and SDL_GetJoystickInstanceType() have been added to directly query the list of available joysticks.
 
-SDL_AttachVirtualJoystick() and SDL_AttachVirtualJoystickEx() now return the joystick instance ID instead of a device index, and return 0 if there was an error.
+SDL_AttachVirtualJoystick() now returns the joystick instance ID instead of a device index, and returns 0 if there was an error.
 
 SDL_VirtualJoystickDesc no longer takes a struct version; if we need to extend this in the future, we'll make a second struct and a second SDL_AttachVirtualJoystickEx-style function that uses it. Just zero the struct and don't set a version.
 
 The following functions have been renamed:
-* SDL_JoystickAttachVirtual() => SDL_AttachVirtualJoystick()
-* SDL_JoystickAttachVirtualEx() => SDL_AttachVirtualJoystickEx()
+* SDL_JoystickAttachVirtualEx() => SDL_AttachVirtualJoystick()
 * SDL_JoystickClose() => SDL_CloseJoystick()
 * SDL_JoystickDetachVirtual() => SDL_DetachVirtualJoystick()
 * SDL_JoystickFromInstanceID() => SDL_GetJoystickFromInstanceID()
@@ -844,6 +845,7 @@ The following symbols have been renamed:
 * SDL_JOYSTICK_TYPE_GAMECONTROLLER => SDL_JOYSTICK_TYPE_GAMEPAD
 
 The following functions have been removed:
+* SDL_JoystickAttachVirtual() - replaced with SDL_AttachVirtualJoystick()
 * SDL_JoystickCurrentPowerLevel() - replaced with SDL_GetJoystickConnectionState() and SDL_GetJoystickPowerInfo()
 * SDL_JoystickEventState() - replaced with SDL_SetJoystickEventsEnabled() and SDL_JoystickEventsEnabled()
 * SDL_JoystickGetDeviceGUID() - replaced with SDL_GetJoystickInstanceGUID()
@@ -877,7 +879,7 @@ The following functions have been removed:
 
 ## SDL_keycode.h
 
-The SDL_KeyCode enum values have been changed to defines to more clearly reflect that they are a subset of the possible values of an SDL_Keycode.
+SDL_Keycode is now Uint32 and the SDLK_* constants are now defines instead of an enum, to more clearly reflect that they are a subset of the possible values of an SDL_Keycode.
 
 The following symbols have been removed:
 
@@ -1759,7 +1761,7 @@ SDL_GL_GetDrawableSize() has been removed. SDL_GetWindowSizeInPixels() can be us
 The SDL_WINDOW_TOOLTIP and SDL_WINDOW_POPUP_MENU window flags are now supported on Windows, Mac (Cocoa), X11, and Wayland. Creating windows with these flags must happen via the `SDL_CreatePopupWindow()` function. This function requires passing in the handle to a valid parent window for the popup, and the popup window is positioned relative to the parent.
 
 
-SDL_WindowFlags is used instead of Uint32 for API functions that refer to window flags.
+SDL_WindowFlags is used instead of Uint32 for API functions that refer to window flags, and has been extended to 64 bits.
 
 The following functions have been renamed:
 * SDL_GetClosestDisplayMode() => SDL_GetClosestFullscreenDisplayMode()

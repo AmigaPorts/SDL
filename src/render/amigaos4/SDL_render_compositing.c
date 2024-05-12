@@ -1199,8 +1199,10 @@ OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, SDL_PropertiesI
     renderer->DestroyRenderer = OS4_DestroyRenderer;
     renderer->SetVSync = OS4_SetVSync;
     renderer->SetTextureScaleMode = OS4_SetTextureScaleMode;
-    renderer->info = OS4_RenderDriver.info;
+    renderer->info.name = OS4_RenderDriver.name;
     renderer->driverdata = data;
+
+    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_ARGB8888);
 
     IGraphics->InitRastPort(&data->rastport);
 
@@ -1220,17 +1222,7 @@ OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, SDL_PropertiesI
 }
 
 SDL_RenderDriver OS4_RenderDriver = {
-    OS4_CreateRenderer,
-    {
-        "compositing",
-        SDL_RENDERER_PRESENTVSYNC,
-        1,
-        {
-            SDL_PIXELFORMAT_ARGB8888,
-        },
-        0,
-        0
-    }
+    OS4_CreateRenderer, "compositing"
 };
 
 #endif /* !SDL_RENDER_DISABLED */

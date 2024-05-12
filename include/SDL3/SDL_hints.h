@@ -2334,7 +2334,7 @@ extern "C" {
  *
  * \since This hint is available since SDL 3.0.0.
  */
-#define SDL_HINT_ORIENTATIONS "SDL_IOS_ORIENTATIONS"
+#define SDL_HINT_ORIENTATIONS "SDL_ORIENTATIONS"
 
 /**
  * A variable controlling whether pen mouse button emulation triggers only
@@ -2898,7 +2898,7 @@ extern "C" {
  *
  * \since This hint is available since SDL 3.0.0.
  */
-#define SDL_HINT_VIDEO_EGL_ALLOW_GETDISPLAY_FALLBACK "SDL_VIDEO_EGL_GETDISPLAY_FALLBACK"
+#define SDL_HINT_VIDEO_EGL_ALLOW_GETDISPLAY_FALLBACK "SDL_VIDEO_EGL_ALLOW_GETDISPLAY_FALLBACK"
 
 /**
  * A variable controlling whether the OpenGL context should be created with
@@ -3066,7 +3066,7 @@ extern "C" {
 
 /**
  * A variable controlling whether the libdecor Wayland backend is preferred
- * over native decrations.
+ * over native decorations.
  *
  * When this hint is set, libdecor will be used to provide window decorations,
  * even if xdg-decoration is available. (Note that, by default, libdecor will

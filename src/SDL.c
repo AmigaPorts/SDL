@@ -56,7 +56,6 @@
 #define SDL_INIT_EVERYTHING ~0U
 
 /* Initialization/Cleanup routines */
-#include "time/SDL_time_c.h"
 #include "timer/SDL_timer_c.h"
 #ifdef SDL_VIDEO_DRIVER_WINDOWS
 extern int SDL_HelperWindowCreate(void);
@@ -217,7 +216,6 @@ int SDL_InitSubSystem(Uint32 flags)
     }
 #endif
 
-    SDL_InitTime();
     SDL_InitTicks();
 
     /* Initialize the event subsystem */
@@ -407,7 +405,7 @@ int SDL_InitSubSystem(Uint32 flags)
 
     (void)flags_initialized; /* make static analysis happy, since this only gets used in error cases. */
 
-    return 0;
+    return SDL_ClearError();
 
 quit_and_error:
     SDL_QuitSubSystem(flags_initialized);
@@ -550,7 +548,6 @@ void SDL_Quit(void)
     SDL_QuitSubSystem(SDL_INIT_EVERYTHING);
 
     SDL_QuitTicks();
-    SDL_QuitTime();
 
 #ifdef SDL_USE_LIBDBUS
     SDL_DBus_Quit();

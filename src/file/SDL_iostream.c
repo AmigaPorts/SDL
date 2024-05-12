@@ -58,6 +58,7 @@ struct SDL_IOStream
 #endif /* SDL_PLATFORM_3DS */
 
 #ifdef SDL_PLATFORM_ANDROID
+#include <unistd.h>
 #include "../core/android/SDL_android.h"
 #endif
 
@@ -233,7 +234,7 @@ static size_t SDLCALL windows_file_read(void *userdata, void *ptr, size_t size, 
 
     if (total_need < READAHEAD_BUFFER_SIZE) {
         if (!ReadFile(iodata->h, iodata->data, READAHEAD_BUFFER_SIZE, &bytes, NULL)) {
-            SDL_Error(SDL_EFREAD);
+            SDL_SetError("Error reading from datastream");
             return 0;
         }
         read_ahead = SDL_min(total_need, bytes);
@@ -243,7 +244,7 @@ static size_t SDLCALL windows_file_read(void *userdata, void *ptr, size_t size, 
         total_read += read_ahead;
     } else {
         if (!ReadFile(iodata->h, ptr, (DWORD)total_need, &bytes, NULL)) {
-            SDL_Error(SDL_EFREAD);
+            SDL_SetError("Error reading from datastream");
             return 0;
         }
         total_read += bytes;
@@ -259,7 +260,7 @@ static size_t SDLCALL windows_file_write(void *userdata, const void *ptr, size_t
 
     if (iodata->left) {
         if (!SetFilePointer(iodata->h, -(LONG)iodata->left, NULL, FILE_CURRENT)) {
-            SDL_Error(SDL_EFSEEK);
+            SDL_SetError("Error seeking in datastream");
             return 0;
         }
         iodata->left = 0;
@@ -270,13 +271,13 @@ static size_t SDLCALL windows_file_write(void *userdata, const void *ptr, size_t
         LARGE_INTEGER windowsoffset;
         windowsoffset.QuadPart = 0;
         if (!SetFilePointerEx(iodata->h, windowsoffset, &windowsoffset, FILE_END)) {
-            SDL_Error(SDL_EFSEEK);
+            SDL_SetError("Error seeking in datastream");
             return 0;
         }
     }
 
     if (!WriteFile(iodata->h, ptr, (DWORD)total_bytes, &bytes, NULL)) {
-        SDL_Error(SDL_EFWRITE);
+        SDL_SetError("Error writing to datastream");
         return 0;
     }
 
@@ -374,7 +375,7 @@ static Sint64 SDLCALL stdio_seek(void *userdata, Sint64 offset, int whence)
         }
         return pos;
     }
-    return SDL_Error(SDL_EFSEEK);
+    return SDL_SetError("Error seeking in datastream");
 }
 
 static size_t SDLCALL stdio_read(void *userdata, void *ptr, size_t size, SDL_IOStatus *status)
@@ -382,7 +383,7 @@ static size_t SDLCALL stdio_read(void *userdata, void *ptr, size_t size, SDL_IOS
     IOStreamStdioData *iodata = (IOStreamStdioData *) userdata;
     const size_t bytes = fread(ptr, 1, size, iodata->fp);
     if (bytes == 0 && ferror(iodata->fp)) {
-        SDL_Error(SDL_EFREAD);
+        SDL_SetError("Error reading from datastream");
     }
     return bytes;
 }
@@ -392,7 +393,7 @@ static size_t SDLCALL stdio_write(void *userdata, const void *ptr, size_t size, 
     IOStreamStdioData *iodata = (IOStreamStdioData *) userdata;
     const size_t bytes = fwrite(ptr, 1, size, iodata->fp);
     if (bytes == 0 && ferror(iodata->fp)) {
-        SDL_Error(SDL_EFWRITE);
+        SDL_SetError("Error writing to datastream");
     }
     return bytes;
 }
@@ -403,7 +404,7 @@ static int SDLCALL stdio_close(void *userdata)
     int status = 0;
     if (iodata->autoclose) {
         if (fclose(iodata->fp) != 0) {
-            status = SDL_Error(SDL_EFWRITE);
+            status = SDL_SetError("Error writing to datastream");
         }
     }
     SDL_free(iodata);
@@ -562,6 +563,22 @@ SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
             }
             return SDL_IOFromFP(fp, 1);
         }
+    } else if (SDL_strncmp(file, "content://", 10) == 0) {
+        /* Try opening content:// URI */
+        int fd = Android_JNI_OpenFileDescriptor(file, mode);
+        if (fd == -1) {
+            /* SDL error is already set. */
+            return NULL;
+        }
+
+        FILE *fp = fdopen(fd, mode);
+        if (!fp) {
+            close(fd);
+            SDL_SetError("Unable to open file descriptor (%d) from URI %s", fd, file);
+            return NULL;
+        }
+
+        return SDL_IOFromFP(fp, SDL_TRUE);
     } else {
         /* Try opening it from internal storage if it's a relative path */
         // !!! FIXME: why not just "char path[PATH_MAX];"

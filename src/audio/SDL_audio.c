@@ -1338,8 +1338,6 @@ static SDL_AudioDeviceID *GetAudioDevices(int *count, SDL_bool iscapture)
 
                 SDL_assert(devs_seen == num_devices);
                 retval[devs_seen] = 0;  // null-terminated.
-            } else {
-                SDL_OutOfMemory();
             }
         }
         SDL_UnlockRWLock(current_audio.device_hash_lock);
