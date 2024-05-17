@@ -16,7 +16,7 @@ my $apiprefixregex = undef;
 my $versionfname = 'include/SDL_version.h';
 my $versionmajorregex = '\A\#define\s+SDL_MAJOR_VERSION\s+(\d+)\Z';
 my $versionminorregex = '\A\#define\s+SDL_MINOR_VERSION\s+(\d+)\Z';
-my $versionpatchregex = '\A\#define\s+SDL_PATCHLEVEL\s+(\d+)\Z';
+my $versionmicroregex = '\A\#define\s+SDL_MICRO_VERSION\s+(\d+)\Z';
 my $mainincludefname = 'SDL.h';
 my $selectheaderregex = '\ASDL.*?\.h\Z';
 my $projecturl = 'https://libsdl.org/';
@@ -31,6 +31,7 @@ my $optionsfname = undef;
 my $wikipreamble = undef;
 my $wikiheaderfiletext = 'Defined in %fname%';
 my $manpageheaderfiletext = 'Defined in %fname%';
+my $headercategoryeval = undef;
 my $changeformat = undef;
 my $manpath = undef;
 my $gitrev = undef;
@@ -70,6 +71,8 @@ if ((not defined $optionsfname) && (-f $default_optionsfname)) {
 if (defined $optionsfname) {
     open OPTIONS, '<', $optionsfname or die("Failed to open options file '$optionsfname': $!\n");
     while (<OPTIONS>) {
+        next if /\A\s*\#/;  # Skip lines that start with (optional whitespace, then) '#' as comments.
+
         chomp;
         if (/\A(.*?)\=(.*)\Z/) {
             my $key = $1;
@@ -89,7 +92,7 @@ if (defined $optionsfname) {
             $readmesubdir = $val, next if $key eq 'readmesubdir';
             $versionmajorregex = $val, next if $key eq 'versionmajorregex';
             $versionminorregex = $val, next if $key eq 'versionminorregex';
-            $versionpatchregex = $val, next if $key eq 'versionpatchregex';
+            $versionmicroregex = $val, next if $key eq 'versionmicroregex';
             $versionfname = $val, next if $key eq 'versionfname';
             $mainincludefname = $val, next if $key eq 'mainincludefname';
             $selectheaderregex = $val, next if $key eq 'selectheaderregex';
@@ -99,6 +102,7 @@ if (defined $optionsfname) {
             $wikipreamble = $val, next if $key eq 'wikipreamble';
             $wikiheaderfiletext = $val, next if $key eq 'wikiheaderfiletext';
             $manpageheaderfiletext = $val, next if $key eq 'manpageheaderfiletext';
+            $headercategoryeval = $val, next if $key eq 'headercategoryeval';
         }
     }
     close(OPTIONS);
@@ -617,7 +621,8 @@ my %headersymslocation = ();   # $headersymslocation{"SDL_OpenAudio"} -> name of
 my %headersymschunk = ();   # $headersymschunk{"SDL_OpenAudio"} -> offset in array in %headers that should be replaced for this symbol.
 my %headersymshasdoxygen = ();   # $headersymshasdoxygen{"SDL_OpenAudio"} -> 1 if there was no existing doxygen for this function.
 my %headersymstype = ();   # $headersymstype{"SDL_OpenAudio"} -> 1 (function), 2 (macro), 3 (struct), 4 (enum), 5 (other typedef)
-
+my %headersymscategory = ();   # $headersymscategory{"SDL_OpenAudio"} -> 'Audio' ... this is set with a `/* WIKI CATEGEORY: Audio */` comment in the headers that sets it on all symbols until a new comment changes it. So usually, once at the top of the header file.
+my %headercategorydocs = ();   # $headercategorydocs{"Audio"} -> (fake) symbol for this category's documentation. Undefined if not documented.
 my %wikitypes = ();  # contains string of wiki page extension, like $wikitypes{"SDL_OpenAudio"} == 'mediawiki'
 my %wikisyms = ();  # contains references to hash of strings, each string being the full contents of a section of a wiki page, like $wikisyms{"SDL_OpenAudio"}{"Remarks"}.
 my %wikisectionorder = ();   # contains references to array, each array item being a key to a wikipage section in the correct order, like $wikisectionorder{"SDL_OpenAudio"}[2] == 'Remarks'
@@ -689,9 +694,23 @@ while (my $d = readdir(DH)) {
     next if not $dent =~ /$selectheaderregex/;  # just selected headers.
     open(FH, '<', "$incpath/$dent") or die("Can't open '$incpath/$dent': $!\n");
 
+    # You can optionally set a wiki category with Perl code in .wikiheaders-options that gets eval()'d per-header,
+    # and also if you put `/* WIKI CATEGORY: blah */` on a line by itself, it'll change the category for any symbols
+    # below it in the same file. If no category is set, one won't be added for the symbol (beyond the standard CategoryFunction, etc)
+    my $current_wiki_category = undef;
+    if (defined $headercategoryeval) {
+        $_ = $dent;
+        $current_wiki_category = eval($headercategoryeval);
+        if (($current_wiki_category eq '') || ($current_wiki_category eq '-')) {
+            $current_wiki_category = undef;
+        }
+        #print("CATEGORY FOR '$dent' IS " . (defined($current_wiki_category) ? "'$current_wiki_category'" : '(undef)') . "\n");
+    }
+
     my @contents = ();
     my $ignoring_lines = 0;
     my $header_comment = -1;
+    my $saw_category_doxygen = -1;
     my $lineno = 0;
     while (<FH>) {
         chomp;
@@ -722,6 +741,11 @@ while (my $d = readdir(DH)) {
             $ignoring_lines = 1;
             push @contents, $_;
             next;
+        } elsif (/\A\s*\/\*\s*WIKI CATEGORY:\s*(.*?)\s*\*\/\s*\Z/) {
+            $current_wiki_category = (($1 eq '') || ($1 eq '-')) ? undef : $1;
+            #print("CATEGORY FOR '$dent' CHANGED TO " . (defined($current_wiki_category) ? "'$current_wiki_category'" : '(undef)') . "\n");
+            push @contents, $_;
+            next;
         } elsif (/\A\s*extern\s+(SDL_DEPRECATED\s+|)(SDLMAIN_)?DECLSPEC/) {  # a function declaration without a doxygen comment?
             $symtype = 1;   # function declaration
             @templines = ();
@@ -739,6 +763,8 @@ while (my $d = readdir(DH)) {
             add_coverage_gap($_, $dent, $lineno) if ($header_comment == 0);
             next;
         } else {   # Start of a doxygen comment, parse it out.
+            my $is_category_doxygen = 0;
+
             @templines = ( $_ );
             while (<FH>) {
                 chomp;
@@ -760,43 +786,76 @@ while (my $d = readdir(DH)) {
                         }
                     }
                 } else {
-                    s/\A\s*\*\s*//;
+                    s/\A\s*\*\s*//;   # Strip off the " * " at the start of the comment line.
+
+                    # To add documentation to Category Pages, the rule is it has to
+                    # be the first Doxygen comment in the header, and it must start with `# CategoryX`
+                    # (otherwise we'll treat it as documentation for whatever's below it). `X` is
+                    # the category name, which doesn't _necessarily_ have to match
+                    # $current_wiki_category, but it probably should.
+                    #
+                    # For compatibility with Doxygen, if there's a `\file` here instead of
+                    # `# CategoryName`, we'll accept it and use the $current_wiki_category if set.
+                    if ($saw_category_doxygen == -1) {
+                        $saw_category_doxygen = defined($current_wiki_category) && /\A\\file\s+/;
+                        if ($saw_category_doxygen) {
+                            $_ = "# Category$current_wiki_category";
+                        } else {
+                            $saw_category_doxygen = /\A\# Category/;
+                        }
+                        $is_category_doxygen = $saw_category_doxygen;
+                    }
+
                     $str .= "$_\n";
                 }
             }
 
-            $decl = <FH>;
-            $lineno++ if defined $decl;
-            $decl = '' if not defined $decl;
-            chomp($decl);
-            if ($decl =~ /\A\s*extern\s+(SDL_DEPRECATED\s+|)(SDLMAIN_)?DECLSPEC/) {
-                $symtype = 1;   # function declaration
-            } elsif ($decl =~ /\A\s*SDL_FORCE_INLINE/) {
-                $symtype = 1;   # (forced-inline) function declaration
-            } elsif ($decl =~ /\A\s*\#\s*define\s+/) {
-                $symtype = 2;   # macro
-            } elsif ($decl =~ /\A\s*(typedef\s+|)(struct|union)/) {
-                $symtype = 3;   # struct or union
-            } elsif ($decl =~ /\A\s*(typedef\s+|)enum/) {
-                $symtype = 4;   # enum
-            } elsif ($decl =~ /\A\s*typedef\s+.*\Z/) {
-                $symtype = 5;   # other typedef
+            if ($is_category_doxygen) {
+                $str =~ s/\s*\Z//;
+                $decl = '';
+                $symtype = -1;  # not a symbol at all.
             } else {
-                #print "Found doxygen but no function sig:\n$str\n\n";
-                foreach (@templines) {
-                    push @contents, $_;
-                    add_coverage_gap($_, $dent, $lineno);
+                $decl = <FH>;
+                $lineno++ if defined $decl;
+                $decl = '' if not defined $decl;
+                chomp($decl);
+                if ($decl =~ /\A\s*extern\s+(SDL_DEPRECATED\s+|)(SDLMAIN_)?DECLSPEC/) {
+                    $symtype = 1;   # function declaration
+                } elsif ($decl =~ /\A\s*SDL_FORCE_INLINE/) {
+                    $symtype = 1;   # (forced-inline) function declaration
+                } elsif ($decl =~ /\A\s*\#\s*define\s+/) {
+                    $symtype = 2;   # macro
+                } elsif ($decl =~ /\A\s*(typedef\s+|)(struct|union)/) {
+                    $symtype = 3;   # struct or union
+                } elsif ($decl =~ /\A\s*(typedef\s+|)enum/) {
+                    $symtype = 4;   # enum
+                } elsif ($decl =~ /\A\s*typedef\s+.*\Z/) {
+                    $symtype = 5;   # other typedef
+                } else {
+                    #print "Found doxygen but no function sig:\n$str\n\n";
+                    foreach (@templines) {
+                        push @contents, $_;
+                        add_coverage_gap($_, $dent, $lineno);
+                    }
+                    push @contents, $decl;
+                    add_coverage_gap($decl, $dent, $lineno);
+                    next;
                 }
-                push @contents, $decl;
-                add_coverage_gap($decl, $dent, $lineno);
-                next;
             }
         }
 
         my @decllines = ( $decl );
         my $sym = '';
 
-        if ($symtype == 1) {  # a function
+        if ($symtype == -1) {  # category documentation with no symbol attached.
+            @decllines = ();
+            if ($str =~ /^#\s*Category(.*?)\s*$/m) {
+                $sym = "[category documentation] $1";  # make a fake, unique symbol that's not valid C.
+            } else {
+                die("Unexpected category documentation line '$str' in '$incpath/$dent' ...?");
+            }
+            $headercategorydocs{$current_wiki_category} = $sym;
+        } elsif ($symtype == 1) {  # a function
             my $is_forced_inline = ($decl =~ /\A\s*SDL_FORCE_INLINE/);
 
             if ($is_forced_inline) {
@@ -1105,11 +1164,12 @@ while (my $d = readdir(DH)) {
                 if ($has_doxygen) {
                     print STDERR "WARNING: Symbol '$sym' appears to be documented in multiple locations. Only keeping the first one we saw!\n";
                 }
-                push @contents, join("\n", @decllines);  # just put the existing declation in as-is.
+                push @contents, join("\n", @decllines) if (scalar(@decllines) > 0);  # just put the existing declation in as-is.
             }
         }
 
         if (!$skipsym) {
+            $headersymscategory{$sym} = $current_wiki_category if defined $current_wiki_category;
             $headersyms{$sym} = $str;
             $headerdecls{$sym} = $decl;
             $headersymslocation{$sym} = $dent;
@@ -1117,7 +1177,7 @@ while (my $d = readdir(DH)) {
             $headersymshasdoxygen{$sym} = $has_doxygen;
             $headersymstype{$sym} = $symtype;
             push @contents, join("\n", @templines);
-            push @contents, join("\n", @decllines);
+            push @contents, join("\n", @decllines) if (scalar(@decllines) > 0);
         }
 
     }
@@ -1140,13 +1200,44 @@ while (my $d = readdir(DH)) {
     my $sym = $dent;
     $sym =~ s/\..*\Z//;
 
+    # (There are other pages to ignore, but these are known ones to not bother parsing.)
     # Ignore FrontPage.
     next if $sym eq 'FrontPage';
 
-    # Ignore "Category*" pages.
-    next if ($sym =~ /\ACategory/);
-
     open(FH, '<', "$wikipath/$dent") or die("Can't open '$wikipath/$dent': $!\n");
+
+    if ($sym =~ /\ACategory(.*?)\Z/) {  # Special case for Category pages.
+        # Find the end of the category documentation in the existing file and append everything else to the new file.
+        my $cat = $1;
+        my $docstr = '';
+        my $notdocstr = '';
+        my $docs = 1;
+        while (<FH>) {
+            chomp;
+            if ($docs) {
+                $docs = 0 if /\A\-\-\-\-\Z/;  # Hit a footer? We're done.
+                $docs = 0 if /\A<!\-\-/;  # Hit an HTML comment? We're done.
+            }
+            if ($docs) {
+                $docstr .= "$_\n";
+            } else {
+                $notdocstr .= "$_\n";
+            }
+        }
+        close(FH);
+
+        $docstr =~ s/\s*\Z//;
+
+        $sym = "[category documentation] $cat";  # make a fake, unique symbol that's not valid C.
+        $wikitypes{$sym} = $type;
+        my %sections = ();
+        $sections{'Remarks'} = $docstr;
+        $sections{'[footer]'} = $notdocstr;
+        $wikisyms{$sym} = \%sections;
+        my @section_order = ( 'Remarks', '[footer]' );
+        $wikisectionorder{$sym} = \@section_order;
+        next;
+    }
 
     my $current_section = '[start]';
     my @section_order = ( $current_section );
@@ -1300,7 +1391,9 @@ if ($copy_direction == 1) {  # --copy-to-headers
         my $params = undef;
         my $paramstr = undef;
 
-        if (($symtype == 1) || (($symtype == 5))) {  # we'll assume a typedef (5) with a \param is a function pointer typedef.
+        if ($symtype == -1) {  # category documentation block.
+            # nothing to be done here.
+        } elsif (($symtype == 1) || (($symtype == 5))) {  # we'll assume a typedef (5) with a \param is a function pointer typedef.
             $params = $sectionsref->{'Function Parameters'};
             $paramstr = '\param';
         } elsif ($symtype == 2) {
@@ -1495,7 +1588,7 @@ if ($copy_direction == 1) {  # --copy-to-headers
         }
         $output .= " */";
 
-        #print("$sym:\n$output\n\n");
+        #print("$sym:\n[$output]\n\n");
 
         $$contentsref[$chunk] = $output;
         #$$contentsref[$chunk+1] = $headerdecls{$sym};
@@ -1544,6 +1637,7 @@ if ($copy_direction == 1) {  # --copy-to-headers
             closedir(DH);
         }
     }
+
 } elsif ($copy_direction == -1) { # --copy-to-wiki
 
     if (defined $changeformat) {
@@ -1554,6 +1648,7 @@ if ($copy_direction == 1) {  # --copy-to-headers
     foreach (keys %headersyms) {
         my $sym = $_;
         next if not $headersymshasdoxygen{$sym};
+        next if $sym =~ /\A\[category documentation\]/;   # not real symbols, we handle this elsewhere.
         my $symtype = $headersymstype{$sym};
         my $origwikitype = defined $wikitypes{$sym} ? $wikitypes{$sym} : 'md';  # default to MarkDown for new stuff.
         my $wikitype = (defined $changeformat) ? $changeformat : $origwikitype;
@@ -1787,7 +1882,7 @@ if ($copy_direction == 1) {  # --copy-to-headers
             $sections{'Function Parameters'} = $str;
         }
 
-        my $path = "$wikipath/$_.${wikitype}.tmp";
+        my $path = "$wikipath/$sym.${wikitype}.tmp";
         open(FH, '>', $path) or die("Can't open '$path': $!\n");
 
         my $sectionsref = $wikisyms{$sym};
@@ -1823,41 +1918,46 @@ if ($copy_direction == 1) {  # --copy-to-headers
             }
         }
 
-        my $footer = $$sectionsref{'[footer]'};
+        if ($symtype != -1) {  # Don't do these in category documentation block
+            my $footer = $$sectionsref{'[footer]'};
 
-        my $symtypename;
-        if ($symtype == 1) {
-            $symtypename = 'Function';
-        } elsif ($symtype == 2) {
-            $symtypename = 'Macro';
-        } elsif ($symtype == 3) {
-            $symtypename = 'Struct';
-        } elsif ($symtype == 4) {
-            $symtypename = 'Enum';
-        } elsif ($symtype == 5) {
-            $symtypename = 'Datatype';
-        } else {
-            die("Unexpected symbol type $symtype!");
-        }
+            my $symtypename;
+            if ($symtype == 1) {
+                $symtypename = 'Function';
+            } elsif ($symtype == 2) {
+                $symtypename = 'Macro';
+            } elsif ($symtype == 3) {
+                $symtypename = 'Struct';
+            } elsif ($symtype == 4) {
+                $symtypename = 'Enum';
+            } elsif ($symtype == 5) {
+                $symtypename = 'Datatype';
+            } else {
+                die("Unexpected symbol type $symtype!");
+            }
 
-        if ($wikitype eq 'mediawiki') {
-            $footer =~ s/\[\[CategoryAPI\]\],?\s*//g;
-            $footer =~ s/\[\[CategoryAPI${symtypename}\]\],?\s*//g;
-            $footer = "[[CategoryAPI]], [[CategoryAPI$symtypename]]" . (($footer eq '') ? "\n" : ", $footer");
-        } elsif ($wikitype eq 'md') {
-            $footer =~ s/\[CategoryAPI\]\(CategoryAPI\),?\s*//g;
-            $footer =~ s/\[CategoryAPI${symtypename}\]\(CategoryAPI${symtypename}\),?\s*//g;
-            $footer = "[CategoryAPI](CategoryAPI), [CategoryAPI$symtypename](CategoryAPI$symtypename)" . (($footer eq '') ? '' : ', ') . $footer;
-        } else { die("Unexpected wikitype '$wikitype'"); }
-        $$sectionsref{'[footer]'} = $footer;
-
-        if (defined $wikipreamble) {
-            my $wikified_preamble = wikify($wikitype, $wikipreamble);
+            my $symcategory = $headersymscategory{$sym};
             if ($wikitype eq 'mediawiki') {
-                print FH "====== $wikified_preamble ======\n";
+                $footer =~ s/\[\[CategoryAPI\]\],?\s*//g;
+                $footer =~ s/\[\[CategoryAPI${symtypename}\]\],?\s*//g;
+                $footer =~ s/\[\[Category${symcategory}\]\],?\s*//g if defined $symcategory;
+                $footer = "[[CategoryAPI]], [[CategoryAPI$symtypename]]" . (defined $symcategory ? ", [[Category$symcategory]]" : '') . (($footer eq '') ? "\n" : ", $footer");
             } elsif ($wikitype eq 'md') {
-                print FH "###### $wikified_preamble\n";
+                $footer =~ s/\[CategoryAPI\]\(CategoryAPI\),?\s*//g;
+                $footer =~ s/\[CategoryAPI${symtypename}\]\(CategoryAPI${symtypename}\),?\s*//g;
+                $footer =~ s/\[Category${symcategory}\]\(Category${symcategory}\),?\s*//g if defined $symcategory;
+                $footer = "[CategoryAPI](CategoryAPI), [CategoryAPI$symtypename](CategoryAPI$symtypename)" . (defined $symcategory ? ", [Category$symcategory](Category$symcategory)" : '') . (($footer eq '') ? '' : ', ') . $footer;
             } else { die("Unexpected wikitype '$wikitype'"); }
+            $$sectionsref{'[footer]'} = $footer;
+
+            if (defined $wikipreamble) {
+                my $wikified_preamble = wikify($wikitype, $wikipreamble);
+                if ($wikitype eq 'mediawiki') {
+                    print FH "====== $wikified_preamble ======\n";
+                } elsif ($wikitype eq 'md') {
+                    print FH "###### $wikified_preamble\n";
+                } else { die("Unexpected wikitype '$wikitype'"); }
+            }
         }
 
         my $prevsectstr = '';
@@ -1897,11 +1997,13 @@ if ($copy_direction == 1) {  # --copy-to-headers
                     }
                 }
 
-                if ($wikitype eq 'mediawiki') {
-                    print FH  "\n== $sectname ==\n\n";
-                } elsif ($wikitype eq 'md') {
-                    print FH "\n## $sectname\n\n";
-                } else { die("Unexpected wikitype '$wikitype'"); }
+                if ($symtype != -1) {  # Not for category documentation block
+                    if ($wikitype eq 'mediawiki') {
+                        print FH  "\n== $sectname ==\n\n";
+                    } elsif ($wikitype eq 'md') {
+                        print FH "\n## $sectname\n\n";
+                    } else { die("Unexpected wikitype '$wikitype'"); }
+                }
             }
 
             my $sectstr = defined $sections{$sect} ? $sections{$sect} : $$sectionsref{$sect};
@@ -1939,12 +2041,80 @@ if ($copy_direction == 1) {  # --copy-to-headers
         }
 
         print FH "# $sym\n\nPlease refer to [$refersto]($refersto) for details.\n\n";
-        #print FH "----\n";
-        #print FH "[CategoryAPI](CategoryAPI)\n\n";
+        print FH "----\n";
+        print FH "[CategoryAPI](CategoryAPI), [CategoryAPIMacro](CategoryAPIMacro)\n\n";
 
         close(FH);
     }
 
+    # Write out Category pages...
+    foreach (keys %headercategorydocs) {
+        my $cat = $_;
+        my $sym = $headercategorydocs{$cat};  # fake symbol
+        my $raw = $headersyms{$sym};  # raw doxygen text with comment characters stripped from start/end and start of each line.
+        my $wikitype = defined($wikitypes{$sym}) ? $wikitypes{$sym} : 'md';
+        my $path = "$wikipath/Category$cat.$wikitype";
+
+        $raw = wordwrap(wikify($wikitype, $raw));
+
+        my $tmppath = "$path.tmp";
+        open(FH, '>', $tmppath) or die("Can't open '$tmppath': $!\n");
+        print FH "$raw\n\n";
+
+        if (! -f $path) {  # Doesn't exist at all? Write out a template file.
+            # If writing from scratch, it's always a Markdown file.
+            die("Unexpected wikitype '$wikitype'!") if $wikitype ne 'md';
+            print FH <<__EOF__
+
+<!-- END CATEGORY DOCUMENTATION -->
+
+## Functions
+
+<!-- DO NOT HAND-EDIT CATEGORY LISTS, THEY ARE AUTOGENERATED AND WILL BE OVERWRITTEN, BASED ON TAGS IN INDIVIDUAL PAGE FOOTERS. EDIT THOSE INSTEAD. -->
+<!-- BEGIN CATEGORY LIST: Category$cat, CategoryAPIFunction -->
+<!-- END CATEGORY LIST -->
+
+## Datatypes
+
+<!-- DO NOT HAND-EDIT CATEGORY LISTS, THEY ARE AUTOGENERATED AND WILL BE OVERWRITTEN, BASED ON TAGS IN INDIVIDUAL PAGE FOOTERS. EDIT THOSE INSTEAD. -->
+<!-- BEGIN CATEGORY LIST: Category$cat, CategoryAPIDatatype -->
+<!-- END CATEGORY LIST -->
+
+## Structs
+
+<!-- DO NOT HAND-EDIT CATEGORY LISTS, THEY ARE AUTOGENERATED AND WILL BE OVERWRITTEN, BASED ON TAGS IN INDIVIDUAL PAGE FOOTERS. EDIT THOSE INSTEAD. -->
+<!-- BEGIN CATEGORY LIST: Category$cat, CategoryAPIStruct -->
+<!-- END CATEGORY LIST -->
+
+## Enums
+
+<!-- DO NOT HAND-EDIT CATEGORY LISTS, THEY ARE AUTOGENERATED AND WILL BE OVERWRITTEN, BASED ON TAGS IN INDIVIDUAL PAGE FOOTERS. EDIT THOSE INSTEAD. -->
+<!-- BEGIN CATEGORY LIST: Category$cat, CategoryAPIEnum -->
+<!-- END CATEGORY LIST -->
+
+## Macros
+
+<!-- DO NOT HAND-EDIT CATEGORY LISTS, THEY ARE AUTOGENERATED AND WILL BE OVERWRITTEN, BASED ON TAGS IN INDIVIDUAL PAGE FOOTERS. EDIT THOSE INSTEAD. -->
+<!-- BEGIN CATEGORY LIST: Category$cat, CategoryAPIMacro -->
+<!-- END CATEGORY LIST -->
+
+----
+[CategoryAPICategory](CategoryAPICategory)
+
+__EOF__
+;
+        } else {
+            my $endstr = $wikisyms{$sym}->{'[footer]'};
+            if (defined($endstr)) {
+                print FH $endstr;
+            }
+        }
+
+        close(FH);
+        rename($tmppath, $path) or die("Can't rename '$tmppath' to '$path': $!\n");
+    }
+
+    # Write out READMEs...
     if (defined $readmepath) {
         if ( -d $readmepath ) {
             mkdir($wikireadmepath);  # just in case
@@ -2008,23 +2178,24 @@ if ($copy_direction == 1) {  # --copy-to-headers
     open(FH, '<', "$srcpath/$versionfname") or die("Can't open '$srcpath/$versionfname': $!\n");
     my $majorver = 0;
     my $minorver = 0;
-    my $patchver = 0;
+    my $microver = 0;
     while (<FH>) {
         chomp;
         if (/$versionmajorregex/) {
             $majorver = int($1);
         } elsif (/$versionminorregex/) {
             $minorver = int($1);
-        } elsif (/$versionpatchregex/) {
-            $patchver = int($1);
+        } elsif (/$versionmicroregex/) {
+            $microver = int($1);
         }
     }
     close(FH);
-    my $fullversion = "$majorver.$minorver.$patchver";
+    my $fullversion = "$majorver.$minorver.$microver";
 
     foreach (keys %headersyms) {
         my $sym = $_;
         next if not defined $wikisyms{$sym};  # don't have a page for that function, skip it.
+        next if $sym =~ /\A\[category documentation\]/;   # not real symbols
         my $symtype = $headersymstype{$sym};
         my $wikitype = $wikitypes{$sym};
         my $sectionsref = $wikisyms{$sym};
@@ -2290,19 +2461,19 @@ if ($copy_direction == 1) {  # --copy-to-headers
     open(FH, '<', "$srcpath/$versionfname") or die("Can't open '$srcpath/$versionfname': $!\n");
     my $majorver = 0;
     my $minorver = 0;
-    my $patchver = 0;
+    my $microver = 0;
     while (<FH>) {
         chomp;
         if (/$versionmajorregex/) {
             $majorver = int($1);
         } elsif (/$versionminorregex/) {
             $minorver = int($1);
-        } elsif (/$versionpatchregex/) {
-            $patchver = int($1);
+        } elsif (/$versionmicroregex/) {
+            $microver = int($1);
         }
     }
     close(FH);
-    my $fullversion = "$majorver.$minorver.$patchver";
+    my $fullversion = "$majorver.$minorver.$microver";
 
     my $latex_fname = "$srcpath/$projectshortname.tex";
     my $latex_tmpfname = "$latex_fname.tmp";
@@ -2341,7 +2512,7 @@ if ($copy_direction == 1) {  # --copy-to-headers
 \\begin{document}
 \\frontmatter
 
-\\title{$projectfullname $majorver.$minorver.$patchver Reference Manual}
+\\title{$projectfullname $majorver.$minorver.$microver Reference Manual}
 \\author{The $projectshortname Developers}
 \\maketitle
 
@@ -2371,6 +2542,7 @@ __EOF__
     foreach (@headersymskeys) {
         my $sym = $_;
         next if not defined $wikisyms{$sym};  # don't have a page for that function, skip it.
+        next if $sym =~ /\A\[category documentation\]/;   # not real symbols.
         my $symtype = $headersymstype{$sym};
         my $wikitype = $wikitypes{$sym};
         my $sectionsref = $wikisyms{$sym};
