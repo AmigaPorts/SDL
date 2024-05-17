@@ -567,7 +567,7 @@ JNIEXPORT jstring JNICALL SDL_JAVA_INTERFACE(nativeGetVersion)(JNIEnv *env, jcla
 {
     char version[128];
 
-    SDL_snprintf(version, sizeof(version), "%d.%d.%d", SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_PATCHLEVEL);
+    SDL_snprintf(version, sizeof(version), "%d.%d.%d", SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_MICRO_VERSION);
 
     return (*env)->NewStringUTF(env, version);
 }
@@ -2658,7 +2658,6 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(nativePermissionResult)(
     }
 
     SDL_UnlockMutex(Android_ActivityMutex);
-    SDL_assert(!"Shouldn't have hit this code");  // we had a permission response for a request we never made...?
 }
 
 int SDL_AndroidRequestPermission(const char *permission, SDL_AndroidRequestPermissionCallback cb, void *userdata)

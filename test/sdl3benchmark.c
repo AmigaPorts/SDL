@@ -129,8 +129,7 @@ printInfo(Context *ctx)
     if (result) {
         SDL_Log("Failed to get renderer info: %s\n", SDL_GetError());
     } else {
-
-        SDL_Log("Starting to test renderer called [%s], flags 0x%X\n", ri.name, ri.flags);
+        SDL_Log("Starting to test renderer called [%s]\n", ri.name);
     }
 }
 
@@ -675,7 +674,7 @@ testSpecificRenderer(Context *ctx)
 {
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, ctx->rendname);
 
-    ctx->renderer = SDL_CreateRenderer(ctx->window, NULL, 0);
+    ctx->renderer = SDL_CreateRenderer(ctx->window, NULL);
 
     testRenderer(ctx);
 }
@@ -684,7 +683,7 @@ static void
 testAllRenderers(Context *ctx)
 {
     for (int r = 0; r < SDL_GetNumRenderDrivers(); r++) {
-        ctx->renderer = SDL_CreateRenderer(ctx->window, SDL_GetRenderDriver(r), 0);
+        ctx->renderer = SDL_CreateRenderer(ctx->window, SDL_GetRenderDriver(r));
 
         testRenderer(ctx);
 
@@ -698,17 +697,16 @@ int
 main(int argc, char **argv)
 {
     Context ctx;
-    SDL_Version linked;
 
     if (SDL_Init(SDL_INIT_VIDEO)) {
         SDL_Log("Init failed: %s\n", SDL_GetError());
         return -1;
     }
 
-    SDL_GetVersion(&linked);
+    const int version = SDL_GetVersion();
 
     SDL_Log("SDL3 renderer benchmark v. " BENCHMARK_VERSION " (SDL version %d.%d.%d)\n",
-        linked.major, linked.minor, linked.patch);
+        SDL_VERSIONNUM_MAJOR(version), SDL_VERSIONNUM_MINOR(version), SDL_VERSIONNUM_MICRO(version));
 
     SDL_Log("This tool measures the speed of various 2D drawing features\n");
     SDL_Log("Press ESC key to quit\n");

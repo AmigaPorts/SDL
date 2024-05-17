@@ -635,9 +635,10 @@ OS4_RenderPresent(SDL_Renderer * renderer)
             int width;
             int height;
 
-            //dprintf("target %p\n", data->target);
+            OS4_RenderData *data = (OS4_RenderData *)renderer->driverdata;
 
-            if (renderer->info.flags & SDL_RENDERER_PRESENTVSYNC) {
+            //dprintf("target %p\n", data->target);
+            if (data->vsync) {
                 IGraphics->WaitTOF();
             }
 
@@ -660,7 +661,7 @@ OS4_RenderPresent(SDL_Renderer * renderer)
 
             if (ret != -1) {
                 dprintf("BltBitMapTags(): %d\n", ret);
-		return -1;
+                return -1;
             }
         }
     }
@@ -1130,13 +1131,11 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
 static int
 OS4_SetVSync(SDL_Renderer * renderer, int vsync)
 {
+    OS4_RenderData *data = renderer->driverdata;
+
     dprintf("VSYNC %d\n", vsync);
 
-    if (vsync > 0) {
-        renderer->info.flags |= SDL_RENDERER_PRESENTVSYNC;
-    } else {
-        renderer->info.flags &= ~SDL_RENDERER_PRESENTVSYNC;
-    }
+    data->vsync = vsync;
 
     return 0;
 }
@@ -1206,15 +1205,9 @@ OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, SDL_PropertiesI
 
     IGraphics->InitRastPort(&data->rastport);
 
-    const int vsyncEnabled = SDL_GetBooleanProperty(create_props, SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_BOOLEAN, SDL_FALSE);
+    data->vsync = SDL_GetNumberProperty(create_props, SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_NUMBER, 0);
 
-    dprintf("VSYNC: %s\n", vsyncEnabled ? "on" : "off");
-
-    if (vsyncEnabled) {
-        renderer->info.flags |= SDL_RENDERER_PRESENTVSYNC;
-    } else {
-        renderer->info.flags &= ~SDL_RENDERER_PRESENTVSYNC;
-    }
+    dprintf("VSYNC: %s\n", data->vsync ? "on" : "off");
 
     OS4_PrecalculateIndices();
 

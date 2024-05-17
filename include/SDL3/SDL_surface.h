@@ -20,9 +20,9 @@
 */
 
 /**
- *  \file SDL_surface.h
+ * # CategorySurface
  *
- *  Header file for ::SDL_Surface definition and management functions.
+ * SDL_Surface definition and management functions.
  */
 
 #ifndef SDL_surface_h_
@@ -43,21 +43,19 @@ extern "C" {
 #endif
 
 /**
- *  \name Surface flags
+ * The flags on an SDL_Surface.
  *
- *  These are the currently supported flags for the ::SDL_Surface.
+ * These are generally meant to be considered read-only.
  *
- *  \internal
- *  Used internally (read-only).
+ * \since This datatype is available since SDL 3.0.0.
  */
-/* @{ */
-#define SDL_SWSURFACE               0           /**< Just here for compatibility */
-#define SDL_PREALLOC                0x00000001  /**< Surface uses preallocated memory */
-#define SDL_RLEACCEL                0x00000002  /**< Surface is RLE encoded */
-#define SDL_DONTFREE                0x00000004  /**< Surface is referenced internally */
-#define SDL_SIMD_ALIGNED            0x00000008  /**< Surface uses aligned memory */
-#define SDL_SURFACE_USES_PROPERTIES 0x00000010  /**< Surface uses properties */
-/* @} *//* Surface flags */
+typedef Uint32 SDL_SurfaceFlags;
+
+#define SDL_PREALLOC                0x00000001u /**< Surface uses preallocated memory */
+#define SDL_RLEACCEL                0x00000002u /**< Surface is RLE encoded */
+#define SDL_DONTFREE                0x00000004u /**< Surface is referenced internally */
+#define SDL_SIMD_ALIGNED            0x00000008u /**< Surface uses aligned memory */
+#define SDL_SURFACE_USES_PROPERTIES 0x00000010u /**< Surface uses properties */
 
 /**
  * Evaluates to true if the surface needs to be locked before access.
@@ -119,7 +117,7 @@ typedef enum SDL_FlipMode
  */
 typedef struct SDL_Surface
 {
-    Uint32 flags;               /**< Read-only */
+    SDL_SurfaceFlags flags;     /**< Read-only */
     SDL_PixelFormat *format;    /**< Read-only */
     int w, h;                   /**< Read-only */
     int pitch;                  /**< Read-only */

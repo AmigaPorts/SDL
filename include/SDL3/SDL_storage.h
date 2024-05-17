@@ -20,9 +20,9 @@
 */
 
 /**
- *  \file SDL_storage.h
+ * # CategoryStorage
  *
- *  Include file for storage container SDL API functions
+ * SDL storage container management.
  */
 
 #ifndef SDL_storage_h_
@@ -401,7 +401,7 @@ extern DECLSPEC Uint64 SDLCALL SDL_GetStorageSpaceRemaining(SDL_Storage *storage
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC char **SDLCALL SDL_GlobStorageDirectory(SDL_Storage *storage, const char *path, const char *pattern, Uint32 flags, int *count);
+extern DECLSPEC char **SDLCALL SDL_GlobStorageDirectory(SDL_Storage *storage, const char *path, const char *pattern, SDL_GlobFlags flags, int *count);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

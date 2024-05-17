@@ -19,10 +19,16 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
+/* WIKI CATEGORY: CPUInfo */
+
 /**
- *  \file SDL_cpuinfo.h
+ * # CategoryCPUInfo
  *
- *  CPU feature detection for SDL.
+ * CPU feature detection for SDL.
+ *
+ * These functions are largely concerned with reporting if the system has
+ * access to various SIMD instruction sets, but also has other important info
+ * to share, such as system RAM size and number of logical CPU cores.
  */
 
 #ifndef SDL_cpuinfo_h_
@@ -296,7 +302,7 @@ extern DECLSPEC int SDLCALL SDL_GetSystemRAM(void);
  * \sa SDL_aligned_alloc
  * \sa SDL_aligned_free
  */
-extern DECLSPEC size_t SDLCALL SDL_SIMDGetAlignment(void);
+extern DECLSPEC size_t SDLCALL SDL_GetSIMDAlignment(void);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

@@ -513,8 +513,8 @@ class Releaser:
             text = f.read()
         major = next(re.finditer(r"^#define SDL_MAJOR_VERSION\s+([0-9]+)$", text, flags=re.M)).group(1)
         minor = next(re.finditer(r"^#define SDL_MINOR_VERSION\s+([0-9]+)$", text, flags=re.M)).group(1)
-        patch = next(re.finditer(r"^#define SDL_PATCHLEVEL\s+([0-9]+)$", text, flags=re.M)).group(1)
-        return f"{major}.{minor}.{patch}"
+        micro = next(re.finditer(r"^#define SDL_MICRO_VERSION\s+([0-9]+)$", text, flags=re.M)).group(1)
+        return f"{major}.{minor}.{micro}"
 
 
 def main(argv=None):

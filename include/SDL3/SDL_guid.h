@@ -19,10 +19,13 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
+/* WIKI CATEGORY: GUID */
+
 /**
- *  \file SDL_guid.h
+ * # CategoryGUID
  *
- *  Include file for handling ::SDL_GUID values.
+ * A GUID is a 128-bit value that represents something that is uniquely
+ * identifiable by this value: "globally unique."
  */
 
 #ifndef SDL_guid_h_
@@ -61,11 +64,11 @@ typedef struct SDL_GUID {
 /* Function prototypes */
 
 /**
- * Get an ASCII string representation for a given ::SDL_GUID.
+ * Get an ASCII string representation for a given SDL_GUID.
  *
  * You should supply at least 33 bytes for pszGUID.
  *
- * \param guid the ::SDL_GUID you wish to convert to string
+ * \param guid the SDL_GUID you wish to convert to string
  * \param pszGUID buffer in which to write the ASCII string
  * \param cbGUID the size of pszGUID
  * \returns 0 on success or a negative error code on failure; call
@@ -78,14 +81,14 @@ typedef struct SDL_GUID {
 extern DECLSPEC int SDLCALL SDL_GUIDToString(SDL_GUID guid, char *pszGUID, int cbGUID);
 
 /**
- * Convert a GUID string into a ::SDL_GUID structure.
+ * Convert a GUID string into a SDL_GUID structure.
  *
  * Performs no error checking. If this function is given a string containing
  * an invalid GUID, the function will silently succeed, but the GUID generated
  * will not be useful.
  *
  * \param pchGUID string containing an ASCII representation of a GUID
- * \returns a ::SDL_GUID structure.
+ * \returns a SDL_GUID structure.
  *
  * \since This function is available since SDL 3.0.0.
  *

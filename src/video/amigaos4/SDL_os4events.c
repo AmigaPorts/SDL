@@ -656,16 +656,15 @@ OS4_HandleGadget(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
 static void
 OS4_ShowAboutWindow(struct MyIntuiMessage * imsg)
 {
-    SDL_Version version;
-    SDL_VERSION(&version);
+    const int version = SDL_GetVersion();
 
     static char buffer[64];
     snprintf(buffer, sizeof(buffer),
              "%s %d.%d.%d (" __AMIGADATE__ ")",
              OS4_GetString(MSG_APP_LIBRARY_VERSION),
-             version.major,
-             version.minor,
-             version.patch);
+             SDL_VERSIONNUM_MAJOR(version),
+             SDL_VERSIONNUM_MINOR(version),
+             SDL_VERSIONNUM_MICRO(version));
 
     Object* aboutWindow = IIntuition->NewObject(NULL, "requester.class",
         REQ_TitleText, OS4_GetString(MSG_APP_APPLICATION),
