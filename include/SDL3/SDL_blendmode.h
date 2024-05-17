@@ -20,13 +20,17 @@
 */
 
 /**
- *  \file SDL_blendmode.h
+ * # CategoryBlendmode
  *
- *  Header file declaring the SDL_BlendMode enumeration
+ * Blend modes decide how two colors will mix together. There are both
+ * standard modes for basic needs and a means to create custom modes,
+ * dictating what sort of math to do what on what color components.
  */
 
 #ifndef SDL_blendmode_h_
 #define SDL_blendmode_h_
+
+#include <SDL3/SDL_stdinc.h>
 
 #include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */

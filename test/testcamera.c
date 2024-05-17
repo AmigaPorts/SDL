@@ -38,7 +38,7 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
     }
 
     /* Enable standard application logging */
-    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+    SDL_SetLogPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
     if (!SDLTest_CommonDefaultArgs(state, argc, argv)) {
         return -1;
@@ -58,7 +58,7 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
         return -1;
     }
 
-    SDL_LogSetAllPriority(SDL_LOG_PRIORITY_VERBOSE);
+    SDL_SetLogPriorities(SDL_LOG_PRIORITY_VERBOSE);
 
     renderer = state->renderers[0];
     if (!renderer) {
@@ -175,7 +175,7 @@ int SDL_AppEvent(void *appstate, const SDL_Event *event)
             return FlipCamera();
 
         case SDL_EVENT_QUIT:
-            SDL_Log("Ctlr+C : Quit!");
+            SDL_Log("Quit!");
             return 1;
 
         case SDL_EVENT_CAMERA_DEVICE_APPROVED:
@@ -266,8 +266,5 @@ void SDL_AppQuit(void *appstate)
     SDL_ReleaseCameraFrame(camera, frame_current);
     SDL_CloseCamera(camera);
     SDL_DestroyTexture(texture);
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
     SDLTest_CommonQuit(state);
 }
-

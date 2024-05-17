@@ -181,31 +181,31 @@ int SDLTest_CommonArg(SDLTest_CommonState *state, int index)
             return -1;
         }
         if (SDL_strcasecmp(argv[index], "all") == 0) {
-            SDL_LogSetAllPriority(SDL_LOG_PRIORITY_VERBOSE);
+            SDL_SetLogPriorities(SDL_LOG_PRIORITY_VERBOSE);
             return 2;
         }
         if (SDL_strcasecmp(argv[index], "error") == 0) {
-            SDL_LogSetPriority(SDL_LOG_CATEGORY_ERROR, SDL_LOG_PRIORITY_VERBOSE);
+            SDL_SetLogPriority(SDL_LOG_CATEGORY_ERROR, SDL_LOG_PRIORITY_VERBOSE);
             return 2;
         }
         if (SDL_strcasecmp(argv[index], "system") == 0) {
-            SDL_LogSetPriority(SDL_LOG_CATEGORY_SYSTEM, SDL_LOG_PRIORITY_VERBOSE);
+            SDL_SetLogPriority(SDL_LOG_CATEGORY_SYSTEM, SDL_LOG_PRIORITY_VERBOSE);
             return 2;
         }
         if (SDL_strcasecmp(argv[index], "audio") == 0) {
-            SDL_LogSetPriority(SDL_LOG_CATEGORY_AUDIO, SDL_LOG_PRIORITY_VERBOSE);
+            SDL_SetLogPriority(SDL_LOG_CATEGORY_AUDIO, SDL_LOG_PRIORITY_VERBOSE);
             return 2;
         }
         if (SDL_strcasecmp(argv[index], "video") == 0) {
-            SDL_LogSetPriority(SDL_LOG_CATEGORY_VIDEO, SDL_LOG_PRIORITY_VERBOSE);
+            SDL_SetLogPriority(SDL_LOG_CATEGORY_VIDEO, SDL_LOG_PRIORITY_VERBOSE);
             return 2;
         }
         if (SDL_strcasecmp(argv[index], "render") == 0) {
-            SDL_LogSetPriority(SDL_LOG_CATEGORY_RENDER, SDL_LOG_PRIORITY_VERBOSE);
+            SDL_SetLogPriority(SDL_LOG_CATEGORY_RENDER, SDL_LOG_PRIORITY_VERBOSE);
             return 2;
         }
         if (SDL_strcasecmp(argv[index], "input") == 0) {
-            SDL_LogSetPriority(SDL_LOG_CATEGORY_INPUT, SDL_LOG_PRIORITY_VERBOSE);
+            SDL_SetLogPriority(SDL_LOG_CATEGORY_INPUT, SDL_LOG_PRIORITY_VERBOSE);
             return 2;
         }
         return -1;
@@ -535,7 +535,7 @@ int SDLTest_CommonArg(SDLTest_CommonState *state, int index)
             return 2;
         }
         if (SDL_strcasecmp(argv[index], "--vsync") == 0) {
-            state->render_flags |= SDL_RENDERER_PRESENTVSYNC;
+            state->render_vsync = 1;
             return 1;
         }
         if (SDL_strcasecmp(argv[index], "--noframe") == 0) {
@@ -748,7 +748,7 @@ static void SDLTest_PrintDisplayOrientation(char *text, size_t maxlen, SDL_Displ
     }
 }
 
-static void SDLTest_PrintWindowFlag(char *text, size_t maxlen, Uint32 flag)
+static void SDLTest_PrintWindowFlag(char *text, size_t maxlen, SDL_WindowFlags flag)
 {
     switch (flag) {
     case SDL_WINDOW_FULLSCREEN:
@@ -820,7 +820,7 @@ static void SDLTest_PrintWindowFlag(char *text, size_t maxlen, Uint32 flag)
     }
 }
 
-static void SDLTest_PrintWindowFlags(char *text, size_t maxlen, Uint32 flags)
+static void SDLTest_PrintWindowFlags(char *text, size_t maxlen, SDL_WindowFlags flags)
 {
     const SDL_WindowFlags window_flags[] = {
         SDL_WINDOW_FULLSCREEN,
@@ -849,7 +849,7 @@ static void SDLTest_PrintWindowFlags(char *text, size_t maxlen, Uint32 flags)
     int i;
     int count = 0;
     for (i = 0; i < (sizeof(window_flags) / sizeof(window_flags[0])); ++i) {
-        const Uint32 flag = window_flags[i];
+        const SDL_WindowFlags flag = window_flags[i];
         if ((flags & flag) == flag) {
             if (count > 0) {
                 SDL_snprintfcat(text, maxlen, " | ");
@@ -952,18 +952,6 @@ static void SDLTest_PrintButtonMask(char *text, size_t maxlen, Uint32 flags)
     }
 }
 
-static void SDLTest_PrintRendererFlag(char *text, size_t maxlen, Uint32 flag)
-{
-    switch (flag) {
-    case SDL_RENDERER_PRESENTVSYNC:
-        SDL_snprintfcat(text, maxlen, "PresentVSync");
-        break;
-    default:
-        SDL_snprintfcat(text, maxlen, "0x%8.8x", flag);
-        break;
-    }
-}
-
 static void SDLTest_PrintPixelFormat(char *text, size_t maxlen, Uint32 format)
 {
     const char *name = SDL_GetPixelFormatName(format);
@@ -1019,41 +1007,30 @@ static void SDLTest_PrintScaleMode(char *text, size_t maxlen, SDL_ScaleMode scal
     }
 }
 
-static void SDLTest_PrintRenderer(SDL_RendererInfo *info)
+static void SDLTest_PrintRenderer(SDL_Renderer *renderer)
 {
-    int i, count;
+    SDL_RendererInfo info;
+    int i;
     char text[1024];
+    int max_texture_size;
 
-    SDL_Log("  Renderer %s:\n", info->name);
+    SDL_GetRendererInfo(renderer, &info);
 
-    (void)SDL_snprintf(text, sizeof(text), "    Flags: 0x%8.8" SDL_PRIX32, info->flags);
-    SDL_snprintfcat(text, sizeof(text), " (");
-    count = 0;
-    for (i = 0; i < 8 * sizeof(info->flags); ++i) {
-        Uint32 flag = (1 << i);
-        if (info->flags & flag) {
-            if (count > 0) {
-                SDL_snprintfcat(text, sizeof(text), " | ");
-            }
-            SDLTest_PrintRendererFlag(text, sizeof(text), flag);
-            ++count;
-        }
-    }
-    SDL_snprintfcat(text, sizeof(text), ")");
-    SDL_Log("%s\n", text);
+    SDL_Log("  Renderer %s:\n", info.name);
+    SDL_Log("    VSync: %d\n", (int)SDL_GetNumberProperty(SDL_GetRendererProperties(renderer), SDL_PROP_RENDERER_VSYNC_NUMBER, 0));
 
-    (void)SDL_snprintf(text, sizeof(text), "    Texture formats (%d): ", info->num_texture_formats);
-    for (i = 0; i < info->num_texture_formats; ++i) {
+    (void)SDL_snprintf(text, sizeof(text), "    Texture formats (%d): ", info.num_texture_formats);
+    for (i = 0; i < info.num_texture_formats; ++i) {
         if (i > 0) {
             SDL_snprintfcat(text, sizeof(text), ", ");
         }
-        SDLTest_PrintPixelFormat(text, sizeof(text), info->texture_formats[i]);
+        SDLTest_PrintPixelFormat(text, sizeof(text), info.texture_formats[i]);
     }
     SDL_Log("%s\n", text);
 
-    if (info->max_texture_width || info->max_texture_height) {
-        SDL_Log("    Max Texture Size: %dx%d\n",
-                info->max_texture_width, info->max_texture_height);
+    max_texture_size = (int)SDL_GetNumberProperty(SDL_GetRendererProperties(renderer), SDL_PROP_RENDERER_MAX_TEXTURE_SIZE_NUMBER, 0);
+    if (max_texture_size) {
+        SDL_Log("    Max Texture Size: %dx%d\n", max_texture_size, max_texture_size);
     }
 }
 
@@ -1395,8 +1372,7 @@ SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state)
             }
 
             if (!state->skip_renderer && (state->renderdriver || !(state->window_flags & (SDL_WINDOW_OPENGL | SDL_WINDOW_VULKAN | SDL_WINDOW_METAL)))) {
-                state->renderers[i] = SDL_CreateRenderer(state->windows[i],
-                                                         state->renderdriver, state->render_flags);
+                state->renderers[i] = SDL_CreateRenderer(state->windows[i], state->renderdriver);
                 if (!state->renderers[i]) {
                     SDL_Log("Couldn't create renderer: %s\n",
                             SDL_GetError());
@@ -1406,6 +1382,9 @@ SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state)
                     state->logical_w = state->window_w;
                     state->logical_h = state->window_h;
                 }
+                if (state->render_vsync) {
+                    SDL_SetRenderVSync(state->renderers[i], state->render_vsync);
+                }
                 if (SDL_SetRenderLogicalPresentation(state->renderers[i], state->logical_w, state->logical_h, state->logical_presentation, state->logical_scale_mode) < 0) {
                     SDL_Log("Couldn't set logical presentation: %s\n", SDL_GetError());
                     return SDL_FALSE;
@@ -1414,11 +1393,8 @@ SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state)
                     SDL_SetRenderScale(state->renderers[i], state->scale, state->scale);
                 }
                 if (state->verbose & VERBOSE_RENDER) {
-                    SDL_RendererInfo info;
-
                     SDL_Log("Current renderer:\n");
-                    SDL_GetRendererInfo(state->renderers[i], &info);
-                    SDLTest_PrintRenderer(&info);
+                    SDLTest_PrintRenderer(state->renderers[i]);
                 }
             }
 
@@ -2063,29 +2039,6 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
     }
 
     switch (event->type) {
-    case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-    {
-        SDL_Window *window = SDL_GetWindowFromID(event->window.windowID);
-        if (window) {
-            /* Clear cache to avoid stale textures */
-            SDLTest_CleanupTextDrawing();
-            for (i = 0; i < state->num_windows; ++i) {
-                if (window == state->windows[i]) {
-                    if (state->targets[i]) {
-                        SDL_DestroyTexture(state->targets[i]);
-                        state->targets[i] = NULL;
-                    }
-                    if (state->renderers[i]) {
-                        SDL_DestroyRenderer(state->renderers[i]);
-                        state->renderers[i] = NULL;
-                    }
-                    SDL_DestroyWindow(state->windows[i]);
-                    state->windows[i] = NULL;
-                    break;
-                }
-            }
-        }
-    } break;
     case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
         if (state->auto_scale_content) {
             SDL_Window *window = SDL_GetWindowFromID(event->window.windowID);

@@ -1961,7 +1961,7 @@ int main(int argc, char *argv[])
     SDL_SetHint(SDL_HINT_JOYSTICK_LINUX_DEADZONES, "1");
 
     /* Enable standard application logging */
-    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+    SDL_SetLogPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
     /* Parse commandline */
     for (i = 1; i < argc;) {
@@ -2028,7 +2028,7 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    screen = SDL_CreateRenderer(window, NULL, 0);
+    screen = SDL_CreateRenderer(window, NULL);
     if (!screen) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create renderer: %s\n", SDL_GetError());
         SDL_DestroyWindow(window);

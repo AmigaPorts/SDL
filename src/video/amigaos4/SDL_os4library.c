@@ -82,11 +82,10 @@ static int initCount = 0;
 static void
 OS4_LogVersion(void)
 {
-    SDL_Version version;
-
-    SDL_GetVersion(&version);
-
-    dprintf("*** SDL %d.%d.%d ***\n", version.major, version.minor, version.patch);
+#ifdef DEBUG
+    const int version = SDL_GetVersion();
+#endif
+    dprintf("*** SDL %d.%d.%d ***\n", SDL_VERSIONNUM_MAJOR(version), SDL_VERSIONNUM_MINOR(version), SDL_VERSIONNUM_MICRO(version));
 
 #ifdef __AMIGADATE__
     dprintf("Build date: " __AMIGADATE__ "\n");

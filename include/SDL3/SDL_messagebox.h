@@ -19,6 +19,12 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
+/**
+ * # CategoryMessagebox
+ *
+ * Message box support routines.
+ */
+
 #ifndef SDL_messagebox_h_
 #define SDL_messagebox_h_
 
@@ -118,7 +124,7 @@ typedef struct SDL_MessageBoxData
     int numbuttons;
     const SDL_MessageBoxButtonData *buttons;
 
-    const SDL_MessageBoxColorScheme *colorScheme;   /**< ::SDL_MessageBoxColorScheme, can be NULL to use system settings */
+    const SDL_MessageBoxColorScheme *colorScheme;   /**< SDL_MessageBoxColorScheme, can be NULL to use system settings */
 } SDL_MessageBoxData;
 
 /**

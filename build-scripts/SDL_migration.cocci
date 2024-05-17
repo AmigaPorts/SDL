@@ -2985,11 +2985,6 @@ SDL_GamepadBinding *e1;
 - e1->outputType
 + e1->output_type
 @@
-typedef SDL_version, SDL_Version;
-@@
-- SDL_version
-+ SDL_Version
-@@
 @@
 - SDL_HINT_ALLOW_TOPMOST
 + SDL_HINT_WINDOW_ALLOW_TOPMOST
@@ -3137,10 +3132,64 @@ typedef SDL_Colour, SDL_Color;
   (...)
 @@
 @@
+- SDL_iPhoneSetEventPump
++ SDL_iOSSetEventPump
+  (...)
+@@
+@@
+- SDL_COMPILEDVERSION
++ SDL_VERSION
+@@
+@@
+- SDL_PATCHLEVEL
++ SDL_MICRO_VERSION
+@@
+@@
 - SDL_TABLESIZE
 + SDL_arraysize
 @@
 @@
-- SDL_iPhoneSetEventPump
-+ SDL_iOSSetEventPump
+- SDLK_QUOTE
++ SDLK_APOSTROPHE
+@@
+@@
+- SDLK_BACKQUOTE
++ SDLK_GRAVE
+@@
+@@
+- SDLK_QUOTEDBL
++ SDLK_DBLAPOSTROPHE
+@@
+@@
+- SDL_LogSetAllPriority
++ SDL_SetLogPriorities
   (...)
+@@
+@@
+- SDL_LogSetPriority
++ SDL_SetLogPriority
+  (...)
+@@
+@@
+- SDL_LogGetPriority
++ SDL_GetLogPriority
+  (...)
+@@
+@@
+- SDL_LogResetPriorities
++ SDL_ResetLogPriorities
+  (...)
+@@
+@@
+- SDL_SIMDGetAlignment
++ SDL_GetSIMDAlignment
+  (...)
+@@
+@@
+- SDL_MixAudioFormat
++ SDL_MixAudio
+  (...)
+@@
+@@
+- SDL_MIX_MAXVOLUME
++ 1.0f

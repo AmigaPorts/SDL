@@ -157,7 +157,8 @@ typedef enum
     VIDEO_DEVICE_CAPS_MODE_SWITCHING_EMULATED = 0x01,
     VIDEO_DEVICE_CAPS_HAS_POPUP_WINDOW_SUPPORT = 0x02,
     VIDEO_DEVICE_CAPS_SENDS_FULLSCREEN_DIMENSIONS = 0x04,
-    VIDEO_DEVICE_CAPS_FULLSCREEN_ONLY = 0x08
+    VIDEO_DEVICE_CAPS_FULLSCREEN_ONLY = 0x08,
+    VIDEO_DEVICE_CAPS_SENDS_DISPLAY_CHANGES = 0x10
 } DeviceCaps;
 
 struct SDL_VideoDevice
@@ -284,6 +285,7 @@ struct SDL_VideoDevice
     void (*Vulkan_UnloadLibrary)(SDL_VideoDevice *_this);
     char const* const* (*Vulkan_GetInstanceExtensions)(SDL_VideoDevice *_this, Uint32 *count);
     SDL_bool (*Vulkan_CreateSurface)(SDL_VideoDevice *_this, SDL_Window *window, VkInstance instance, const struct VkAllocationCallbacks *allocator, VkSurfaceKHR *surface);
+    void (*Vulkan_DestroySurface)(SDL_VideoDevice *_this, VkInstance instance, VkSurfaceKHR surface, const struct VkAllocationCallbacks *allocator);
 
     /* * * */
     /*

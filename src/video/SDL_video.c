@@ -192,6 +192,11 @@ static SDL_bool IsFullscreenOnly(SDL_VideoDevice *_this)
     return !!(_this->device_caps & VIDEO_DEVICE_CAPS_FULLSCREEN_ONLY);
 }
 
+static SDL_bool SDL_SendsDisplayChanges(SDL_VideoDevice *_this)
+{
+    return !!(_this->device_caps & VIDEO_DEVICE_CAPS_SENDS_DISPLAY_CHANGES);
+}
+
 /* Hint to treat all window ops as synchronous */
 static SDL_bool syncHint;
 
@@ -297,7 +302,7 @@ static int SDL_CreateWindowTexture(SDL_VideoDevice *_this, SDL_Window *window, S
 
         /* Check to see if there's a specific driver requested */
         if (specific_accelerated_renderer) {
-            renderer = SDL_CreateRenderer(window, hint, 0);
+            renderer = SDL_CreateRenderer(window, hint);
             if (!renderer || (SDL_GetRendererInfo(renderer, &info) < 0)) {
                 if (renderer) {
                     SDL_DestroyRenderer(renderer);
@@ -309,7 +314,7 @@ static int SDL_CreateWindowTexture(SDL_VideoDevice *_this, SDL_Window *window, S
             for (i = 0; i < total; ++i) {
                 const char *name = SDL_GetRenderDriver(i);
                 if (name && (SDL_strcmp(name, SDL_SOFTWARE_RENDERER) != 0)) {
-                    renderer = SDL_CreateRenderer(window, name, 0);
+                    renderer = SDL_CreateRenderer(window, name);
                     if (renderer) {
                         break; /* this will work. */
                     }
@@ -1552,6 +1557,10 @@ SDL_DisplayID SDL_GetDisplayForWindow(SDL_Window *window)
 
 static void SDL_CheckWindowDisplayChanged(SDL_Window *window)
 {
+    if (SDL_SendsDisplayChanges(_this)) {
+        return;
+    }
+
     SDL_DisplayID displayID = SDL_GetDisplayForWindowPosition(window);
 
     if (displayID != window->last_displayID) {
@@ -3805,6 +3814,12 @@ void SDL_DestroyWindow(SDL_Window *window)
         SDL_DestroyRendererWithoutFreeing(renderer);
     }
 
+    /* Restore video mode, etc. */
+    SDL_UpdateFullscreenMode(window, SDL_FALSE, SDL_TRUE);
+    if (!(window->flags & SDL_WINDOW_EXTERNAL)) {
+        SDL_HideWindow(window);
+    }
+
     SDL_DestroyProperties(window->props);
 
     /* Clear the modal status, but don't unset the parent, as it may be
@@ -3813,12 +3828,6 @@ void SDL_DestroyWindow(SDL_Window *window)
      */
     if (_this->SetWindowModalFor && (window->flags & SDL_WINDOW_MODAL)) {
         _this->SetWindowModalFor(_this, window, NULL);
-    }
-
-    /* Restore video mode, etc. */
-    SDL_UpdateFullscreenMode(window, SDL_FALSE, SDL_TRUE);
-    if (!(window->flags & SDL_WINDOW_EXTERNAL)) {
-        SDL_HideWindow(window);
     }
 
     /* Make sure the destroyed window isn't referenced by any display as a fullscreen window. */
@@ -5398,6 +5407,15 @@ SDL_bool SDL_Vulkan_CreateSurface(SDL_Window *window,
     }
 
     return _this->Vulkan_CreateSurface(_this, window, instance, allocator, surface);
+}
+
+void SDL_Vulkan_DestroySurface(VkInstance instance,
+                               VkSurfaceKHR surface,
+                               const struct VkAllocationCallbacks *allocator)
+{
+    if (_this && instance && surface && _this->Vulkan_DestroySurface) {
+        _this->Vulkan_DestroySurface(_this, instance, surface, allocator);
+    }
 }
 
 SDL_MetalView SDL_Metal_CreateView(SDL_Window *window)

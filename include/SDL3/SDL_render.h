@@ -20,29 +20,31 @@
 */
 
 /**
- *  \file SDL_render.h
+ * # CategoryRender
  *
- *  Header file for SDL 2D rendering functions.
+ * Header file for SDL 2D rendering functions.
  *
- *  This API supports the following features:
- *      * single pixel points
- *      * single pixel lines
- *      * filled rectangles
- *      * texture images
+ * This API supports the following features:
  *
- *  The primitives may be drawn in opaque, blended, or additive modes.
+ * - single pixel points
+ * - single pixel lines
+ * - filled rectangles
+ * - texture images
+ * - 2D polygons
  *
- *  The texture images may be drawn in opaque, blended, or additive modes.
- *  They can have an additional color tint or alpha modulation applied to
- *  them, and may also be stretched with linear interpolation.
+ * The primitives may be drawn in opaque, blended, or additive modes.
  *
- *  This API is designed to accelerate simple 2D operations. You may
- *  want more functionality such as polygons and particle effects and
- *  in that case you should use SDL's OpenGL/Direct3D support or one
- *  of the many good 3D engines.
+ * The texture images may be drawn in opaque, blended, or additive modes. They
+ * can have an additional color tint or alpha modulation applied to them, and
+ * may also be stretched with linear interpolation.
  *
- *  These functions must be called from the main thread.
- *  See this bug for details: https://github.com/libsdl-org/SDL/issues/986
+ * This API is designed to accelerate simple 2D operations. You may want more
+ * functionality such as polygons and particle effects and in that case you
+ * should use SDL's OpenGL/Direct3D support or one of the many good 3D
+ * engines.
+ *
+ * These functions must be called from the main thread. See this bug for
+ * details: https://github.com/libsdl-org/SDL/issues/986
  */
 
 #ifndef SDL_render_h_
@@ -69,15 +71,6 @@ extern "C" {
 #define SDL_SOFTWARE_RENDERER   "software"
 
 /**
- * Flags used when creating a rendering context.
- *
- * \since This datatype is available since SDL 3.0.0.
- */
-typedef Uint32 SDL_RendererFlags;
-
-#define SDL_RENDERER_PRESENTVSYNC   0x00000004u /**< Present is synchronized with the refresh rate */
-
-/**
  * Information on the capabilities of a render driver or context.
  *
  * \since This struct is available since SDL 3.0.0.
@@ -85,11 +78,8 @@ typedef Uint32 SDL_RendererFlags;
 typedef struct SDL_RendererInfo
 {
     const char *name;           /**< The name of the renderer */
-    SDL_RendererFlags flags;    /**< Supported ::SDL_RendererFlags */
     int num_texture_formats;    /**< The number of available texture formats */
     const SDL_PixelFormatEnum *texture_formats; /**< The available texture formats */
-    int max_texture_width;      /**< The maximum texture width */
-    int max_texture_height;     /**< The maximum texture height */
 } SDL_RendererInfo;
 
 /**
@@ -135,7 +125,6 @@ typedef enum SDL_RendererLogicalPresentation
  *
  * \since This struct is available since SDL 3.0.0.
  */
-struct SDL_Renderer;
 typedef struct SDL_Renderer SDL_Renderer;
 
 /**
@@ -143,7 +132,6 @@ typedef struct SDL_Renderer SDL_Renderer;
  *
  * \since This struct is available since SDL 3.0.0.
  */
-struct SDL_Texture;
 typedef struct SDL_Texture SDL_Texture;
 
 /* Function prototypes */
@@ -228,7 +216,6 @@ extern DECLSPEC int SDLCALL SDL_CreateWindowAndRenderer(const char *title, int w
  * \param window the window where rendering is displayed
  * \param name the name of the rendering driver to initialize, or NULL to
  *             initialize the first one supporting the requested flags
- * \param flags 0, or one or more SDL_RendererFlags OR'd together
  * \returns a valid rendering context or NULL if there was an error; call
  *          SDL_GetError() for more information.
  *
@@ -241,7 +228,7 @@ extern DECLSPEC int SDLCALL SDL_CreateWindowAndRenderer(const char *title, int w
  * \sa SDL_GetRenderDriver
  * \sa SDL_GetRendererInfo
  */
-extern DECLSPEC SDL_Renderer * SDLCALL SDL_CreateRenderer(SDL_Window *window, const char *name, SDL_RendererFlags flags);
+extern DECLSPEC SDL_Renderer * SDLCALL SDL_CreateRenderer(SDL_Window *window, const char *name);
 
 /**
  * Create a 2D rendering context for a window, with the specified properties.
@@ -261,8 +248,9 @@ extern DECLSPEC SDL_Renderer * SDLCALL SDL_CreateRenderer(SDL_Window *window, co
  *   supports HDR output. If you select SDL_COLORSPACE_SRGB_LINEAR, drawing
  *   still uses the sRGB colorspace, but values can go beyond 1.0 and float
  *   (linear) format textures can be used for HDR content.
- * - `SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_BOOLEAN`: true if you want
- *   present synchronized with the refresh rate
+ * - `SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_NUMBER`: non-zero if you want
+ *   present synchronized with the refresh rate. This property can take any
+ *   value that is supported by SDL_SetRenderVSync() for the renderer.
  *
  * With the vulkan renderer:
  *
@@ -297,7 +285,7 @@ extern DECLSPEC SDL_Renderer * SDLCALL SDL_CreateRendererWithProperties(SDL_Prop
 #define SDL_PROP_RENDERER_CREATE_WINDOW_POINTER                             "window"
 #define SDL_PROP_RENDERER_CREATE_SURFACE_POINTER                            "surface"
 #define SDL_PROP_RENDERER_CREATE_OUTPUT_COLORSPACE_NUMBER                   "output_colorspace"
-#define SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_BOOLEAN                      "present_vsync"
+#define SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_NUMBER                       "present_vsync"
 #define SDL_PROP_RENDERER_CREATE_VULKAN_INSTANCE_POINTER                    "vulkan.instance"
 #define SDL_PROP_RENDERER_CREATE_VULKAN_SURFACE_NUMBER                      "vulkan.surface"
 #define SDL_PROP_RENDERER_CREATE_VULKAN_PHYSICAL_DEVICE_POINTER             "vulkan.physical_device"
@@ -372,6 +360,9 @@ extern DECLSPEC int SDLCALL SDL_GetRendererInfo(SDL_Renderer *renderer, SDL_Rend
  *   displayed, if any
  * - `SDL_PROP_RENDERER_SURFACE_POINTER`: the surface where rendering is
  *   displayed, if this is a software renderer without a window
+ * - `SDL_PROP_RENDERER_VSYNC_NUMBER`: the current vsync setting
+ * - `SDL_PROP_RENDERER_MAX_TEXTURE_SIZE_NUMBER`: the maximum texture width
+ *   and height
  * - `SDL_PROP_RENDERER_OUTPUT_COLORSPACE_NUMBER`: an SDL_ColorSpace value
  *   describing the colorspace for output to the display, defaults to
  *   SDL_COLORSPACE_SRGB.
@@ -397,11 +388,15 @@ extern DECLSPEC int SDLCALL SDL_GetRendererInfo(SDL_Renderer *renderer, SDL_Rend
  *
  * - `SDL_PROP_RENDERER_D3D11_DEVICE_POINTER`: the ID3D11Device associated
  *   with the renderer
+ * - `SDL_PROP_RENDERER_D3D11_SWAPCHAIN_POINTER`: the IDXGISwapChain1
+ *   associated with the renderer. This may change when the window is resized.
  *
  * With the direct3d12 renderer:
  *
  * - `SDL_PROP_RENDERER_D3D12_DEVICE_POINTER`: the ID3D12Device associated
  *   with the renderer
+ * - `SDL_PROP_RENDERER_D3D12_SWAPCHAIN_POINTER`: the IDXGISwapChain4
+ *   associated with the renderer.
  * - `SDL_PROP_RENDERER_D3D12_COMMAND_QUEUE_POINTER`: the ID3D12CommandQueue
  *   associated with the renderer
  *
@@ -437,13 +432,17 @@ extern DECLSPEC SDL_PropertiesID SDLCALL SDL_GetRendererProperties(SDL_Renderer 
 #define SDL_PROP_RENDERER_NAME_STRING                               "SDL.renderer.name"
 #define SDL_PROP_RENDERER_WINDOW_POINTER                            "SDL.renderer.window"
 #define SDL_PROP_RENDERER_SURFACE_POINTER                           "SDL.renderer.surface"
+#define SDL_PROP_RENDERER_VSYNC_NUMBER                              "SDL.renderer.vsync"
+#define SDL_PROP_RENDERER_MAX_TEXTURE_SIZE_NUMBER                   "SDL.renderer.max_texture_size"
 #define SDL_PROP_RENDERER_OUTPUT_COLORSPACE_NUMBER                  "SDL.renderer.output_colorspace"
 #define SDL_PROP_RENDERER_HDR_ENABLED_BOOLEAN                       "SDL.renderer.HDR_enabled"
 #define SDL_PROP_RENDERER_SDR_WHITE_POINT_FLOAT                     "SDL.renderer.SDR_white_point"
 #define SDL_PROP_RENDERER_HDR_HEADROOM_FLOAT                        "SDL.renderer.HDR_headroom"
 #define SDL_PROP_RENDERER_D3D9_DEVICE_POINTER                       "SDL.renderer.d3d9.device"
 #define SDL_PROP_RENDERER_D3D11_DEVICE_POINTER                      "SDL.renderer.d3d11.device"
+#define SDL_PROP_RENDERER_D3D11_SWAPCHAIN_POINTER                   "SDL.renderer.d3d11.swap_chain"
 #define SDL_PROP_RENDERER_D3D12_DEVICE_POINTER                      "SDL.renderer.d3d12.device"
+#define SDL_PROP_RENDERER_D3D12_SWAPCHAIN_POINTER                   "SDL.renderer.d3d12.swap_chain"
 #define SDL_PROP_RENDERER_D3D12_COMMAND_QUEUE_POINTER               "SDL.renderer.d3d12.command_queue"
 #define SDL_PROP_RENDERER_VULKAN_INSTANCE_POINTER                   "SDL.renderer.vulkan.instance"
 #define SDL_PROP_RENDERER_VULKAN_SURFACE_NUMBER                     "SDL.renderer.vulkan.surface"
@@ -2139,7 +2138,14 @@ extern DECLSPEC int SDLCALL SDL_AddVulkanRenderSemaphores(SDL_Renderer *renderer
  * Toggle VSync of the given renderer.
  *
  * \param renderer The renderer to toggle
- * \param vsync 1 for on, 0 for off. All other values are reserved
+ * \param vsync the vertical refresh sync interval, 1 to synchronize present
+ *              with every vertical refresh, 2 to synchronize present with
+ *              every second vertical refresh, etc.,
+ *              SDL_RENDERER_VSYNC_ADAPTIVE for late swap tearing (adaptive
+ *              vsync), or SDL_RENDERER_VSYNC_DISABLED to disable. Not every
+ *              value is supported by every renderer, so you should check the
+ *              return value to see whether the requested setting is
+ *              supported.
  * \returns 0 on success or a negative error code on failure; call
  *          SDL_GetError() for more information.
  *
@@ -2149,12 +2155,15 @@ extern DECLSPEC int SDLCALL SDL_AddVulkanRenderSemaphores(SDL_Renderer *renderer
  */
 extern DECLSPEC int SDLCALL SDL_SetRenderVSync(SDL_Renderer *renderer, int vsync);
 
+#define SDL_RENDERER_VSYNC_DISABLED 0
+#define SDL_RENDERER_VSYNC_ADAPTIVE (-1)
+
 /**
  * Get VSync of the given renderer.
  *
  * \param renderer The renderer to toggle
- * \param vsync an int filled with 1 for on, 0 for off. All other values are
- *              reserved
+ * \param vsync an int filled with the current vertical refresh sync interval.
+ *              See SDL_SetRenderVSync for the meaning of the value.
  * \returns 0 on success or a negative error code on failure; call
  *          SDL_GetError() for more information.
  *

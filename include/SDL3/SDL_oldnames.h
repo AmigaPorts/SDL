@@ -19,10 +19,8 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-/**
- *  \file SDL_oldnames.h
- *
- *  Definitions to ease transition from SDL2 code
+/*
+ * Definitions to ease transition from SDL2 code
  */
 
 #ifndef SDL_oldnames_h_
@@ -70,7 +68,11 @@
 #define SDL_FreeAudioStream SDL_DestroyAudioStream
 #define SDL_FreeWAV SDL_free
 #define SDL_LoadWAV_RW SDL_LoadWAV_IO
+#define SDL_MixAudioFormat SDL_MixAudio
 #define SDL_NewAudioStream SDL_CreateAudioStream
+
+/* ##SDL_cpuinfo.h */
+#define SDL_SIMDGetAlignment SDL_GetSIMDAlignment
 
 /* ##SDL_events.h */
 #define SDL_APP_DIDENTERBACKGROUND SDL_EVENT_DID_ENTER_BACKGROUND
@@ -291,7 +293,6 @@
 #define SDL_HINT_LINUX_HAT_DEADZONES SDL_HINT_JOYSTICK_LINUX_HAT_DEADZONES
 #define SDL_HINT_LINUX_JOYSTICK_CLASSIC SDL_HINT_JOYSTICK_LINUX_CLASSIC
 #define SDL_HINT_LINUX_JOYSTICK_DEADZONES SDL_HINT_JOYSTICK_LINUX_DEADZONES
-#define SDL_HINT_PS2_DYNAMIC_VSYNC SDL_HINT_RENDER_PS2_DYNAMIC_VSYNC
 
 /* ##SDL_joystick.h */
 #define SDL_JOYSTICK_TYPE_GAMECONTROLLER SDL_JOYSTICK_TYPE_GAMEPAD
@@ -357,10 +358,17 @@
 #define KMOD_RSHIFT SDL_KMOD_RSHIFT
 #define KMOD_SCROLL SDL_KMOD_SCROLL
 #define KMOD_SHIFT SDL_KMOD_SHIFT
+#define SDLK_BACKQUOTE SDLK_GRAVE
+#define SDLK_QUOTE SDLK_APOSTROPHE
+#define SDLK_QUOTEDBL SDLK_DBLAPOSTROPHE
 
 /* ##SDL_log.h */
 #define SDL_LogGetOutputFunction SDL_GetLogOutputFunction
+#define SDL_LogGetPriority SDL_GetLogPriority
+#define SDL_LogResetPriorities SDL_ResetLogPriorities
+#define SDL_LogSetAllPriority SDL_SetLogPriorities
 #define SDL_LogSetOutputFunction SDL_SetLogOutputFunction
+#define SDL_LogSetPriority SDL_SetLogPriority
 
 /* ##SDL_mouse.h */
 #define SDL_FreeCursor SDL_DestroyCursor
@@ -527,7 +535,8 @@
 #define SDL_GetTicks64 SDL_GetTicks
 
 /* ##SDL_version.h */
-#define SDL_version SDL_Version
+#define SDL_COMPILEDVERSION SDL_VERSION
+#define SDL_PATCHLEVEL SDL_MICRO_VERSION
 
 /* ##SDL_video.h */
 #define SDL_GetClosestDisplayMode SDL_GetClosestFullscreenDisplayMode
@@ -576,7 +585,11 @@
 #define SDL_FreeAudioStream SDL_FreeAudioStream_renamed_SDL_DestroyAudioStream
 #define SDL_FreeWAV SDL_FreeWAV_renamed_SDL_free
 #define SDL_LoadWAV_RW SDL_LoadWAV_RW_renamed_SDL_LoadWAV_IO
+#define SDL_MixAudioFormat SDL_MixAudioFormat_renamed_SDL_MixAudio
 #define SDL_NewAudioStream SDL_NewAudioStream_renamed_SDL_CreateAudioStream
+
+/* ##SDL_cpuinfo.h */
+#define SDL_SIMDGetAlignment SDL_SIMDGetAlignment_renamed_SDL_GetSIMDAlignment
 
 /* ##SDL_events.h */
 #define SDL_APP_DIDENTERBACKGROUND SDL_APP_DIDENTERBACKGROUND_renamed_SDL_EVENT_DID_ENTER_BACKGROUND
@@ -798,7 +811,6 @@
 #define SDL_HINT_LINUX_HAT_DEADZONES SDL_HINT_LINUX_HAT_DEADZONES_renamed_SDL_HINT_JOYSTICK_LINUX_HAT_DEADZONES
 #define SDL_HINT_LINUX_JOYSTICK_CLASSIC SDL_HINT_LINUX_JOYSTICK_CLASSIC_renamed_SDL_HINT_JOYSTICK_LINUX_CLASSIC
 #define SDL_HINT_LINUX_JOYSTICK_DEADZONES SDL_HINT_LINUX_JOYSTICK_DEADZONES_renamed_SDL_HINT_JOYSTICK_LINUX_DEADZONES
-#define SDL_HINT_PS2_DYNAMIC_VSYNC SDL_HINT_PS2_DYNAMIC_VSYNC_renamed_SDL_HINT_RENDER_PS2_DYNAMIC_VSYNC
 
 /* ##SDL_joystick.h */
 #define SDL_JOYSTICK_TYPE_GAMECONTROLLER SDL_JOYSTICK_TYPE_GAMECONTROLLER_renamed_SDL_JOYSTICK_TYPE_GAMEPAD
@@ -864,10 +876,17 @@
 #define KMOD_RSHIFT KMOD_RSHIFT_renamed_SDL_KMOD_RSHIFT
 #define KMOD_SCROLL KMOD_SCROLL_renamed_SDL_KMOD_SCROLL
 #define KMOD_SHIFT KMOD_SHIFT_renamed_SDL_KMOD_SHIFT
+#define SDLK_BACKQUOTE SDLK_BACKQUOTE_renamed_SDLK_GRAVE
+#define SDLK_QUOTE SDLK_QUOTE_renamed_SDLK_APOSTROPHE
+#define SDLK_QUOTEDBL SDLK_QUOTEDBL_renamed_SDLK_DBLAPOSTROPHE
 
 /* ##SDL_log.h */
 #define SDL_LogGetOutputFunction SDL_LogGetOutputFunction_renamed_SDL_GetLogOutputFunction
+#define SDL_LogGetPriority SDL_LogGetPriority_renamed_SDL_GetLogPriority
+#define SDL_LogResetPriorities SDL_LogResetPriorities_renamed_SDL_ResetLogPriorities
+#define SDL_LogSetAllPriority SDL_LogSetAllPriority_renamed_SDL_SetLogPriorities
 #define SDL_LogSetOutputFunction SDL_LogSetOutputFunction_renamed_SDL_SetLogOutputFunction
+#define SDL_LogSetPriority SDL_LogSetPriority_renamed_SDL_SetLogPriority
 
 /* ##SDL_mouse.h */
 #define SDL_FreeCursor SDL_FreeCursor_renamed_SDL_DestroyCursor
@@ -1034,7 +1053,8 @@
 #define SDL_GetTicks64 SDL_GetTicks64_renamed_SDL_GetTicks
 
 /* ##SDL_version.h */
-#define SDL_version SDL_version_renamed_SDL_Version
+#define SDL_COMPILEDVERSION SDL_COMPILEDVERSION_renamed_SDL_VERSION
+#define SDL_PATCHLEVEL SDL_PATCHLEVEL_renamed_SDL_MICRO_VERSION
 
 /* ##SDL_video.h */
 #define SDL_GetClosestDisplayMode SDL_GetClosestDisplayMode_renamed_SDL_GetClosestFullscreenDisplayMode

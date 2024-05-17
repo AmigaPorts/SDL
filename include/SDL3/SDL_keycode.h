@@ -20,9 +20,9 @@
 */
 
 /**
- *  \file SDL_keycode.h
+ * # CategoryKeycode
  *
- *  Defines constants which identify keyboard keys and modifiers.
+ * Defines constants which identify keyboard keys and modifiers.
  */
 
 #ifndef SDL_keycode_h_
@@ -57,12 +57,12 @@ typedef Uint32 SDL_Keycode;
 #define SDLK_TAB    '\t'
 #define SDLK_SPACE  ' '
 #define SDLK_EXCLAIM    '!'
-#define SDLK_QUOTEDBL   '"'
+#define SDLK_DBLAPOSTROPHE   '"'
 #define SDLK_HASH   '#'
 #define SDLK_PERCENT    '%'
 #define SDLK_DOLLAR '$'
 #define SDLK_AMPERSAND  '&'
-#define SDLK_QUOTE  '\''
+#define SDLK_APOSTROPHE  '\''
 #define SDLK_LEFTPAREN  '('
 #define SDLK_RIGHTPAREN ')'
 #define SDLK_ASTERISK   '*'
@@ -93,7 +93,7 @@ typedef Uint32 SDL_Keycode;
 #define SDLK_RIGHTBRACKET   ']'
 #define SDLK_CARET  '^'
 #define SDLK_UNDERSCORE '_'
-#define SDLK_BACKQUOTE  '`'
+#define SDLK_GRAVE  '`'
 #define SDLK_a  'a'
 #define SDLK_b  'b'
 #define SDLK_c  'c'

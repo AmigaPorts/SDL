@@ -20,10 +20,42 @@
 */
 
 /**
- *  \file SDL_audio.h
+ * # CategoryAudio
  *
- *  Audio functionality for the SDL library.
+ * Audio functionality for the SDL library.
+ *
+ * All audio in SDL3 revolves around SDL_AudioStream. Whether you want to play
+ * or record audio, convert it, stream it, buffer it, or mix it, you're going
+ * to be passing it through an audio stream.
+ *
+ * Audio streams are quite flexible; they can accept any amount of data at a
+ * time, in any supported format, and output it as needed in any other format,
+ * even if the data format changes on either side halfway through.
+ *
+ * An app opens an audio device and binds any number of audio streams to it,
+ * feeding more data to it as available. When the devices needs more data, it
+ * will pull it from all bound streams and mix them together for playback.
+ *
+ * Audio streams can also use an app-provided callback to supply data
+ * on-demand, which maps pretty closely to the SDL2 audio model.
+ *
+ * SDL also provides a simple .WAV loader in SDL_LoadWAV (and SDL_LoadWAV_IO
+ * if you aren't reading from a file) as a basic means to load sound data into
+ * your program.
+ *
+ * For multi-channel audio, the default SDL channel mapping is:
+ *
+ * ```
+ * 2:  FL  FR                          (stereo)
+ * 3:  FL  FR LFE                      (2.1 surround)
+ * 4:  FL  FR  BL  BR                  (quad)
+ * 5:  FL  FR LFE  BL  BR              (4.1 surround)
+ * 6:  FL  FR  FC LFE  SL  SR          (5.1 surround - last two can also be BL BR)
+ * 7:  FL  FR  FC LFE  BC  SL  SR      (6.1 surround)
+ * 8:  FL  FR  FC LFE  BL  BR  SL  SR  (7.1 surround)
+ * ```
  */
+
 
 #ifndef SDL_audio_h_
 #define SDL_audio_h_
@@ -41,17 +73,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/*
- *  For multi-channel audio, the default SDL channel mapping is:
- *  2:  FL  FR                          (stereo)
- *  3:  FL  FR LFE                      (2.1 surround)
- *  4:  FL  FR  BL  BR                  (quad)
- *  5:  FL  FR LFE  BL  BR              (4.1 surround)
- *  6:  FL  FR  FC LFE  SL  SR          (5.1 surround - last two can also be BL BR)
- *  7:  FL  FR  FC LFE  BC  SL  SR      (6.1 surround)
- *  8:  FL  FR  FC LFE  BL  BR  SL  SR  (7.1 surround)
- */
 
 /**
  * Audio format flags.
@@ -1345,7 +1366,7 @@ extern DECLSPEC SDL_AudioStream *SDLCALL SDL_OpenAudioDeviceStream(SDL_AudioDevi
  * always provided here in SDL_AUDIO_F32 format.
  *
  * \param userdata a pointer provided by the app through
- *                 SDL_SetAudioDevicePostmixCallback, for its own use.
+ *                 SDL_SetAudioPostmixCallback, for its own use.
  * \param spec the current format of audio that is to be submitted to the
  *             audio device.
  * \param buffer the buffer of audio samples to be submitted. The callback can
@@ -1358,7 +1379,7 @@ extern DECLSPEC SDL_AudioStream *SDLCALL SDL_OpenAudioDeviceStream(SDL_AudioDevi
  *
  * \since This datatype is available since SDL 3.0.0.
  *
- * \sa SDL_SetAudioDevicePostmixCallback
+ * \sa SDL_SetAudioPostmixCallback
  */
 typedef void (SDLCALL *SDL_AudioPostmixCallback)(void *userdata, const SDL_AudioSpec *spec, float *buffer, int buflen);
 
@@ -1537,13 +1558,6 @@ extern DECLSPEC int SDLCALL SDL_LoadWAV(const char *path, SDL_AudioSpec * spec,
                                         Uint8 ** audio_buf, Uint32 * audio_len);
 
 /**
- * Maximum volume allowed in calls to SDL_MixAudioFormat.
- *
- * \since This macro is available since SDL 3.0.0.
- */
-#define SDL_MIX_MAXVOLUME 128
-
-/**
  * Mix audio data in a specified format.
  *
  * This takes an audio buffer `src` of `len` bytes of `format` data and mixes
@@ -1560,16 +1574,16 @@ extern DECLSPEC int SDLCALL SDL_LoadWAV(const char *path, SDL_AudioSpec * spec,
  *
  * It is a common misconception that this function is required to write audio
  * data to an output stream in an audio callback. While you can do that,
- * SDL_MixAudioFormat() is really only needed when you're mixing a single
- * audio stream with a volume adjustment.
+ * SDL_MixAudio() is really only needed when you're mixing a single audio
+ * stream with a volume adjustment.
  *
  * \param dst the destination for the mixed audio
  * \param src the source audio buffer to be mixed
  * \param format the SDL_AudioFormat structure representing the desired audio
  *               format
  * \param len the length of the audio buffer in bytes
- * \param volume ranges from 0 - 128, and should be set to SDL_MIX_MAXVOLUME
- *               for full audio volume
+ * \param volume ranges from 0.0 - 1.0, and should be set to 1.0 for full
+ *               audio volume
  * \returns 0 on success or a negative error code on failure; call
  *          SDL_GetError() for more information.
  *
@@ -1577,10 +1591,10 @@ extern DECLSPEC int SDLCALL SDL_LoadWAV(const char *path, SDL_AudioSpec * spec,
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern DECLSPEC int SDLCALL SDL_MixAudioFormat(Uint8 * dst,
-                                               const Uint8 * src,
-                                               SDL_AudioFormat format,
-                                               Uint32 len, int volume);
+extern DECLSPEC int SDLCALL SDL_MixAudio(Uint8 * dst,
+                                         const Uint8 * src,
+                                         SDL_AudioFormat format,
+                                         Uint32 len, float volume);
 
 /**
  * Convert some audio data of one format to another format.
