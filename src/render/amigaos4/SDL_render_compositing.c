@@ -1024,47 +1024,7 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
                 break;
             }
 
-            case SDL_RENDERCMD_COPY: {
-                OS4_Vertex *verts = (OS4_Vertex *)(((Uint8 *) vertices) + cmd->data.draw.first);
-                SDL_Texture *thistexture = cmd->data.draw.texture;
-                SDL_BlendMode thisblend = cmd->data.draw.blend;
-                const SDL_RenderCommandType thiscmdtype = cmd->command;
-                SDL_RenderCommand *finalcmd = cmd;
-                SDL_RenderCommand *nextcmd = cmd->next;
-                size_t count = cmd->data.draw.count;
-                while (nextcmd) {
-                    const SDL_RenderCommandType nextcmdtype = nextcmd->command;
-                    if (nextcmdtype != thiscmdtype) {
-                        break; /* can't go any further on this draw call, different render command up next. */
-                    } else if (nextcmd->data.draw.texture != thistexture || nextcmd->data.draw.blend != thisblend) {
-                        break; /* can't go any further on this draw call, different texture/blendmode copy up next. */
-                    } else if (nextcmd->data.draw.a != cmd->data.draw.a ||
-                               nextcmd->data.draw.r != cmd->data.draw.r ||
-                               nextcmd->data.draw.g != cmd->data.draw.g ||
-                               nextcmd->data.draw.b != cmd->data.draw.b) {
-                        break; /* different color value */
-                    } else if ((count + nextcmd->data.draw.count) > MAX_QUADS) {
-                        break; /* Too much data for one call */
-                    } else {
-                        finalcmd = nextcmd; /* we cawn combine copy operations here. Mark this one as the furthest okay command. */
-                        count += nextcmd->data.draw.count;
-                    }
-                    nextcmd = nextcmd->next;
-                }
-
-                /* Apply viewport */
-                if (data->viewport.x || data->viewport.y) {
-                    for (int i = 0; i < count * 4; i++) {
-                        verts[i].x += data->viewport.x;
-                        verts[i].y += data->viewport.y;
-                    }
-                }
-
-                OS4_RenderCopyEx(renderer, cmd, verts, count, bitmap);
-                cmd = finalcmd;
-                break;
-            }
-
+            case SDL_RENDERCMD_COPY:
             case SDL_RENDERCMD_COPY_EX: {
                 OS4_Vertex *verts = (OS4_Vertex *)(((Uint8 *) vertices) + cmd->data.draw.first);
                 SDL_Texture *thistexture = cmd->data.draw.texture;
@@ -1087,12 +1047,11 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
                     } else if ((count + nextcmd->data.draw.count) > MAX_QUADS) {
                         break; /* Too much data for one call */
                     } else {
-                        finalcmd = nextcmd; /* we cawn combine copy operations here. Mark this one as the furthest okay command. */
+                        finalcmd = nextcmd; /* we can combine copy operations here. Mark this one as the furthest okay command. */
                         count += nextcmd->data.draw.count;
                     }
                     nextcmd = nextcmd->next;
                 }
-
 
                 /* Apply viewport */
                 if (data->viewport.x || data->viewport.y) {
