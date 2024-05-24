@@ -58,7 +58,7 @@ extern void * OS4_SaveAllocVecPooled(SDL_VideoDevice *this, uint32 size);
 extern void OS4_SaveFreePooled(SDL_VideoDevice *this, void *mem, uint32 size);
 extern void OS4_SaveFreeVecPooled(SDL_VideoDevice *this, void *mem);
 
-extern DECLSPEC struct MsgPort * OS4_GetSharedMessagePort();
+extern SDL_DECLSPEC struct MsgPort * OS4_GetSharedMessagePort();
 
 #endif /* _SDL_os4video_h */
 

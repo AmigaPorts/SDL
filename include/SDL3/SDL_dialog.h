@@ -114,6 +114,10 @@ typedef void(SDLCALL *SDL_DialogFileCallback)(void *userdata, const char * const
  * Depending on the platform, the user may be allowed to input paths that
  * don't yet exist.
  *
+ * On Linux, dialogs may require XDG Portals, which requires DBus, which
+ * requires an event-handling loop. Apps that do not use SDL to handle events
+ * should add a call to SDL_PumpEvents in their main loop.
+ *
  * \param callback An SDL_DialogFileCallback to be invoked when the user
  *                 selects a file and accepts, or cancels the dialog, or an
  *                 error occurs. The first argument is a null-terminated list
@@ -146,7 +150,7 @@ typedef void(SDLCALL *SDL_DialogFileCallback)(void *userdata, const char * const
  * \sa SDL_ShowSaveFileDialog
  * \sa SDL_ShowOpenFolderDialog
  */
-extern DECLSPEC void SDLCALL SDL_ShowOpenFileDialog(SDL_DialogFileCallback callback, void *userdata, SDL_Window *window, const SDL_DialogFileFilter *filters, const char *default_location, SDL_bool allow_many);
+extern SDL_DECLSPEC void SDLCALL SDL_ShowOpenFileDialog(SDL_DialogFileCallback callback, void *userdata, SDL_Window *window, const SDL_DialogFileFilter *filters, const char *default_location, SDL_bool allow_many);
 
 /**
  * Displays a dialog that lets the user choose a new or existing file on their
@@ -165,6 +169,10 @@ extern DECLSPEC void SDLCALL SDL_ShowOpenFileDialog(SDL_DialogFileCallback callb
  * the function was invoked on.
  *
  * The chosen file may or may not already exist.
+ *
+ * On Linux, dialogs may require XDG Portals, which requires DBus, which
+ * requires an event-handling loop. Apps that do not use SDL to handle events
+ * should add a call to SDL_PumpEvents in their main loop.
  *
  * \param callback An SDL_DialogFileCallback to be invoked when the user
  *                 selects a file and accepts, or cancels the dialog, or an
@@ -196,7 +204,7 @@ extern DECLSPEC void SDLCALL SDL_ShowOpenFileDialog(SDL_DialogFileCallback callb
  * \sa SDL_ShowOpenFileDialog
  * \sa SDL_ShowOpenFolderDialog
  */
-extern DECLSPEC void SDLCALL SDL_ShowSaveFileDialog(SDL_DialogFileCallback callback, void *userdata, SDL_Window *window, const SDL_DialogFileFilter *filters, const char *default_location);
+extern SDL_DECLSPEC void SDLCALL SDL_ShowSaveFileDialog(SDL_DialogFileCallback callback, void *userdata, SDL_Window *window, const SDL_DialogFileFilter *filters, const char *default_location);
 
 /**
  * Displays a dialog that lets the user select a folder on their filesystem.
@@ -215,6 +223,10 @@ extern DECLSPEC void SDLCALL SDL_ShowSaveFileDialog(SDL_DialogFileCallback callb
  *
  * Depending on the platform, the user may be allowed to input paths that
  * don't yet exist.
+ *
+ * On Linux, dialogs may require XDG Portals, which requires DBus, which
+ * requires an event-handling loop. Apps that do not use SDL to handle events
+ * should add a call to SDL_PumpEvents in their main loop.
  *
  * \param callback An SDL_DialogFileCallback to be invoked when the user
  *                 selects a file and accepts, or cancels the dialog, or an
@@ -240,7 +252,7 @@ extern DECLSPEC void SDLCALL SDL_ShowSaveFileDialog(SDL_DialogFileCallback callb
  * \sa SDL_ShowOpenFileDialog
  * \sa SDL_ShowSaveFileDialog
  */
-extern DECLSPEC void SDLCALL SDL_ShowOpenFolderDialog(SDL_DialogFileCallback callback, void *userdata, SDL_Window *window, const char *default_location, SDL_bool allow_many);
+extern SDL_DECLSPEC void SDLCALL SDL_ShowOpenFolderDialog(SDL_DialogFileCallback callback, void *userdata, SDL_Window *window, const char *default_location, SDL_bool allow_many);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

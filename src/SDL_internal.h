@@ -66,12 +66,12 @@
 
 #if SDL_DYNAMIC_API
 #include "dynapi/SDL_dynapi_overrides.h"
-/* force DECLSPEC off...it's all internal symbols now.
+/* force SDL_DECLSPEC off...it's all internal symbols now.
    These will have actual #defines during SDL_dynapi.c only */
-#ifdef DECLSPEC
-#undef DECLSPEC
+#ifdef SDL_DECLSPEC
+#undef SDL_DECLSPEC
 #endif
-#define DECLSPEC
+#define SDL_DECLSPEC
 #endif
 
 #ifdef SDL_PLATFORM_APPLE
@@ -265,6 +265,14 @@
 #error SDL_RENDER enabled without any backend drivers.
 #endif
 
+#if !defined(HAVE_LIBC)
+// If not using _any_ C runtime, these have to be defined before SDL_thread.h
+// gets included, so internal SDL_CreateThread calls will not try to reference
+// the (unavailable and unneeded) _beginthreadex/_endthreadex functions.
+#define SDL_BeginThreadFunction NULL
+#define SDL_EndThreadFunction NULL
+#endif
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_intrin.h>
 
@@ -279,10 +287,10 @@
 extern "C" {
 #endif
 
-extern DECLSPEC Uint32 SDLCALL SDL_GetNextObjectID(void);
-extern DECLSPEC int SDLCALL SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore *sem, Sint64 timeoutNS);
-extern DECLSPEC int SDLCALL SDL_WaitConditionTimeoutNS(SDL_Condition *cond, SDL_Mutex *mutex, Sint64 timeoutNS);
-extern DECLSPEC SDL_bool SDLCALL SDL_WaitEventTimeoutNS(SDL_Event *event, Sint64 timeoutNS);
+extern Uint32 SDLCALL SDL_GetNextObjectID(void);
+extern int SDLCALL SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore *sem, Sint64 timeoutNS);
+extern int SDLCALL SDL_WaitConditionTimeoutNS(SDL_Condition *cond, SDL_Mutex *mutex, Sint64 timeoutNS);
+extern SDL_bool SDLCALL SDL_WaitEventTimeoutNS(SDL_Event *event, Sint64 timeoutNS);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus
