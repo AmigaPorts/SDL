@@ -181,7 +181,9 @@ OS4_ExitThread(int32 returnCode, int32 finalData)
 }
 
 int
-SDL_SYS_CreateThread(SDL_Thread * thread)
+SDL_SYS_CreateThread(SDL_Thread * thread,
+                     SDL_FunctionPointer pfnBeginThread,
+                     SDL_FunctionPointer pfnEndThread)
 {
     char nameBuffer[128];
     struct Task* thisTask = IExec->FindTask(NULL);

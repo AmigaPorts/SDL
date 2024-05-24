@@ -70,10 +70,10 @@ struct SDL_Window
      */
     SDL_Rect floating;
 
-    /* Toggle for drivers to indicate that the current window state is
-     * not floating, but may not have any fixed-size flags (e.g. tiled)
+    /* Toggle for drivers to indicate that the current window state is tiled,
+     * and sizes set non-programmatically shouldn't be cached.
      */
-    SDL_bool state_not_floating;
+    SDL_bool tiled;
 
     /* Whether or not the initial position was defined */
     SDL_bool undefined_x;
@@ -158,7 +158,8 @@ typedef enum
     VIDEO_DEVICE_CAPS_HAS_POPUP_WINDOW_SUPPORT = 0x02,
     VIDEO_DEVICE_CAPS_SENDS_FULLSCREEN_DIMENSIONS = 0x04,
     VIDEO_DEVICE_CAPS_FULLSCREEN_ONLY = 0x08,
-    VIDEO_DEVICE_CAPS_SENDS_DISPLAY_CHANGES = 0x10
+    VIDEO_DEVICE_CAPS_SENDS_DISPLAY_CHANGES = 0x10,
+    VIDEO_DEVICE_CAPS_DISABLE_MOUSE_WARP_ON_FULLSCREEN_TRANSITIONS = 0x20
 } DeviceCaps;
 
 struct SDL_VideoDevice

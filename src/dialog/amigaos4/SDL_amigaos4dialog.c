@@ -213,7 +213,7 @@ void SDL_ShowOpenFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL
     args->callback = callback;
     args->userdata = userdata;
 
-    SDL_Thread *thread = SDL_CreateThreadInternal(OS4_DialogThread, "SDL_ShowOpenFileDialog", 0, (void *) args);
+    SDL_Thread *thread = SDL_CreateThread(OS4_DialogThread, "SDL_ShowOpenFileDialog", (void *) args);
 
     if (thread == NULL) {
         callback(userdata, NULL, -1);
@@ -241,7 +241,7 @@ void SDL_ShowSaveFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL
     args->callback = callback;
     args->userdata = userdata;
 
-    SDL_Thread *thread = SDL_CreateThreadInternal(OS4_DialogThread, "SDL_ShowSaveFileDialog", 0, (void *) args);
+    SDL_Thread *thread = SDL_CreateThread(OS4_DialogThread, "SDL_ShowSaveFileDialog", (void *) args);
 
     if (thread == NULL) {
         callback(userdata, NULL, -1);
@@ -269,7 +269,7 @@ void SDL_ShowOpenFolderDialog(SDL_DialogFileCallback callback, void* userdata, S
     args->callback = callback;
     args->userdata = userdata;
 
-    SDL_Thread *thread = SDL_CreateThreadInternal(OS4_DialogThread, "SDL_ShowOpenFolderDialog", 0, (void *) args);
+    SDL_Thread *thread = SDL_CreateThread(OS4_DialogThread, "SDL_ShowOpenFolderDialog", (void *) args);
 
     if (thread == NULL) {
         callback(userdata, NULL, -1);

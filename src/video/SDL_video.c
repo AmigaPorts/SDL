@@ -197,6 +197,11 @@ static SDL_bool SDL_SendsDisplayChanges(SDL_VideoDevice *_this)
     return !!(_this->device_caps & VIDEO_DEVICE_CAPS_SENDS_DISPLAY_CHANGES);
 }
 
+static SDL_bool SDL_DisableMouseWarpOnFullscreenTransitions(SDL_VideoDevice *_this)
+{
+    return !!(_this->device_caps & VIDEO_DEVICE_CAPS_DISABLE_MOUSE_WARP_ON_FULLSCREEN_TRANSITIONS);
+}
+
 /* Hint to treat all window ops as synchronous */
 static SDL_bool syncHint;
 
@@ -1863,7 +1868,9 @@ int SDL_UpdateFullscreenMode(SDL_Window *window, SDL_bool fullscreen, SDL_bool c
             }
 
             /* Restore the cursor position */
-            SDL_RestoreMousePosition(window);
+            if (!SDL_DisableMouseWarpOnFullscreenTransitions(_this)) {
+                SDL_RestoreMousePosition(window);
+            }
         }
     } else {
         SDL_bool resized = SDL_FALSE;
@@ -1907,7 +1914,7 @@ int SDL_UpdateFullscreenMode(SDL_Window *window, SDL_bool fullscreen, SDL_bool c
             }
 
             /* Restore the cursor position if we've exited fullscreen on a display */
-            if (display) {
+            if (display && !SDL_DisableMouseWarpOnFullscreenTransitions(_this)) {
                 SDL_RestoreMousePosition(window);
             }
         }
@@ -2201,7 +2208,11 @@ SDL_Window *SDL_CreateWindowWithProperties(SDL_PropertiesID props)
         }
 
         SDL_zero(bounds);
-        SDL_GetDisplayBounds(displayID, &bounds);
+        SDL_GetDisplayUsableBounds(displayID, &bounds);
+        if (w > bounds.w || h > bounds.h) {
+            /* This window is larger than the usable bounds, just center on the display */
+            SDL_GetDisplayUsableBounds(displayID, &bounds);
+        }
         if (SDL_WINDOWPOS_ISCENTERED(x) || SDL_WINDOWPOS_ISUNDEFINED(x)) {
             if (SDL_WINDOWPOS_ISUNDEFINED(x)) {
                 undefined_x = SDL_TRUE;
@@ -2672,8 +2683,12 @@ int SDL_SetWindowPosition(SDL_Window *window, int x, int y)
         }
 
         SDL_zero(bounds);
-        if (SDL_GetDisplayBounds(displayID, &bounds) < 0) {
-            return -1;
+        if (SDL_GetDisplayUsableBounds(displayID, &bounds) < 0 ||
+            window->windowed.w > bounds.w ||
+            window->windowed.h > bounds.h) {
+            if (SDL_GetDisplayBounds(displayID, &bounds) < 0) {
+                return -1;
+            }
         }
         if (SDL_WINDOWPOS_ISCENTERED(x)) {
             x = bounds.x + (bounds.w - window->windowed.w) / 2;

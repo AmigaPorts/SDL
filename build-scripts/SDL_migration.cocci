@@ -3191,5 +3191,6 @@ typedef SDL_Colour, SDL_Color;
   (...)
 @@
 @@
-- SDL_MIX_MAXVOLUME
-+ 1.0f
+- SDL_BlitScaled
++ SDL_BlitSurfaceScaled
+  (...)
