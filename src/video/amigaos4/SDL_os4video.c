@@ -111,24 +111,20 @@ OS4_FindApplicationName(_THIS)
 }
 
 static void
-OS4_ConfigureBlanker(_THIS)
+OS4_SuspendScreenSaver(_THIS)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
-    BOOL state = FALSE;
-    const char* hint = SDL_GetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER);
-
-    if (hint) {
-        state = atoi(hint) == 1;
-    }
-
-    BOOL result = IApplication->SetApplicationAttrs(data->appId,
-                                                    APPATTR_AllowsBlanker, state,
-                                                    TAG_DONE);
-    if (result) {
-        dprintf("Blanker %s\n", state ? "enabled" : "disabled");
-    } else {
-        dprintf("Failed to configure blanker\n");
+    if (data->appId) {
+        const BOOL state = (_this->suspend_screensaver == SDL_FALSE);
+        const BOOL result = IApplication->SetApplicationAttrs(data->appId,
+                                                              APPATTR_AllowsBlanker, state,
+                                                              TAG_DONE);
+        if (result) {
+            dprintf("Blanker %s\n", state ? "enabled" : "disabled");
+        } else {
+            dprintf("Failed to configure blanker\n");
+        }
     }
 }
 
@@ -143,7 +139,6 @@ OS4_RegisterApplication(_THIS)
 
     if (data->appId) {
         dprintf("Registered application with id %u\n", data->appId);
-        OS4_ConfigureBlanker(_this);
     } else {
         dprintf("Failed to register application\n");
     }
@@ -459,7 +454,7 @@ OS4_SetFunctionPointers(SDL_VideoDevice * device)
     OS4_SetMiniGLFunctions(device);
 
     device->PumpEvents = OS4_PumpEvents;
-    //device->SuspendScreenSaver = OS4_SuspendScreenSaver;
+    device->SuspendScreenSaver = OS4_SuspendScreenSaver;
 
     //device->StartTextInput = OS4_StartTextInput;
     //device->StopTextInput = OS4_StopTextInput;
