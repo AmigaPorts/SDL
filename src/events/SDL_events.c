@@ -1310,12 +1310,25 @@ int SDL_PushEvent(SDL_Event *event)
 
 void SDL_SetEventFilter(SDL_EventFilter filter, void *userdata)
 {
+    SDL_EventEntry *event, *next;
     SDL_LockMutex(SDL_event_watchers_lock);
     {
         /* Set filter and discard pending events */
         SDL_EventOK.callback = filter;
         SDL_EventOK.userdata = userdata;
-        SDL_FlushEvents(SDL_EVENT_FIRST, SDL_EVENT_LAST);
+        if (filter) {
+            /* Cut all events not accepted by the filter */
+            SDL_LockMutex(SDL_EventQ.lock);
+            {
+                for (event = SDL_EventQ.head; event; event = next) {
+                    next = event->next;
+                    if (!filter(userdata, &event->event)) {
+                        SDL_CutEvent(event);
+                    }
+                }
+            }
+            SDL_UnlockMutex(SDL_EventQ.lock);
+        }
     }
     SDL_UnlockMutex(SDL_event_watchers_lock);
 }

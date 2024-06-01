@@ -22,6 +22,10 @@
 /* Ported from original test/common.c file. */
 #include <SDL3/SDL_test.h>
 
+#define SDL_MAIN_NOIMPL
+#define SDL_MAIN_USE_CALLBACKS
+#include <SDL3/SDL_main.h>
+
 static const char *common_usage[] = {
     "[-h | --help]",
     "[--trackmem]",
@@ -31,6 +35,7 @@ static const char *common_usage[] = {
 
 static const char *video_usage[] = {
     "[--always-on-top]",
+    "[--aspect min-max]",
     "[--auto-scale-content]",
     "[--center | --position X,Y]",
     "[--confine-cursor X,Y,W,H]",
@@ -88,7 +93,7 @@ static void SDL_snprintfcat(SDL_OUT_Z_CAP(maxlen) char *text, size_t maxlen, SDL
     va_end(ap);
 }
 
-SDLTest_CommonState *SDLTest_CommonCreateState(char **argv, Uint32 flags)
+SDLTest_CommonState *SDLTest_CommonCreateState(char **argv, SDL_InitFlags flags)
 {
     int i;
     SDLTest_CommonState *state;
@@ -369,12 +374,7 @@ int SDLTest_CommonArg(SDLTest_CommonState *state, int index)
             return 2;
         }
         if (SDL_strcasecmp(argv[index], "--usable-bounds") == 0) {
-            /* !!! FIXME: this is a bit of a hack, but I don't want to add a
-               !!! FIXME:  flag to the public structure in 2.0.x */
-            state->window_x = -1;
-            state->window_y = -1;
-            state->window_w = -1;
-            state->window_h = -1;
+            state->fill_usable_bounds = SDL_TRUE;
             return 1;
         }
         if (SDL_strcasecmp(argv[index], "--geometry") == 0) {
@@ -432,6 +432,26 @@ int SDLTest_CommonArg(SDLTest_CommonState *state, int index)
             *h++ = '\0';
             state->window_maxW = SDL_atoi(w);
             state->window_maxH = SDL_atoi(h);
+            return 2;
+        }
+        if (SDL_strcasecmp(argv[index], "--aspect") == 0) {
+            char *min_aspect, *max_aspect;
+            ++index;
+            if (!argv[index]) {
+                return -1;
+            }
+            min_aspect = argv[index];
+            max_aspect = argv[index];
+            while (*max_aspect && *max_aspect != '-') {
+                ++max_aspect;
+            }
+            if (*max_aspect) {
+                *max_aspect++ = '\0';
+            } else {
+                max_aspect = min_aspect;
+            }
+            state->window_min_aspect = (float)SDL_atof(min_aspect);
+            state->window_max_aspect = (float)SDL_atof(max_aspect);
             return 2;
         }
         if (SDL_strcasecmp(argv[index], "--logical") == 0) {
@@ -941,7 +961,7 @@ static void SDLTest_PrintModState(char *text, size_t maxlen, SDL_Keymod keymod)
     }
 }
 
-static void SDLTest_PrintButtonMask(char *text, size_t maxlen, Uint32 flags)
+static void SDLTest_PrintButtonMask(char *text, size_t maxlen, SDL_MouseButtonFlags flags)
 {
     int i;
     int count = 0;
@@ -1269,7 +1289,10 @@ SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state)
             }
             SDL_free(displays);
 
-            if (SDL_WINDOWPOS_ISCENTERED(state->window_x)) {
+            if (SDL_WINDOWPOS_ISUNDEFINED(state->window_x)) {
+                state->window_x = SDL_WINDOWPOS_UNDEFINED_DISPLAY(state->displayID);
+                state->window_y = SDL_WINDOWPOS_UNDEFINED_DISPLAY(state->displayID);
+            } else if (SDL_WINDOWPOS_ISCENTERED(state->window_x)) {
                 state->window_x = SDL_WINDOWPOS_CENTERED_DISPLAY(state->displayID);
                 state->window_y = SDL_WINDOWPOS_CENTERED_DISPLAY(state->displayID);
             }
@@ -1304,19 +1327,18 @@ SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state)
             SDL_Rect r;
             SDL_PropertiesID props;
 
-            r.x = state->window_x;
-            r.y = state->window_y;
-            r.w = state->window_w;
-            r.h = state->window_h;
-            if (state->auto_scale_content) {
-                float scale = SDL_GetDisplayContentScale(state->displayID);
-                r.w = (int)SDL_ceilf(r.w * scale);
-                r.h = (int)SDL_ceilf(r.h * scale);
-            }
-
-            /* !!! FIXME: hack to make --usable-bounds work for now. */
-            if ((r.x == -1) && (r.y == -1) && (r.w == -1) && (r.h == -1)) {
+            if (state->fill_usable_bounds) {
                 SDL_GetDisplayUsableBounds(state->displayID, &r);
+            } else {
+                r.x = state->window_x;
+                r.y = state->window_y;
+                r.w = state->window_w;
+                r.h = state->window_h;
+                if (state->auto_scale_content) {
+                    float scale = SDL_GetDisplayContentScale(state->displayID);
+                    r.w = (int)SDL_ceilf(r.w * scale);
+                    r.h = (int)SDL_ceilf(r.h * scale);
+                }
             }
 
             if (state->num_windows > 1) {
@@ -1344,6 +1366,9 @@ SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state)
             }
             if (state->window_maxW || state->window_maxH) {
                 SDL_SetWindowMaximumSize(state->windows[i], state->window_maxW, state->window_maxH);
+            }
+            if (state->window_min_aspect || state->window_max_aspect) {
+                SDL_SetWindowAspectRatio(state->windows[i], state->window_min_aspect, state->window_max_aspect);
             }
             SDL_GetWindowSize(state->windows[i], &w, &h);
             if (!(state->window_flags & SDL_WINDOW_RESIZABLE) && (w != r.w || h != r.h)) {
@@ -2372,15 +2397,21 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
             break;
         case SDLK_a:
             if (withControl) {
-                /* Ctrl-A reports absolute mouse position. */
-                float x, y;
-                const Uint32 mask = SDL_GetGlobalMouseState(&x, &y);
-                SDL_Log("ABSOLUTE MOUSE: (%g, %g)%s%s%s%s%s\n", x, y,
-                        (mask & SDL_BUTTON_LMASK) ? " [LBUTTON]" : "",
-                        (mask & SDL_BUTTON_MMASK) ? " [MBUTTON]" : "",
-                        (mask & SDL_BUTTON_RMASK) ? " [RBUTTON]" : "",
-                        (mask & SDL_BUTTON_X1MASK) ? " [X2BUTTON]" : "",
-                        (mask & SDL_BUTTON_X2MASK) ? " [X2BUTTON]" : "");
+                /* Ctrl-A toggle aspect ratio */
+                SDL_Window *window = SDL_GetWindowFromID(event->key.windowID);
+                if (window) {
+                    float min_aspect = 0.0f, max_aspect = 0.0f;
+
+                    SDL_GetWindowAspectRatio(window, &min_aspect, &max_aspect);
+                    if (min_aspect > 0.0f || max_aspect > 0.0f) {
+                        min_aspect = 0.0f;
+                        max_aspect = 0.0f;
+                    } else {
+                        min_aspect = 1.0f;
+                        max_aspect = 1.0f;
+                    }
+                    SDL_SetWindowAspectRatio(window, min_aspect, max_aspect);
+                }
             }
             break;
         case SDLK_0:
@@ -2400,19 +2431,19 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
             }
             break;
         case SDLK_ESCAPE:
-            return 1;
+            return SDL_APP_SUCCESS;
         default:
             break;
         }
         break;
     }
     case SDL_EVENT_QUIT:
-        return 1;
+        return SDL_APP_SUCCESS;
     default:
         break;
     }
 
-    return 0;  /* keep going */
+    return SDL_APP_CONTINUE;
 }
 
 void SDLTest_CommonEvent(SDLTest_CommonState *state, SDL_Event *event, int *done)
@@ -2478,7 +2509,7 @@ void SDLTest_CommonDrawWindowInfo(SDL_Renderer *renderer, SDL_Window *window, fl
     SDL_Rect rect;
     const SDL_DisplayMode *mode;
     float scaleX, scaleY;
-    Uint32 flags;
+    SDL_MouseButtonFlags flags;
     SDL_DisplayID windowDisplayID = SDL_GetDisplayForWindow(window);
     SDL_RendererInfo info;
     SDL_RendererLogicalPresentation logical_presentation;

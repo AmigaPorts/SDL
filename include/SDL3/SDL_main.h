@@ -188,7 +188,7 @@ typedef int (SDLCALL *SDL_AppIterate_func)(void *appstate);
 typedef int (SDLCALL *SDL_AppEvent_func)(void *appstate, const SDL_Event *event);
 typedef void (SDLCALL *SDL_AppQuit_func)(void *appstate);
 
-/**
+/*
  * You can (optionally!) define SDL_MAIN_USE_CALLBACKS before including
  * SDL_main.h, and then your application will _not_ have a standard
  * "main" entry point. Instead, it will operate as a collection of
@@ -215,6 +215,49 @@ typedef void (SDLCALL *SDL_AppQuit_func)(void *appstate);
 #ifdef SDL_MAIN_USE_CALLBACKS
 
 /**
+ * Value that requests that the app continue from the main callbacks.
+ *
+ * If SDL_AppInit, SDL_AppEvent, or SDL_AppIterate returns this value, the
+ * program will continue to run. This is the normal return value case.
+ *
+ * This is always 0; using this macro may be clearer, but is not required.
+ *
+ * \since This macro is available since SDL 3.0.0.
+ */
+#define SDL_APP_CONTINUE 0
+
+/**
+ * Value that requests termination with error from the main callbacks.
+ *
+ * If SDL_AppInit, SDL_AppEvent, or SDL_AppIterate returns this value, the
+ * program will terminate and report failure to the operating system.
+ *
+ * What that failure looks like is platform-dependent. On Unix, for example,
+ * the process error code will be non-zero.
+ *
+ * This is always -1; using this macro may be clearer, but is not required.
+ *
+ * \since This macro is available since SDL 3.0.0.
+ */
+#define SDL_APP_FAILURE -1
+
+/**
+ * Value that requests termination with success from the main callbacks.
+ *
+ * If SDL_AppInit, SDL_AppEvent, or SDL_AppIterate returns this value, the
+ * program will terminate and report success to the operating system.
+ *
+ * What that success looks like is platform-dependent. On Unix, for example,
+ * the process error code will be zero.
+ *
+ * This is always 1; using this macro may be clearer, but is not required.
+ *
+ * \since This macro is available since SDL 3.0.0.
+ */
+#define SDL_APP_SUCCESS 1
+
+
+/**
  * App-implemented initial entry point for SDL_MAIN_USE_CALLBACKS apps.
  *
  * Apps implement this function when using SDL_MAIN_USE_CALLBACKS. If using a
@@ -234,20 +277,21 @@ typedef void (SDLCALL *SDL_AppQuit_func)(void *appstate);
  * to use a global variable. If this isn't set, the pointer will be NULL in
  * future entry points.
  *
- * If this function returns 0, the app will proceed to normal operation, and
- * will begin receiving repeated calls to SDL_AppIterate and SDL_AppEvent for
- * the life of the program. If this function returns < 0, SDL will call
- * SDL_AppQuit and terminate the process with an exit code that reports an
- * error to the platform. If it returns > 0, the SDL calls SDL_AppQuit and
- * terminates with an exit code that reports success to the platform.
+ * If this function returns SDL_APP_CONTINUE, the app will proceed to normal
+ * operation, and will begin receiving repeated calls to SDL_AppIterate and
+ * SDL_AppEvent for the life of the program. If this function returns
+ * SDL_APP_FAILURE, SDL will call SDL_AppQuit and terminate the process with
+ * an exit code that reports an error to the platform. If it returns
+ * SDL_APP_SUCCESS, SDL calls SDL_AppQuit and terminates with an exit code
+ * that reports success to the platform.
  *
  * \param appstate a place where the app can optionally store a pointer for
  *                 future use.
  * \param argc The standard ANSI C main's argc; number of elements in `argv`
  * \param argv The standard ANSI C main's argv; array of command line
  *             arguments.
- * \returns -1 to terminate with an error, 1 to terminate with success, 0 to
- *          continue.
+ * \returns SDL_APP_FAILURE to terminate with an error, SDL_APP_SUCCESS to
+ *          terminate with success, SDL_APP_CONTINUE to continue.
  *
  * \threadsafety This function is not thread safe.
  *
@@ -286,16 +330,17 @@ extern SDLMAIN_DECLSPEC int SDLCALL SDL_AppInit(void **appstate, int argc, char 
  * The `appstate` parameter is an optional pointer provided by the app during
  * SDL_AppInit(). If the app never provided a pointer, this will be NULL.
  *
- * If this function returns 0, the app will continue normal operation,
- * receiving repeated calls to SDL_AppIterate and SDL_AppEvent for the life of
- * the program. If this function returns < 0, SDL will call SDL_AppQuit and
- * terminate the process with an exit code that reports an error to the
- * platform. If it returns > 0, the SDL calls SDL_AppQuit and terminates with
- * an exit code that reports success to the platform.
+ * If this function returns SDL_APP_CONTINUE, the app will continue normal
+ * operation, receiving repeated calls to SDL_AppIterate and SDL_AppEvent for
+ * the life of the program. If this function returns SDL_APP_FAILURE, SDL will
+ * call SDL_AppQuit and terminate the process with an exit code that reports
+ * an error to the platform. If it returns SDL_APP_SUCCESS, SDL calls
+ * SDL_AppQuit and terminates with an exit code that reports success to the
+ * platform.
  *
  * \param appstate an optional pointer, provided by the app in SDL_AppInit.
- * \returns -1 to terminate with an error, 1 to terminate with success, 0 to
- *          continue.
+ * \returns SDL_APP_FAILURE to terminate with an error, SDL_APP_SUCCESS to
+ *          terminate with success, SDL_APP_CONTINUE to continue.
  *
  * \threadsafety This function is not thread safe.
  *
@@ -331,17 +376,18 @@ extern SDLMAIN_DECLSPEC int SDLCALL SDL_AppIterate(void *appstate);
  * The `appstate` parameter is an optional pointer provided by the app during
  * SDL_AppInit(). If the app never provided a pointer, this will be NULL.
  *
- * If this function returns 0, the app will continue normal operation,
- * receiving repeated calls to SDL_AppIterate and SDL_AppEvent for the life of
- * the program. If this function returns < 0, SDL will call SDL_AppQuit and
- * terminate the process with an exit code that reports an error to the
- * platform. If it returns > 0, the SDL calls SDL_AppQuit and terminates with
- * an exit code that reports success to the platform.
+ * If this function returns SDL_APP_CONTINUE, the app will continue normal
+ * operation, receiving repeated calls to SDL_AppIterate and SDL_AppEvent for
+ * the life of the program. If this function returns SDL_APP_FAILURE, SDL will
+ * call SDL_AppQuit and terminate the process with an exit code that reports
+ * an error to the platform. If it returns SDL_APP_SUCCESS, SDL calls
+ * SDL_AppQuit and terminates with an exit code that reports success to the
+ * platform.
  *
  * \param appstate an optional pointer, provided by the app in SDL_AppInit.
  * \param event the new event for the app to examine.
- * \returns -1 to terminate with an error, 1 to terminate with success, 0 to
- *          continue.
+ * \returns SDL_APP_FAILURE to terminate with an error, SDL_APP_SUCCESS to
+ *          terminate with success, SDL_APP_CONTINUE to continue.
  *
  * \threadsafety This function is not thread safe.
  *

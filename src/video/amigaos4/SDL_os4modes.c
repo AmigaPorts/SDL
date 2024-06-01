@@ -83,7 +83,7 @@ OS4_GetDisplayMode(ULONG id, SDL_DisplayMode * mode)
             mode->format = SDL_PIXELFORMAT_RGB565;
             break;
         case 15:
-            mode->format = SDL_PIXELFORMAT_RGB555;
+            mode->format = SDL_PIXELFORMAT_XRGB1555;
             break;
         case 8:
             mode->format = SDL_PIXELFORMAT_INDEX8;

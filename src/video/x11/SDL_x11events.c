@@ -764,6 +764,19 @@ static void X11_HandleClipboardEvent(SDL_VideoDevice *_this, const XEvent *xeven
             SDL_zerop(clipboard);
         }
     } break;
+
+    case PropertyNotify:
+    {
+        char *name_of_atom = X11_XGetAtomName(display, xevent->xproperty.atom);
+
+        if (SDL_strncmp(name_of_atom, "SDL_SELECTION", sizeof("SDL_SELECTION") - 1) == 0 && xevent->xproperty.state == PropertyNewValue) {
+            videodata->selection_incr_waiting = SDL_FALSE;
+        }
+
+        if (name_of_atom) {
+            X11_XFree(name_of_atom);
+        }
+    } break;
     }
 }
 
@@ -1697,9 +1710,9 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
                                  * becoming fullscreen. Switch to the application requested mode if necessary.
                                  */
                                 SDL_copyp(&data->window->current_fullscreen_mode, &data->window->requested_fullscreen_mode);
-                                SDL_UpdateFullscreenMode(data->window, SDL_TRUE, SDL_TRUE);
+                                SDL_UpdateFullscreenMode(data->window, SDL_FULLSCREEN_OP_UPDATE, SDL_TRUE);
                             } else {
-                                SDL_UpdateFullscreenMode(data->window, SDL_TRUE, SDL_FALSE);
+                                SDL_UpdateFullscreenMode(data->window, SDL_FULLSCREEN_OP_ENTER, SDL_FALSE);
                             }
                         }
                     } else {
@@ -1710,6 +1723,12 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
 
                         /* Need to restore or update any limits changed while the window was fullscreen. */
                         X11_SetWindowMinMax(data->window, !!(flags & SDL_WINDOW_MAXIMIZED));
+
+                        /* Toggle the borders if they were forced on while creating a borderless fullscreen window. */
+                        if (data->fullscreen_borders_forced_on) {
+                            data->toggle_borders = SDL_TRUE;
+                            data->fullscreen_borders_forced_on = SDL_FALSE;
+                        }
                     }
 
                     if ((flags & SDL_WINDOW_FULLSCREEN) &&
