@@ -482,9 +482,9 @@ static void testRenderer()
     SDL_Window * g = SDL_CreateWindow("Green", 100, 100, SDL_WINDOW_RESIZABLE);
     SDL_Window * b = SDL_CreateWindow("Blue", 100, 100, SDL_WINDOW_RESIZABLE);
 
-    SDL_Renderer * rr = SDL_CreateRenderer(r, NULL, 0);
-    SDL_Renderer * gr = SDL_CreateRenderer(g, NULL, 0);
-    SDL_Renderer * br = SDL_CreateRenderer(b, NULL, 0);
+    SDL_Renderer * rr = SDL_CreateRenderer(r, NULL);
+    SDL_Renderer * gr = SDL_CreateRenderer(g, NULL);
+    SDL_Renderer * br = SDL_CreateRenderer(b, NULL);
 
     //SDL_SetRenderLogicalSize(rr, 50, 50);
     //SDL_SetRenderLogicalSize(gr, 80, 80);
@@ -521,7 +521,7 @@ static void testDraw()
 {
     SDL_Window * w = SDL_CreateWindow("Draw", 200, 200, SDL_WINDOW_RESIZABLE);
 
-    SDL_Renderer * r = SDL_CreateRenderer(w, NULL, 0);
+    SDL_Renderer * r = SDL_CreateRenderer(w, NULL);
 
     if (w && r) {
         while (eventLoopInner()) {
@@ -553,7 +553,7 @@ static void testRenderVsync()
 
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
-    SDL_Renderer * r = SDL_CreateRenderer(w, NULL, 0);
+    SDL_Renderer * r = SDL_CreateRenderer(w, NULL);
 
     if (w && r) {
         while (eventLoopInner()) {
