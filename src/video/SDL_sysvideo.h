@@ -45,6 +45,8 @@ struct SDL_Window
     int w, h;
     int min_w, min_h;
     int max_w, max_h;
+    float min_aspect;
+    float max_aspect;
     int last_pixel_w, last_pixel_h;
     SDL_WindowFlags flags;
     SDL_WindowFlags pending_flags;
@@ -162,6 +164,14 @@ typedef enum
     VIDEO_DEVICE_CAPS_DISABLE_MOUSE_WARP_ON_FULLSCREEN_TRANSITIONS = 0x20
 } DeviceCaps;
 
+/* Fullscreen operations */
+typedef enum
+{
+    SDL_FULLSCREEN_OP_LEAVE = 0,
+    SDL_FULLSCREEN_OP_ENTER,
+    SDL_FULLSCREEN_OP_UPDATE
+} SDL_FullscreenOp;
+
 struct SDL_VideoDevice
 {
     /* * * */
@@ -232,6 +242,7 @@ struct SDL_VideoDevice
     void (*SetWindowSize)(SDL_VideoDevice *_this, SDL_Window *window);
     void (*SetWindowMinimumSize)(SDL_VideoDevice *_this, SDL_Window *window);
     void (*SetWindowMaximumSize)(SDL_VideoDevice *_this, SDL_Window *window);
+    void (*SetWindowAspectRatio)(SDL_VideoDevice *_this, SDL_Window *window);
     int (*GetWindowBordersSize)(SDL_VideoDevice *_this, SDL_Window *window, int *top, int *left, int *bottom, int *right);
     void (*GetWindowSizeInPixels)(SDL_VideoDevice *_this, SDL_Window *window, int *w, int *h);
     int (*SetWindowOpacity)(SDL_VideoDevice *_this, SDL_Window *window, float opacity);
@@ -246,7 +257,7 @@ struct SDL_VideoDevice
     void (*SetWindowBordered)(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool bordered);
     void (*SetWindowResizable)(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool resizable);
     void (*SetWindowAlwaysOnTop)(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool on_top);
-    int (*SetWindowFullscreen)(SDL_VideoDevice *_this, SDL_Window *window, SDL_VideoDisplay *display, SDL_bool fullscreen);
+    int (*SetWindowFullscreen)(SDL_VideoDevice *_this, SDL_Window *window, SDL_VideoDisplay *display, SDL_FullscreenOp fullscreen);
     void *(*GetWindowICCProfile)(SDL_VideoDevice *_this, SDL_Window *window, size_t *size);
     SDL_DisplayID (*GetDisplayForWindow)(SDL_VideoDevice *_this, SDL_Window *window);
     int (*SetWindowMouseRect)(SDL_VideoDevice *_this, SDL_Window *window);
@@ -254,6 +265,8 @@ struct SDL_VideoDevice
     int (*SetWindowKeyboardGrab)(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
     void (*DestroyWindow)(SDL_VideoDevice *_this, SDL_Window *window);
     int (*CreateWindowFramebuffer)(SDL_VideoDevice *_this, SDL_Window *window, SDL_PixelFormatEnum *format, void **pixels, int *pitch);
+    int (*SetWindowFramebufferVSync)(SDL_VideoDevice *_this, SDL_Window *window, int vsync);
+    int (*GetWindowFramebufferVSync)(SDL_VideoDevice *_this, SDL_Window *window, int *vsync);
     int (*UpdateWindowFramebuffer)(SDL_VideoDevice *_this, SDL_Window *window, const SDL_Rect *rects, int numrects);
     void (*DestroyWindowFramebuffer)(SDL_VideoDevice *_this, SDL_Window *window);
     void (*OnWindowEnter)(SDL_VideoDevice *_this, SDL_Window *window);
@@ -536,7 +549,7 @@ extern void SDL_OnWindowFocusGained(SDL_Window *window);
 extern void SDL_OnWindowFocusLost(SDL_Window *window);
 extern void SDL_OnWindowDisplayChanged(SDL_Window *window);
 extern void SDL_UpdateWindowGrab(SDL_Window *window);
-extern int SDL_UpdateFullscreenMode(SDL_Window *window, SDL_bool fullscreen, SDL_bool commit);
+extern int SDL_UpdateFullscreenMode(SDL_Window *window, SDL_FullscreenOp fullscreen, SDL_bool commit);
 extern SDL_Window *SDL_GetToplevelForKeyboardFocus(void);
 
 extern SDL_bool SDL_ShouldAllowTopmost(void);

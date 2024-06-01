@@ -46,7 +46,9 @@
 // Some GUIDs we need to know without linking to libraries that aren't available before Vista.
 static const IID SDL_IID_IAudioRenderClient = { 0xf294acfc, 0x3146, 0x4483, { 0xa7, 0xbf, 0xad, 0xdc, 0xa7, 0xc2, 0x60, 0xe2 } };
 static const IID SDL_IID_IAudioCaptureClient = { 0xc8adbd64, 0xe71e, 0x48a0, { 0xa4, 0xde, 0x18, 0x5c, 0x39, 0x5c, 0xd3, 0x17 } };
+#ifdef __IAudioClient3_INTERFACE_DEFINED__
 static const IID SDL_IID_IAudioClient3 = { 0x7ed4ee07, 0x8e67, 0x4cd4, { 0x8c, 0x1a, 0x2b, 0x7a, 0x59, 0x87, 0xad, 0x42 } };
+#endif /**/
 
 
 // WASAPI is _really_ particular about various things happening on the same thread, for COM and such,
@@ -463,22 +465,20 @@ static int WASAPI_WaitDevice(SDL_AudioDevice *device)
 {
     // WaitDevice does not hold the device lock, so check for recovery/disconnect details here.
     while (RecoverWasapiIfLost(device) && device->hidden->client && device->hidden->event) {
-        UINT32 padding = 0;
-        if (!WasapiFailed(device, IAudioClient_GetCurrentPadding(device->hidden->client, &padding))) {
+        DWORD waitResult = WaitForSingleObjectEx(device->hidden->event, 200, FALSE);
+        if (waitResult == WAIT_OBJECT_0) {
             const UINT32 maxpadding = device->sample_frames;
-            //SDL_Log("WASAPI %s EVENT! padding=%u maxpadding=%u", device->iscapture ? "CAPTURE" : "PLAYBACK", (unsigned int)padding, (unsigned int)maxpadding);
-            if (device->iscapture ? (padding > 0) : (padding < maxpadding)) {
-                break;
+            UINT32 padding = 0;
+            if (!WasapiFailed(device, IAudioClient_GetCurrentPadding(device->hidden->client, &padding))) {
+                //SDL_Log("WASAPI EVENT! padding=%u maxpadding=%u", (unsigned int)padding, (unsigned int)maxpadding);*/
+                if (device->iscapture && (padding > 0)) {
+                    break;
+                } else if (!device->iscapture && (padding <= maxpadding)) {
+                    break;
+                }
             }
-        }
-
-        switch (WaitForSingleObjectEx(device->hidden->event, 200, FALSE)) {
-        case WAIT_OBJECT_0:
-        case WAIT_TIMEOUT:
-            break;
-
-        default:
-            //SDL_Log("WASAPI FAILED EVENT!");
+        } else if (waitResult != WAIT_TIMEOUT) {
+            //SDL_Log("WASAPI FAILED EVENT!");*/
             IAudioClient_Stop(device->hidden->client);
             return -1;
         }

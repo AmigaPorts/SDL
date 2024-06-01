@@ -420,7 +420,11 @@ extern SDL_DECLSPEC const char *SDLCALL SDL_GetCurrentAudioDriver(void);
  * This only returns a list of physical devices; it will not have any device
  * IDs returned by SDL_OpenAudioDevice().
  *
- * \param count a pointer filled in with the number of devices returned
+ * If this function returns NULL, to signify an error, `*count` will be set to
+ * zero.
+ *
+ * \param count a pointer filled in with the number of devices returned. NULL
+ *              is allowed.
  * \returns a 0 terminated array of device instance IDs which should be freed
  *          with SDL_free(), or NULL on error; call SDL_GetError() for more
  *          details.
@@ -445,7 +449,11 @@ extern SDL_DECLSPEC SDL_AudioDeviceID *SDLCALL SDL_GetAudioOutputDevices(int *co
  * This only returns a list of physical devices; it will not have any device
  * IDs returned by SDL_OpenAudioDevice().
  *
- * \param count a pointer filled in with the number of devices returned
+ * If this function returns NULL, to signify an error, `*count` will be set to
+ * zero.
+ *
+ * \param count a pointer filled in with the number of devices returned. NULL
+ *              is allowed.
  * \returns a 0 terminated array of device instance IDs which should be freed
  *          with SDL_free(), or NULL on error; call SDL_GetError() for more
  *          details.
@@ -1090,6 +1098,50 @@ extern SDL_DECLSPEC int SDLCALL SDL_FlushAudioStream(SDL_AudioStream *stream);
 extern SDL_DECLSPEC int SDLCALL SDL_ClearAudioStream(SDL_AudioStream *stream);
 
 /**
+ * Use this function to pause audio playback on the audio device associated
+ * with an audio stream.
+ *
+ * This function pauses audio processing for a given device. Any bound audio
+ * streams will not progress, and no audio will be generated. Pausing one
+ * device does not prevent other unpaused devices from running.
+ *
+ * Pausing a device can be useful to halt all audio without unbinding all the
+ * audio streams. This might be useful while a game is paused, or a level is
+ * loading, etc.
+ *
+ * \param stream The audio stream associated with the audio device to pause
+ * \returns 0 on success or a negative error code on failure; call
+ *          SDL_GetError() for more information.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_ResumeAudioStreamDevice
+ */
+extern SDL_DECLSPEC int SDLCALL SDL_PauseAudioStreamDevice(SDL_AudioStream *stream);
+
+/**
+ * Use this function to unpause audio playback on the audio device associated
+ * with an audio stream.
+ *
+ * This function unpauses audio processing for a given device that has
+ * previously been paused. Once unpaused, any bound audio streams will begin
+ * to progress again, and audio can be generated.
+ *
+ * \param stream The audio stream associated with the audio device to resume
+ * \returns 0 on success or a negative error code on failure; call
+ *          SDL_GetError() for more information.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_PauseAudioStreamDevice
+ */
+extern SDL_DECLSPEC int SDLCALL SDL_ResumeAudioStreamDevice(SDL_AudioStream *stream);
+
+/**
  * Lock an audio stream for serialized access.
  *
  * Each SDL_AudioStream has an internal mutex it uses to protect its data
@@ -1316,7 +1368,9 @@ extern SDL_DECLSPEC void SDLCALL SDL_DestroyAudioStream(SDL_AudioStream *stream)
  *
  * The `spec` parameter represents the app's side of the audio stream. That
  * is, for recording audio, this will be the output format, and for playing
- * audio, this will be the input format.
+ * audio, this will be the input format. If spec is NULL, the system will
+ * choose the format, and the app can use SDL_GetAudioStreamFormat() to obtain
+ * this information later.
  *
  * If you don't care about opening a specific audio device, you can (and
  * probably _should_), use SDL_AUDIO_DEVICE_DEFAULT_OUTPUT for playback and
@@ -1327,9 +1381,12 @@ extern SDL_DECLSPEC void SDLCALL SDL_DestroyAudioStream(SDL_AudioStream *stream)
  * capturing). Otherwise, the callback will begin to fire once the device is
  * unpaused.
  *
+ * Destroying the returned stream with SDL_DestroyAudioStream will also close
+ * the audio device associated with this stream.
+ *
  * \param devid an audio device to open, or SDL_AUDIO_DEVICE_DEFAULT_OUTPUT or
  *              SDL_AUDIO_DEVICE_DEFAULT_CAPTURE.
- * \param spec the audio stream's data format. Required.
+ * \param spec the audio stream's data format. Can be NULL.
  * \param callback A callback where the app will provide new data for
  *                 playback, or receive new data for capture. Can be NULL, in
  *                 which case the app will need to call SDL_PutAudioStreamData

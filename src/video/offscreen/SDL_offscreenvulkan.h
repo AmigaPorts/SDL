@@ -20,16 +20,19 @@
 */
 #include "SDL_internal.h"
 
-#ifndef SDL_utils_h_
-#define SDL_utils_h_
+#ifndef SDL_offscreenvulkan_h
+#define SDL_offscreenvulkan_h
 
-/* Common utility functions that aren't in the public API */
+#if defined(SDL_VIDEO_DRIVER_OFFSCREEN) && defined(SDL_VIDEO_VULKAN)
 
-/* Return the smallest power of 2 greater than or equal to 'x' */
-extern int SDL_powerof2(int x);
+#include "../SDL_sysvideo.h"
 
-extern void SDL_CalculateFraction(float x, int *numerator, int *denominator);
+extern int OFFSCREEN_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path);
+extern void OFFSCREEN_Vulkan_UnloadLibrary(SDL_VideoDevice *_this);
+extern char const *const *OFFSCREEN_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this, Uint32 *count);
+extern SDL_bool OFFSCREEN_Vulkan_CreateSurface(SDL_VideoDevice *_this, SDL_Window *window, VkInstance instance, const struct VkAllocationCallbacks *allocator, VkSurfaceKHR *surface);
+extern void OFFSCREEN_Vulkan_DestroySurface(SDL_VideoDevice *_this, VkInstance instance, VkSurfaceKHR surface, const struct VkAllocationCallbacks *allocator);
 
-extern SDL_bool SDL_endswith(const char *string, const char *suffix);
+#endif /* SDL_VIDEO_DRIVER_OFFSCREEN && SDL_VIDEO_VULKAN */
 
-#endif /* SDL_utils_h_ */
+#endif /* SDL_offscreenvulkan_h */

@@ -90,7 +90,7 @@ extern void OS4_SetWindowResizable(SDL_VideoDevice *this, SDL_Window * window, S
 extern void OS4_SetWindowAlwaysOnTop(SDL_VideoDevice *this, SDL_Window * window, SDL_bool on_top);
 
 extern void OS4_SetWindowBordered(SDL_VideoDevice *this, SDL_Window * window, SDL_bool bordered);
-extern int OS4_SetWindowFullscreen(SDL_VideoDevice *this, SDL_Window * window, SDL_VideoDisplay * display, SDL_bool fullscreen);
+extern int OS4_SetWindowFullscreen(SDL_VideoDevice *this, SDL_Window * window, SDL_VideoDisplay * display, SDL_FullscreenOp fullscreen);
 //extern int OS4_SetWindowGammaRamp(SDL_VideoDevice *this, SDL_Window * window, const Uint16 * ramp);
 //extern int OS4_GetWindowGammaRamp(SDL_VideoDevice *this, SDL_Window * window, Uint16 * ramp);
 

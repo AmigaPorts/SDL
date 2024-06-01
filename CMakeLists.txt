@@ -48,16 +48,16 @@ list(APPEND CMAKE_MODULE_PATH "${SDL3_SOURCE_DIR}/cmake")
 include("${SDL3_SOURCE_DIR}/cmake/macros.cmake")
 include("${SDL3_SOURCE_DIR}/cmake/sdlchecks.cmake")
 include("${SDL3_SOURCE_DIR}/cmake/sdlcompilers.cmake")
+include("${SDL3_SOURCE_DIR}/cmake/sdlcpu.cmake")
 include("${SDL3_SOURCE_DIR}/cmake/sdlmanpages.cmake")
 include("${SDL3_SOURCE_DIR}/cmake/sdlplatform.cmake")
 include("${SDL3_SOURCE_DIR}/cmake/sdltargets.cmake")
-include("${SDL3_SOURCE_DIR}/cmake/CheckCPUArchitecture.cmake")
 include("${SDL3_SOURCE_DIR}/cmake/GetGitRevisionDescription.cmake")
 include("${SDL3_SOURCE_DIR}/cmake/3rdparty.cmake")
 include("${SDL3_SOURCE_DIR}/cmake/PreseedMSVCCache.cmake")
 
 SDL_DetectCompiler()
-SDL_DetectCPUArchitecture()
+SDL_DetectTargetCPUArchitectures(SDL_CPUS)
 SDL_Preseed_CMakeCache()
 
 # Increment this if there is an incompatible change - but if that happens,
@@ -1870,13 +1870,11 @@ elseif(WINDOWS)
     check_include_file(d3d9.h HAVE_D3D_H)
     check_include_file(d3d11_1.h HAVE_D3D11_H)
     check_c_source_compiles("
-      #include <winsdkver.h>
-      #include <sdkddkver.h>
       #include <d3d12.h>
+      #include <d3d12sdklayers.h>
       ID3D12Device1 *device;
-      #if WDK_NTDDI_VERSION > 0x0A000008
       int main(int argc, char **argv) { return 0; }
-      #endif" HAVE_D3D12_H)
+      " HAVE_D3D12_H)
     check_include_file(ddraw.h HAVE_DDRAW_H)
     check_include_file(dsound.h HAVE_DSOUND_H)
     check_include_file(dinput.h HAVE_DINPUT_H)
@@ -1913,12 +1911,21 @@ elseif(WINDOWS)
   endif()
 
   # headers needed elsewhere
+  check_include_file(dxgi1_6.h HAVE_DXGI1_6_H)
   check_include_file(tpcshrd.h HAVE_TPCSHRD_H)
   check_include_file(roapi.h HAVE_ROAPI_H)
   check_include_file(mmdeviceapi.h HAVE_MMDEVICEAPI_H)
   check_include_file(audioclient.h HAVE_AUDIOCLIENT_H)
   check_include_file(sensorsapi.h HAVE_SENSORSAPI_H)
   check_include_file(shellscalingapi.h HAVE_SHELLSCALINGAPI_H)
+  check_c_source_compiles("
+    #include <windows.h>
+    #include <mfapi.h>
+    #include <mfidl.h>
+    #include <mfreadwrite.h>
+    int main(int argc, char **argv) { return 0; }
+    " HAVE_MFAPI_H
+  )
 
   if(SDL_AUDIO)
     if(HAVE_DSOUND_H AND NOT WINDOWS_STORE)
@@ -2115,7 +2122,7 @@ elseif(WINDOWS)
   endif()
 
   if(SDL_CAMERA)
-    if(NOT WINDOWS_STORE)
+    if(HAVE_MFAPI_H AND NOT WINDOWS_STORE)
       set(HAVE_CAMERA TRUE)
       set(SDL_CAMERA_DRIVER_MEDIAFOUNDATION 1)
       sdl_glob_sources("${SDL3_SOURCE_DIR}/src/camera/mediafoundation/*.c")
@@ -2900,7 +2907,7 @@ endif()
 # Platform-independent options
 
 if(SDL_VIDEO)
-  if(SDL_OFFSCREEN AND SDL_VIDEO_OPENGL_EGL)
+  if(SDL_OFFSCREEN)
     set(SDL_VIDEO_DRIVER_OFFSCREEN 1)
     sdl_glob_sources("${SDL3_SOURCE_DIR}/src/video/offscreen/*.c")
     set(HAVE_OFFSCREEN TRUE)

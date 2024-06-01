@@ -34,6 +34,7 @@
 #define SDL_AddGamepadMappingsFromIO SDL_AddGamepadMappingsFromIO_REAL
 #define SDL_AddHintCallback SDL_AddHintCallback_REAL
 #define SDL_AddTimer SDL_AddTimer_REAL
+#define SDL_AddTimerNS SDL_AddTimerNS_REAL
 #define SDL_AddVulkanRenderSemaphores SDL_AddVulkanRenderSemaphores_REAL
 #define SDL_AllocateEventMemory SDL_AllocateEventMemory_REAL
 #define SDL_AndroidBackButton SDL_AndroidBackButton_REAL
@@ -233,6 +234,7 @@
 #define SDL_GetDaysInMonth SDL_GetDaysInMonth_REAL
 #define SDL_GetDefaultAssertionHandler SDL_GetDefaultAssertionHandler_REAL
 #define SDL_GetDefaultCursor SDL_GetDefaultCursor_REAL
+#define SDL_GetDefaultKeyFromScancode SDL_GetDefaultKeyFromScancode_REAL
 #define SDL_GetDesktopDisplayMode SDL_GetDesktopDisplayMode_REAL
 #define SDL_GetDisplayBounds SDL_GetDisplayBounds_REAL
 #define SDL_GetDisplayContentScale SDL_GetDisplayContentScale_REAL
@@ -477,6 +479,7 @@
 #define SDL_GetUserFolder SDL_GetUserFolder_REAL
 #define SDL_GetVersion SDL_GetVersion_REAL
 #define SDL_GetVideoDriver SDL_GetVideoDriver_REAL
+#define SDL_GetWindowAspectRatio SDL_GetWindowAspectRatio_REAL
 #define SDL_GetWindowBordersSize SDL_GetWindowBordersSize_REAL
 #define SDL_GetWindowDisplayScale SDL_GetWindowDisplayScale_REAL
 #define SDL_GetWindowFlags SDL_GetWindowFlags_REAL
@@ -498,6 +501,7 @@
 #define SDL_GetWindowSize SDL_GetWindowSize_REAL
 #define SDL_GetWindowSizeInPixels SDL_GetWindowSizeInPixels_REAL
 #define SDL_GetWindowSurface SDL_GetWindowSurface_REAL
+#define SDL_GetWindowSurfaceVSync SDL_GetWindowSurfaceVSync_REAL
 #define SDL_GetWindowTitle SDL_GetWindowTitle_REAL
 #define SDL_GlobDirectory SDL_GlobDirectory_REAL
 #define SDL_GlobStorageDirectory SDL_GlobStorageDirectory_REAL
@@ -614,6 +618,7 @@
 #define SDL_OpenUserStorage SDL_OpenUserStorage_REAL
 #define SDL_OutOfMemory SDL_OutOfMemory_REAL
 #define SDL_PauseAudioDevice SDL_PauseAudioDevice_REAL
+#define SDL_PauseAudioStreamDevice SDL_PauseAudioStreamDevice_REAL
 #define SDL_PauseHaptic SDL_PauseHaptic_REAL
 #define SDL_PeepEvents SDL_PeepEvents_REAL
 #define SDL_PenConnected SDL_PenConnected_REAL
@@ -681,6 +686,7 @@
 #define SDL_ResetLogPriorities SDL_ResetLogPriorities_REAL
 #define SDL_RestoreWindow SDL_RestoreWindow_REAL
 #define SDL_ResumeAudioDevice SDL_ResumeAudioDevice_REAL
+#define SDL_ResumeAudioStreamDevice SDL_ResumeAudioStreamDevice_REAL
 #define SDL_ResumeHaptic SDL_ResumeHaptic_REAL
 #define SDL_RumbleGamepad SDL_RumbleGamepad_REAL
 #define SDL_RumbleGamepadTriggers SDL_RumbleGamepadTriggers_REAL
@@ -769,6 +775,7 @@
 #define SDL_SetTextureScaleMode SDL_SetTextureScaleMode_REAL
 #define SDL_SetThreadPriority SDL_SetThreadPriority_REAL
 #define SDL_SetWindowAlwaysOnTop SDL_SetWindowAlwaysOnTop_REAL
+#define SDL_SetWindowAspectRatio SDL_SetWindowAspectRatio_REAL
 #define SDL_SetWindowBordered SDL_SetWindowBordered_REAL
 #define SDL_SetWindowFocusable SDL_SetWindowFocusable_REAL
 #define SDL_SetWindowFullscreen SDL_SetWindowFullscreen_REAL
@@ -787,6 +794,7 @@
 #define SDL_SetWindowResizable SDL_SetWindowResizable_REAL
 #define SDL_SetWindowShape SDL_SetWindowShape_REAL
 #define SDL_SetWindowSize SDL_SetWindowSize_REAL
+#define SDL_SetWindowSurfaceVSync SDL_SetWindowSurfaceVSync_REAL
 #define SDL_SetWindowTitle SDL_SetWindowTitle_REAL
 #define SDL_SetWindowsMessageHook SDL_SetWindowsMessageHook_REAL
 #define SDL_SetX11EventHook SDL_SetX11EventHook_REAL

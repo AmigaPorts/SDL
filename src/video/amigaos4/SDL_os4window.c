@@ -804,17 +804,34 @@ OS4_CloseWindow(SDL_VideoDevice *_this, SDL_Window * sdlwin)
     }
 }
 
-int
-OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDisplay * display, SDL_bool fullscreen)
+#ifdef DEBUG
+static const char*
+OS4_DecodeFullscreenOp(SDL_FullscreenOp fullscreen)
 {
+    switch(fullscreen) {
+        case SDL_FULLSCREEN_OP_LEAVE:
+            return "leave fullscreen";
+        case SDL_FULLSCREEN_OP_ENTER:
+            return "enter fullscreen";
+        case SDL_FULLSCREEN_OP_UPDATE:
+            return "update";
+    }
+
+    return "unknown";
+}
+#endif
+
+int
+OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDisplay * display, SDL_FullscreenOp fullscreen)
+{
+    // TODO: SDL_FULLSCREEN_OP_UPDATE
     if (window->is_destroying) {
         // This function gets also called during window closing
         dprintf("Window '%s' is being destroyed, mode change ignored\n", window->title);
     } else {
         SDL_WindowData *data = window->driverdata;
 
-        dprintf("Trying to set '%s' into %s mode\n", window->title,
-            fullscreen ? "fullscreen" : "window");
+        dprintf("'%s': %s (%d)\n", window->title, OS4_DecodeFullscreenOp(fullscreen), fullscreen);
 
         if (window->flags & SDL_WINDOW_EXTERNAL) {
             dprintf("Native window '%s' (%p), mode change ignored\n", window->title, data->syswin);
@@ -822,7 +839,7 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
             int oldWidth = 0;
             int oldHeight = 0;
 
-            if (fullscreen) {
+            if (fullscreen == SDL_FULLSCREEN_OP_ENTER) {
                 // Detect dummy transition and keep calm
                 SDL_DisplayData *displayData = display->driverdata;
 
@@ -844,9 +861,13 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
                 dprintf("System window doesn't exist yet, let's open it\n");
             }
 
-            SDL_SendWindowEvent(window, fullscreen ? SDL_EVENT_WINDOW_ENTER_FULLSCREEN : SDL_EVENT_WINDOW_LEAVE_FULLSCREEN, 0, 0);
+            if (fullscreen == SDL_FULLSCREEN_OP_LEAVE) {
+                SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_LEAVE_FULLSCREEN, 0, 0);
+            } else if (fullscreen == SDL_FULLSCREEN_OP_ENTER) {
+                SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_ENTER_FULLSCREEN, 0, 0);
+            }
 
-            data->syswin = OS4_CreateSystemWindow(_this, window, fullscreen ? display : NULL);
+            data->syswin = OS4_CreateSystemWindow(_this, window, (fullscreen == SDL_FULLSCREEN_OP_ENTER) ? display : NULL);
 
             if (data->syswin) {
                 OS4_CreateControls(_this, window);
@@ -872,13 +893,13 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
 
                 OS4_ResetNormalKeys();
 
-                if (fullscreen) {
+                if (fullscreen == SDL_FULLSCREEN_OP_ENTER) {
                     if (window->flags & SDL_WINDOW_MAXIMIZED) {
                         data->wasMaximized = TRUE;
                         // testautomation video_getSetWindowState verifies this
                         window->flags &= ~SDL_WINDOW_MAXIMIZED;
                     }
-                } else {
+                } else if (fullscreen == SDL_FULLSCREEN_OP_LEAVE) {
                     if (data->wasMaximized) {
                         window->flags |= SDL_WINDOW_MAXIMIZED;
                         data->wasMaximized = FALSE;
