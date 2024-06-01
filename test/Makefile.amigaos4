@@ -4,6 +4,9 @@ CC		= ppc-amigaos-gcc
 CFLAGS	= -gstabs -O2 -Wall -g -I../include -DHAVE_OPENGL
 LIBS	= -L.. -use-dynld -lSDL2_test -lSDL2 -athread=native
 
+SRC_FILES = $(wildcard *.c)
+DEPS = $(SRC_FILES:.c=.d)
+
 TARGETS = \
 	checkkeys \
 	controllermap \
@@ -312,4 +315,18 @@ testurl: testurl.o
 	$(CC) -o $@ $^ $(LIBS)
 
 clean:
-	rm -f $(TARGETS) *.o
+	rm -f $(TARGETS) *.o $(DEPS)
+
+%.d : %.c
+	@echo Making dependencies for $<
+	@$(CC) -MM -MP -MT $(@:.d=.o) -o $@ $< $(CFLAGS)
+
+%.o : %.c
+	@echo Compiling $<
+	@$(CC) -o $@ -c $< $(CFLAGS)
+
+# Load .d files
+ifneq ($(MAKECMDGOALS),clean)
+-include $(DEPS)
+endif
+
