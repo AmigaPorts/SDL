@@ -3464,8 +3464,8 @@ extern "C" {
  *
  * The variable can be set to the following values:
  *
- * - "0": The Windows message loop is used for keyboard events.
- * - "1": Low latency raw keyboard events are used. (default)
+ * - "0": The Windows message loop is used for keyboard events. (default)
+ * - "1": Low latency raw keyboard events are used.
  *
  * This hint can be set anytime.
  *
@@ -3805,6 +3805,8 @@ extern SDL_DECLSPEC void SDLCALL SDL_ResetHints(void);
 
 /**
  * Get the value of a hint.
+ *
+ * The returned string follows the SDL_GetStringRule.
  *
  * \param name the hint to query
  * \returns the string value of a hint or NULL if the hint isn't set.

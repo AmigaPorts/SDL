@@ -18,22 +18,14 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "SDL_internal.h"
 
-void SDL_ShowOpenFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window, const SDL_DialogFileFilter *filters, int nfilters, const char* default_location, SDL_bool allow_many)
-{
-  SDL_Unsupported();
-  callback(userdata, NULL, -1);
-}
+#ifndef SDL_pspmessagebox_h_
+#define SDL_pspmessagebox_h_
 
-void SDL_ShowSaveFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window, const SDL_DialogFileFilter *filters, int nfilters, const char* default_location)
-{
-  SDL_Unsupported();
-  callback(userdata, NULL, -1);
-}
+#if SDL_VIDEO_DRIVER_PSP
 
-void SDL_ShowOpenFolderDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window, const char* default_location, SDL_bool allow_many)
-{
-  SDL_Unsupported();
-  callback(userdata, NULL, -1);
-}
+int PSP_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid);
+
+#endif /* SDL_VIDEO_DRIVER_PSP */
+
+#endif /* SDL_pspmessagebox_h_ */

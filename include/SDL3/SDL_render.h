@@ -71,18 +71,6 @@ extern "C" {
 #define SDL_SOFTWARE_RENDERER   "software"
 
 /**
- * Information on the capabilities of a render driver or context.
- *
- * \since This struct is available since SDL 3.0.0.
- */
-typedef struct SDL_RendererInfo
-{
-    const char *name;           /**< The name of the renderer */
-    int num_texture_formats;    /**< The number of available texture formats */
-    const SDL_PixelFormatEnum *texture_formats; /**< The available texture formats */
-} SDL_RendererInfo;
-
-/**
  * Vertex structure.
  *
  * \since This struct is available since SDL 3.0.0.
@@ -166,8 +154,7 @@ extern SDL_DECLSPEC int SDLCALL SDL_GetNumRenderDrivers(void);
  * "direct3d12" or "metal". These never have Unicode characters, and are not
  * meant to be proper names.
  *
- * The returned value points to a static, read-only string; do not modify or
- * free it!
+ * The returned string follows the SDL_GetStringRule.
  *
  * \param index the index of the rendering driver; the value ranges from 0 to
  *              SDL_GetNumRenderDrivers() - 1
@@ -226,7 +213,7 @@ extern SDL_DECLSPEC int SDLCALL SDL_CreateWindowAndRenderer(const char *title, i
  * \sa SDL_DestroyRenderer
  * \sa SDL_GetNumRenderDrivers
  * \sa SDL_GetRenderDriver
- * \sa SDL_GetRendererInfo
+ * \sa SDL_GetRendererName
  */
 extern SDL_DECLSPEC SDL_Renderer * SDLCALL SDL_CreateRenderer(SDL_Window *window, const char *name);
 
@@ -277,7 +264,7 @@ extern SDL_DECLSPEC SDL_Renderer * SDLCALL SDL_CreateRenderer(SDL_Window *window
  * \sa SDL_CreateRenderer
  * \sa SDL_CreateSoftwareRenderer
  * \sa SDL_DestroyRenderer
- * \sa SDL_GetRendererInfo
+ * \sa SDL_GetRendererName
  */
 extern SDL_DECLSPEC SDL_Renderer * SDLCALL SDL_CreateRendererWithProperties(SDL_PropertiesID props);
 
@@ -335,20 +322,20 @@ extern SDL_DECLSPEC SDL_Renderer *SDLCALL SDL_GetRenderer(SDL_Window *window);
 extern SDL_DECLSPEC SDL_Window *SDLCALL SDL_GetRenderWindow(SDL_Renderer *renderer);
 
 /**
- * Get information about a rendering context.
+ * Get the name of a renderer.
+ *
+ * The returned string follows the SDL_GetStringRule.
  *
  * \param renderer the rendering context
- * \param info an SDL_RendererInfo structure filled with information about the
- *             current renderer
- * \returns 0 on success or a negative error code on failure; call
- *          SDL_GetError() for more information.
+ * \returns the name of the selected renderer, or NULL if the renderer is
+ *          invalid.
  *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_CreateRenderer
  * \sa SDL_CreateRendererWithProperties
  */
-extern SDL_DECLSPEC int SDLCALL SDL_GetRendererInfo(SDL_Renderer *renderer, SDL_RendererInfo *info);
+extern SDL_DECLSPEC const char *SDLCALL SDL_GetRendererName(SDL_Renderer *renderer);
 
 /**
  * Get the properties associated with a renderer.
@@ -363,6 +350,9 @@ extern SDL_DECLSPEC int SDLCALL SDL_GetRendererInfo(SDL_Renderer *renderer, SDL_
  * - `SDL_PROP_RENDERER_VSYNC_NUMBER`: the current vsync setting
  * - `SDL_PROP_RENDERER_MAX_TEXTURE_SIZE_NUMBER`: the maximum texture width
  *   and height
+ * - `SDL_PROP_RENDERER_TEXTURE_FORMATS_POINTER`: a (const SDL_PixelFormatEnum
+ *   *) array of pixel formats, terminated with SDL_PIXELFORMAT_UNKNOWN,
+ *   representing the available texture formats for this renderer.
  * - `SDL_PROP_RENDERER_OUTPUT_COLORSPACE_NUMBER`: an SDL_ColorSpace value
  *   describing the colorspace for output to the display, defaults to
  *   SDL_COLORSPACE_SRGB.
@@ -434,6 +424,7 @@ extern SDL_DECLSPEC SDL_PropertiesID SDLCALL SDL_GetRendererProperties(SDL_Rende
 #define SDL_PROP_RENDERER_SURFACE_POINTER                           "SDL.renderer.surface"
 #define SDL_PROP_RENDERER_VSYNC_NUMBER                              "SDL.renderer.vsync"
 #define SDL_PROP_RENDERER_MAX_TEXTURE_SIZE_NUMBER                   "SDL.renderer.max_texture_size"
+#define SDL_PROP_RENDERER_TEXTURE_FORMATS_POINTER                   "SDL.renderer.texture_formats"
 #define SDL_PROP_RENDERER_OUTPUT_COLORSPACE_NUMBER                  "SDL.renderer.output_colorspace"
 #define SDL_PROP_RENDERER_HDR_ENABLED_BOOLEAN                       "SDL.renderer.HDR_enabled"
 #define SDL_PROP_RENDERER_SDR_WHITE_POINT_FLOAT                     "SDL.renderer.SDR_white_point"
@@ -1380,7 +1371,7 @@ extern SDL_DECLSPEC int SDLCALL SDL_RenderCoordinatesToWindow(SDL_Renderer *rend
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_GetRenderCoordinatesFromWindowCoordinates
+ * \sa SDL_RenderCoordinatesFromWindow
  */
 extern SDL_DECLSPEC int SDLCALL SDL_ConvertEventToRenderCoordinates(SDL_Renderer *renderer, SDL_Event *event);
 

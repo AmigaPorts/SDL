@@ -121,16 +121,9 @@ getModeName(SDL_BlendMode mode)
 static void
 printInfo(Context *ctx)
 {
-    SDL_RendererInfo ri;
-    int result;
+    const char* name = SDL_GetRendererName(ctx->renderer);
 
-    result = SDL_GetRendererInfo(ctx->renderer, &ri);
-
-    if (result) {
-        SDL_Log("Failed to get renderer info: %s\n", SDL_GetError());
-    } else {
-        SDL_Log("Starting to test renderer called [%s]\n", ri.name);
-    }
+    SDL_Log("Starting to test renderer called [%s]\n", name);
 }
 
 static void

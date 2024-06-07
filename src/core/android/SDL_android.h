@@ -91,6 +91,7 @@ void Android_JNI_PollInputDevices(void);
 /* Haptic support */
 void Android_JNI_PollHapticDevices(void);
 void Android_JNI_HapticRun(int device_id, float intensity, int length);
+void Android_JNI_HapticRumble(int device_id, float low_frequency_intensity, float high_frequency_intensity, int length);
 void Android_JNI_HapticStop(int device_id);
 
 /* Video */
@@ -144,7 +145,8 @@ void Android_ActivityMutex_Lock_Running(void);
 
 /* File Dialogs */
 SDL_bool Android_JNI_OpenFileDialog(SDL_DialogFileCallback callback, void* userdata,
-    const SDL_DialogFileFilter *filters, SDL_bool forwrite, SDL_bool multiple);
+    const SDL_DialogFileFilter *filters, int nfilters, SDL_bool forwrite,
+    SDL_bool multiple);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

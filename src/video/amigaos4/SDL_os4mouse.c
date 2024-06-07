@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -213,19 +213,19 @@ static ULONG
 OS4_MapCursorIdToNative(SDL_SystemCursor id)
 {
     switch (id) {
-        case SDL_SYSTEM_CURSOR_ARROW: return POINTERTYPE_NORMAL;
+        case SDL_SYSTEM_CURSOR_DEFAULT: return POINTERTYPE_NORMAL;
         //case SDL_SYSTEM_CURSOR_IBEAM: return POINTERTYPE_SELECT; 54.21
-        case SDL_SYSTEM_CURSOR_WAITARROW:
+        case SDL_SYSTEM_CURSOR_PROGRESS:
         case SDL_SYSTEM_CURSOR_WAIT: return POINTERTYPE_BUSY;
         case SDL_SYSTEM_CURSOR_CROSSHAIR: return POINTERTYPE_CROSS;
-        case SDL_SYSTEM_CURSOR_SIZENWSE: return POINTERTYPE_NORTHWESTSOUTHEASTRESIZE;
-        case SDL_SYSTEM_CURSOR_SIZENESW: return POINTERTYPE_NORTHEASTSOUTHWESTRESIZE;
-        case SDL_SYSTEM_CURSOR_SIZEWE: return POINTERTYPE_EASTWESTRESIZE;
-        case SDL_SYSTEM_CURSOR_SIZENS: return POINTERTYPE_NORTHSOUTHRESIZE;
-        case SDL_SYSTEM_CURSOR_NO: return POINTERTYPE_NOTALLOWED;
-        case SDL_SYSTEM_CURSOR_HAND: return POINTERTYPE_HAND;
+        case SDL_SYSTEM_CURSOR_NWSE_RESIZE: return POINTERTYPE_NORTHWESTSOUTHEASTRESIZE;
+        case SDL_SYSTEM_CURSOR_NESW_RESIZE: return POINTERTYPE_NORTHEASTSOUTHWESTRESIZE;
+        case SDL_SYSTEM_CURSOR_EW_RESIZE: return POINTERTYPE_EASTWESTRESIZE;
+        case SDL_SYSTEM_CURSOR_NS_RESIZE: return POINTERTYPE_NORTHSOUTHRESIZE;
+        case SDL_SYSTEM_CURSOR_NOT_ALLOWED: return POINTERTYPE_NOTALLOWED;
+        case SDL_SYSTEM_CURSOR_POINTER: return POINTERTYPE_HAND;
         //
-        case SDL_SYSTEM_CURSOR_SIZEALL:
+        case SDL_SYSTEM_CURSOR_MOVE:
         default:
             dprintf("Unknown mapping from type %d\n", id);
             return POINTERTYPE_NORMAL;

@@ -11,9 +11,9 @@
 */
 
 #define SDL_MAIN_USE_CALLBACKS 1
+#include <SDL3/SDL_main.h>
 #include <SDL3/SDL_test.h>
 #include <SDL3/SDL_test_common.h>
-#include <SDL3/SDL_main.h>
 
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
@@ -30,6 +30,7 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
 {
     int devcount = 0;
     int i;
+    const char *camera_name = NULL;
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO | SDL_INIT_CAMERA);
@@ -40,8 +41,27 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
     /* Enable standard application logging */
     SDL_SetLogPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
-    if (!SDLTest_CommonDefaultArgs(state, argc, argv)) {
-        return SDL_APP_FAILURE;
+    /* Parse commandline */
+    for (i = 1; i < argc;) {
+        int consumed;
+
+        consumed = SDLTest_CommonArg(state, i);
+        if (!consumed) {
+            if (SDL_strcmp(argv[i], "--camera") == 0 && argv[i+1]) {
+                camera_name = argv[i+1];
+                consumed = 2;
+            }
+        }
+        if (consumed <= 0) {
+            static const char *options[] = {
+                "[--camera name]",
+                NULL,
+            };
+            SDLTest_CommonLogUsage(state, argv[0], options);
+            SDLTest_CommonDestroyState(state);
+            return 1;
+        }
+        i += consumed;
     }
 
     state->num_windows = 1;
@@ -72,6 +92,8 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
         return SDL_APP_FAILURE;
     }
 
+    SDL_CameraDeviceID camera_id = 0;
+
     SDL_Log("Saw %d camera devices.", devcount);
     for (i = 0; i < devcount; i++) {
         const SDL_CameraDeviceID device = devices[i];
@@ -85,14 +107,28 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
             back_camera = device;
             posstr = "[back-facing] ";
         }
+        if (camera_name && SDL_strcasecmp(name, camera_name) == 0) {
+            camera_id = device;
+        }
         SDL_Log("  - Camera #%d: %s %s", i, posstr, name);
         SDL_free(name);
     }
 
-    const SDL_CameraDeviceID devid = front_camera ? front_camera : devices[0];  /* no front-facing? just take the first one. */
+    if (!camera_id) {
+        if (camera_name) {
+            SDL_Log("Could not find camera \"%s\"", camera_name);
+            return SDL_APP_FAILURE;
+        }
+        if (front_camera) {
+            camera_id = front_camera;
+        } else if (devcount > 0) {
+            camera_id = devices[0];
+        }
+    }
+
     SDL_free(devices);
 
-    if (!devid) {
+    if (!camera_id) {
         SDL_Log("No cameras available?");
         return SDL_APP_FAILURE;
     }
@@ -101,7 +137,7 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
     spec.interval_numerator = 1000;
     spec.interval_denominator = 1;
 
-    camera = SDL_OpenCameraDevice(devid, pspec);
+    camera = SDL_OpenCameraDevice(camera_id, pspec);
     if (!camera) {
         SDL_Log("Failed to open camera device: %s", SDL_GetError());
         return SDL_APP_FAILURE;
@@ -180,21 +216,6 @@ int SDL_AppEvent(void *appstate, const SDL_Event *event)
 
         case SDL_EVENT_CAMERA_DEVICE_APPROVED:
             SDL_Log("Camera approved!");
-            if (SDL_GetCameraFormat(camera, &spec) < 0) {
-                SDL_Log("Couldn't get camera spec: %s", SDL_GetError());
-                return SDL_APP_FAILURE;
-            }
-
-            /* Resize the window to match */
-            SDL_SetWindowSize(window, spec.width, spec.height);
-
-            /* Create texture with appropriate format */
-            SDL_assert(texture == NULL);
-            texture = SDL_CreateTexture(renderer, spec.format, SDL_TEXTUREACCESS_STREAMING, spec.width, spec.height);
-            if (!texture) {
-                SDL_Log("Couldn't create texture: %s", SDL_GetError());
-                return SDL_APP_FAILURE;
-            }
             break;
 
         case SDL_EVENT_CAMERA_DEVICE_DENIED:
@@ -213,30 +234,48 @@ int SDL_AppIterate(void *appstate)
     SDL_SetRenderDrawColor(renderer, 0x99, 0x99, 0x99, 255);
     SDL_RenderClear(renderer);
 
-    if (texture) {   /* if not NULL, camera is ready to go. */
-        int win_w, win_h, tw, th;
-        SDL_FRect d;
-        Uint64 timestampNS = 0;
-        SDL_Surface *frame_next = camera ? SDL_AcquireCameraFrame(camera, &timestampNS) : NULL;
+    int win_w, win_h, tw, th;
+    SDL_FRect d;
+    Uint64 timestampNS = 0;
+    SDL_Surface *frame_next = camera ? SDL_AcquireCameraFrame(camera, &timestampNS) : NULL;
 
-        #if 0
-        if (frame_next) {
-            SDL_Log("frame: %p  at %" SDL_PRIu64, (void*)frame_next->pixels, timestampNS);
+    #if 0
+    if (frame_next) {
+        SDL_Log("frame: %p  at %" SDL_PRIu64, (void*)frame_next->pixels, timestampNS);
+    }
+    #endif
+
+    if (frame_next) {
+        if (frame_current) {
+            if (SDL_ReleaseCameraFrame(camera, frame_current) < 0) {
+                SDL_Log("err SDL_ReleaseCameraFrame: %s", SDL_GetError());
+            }
         }
-        #endif
 
-        if (frame_next) {
-            if (frame_current) {
-                if (SDL_ReleaseCameraFrame(camera, frame_current) < 0) {
-                    SDL_Log("err SDL_ReleaseCameraFrame: %s", SDL_GetError());
-                }
+        /* It's not needed to keep the frame once updated the texture is updated.
+         * But in case of 0-copy, it's needed to have the frame while using the texture.
+         */
+         frame_current = frame_next;
+         texture_updated = SDL_FALSE;
+    }
+
+    if (frame_current) {
+        if (!texture ||
+            SDL_QueryTexture(texture, NULL, NULL, &tw, &th) < 0 ||
+            tw != frame_current->w || th != frame_current->h) {
+            /* Resize the window to match */
+            SDL_SetWindowSize(window, frame_current->w, frame_current->h);
+
+            if (texture) {
+                SDL_DestroyTexture(texture);
             }
 
-            /* It's not needed to keep the frame once updated the texture is updated.
-             * But in case of 0-copy, it's needed to have the frame while using the texture.
-             */
-             frame_current = frame_next;
-             texture_updated = SDL_FALSE;
+            /* Create texture with appropriate format */
+            texture = SDL_CreateTexture(renderer, frame_current->format->format, SDL_TEXTUREACCESS_STREAMING, frame_current->w, frame_current->h);
+            if (!texture) {
+                SDL_Log("Couldn't create texture: %s", SDL_GetError());
+                return SDL_APP_FAILURE;
+            }
         }
 
         /* Update SDL_Texture with last video frame (only once per new frame) */
