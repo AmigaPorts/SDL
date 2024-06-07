@@ -23,7 +23,6 @@
 #include "SDL_audio_c.h"
 #include "SDL_sysaudio.h"
 #include "../thread/SDL_systhread.h"
-#include "../SDL_utils_c.h"
 
 // Available audio drivers
 static const AudioBootStrap *const bootstrap[] = {
@@ -135,6 +134,7 @@ int SDL_GetNumAudioDrivers(void)
     return num_drivers;
 }
 
+// this returns string literals, so there's no need to use SDL_FreeLater.
 const char *SDL_GetAudioDriver(int index)
 {
     if (index >= 0 && index < SDL_GetNumAudioDrivers()) {
@@ -143,6 +143,7 @@ const char *SDL_GetAudioDriver(int index)
     return NULL;
 }
 
+// this returns string literals, so there's no need to use SDL_FreeLater.
 const char *SDL_GetCurrentAudioDriver(void)
 {
     return current_audio.name;
@@ -525,7 +526,7 @@ static void DestroyPhysicalAudioDevice(SDL_AudioDevice *device)
     SDL_DestroyMutex(device->lock);
     SDL_DestroyCondition(device->close_cond);
     SDL_free(device->work_buffer);
-    SDL_free(device->name);
+    SDL_FreeLater(device->name);  // this pointer is handed to the app during SDL_GetAudioDeviceName
     SDL_free(device);
 }
 
@@ -1406,12 +1407,12 @@ SDL_AudioDevice *SDL_FindPhysicalAudioDeviceByHandle(void *handle)
     return SDL_FindPhysicalAudioDeviceByCallback(TestDeviceHandleCallback, handle);
 }
 
-char *SDL_GetAudioDeviceName(SDL_AudioDeviceID devid)
+const char *SDL_GetAudioDeviceName(SDL_AudioDeviceID devid)
 {
-    char *retval = NULL;
+    const char *retval = NULL;
     SDL_AudioDevice *device = ObtainPhysicalAudioDevice(devid);
     if (device) {
-        retval = SDL_strdup(device->name);
+        retval = device->name;
     }
     ReleaseAudioDevice(device);
 

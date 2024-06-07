@@ -63,6 +63,7 @@ int SDL_GetNumCameraDrivers(void)
     return SDL_arraysize(bootstrap) - 1;
 }
 
+// this returns string literals, so there's no need to use SDL_FreeLater.
 const char *SDL_GetCameraDriver(int index)
 {
     if (index >= 0 && index < SDL_GetNumCameraDrivers()) {
@@ -71,6 +72,7 @@ const char *SDL_GetCameraDriver(int index)
     return NULL;
 }
 
+// this returns string literals, so there's no need to use SDL_FreeLater.
 const char *SDL_GetCurrentCameraDriver(void)
 {
     return camera_driver.name;
@@ -597,12 +599,14 @@ void SDL_CameraDevicePermissionOutcome(SDL_CameraDevice *device, SDL_bool approv
 
     ReleaseCameraDevice(device);
 
-    SDL_LockRWLockForWriting(camera_driver.device_hash_lock);
-    SDL_assert(camera_driver.pending_events_tail != NULL);
-    SDL_assert(camera_driver.pending_events_tail->next == NULL);
-    camera_driver.pending_events_tail->next = pending.next;
-    camera_driver.pending_events_tail = pending_tail;
-    SDL_UnlockRWLock(camera_driver.device_hash_lock);
+    if (pending.next) {  // NULL if event is disabled or disaster struck.
+        SDL_LockRWLockForWriting(camera_driver.device_hash_lock);
+        SDL_assert(camera_driver.pending_events_tail != NULL);
+        SDL_assert(camera_driver.pending_events_tail->next == NULL);
+        camera_driver.pending_events_tail->next = pending.next;
+        camera_driver.pending_events_tail = pending_tail;
+        SDL_UnlockRWLock(camera_driver.device_hash_lock);
+    }
 }
 
 
@@ -848,6 +852,8 @@ SDL_bool SDL_CameraThreadIterate(SDL_CameraDevice *device)
             #if DEBUG_CAMERA
             SDL_Log("CAMERA: Frame is going through without conversion!");
             #endif
+            output_surface->w = acquired->w;
+            output_surface->h = acquired->h;
             output_surface->pixels = acquired->pixels;
             output_surface->pitch = acquired->pitch;
         } else {  // convert/scale into a different surface.
@@ -964,8 +970,8 @@ static void ChooseBestCameraSpec(SDL_CameraDevice *device, const SDL_CameraSpec 
                 const int thisw = thisspec->width;
                 const int thish = thisspec->height;
                 const float thisaspect = ((float)thisw) / ((float)thish);
-                const float aspectdiff = SDL_fabs(wantaspect - thisaspect);
-                const float diff = SDL_fabs(closestaspect - thisaspect);
+                const float aspectdiff = SDL_fabsf(wantaspect - thisaspect);
+                const float diff = SDL_fabsf(closestaspect - thisaspect);
                 const int diffw = SDL_abs(thisw - wantw);
                 if (diff < epsilon) { // matches current closestaspect? See if resolution is closer in size.
                     if (diffw < closestdiffw) {
@@ -1020,7 +1026,7 @@ static void ChooseBestCameraSpec(SDL_CameraDevice *device, const SDL_CameraSpec 
                 }
 
                 const float thisfps = thisspec->interval_denominator ? (thisspec->interval_numerator / thisspec->interval_denominator) : 0.0f;
-                const float fpsdiff = SDL_fabs(wantfps - thisfps);
+                const float fpsdiff = SDL_fabsf(wantfps - thisfps);
                 if (fpsdiff < closestfps) {  // this is a closest FPS? Take it until something closer arrives.
                     closestfps = fpsdiff;
                     closest->interval_numerator = thisspec->interval_numerator;

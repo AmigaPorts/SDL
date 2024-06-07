@@ -365,7 +365,7 @@ static int audio_enumerateAndNameAudioDevices(void *arg)
 {
     int t;
     int i, n;
-    char *name;
+    const char *name;
     SDL_AudioDeviceID *devices = NULL;
 
     /* Iterate over types: t=0 output device, t=1 input/capture device */
@@ -385,7 +385,6 @@ static int audio_enumerateAndNameAudioDevices(void *arg)
                 SDLTest_AssertCheck(name != NULL, "Verify result from SDL_GetAudioDeviceName(%i) is not NULL", i);
                 if (name != NULL) {
                     SDLTest_AssertCheck(name[0] != '\0', "verify result from SDL_GetAudioDeviceName(%i) is not empty, got: '%s'", i, name);
-                    SDL_free(name);
                 }
             }
         }
@@ -920,7 +919,7 @@ static int convert_audio_chunks(SDL_AudioStream* stream, const void* src, int sr
                 }
             }
         }
-        
+
         if (to_get)
         {
             ret = get_audio_data_split(stream, (Uint8*)(dst) + total_out, to_get);
@@ -1027,7 +1026,7 @@ static int audio_resampleLoss(void *arg)
     }
 
     tick_beg = SDL_GetPerformanceCounter();
-    
+
     buf_out = (float *)SDL_malloc(len_target);
     SDLTest_AssertCheck(buf_out != NULL, "Expected output buffer to be created.");
     if (buf_out == NULL) {
@@ -1060,11 +1059,11 @@ static int audio_resampleLoss(void *arg)
     }
     SDL_free(buf_out);
     signal_to_noise = 10 * SDL_log10(sum_squared_value / sum_squared_error); /* decibel */
-    SDLTest_AssertCheck(isfinite(sum_squared_value), "Sum of squared target should be finite.");
-    SDLTest_AssertCheck(isfinite(sum_squared_error), "Sum of squared error should be finite.");
+    SDLTest_AssertCheck(ISFINITE(sum_squared_value), "Sum of squared target should be finite.");
+    SDLTest_AssertCheck(ISFINITE(sum_squared_error), "Sum of squared error should be finite.");
     /* Infinity is theoretically possible when there is very little to no noise */
-    SDLTest_AssertCheck(!isnan(signal_to_noise), "Signal-to-noise ratio should not be NaN.");
-    SDLTest_AssertCheck(isfinite(max_error), "Maximum conversion error should be finite.");
+    SDLTest_AssertCheck(!ISNAN(signal_to_noise), "Signal-to-noise ratio should not be NaN.");
+    SDLTest_AssertCheck(ISFINITE(max_error), "Maximum conversion error should be finite.");
     SDLTest_AssertCheck(signal_to_noise >= spec->signal_to_noise, "Conversion signal-to-noise ratio %f dB should be no less than %f dB.",
                         signal_to_noise, spec->signal_to_noise);
     SDLTest_AssertCheck(max_error <= spec->max_error, "Maximum conversion error %f should be no more than %f.",
@@ -1346,11 +1345,11 @@ static int audio_formatChange(void *arg)
     }
 
     signal_to_noise = 10 * SDL_log10(sum_squared_value / sum_squared_error); /* decibel */
-    SDLTest_AssertCheck(isfinite(sum_squared_value), "Sum of squared target should be finite.");
-    SDLTest_AssertCheck(isfinite(sum_squared_error), "Sum of squared error should be finite.");
+    SDLTest_AssertCheck(ISFINITE(sum_squared_value), "Sum of squared target should be finite.");
+    SDLTest_AssertCheck(ISFINITE(sum_squared_error), "Sum of squared error should be finite.");
     /* Infinity is theoretically possible when there is very little to no noise */
-    SDLTest_AssertCheck(!isnan(signal_to_noise), "Signal-to-noise ratio should not be NaN.");
-    SDLTest_AssertCheck(isfinite(max_error), "Maximum conversion error should be finite.");
+    SDLTest_AssertCheck(!ISNAN(signal_to_noise), "Signal-to-noise ratio should not be NaN.");
+    SDLTest_AssertCheck(ISFINITE(max_error), "Maximum conversion error should be finite.");
     SDLTest_AssertCheck(signal_to_noise >= target_signal_to_noise, "Conversion signal-to-noise ratio %f dB should be no less than %f dB.",
                         signal_to_noise, target_signal_to_noise);
     SDLTest_AssertCheck(max_error <= target_max_error, "Maximum conversion error %f should be no more than %f.",

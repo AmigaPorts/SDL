@@ -156,9 +156,8 @@ Rather than iterating over audio devices using a device index, there are new fun
         if (devices) {
             for (i = 0; i < num_devices; ++i) {
                 SDL_AudioDeviceID instance_id = devices[i];
-                char *name = SDL_GetAudioDeviceName(instance_id);
+                const char *name = SDL_GetAudioDeviceName(instance_id);
                 SDL_Log("AudioDevice %" SDL_PRIu32 ": %s\n", instance_id, name);
-                SDL_free(name);
             }
             SDL_free(devices);
         }
@@ -961,8 +960,30 @@ SDL_ShowCursor() has been split into three functions: SDL_ShowCursor(), SDL_Hide
 
 SDL_GetMouseState(), SDL_GetGlobalMouseState(), SDL_GetRelativeMouseState(), SDL_WarpMouseInWindow(), and SDL_WarpMouseGlobal() all use floating point mouse positions, to provide sub-pixel precision on platforms that support it.
 
+SDL_SystemCursor's items from SDL2 have been renamed to match CSS cursor names.
+
 The following functions have been renamed:
 * SDL_FreeCursor() => SDL_DestroyCursor()
+
+The following symbols have been renamed:
+* SDL_SYSTEM_CURSOR_ARROW => SDL_SYSTEM_CURSOR_DEFAULT
+* SDL_SYSTEM_CURSOR_HAND => SDL_SYSTEM_CURSOR_POINTER
+* SDL_SYSTEM_CURSOR_IBEAM => SDL_SYSTEM_CURSOR_TEXT
+* SDL_SYSTEM_CURSOR_NO => SDL_SYSTEM_CURSOR_NOT_ALLOWED
+* SDL_SYSTEM_CURSOR_SIZEALL => SDL_SYSTEM_CURSOR_MOVE
+* SDL_SYSTEM_CURSOR_SIZENESW => SDL_SYSTEM_CURSOR_NESW_RESIZE
+* SDL_SYSTEM_CURSOR_SIZENS => SDL_SYSTEM_CURSOR_NS_RESIZE
+* SDL_SYSTEM_CURSOR_SIZENWSE => SDL_SYSTEM_CURSOR_NWSE_RESIZE
+* SDL_SYSTEM_CURSOR_SIZEWE => SDL_SYSTEM_CURSOR_EW_RESIZE
+* SDL_SYSTEM_CURSOR_WAITARROW => SDL_SYSTEM_CURSOR_PROGRESS
+* SDL_SYSTEM_CURSOR_WINDOW_BOTTOM => SDL_SYSTEM_CURSOR_S_RESIZE
+* SDL_SYSTEM_CURSOR_WINDOW_BOTTOMLEFT => SDL_SYSTEM_CURSOR_SW_RESIZE
+* SDL_SYSTEM_CURSOR_WINDOW_BOTTOMRIGHT => SDL_SYSTEM_CURSOR_SE_RESIZE
+* SDL_SYSTEM_CURSOR_WINDOW_LEFT => SDL_SYSTEM_CURSOR_W_RESIZE
+* SDL_SYSTEM_CURSOR_WINDOW_RIGHT => SDL_SYSTEM_CURSOR_E_RESIZE
+* SDL_SYSTEM_CURSOR_WINDOW_TOP => SDL_SYSTEM_CURSOR_N_RESIZE
+* SDL_SYSTEM_CURSOR_WINDOW_TOPLEFT => SDL_SYSTEM_CURSOR_NW_RESIZE
+* SDL_SYSTEM_CURSOR_WINDOW_TOPRIGHT => SDL_SYSTEM_CURSOR_NE_RESIZE
 
 ## SDL_mutex.h
 
@@ -1121,6 +1142,8 @@ to decide for you.
 SDL_CreateRenderer()'s flags parameter has been removed. See specific flags below for how to achieve the same functionality in SDL 3.0.
 
 SDL_CreateWindowAndRenderer() now takes the window title as the first parameter.
+
+SDL_GetRendererInfo() has been removed, the name of a renderer can be retrieved using SDL_GetRendererName(), and the other information is available as properties on the renderer.
 
 Mouse and touch events are no longer filtered to change their coordinates, instead you
 can call SDL_ConvertEventToRenderCoordinates() to explicitly map event coordinates into
@@ -1590,7 +1613,7 @@ The information previously available in SDL_GetWindowWMInfo() is now available a
     if (nswindow) {
         ...
     }
-#elif defined(SDL_PLATFORM_LINUX)
+#elif defined(__LINUX__)
     if (SDL_GetWindowWMInfo(window, &info)) {
         if (info.subsystem == SDL_SYSWM_X11) {
             Display *xdisplay = info.info.x11.display;
@@ -1605,6 +1628,17 @@ The information previously available in SDL_GetWindowWMInfo() is now available a
                 ...
             }
         }
+    }
+#elif defined(__IPHONEOS__)
+    UIWindow *uiwindow = NULL;
+    if (SDL_GetWindowWMInfo(window, &info) && info.subsystem == SDL_SYSWM_UIKIT) {
+        uiwindow = (__bridge UIWindow *)info.info.uikit.window;
+    }
+    if (uiwindow) {
+        GLuint framebuffer = info.info.uikit.framebuffer;
+        GLuint colorbuffer = info.info.uikit.colorbuffer;
+        GLuint resolveFramebuffer = info.info.uikit.resolveFramebuffer;
+        ...
     }
 #endif
 ```
@@ -1633,6 +1667,15 @@ becomes:
         if (display && surface) {
             ...
         }
+    }
+#elif defined(SDL_PLATFORM_IOS)
+    SDL_PropertiesID props = SDL_GetWindowProperties(window);
+    UIWindow *uiwindow = (__bridge UIWindow *)SDL_GetProperty(props, SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, NULL);
+    if (uiwindow) {
+        GLuint framebuffer = (GLuint)SDL_GetNumberProperty(props, SDL_PROP_WINDOW_UIKIT_OPENGL_FRAMEBUFFER_NUMBER, 0);
+        GLuint colorbuffer = (GLuint)SDL_GetNumberProperty(props, SDL_PROP_WINDOW_UIKIT_OPENGL_RENDERBUFFER_NUMBER, 0);
+        GLuint resolveFramebuffer = (GLuint)SDL_GetNumberProperty(props, SDL_PROP_WINDOW_UIKIT_OPENGL_RESOLVE_FRAMEBUFFER_NUMBER, 0);
+        ...
     }
 #endif
 ```
