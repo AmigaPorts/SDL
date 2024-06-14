@@ -28,6 +28,7 @@ static SDL_CameraDeviceID back_camera = 0;
 
 int SDL_AppInit(void **appstate, int argc, char *argv[])
 {
+    char window_title[128];
     int devcount = 0;
     int i;
     const char *camera_name = NULL;
@@ -97,7 +98,7 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
     SDL_Log("Saw %d camera devices.", devcount);
     for (i = 0; i < devcount; i++) {
         const SDL_CameraDeviceID device = devices[i];
-        char *name = SDL_GetCameraDeviceName(device);
+        const char *name = SDL_GetCameraDeviceName(device);
         const SDL_CameraPosition position = SDL_GetCameraDevicePosition(device);
         const char *posstr = "";
         if (position == SDL_CAMERA_POSITION_FRONT_FACING) {
@@ -111,7 +112,6 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
             camera_id = device;
         }
         SDL_Log("  - Camera #%d: %s %s", i, posstr, name);
-        SDL_free(name);
     }
 
     if (!camera_id) {
@@ -142,6 +142,9 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
         SDL_Log("Failed to open camera device: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
+
+    SDL_snprintf(window_title, sizeof (window_title), "testcamera: %s (%s)", SDL_GetCameraDeviceName(camera_id), SDL_GetCurrentCameraDriver());
+    SDL_SetWindowTitle(window, window_title);
 
     return SDL_APP_CONTINUE;
 }
@@ -234,7 +237,8 @@ int SDL_AppIterate(void *appstate)
     SDL_SetRenderDrawColor(renderer, 0x99, 0x99, 0x99, 255);
     SDL_RenderClear(renderer);
 
-    int win_w, win_h, tw, th;
+    int win_w, win_h;
+    float tw, th;
     SDL_FRect d;
     Uint64 timestampNS = 0;
     SDL_Surface *frame_next = camera ? SDL_AcquireCameraFrame(camera, &timestampNS) : NULL;
@@ -261,8 +265,8 @@ int SDL_AppIterate(void *appstate)
 
     if (frame_current) {
         if (!texture ||
-            SDL_QueryTexture(texture, NULL, NULL, &tw, &th) < 0 ||
-            tw != frame_current->w || th != frame_current->h) {
+            SDL_GetTextureSize(texture, &tw, &th) < 0 ||
+            (int)tw != frame_current->w || (int)th != frame_current->h) {
             /* Resize the window to match */
             SDL_SetWindowSize(window, frame_current->w, frame_current->h);
 
@@ -284,12 +288,12 @@ int SDL_AppIterate(void *appstate)
             texture_updated = SDL_TRUE;
         }
 
-        SDL_QueryTexture(texture, NULL, NULL, &tw, &th);
+        SDL_GetTextureSize(texture, &tw, &th);
         SDL_GetRenderOutputSize(renderer, &win_w, &win_h);
-        d.x = (float) ((win_w - tw) / 2);
-        d.y = (float) ((win_h - th) / 2);
-        d.w = (float) tw;
-        d.h = (float) th;
+        d.x = ((win_w - tw) / 2);
+        d.y = ((win_h - th) / 2);
+        d.w = tw;
+        d.h = th;
         SDL_RenderTexture(renderer, texture, NULL, &d);
     }
 

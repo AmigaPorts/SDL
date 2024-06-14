@@ -23,6 +23,7 @@
 #ifdef SDL_VIDEO_DRIVER_X11
 
 #include "SDL_x11video.h"
+#include "SDL_x11settings.h"
 #include "edid.h"
 
 /* #define X11MODES_DEBUG */
@@ -230,9 +231,22 @@ static float GetGlobalContentScale(SDL_VideoDevice *_this)
             }
         }
 
+        /* If that failed, try the XSETTINGS keys... */
+        if (scale_factor <= 0.0) {
+            scale_factor = X11_GetXsettingsIntKey(_this, "Gdk/WindowScalingFactor", -1);
+
+            /* The Xft/DPI key is stored in increments of 1024th */
+            if (scale_factor <= 0.0) {
+                int dpi = X11_GetXsettingsIntKey(_this, "Xft/DPI", -1);
+                if (dpi > 0) {
+                    scale_factor = (double) dpi / 1024.0;
+                    scale_factor /= 96.0;
+                }
+            }
+        }
+
         /* If that failed, try the GDK_SCALE envvar... */
-        if (scale_factor <= 0.0)
-        {
+        if (scale_factor <= 0.0) {
             const char *scale_str = SDL_getenv("GDK_SCALE");
             if (scale_str) {
                 scale_factor = SDL_atoi(scale_str);

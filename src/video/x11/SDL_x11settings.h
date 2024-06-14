@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright 2024 Igalia S.L.
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,38 +19,21 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef SDL_dynapi_unsupported_h_
-#define SDL_dynapi_unsupported_h_
+#include "SDL_internal.h"
 
+#ifndef SDL_x11settings_h_
+#define SDL_x11settings_h_
 
-#if !(defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK))
-typedef struct ID3D12Device ID3D12Device;
-typedef void *SDL_WindowsMessageHook;
-#endif
+#include <X11/Xlib.h>
+#include "xsettings-client.h"
 
-#if !(defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINGDK))
-typedef struct ID3D11Device ID3D11Device;
-typedef struct IDirect3DDevice9 IDirect3DDevice9;
-#endif
+typedef struct X11_SettingsData {
+    XSettingsClient *xsettings;
+} SDLX11_SettingsData;
 
-#ifndef SDL_PLATFORM_GDK
-typedef struct XTaskQueueHandle XTaskQueueHandle;
-#endif
+extern void X11_InitXsettings(SDL_VideoDevice *_this);
+extern void X11_QuitXsettings(SDL_VideoDevice *_this);
+extern void X11_HandleXsettings(SDL_VideoDevice *_this, const XEvent *xevent);
+extern int X11_GetXsettingsIntKey(SDL_VideoDevice *_this, const char *key, int fallback_value);
 
-#ifndef SDL_PLATFORM_WINRT
-typedef int SDL_WinRT_DeviceFamily;
-typedef int SDL_WinRT_Path;
-#endif
-#ifndef SDL_PLATFORM_GDK
-typedef struct XUserHandle XUserHandle;
-#endif
-
-#ifndef SDL_PLATFORM_ANDROID
-typedef void *SDL_AndroidRequestPermissionCallback;
-#endif
-
-#ifndef SDL_PLATFORM_IOS
-typedef void *SDL_iOSAnimationCallback;
-#endif
-
-#endif
+#endif /* SDL_x11settings_h_ */

@@ -3553,6 +3553,23 @@ extern "C" {
 #define SDL_HINT_WINDOWS_USE_D3D9EX "SDL_WINDOWS_USE_D3D9EX"
 
 /**
+ * A variable controlling whether SDL will clear the window contents when the
+ * WM_ERASEBKGND message is received.
+ *
+ * The variable can be set to the following values:
+ *
+ * - "0"/"never": Never clear the window.
+ * - "1"/"initial": Clear the window when the first WM_ERASEBKGND event fires.
+ *   (default)
+ * - "2"/"always": Clear the window on every WM_ERASEBKGND event.
+ *
+ * This hint should be set before creating a window.
+ *
+ * \since This hint is available since SDL 3.0.0.
+ */
+#define SDL_HINT_WINDOWS_ERASE_BACKGROUND_MODE "SDL_WINDOWS_ERASE_BACKGROUND_MODE"
+
+/**
  * A variable controlling whether back-button-press events on Windows Phone to
  * be marked as handled.
  *
@@ -3738,9 +3755,9 @@ typedef enum SDL_HintPriority
  * value. Hints will replace existing hints of their priority and lower.
  * Environment variables are considered to have override priority.
  *
- * \param name the hint to set
- * \param value the value of the hint variable
- * \param priority the SDL_HintPriority level for the hint
+ * \param name the hint to set.
+ * \param value the value of the hint variable.
+ * \param priority the SDL_HintPriority level for the hint.
  * \returns SDL_TRUE if the hint was set, SDL_FALSE otherwise.
  *
  * \since This function is available since SDL 3.0.0.
@@ -3760,8 +3777,8 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_SetHintWithPriority(const char *name,
  * variable that takes precedence. You can use SDL_SetHintWithPriority() to
  * set the hint with override priority instead.
  *
- * \param name the hint to set
- * \param value the value of the hint variable
+ * \param name the hint to set.
+ * \param value the value of the hint variable.
  * \returns SDL_TRUE if the hint was set, SDL_FALSE otherwise.
  *
  * \since This function is available since SDL 3.0.0.
@@ -3780,7 +3797,7 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_SetHint(const char *name,
  * the environment isn't set. Callbacks will be called normally with this
  * change.
  *
- * \param name the hint to set
+ * \param name the hint to set.
  * \returns SDL_TRUE if the hint was set, SDL_FALSE otherwise.
  *
  * \since This function is available since SDL 3.0.0.
@@ -3808,7 +3825,7 @@ extern SDL_DECLSPEC void SDLCALL SDL_ResetHints(void);
  *
  * The returned string follows the SDL_GetStringRule.
  *
- * \param name the hint to query
+ * \param name the hint to query.
  * \returns the string value of a hint or NULL if the hint isn't set.
  *
  * \since This function is available since SDL 3.0.0.
@@ -3821,8 +3838,8 @@ extern SDL_DECLSPEC const char * SDLCALL SDL_GetHint(const char *name);
 /**
  * Get the boolean value of a hint variable.
  *
- * \param name the name of the hint to get the boolean value from
- * \param default_value the value to return if the hint does not exist
+ * \param name the name of the hint to get the boolean value from.
+ * \param default_value the value to return if the hint does not exist.
  * \returns the boolean value of a hint or the provided default value if the
  *          hint does not exist.
  *
@@ -3836,10 +3853,10 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_GetHintBoolean(const char *name, SDL_bo
 /**
  * Type definition of the hint callback function.
  *
- * \param userdata what was passed as `userdata` to SDL_AddHintCallback()
- * \param name what was passed as `name` to SDL_AddHintCallback()
- * \param oldValue the previous hint value
- * \param newValue the new value hint is to be set to
+ * \param userdata what was passed as `userdata` to SDL_AddHintCallback().
+ * \param name what was passed as `name` to SDL_AddHintCallback().
+ * \param oldValue the previous hint value.
+ * \param newValue the new value hint is to be set to.
  *
  * \since This datatype is available since SDL 3.0.0.
  */
@@ -3848,10 +3865,10 @@ typedef void (SDLCALL *SDL_HintCallback)(void *userdata, const char *name, const
 /**
  * Add a function to watch a particular hint.
  *
- * \param name the hint to watch
- * \param callback An SDL_HintCallback function that will be called when the
- *                 hint value changes
- * \param userdata a pointer to pass to the callback function
+ * \param name the hint to watch.
+ * \param callback an SDL_HintCallback function that will be called when the
+ *                 hint value changes.
+ * \param userdata a pointer to pass to the callback function.
  * \returns 0 on success or a negative error code on failure; call
  *          SDL_GetError() for more information.
  *
@@ -3869,10 +3886,10 @@ extern SDL_DECLSPEC int SDLCALL SDL_AddHintCallback(const char *name,
 /**
  * Remove a function watching a particular hint.
  *
- * \param name the hint being watched
- * \param callback An SDL_HintCallback function that will be called when the
- *                 hint value changes
- * \param userdata a pointer being passed to the callback function
+ * \param name the hint being watched.
+ * \param callback an SDL_HintCallback function that will be called when the
+ *                 hint value changes.
+ * \param userdata a pointer being passed to the callback function.
  *
  * \since This function is available since SDL 3.0.0.
  *
