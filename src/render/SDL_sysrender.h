@@ -51,7 +51,9 @@ typedef struct SDL_RenderViewState
     int pixel_w;
     int pixel_h;
     SDL_Rect viewport;
+    SDL_Rect pixel_viewport;
     SDL_Rect clip_rect;
+    SDL_Rect pixel_clip_rect;
     SDL_bool clipping_enabled;
     SDL_FPoint scale;
 

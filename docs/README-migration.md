@@ -310,6 +310,16 @@ SDL_SIMDAlloc(), SDL_SIMDRealloc(), and SDL_SIMDFree() have been removed. You ca
 The following functions have been renamed:
 * SDL_SIMDGetAlignment() => SDL_GetSIMDAlignment()
 
+## SDL_endian.h
+
+The following functions have been renamed:
+* SDL_SwapBE16() => SDL_Swap16BE()
+* SDL_SwapBE32() => SDL_Swap32BE()
+* SDL_SwapBE64() => SDL_Swap64BE()
+* SDL_SwapLE16() => SDL_Swap16LE()
+* SDL_SwapLE32() => SDL_Swap32LE()
+* SDL_SwapLE64() => SDL_Swap64LE()
+
 ## SDL_error.h
 
 The following functions have been removed:
@@ -1143,7 +1153,9 @@ SDL_CreateRenderer()'s flags parameter has been removed. See specific flags belo
 
 SDL_CreateWindowAndRenderer() now takes the window title as the first parameter.
 
-SDL_GetRendererInfo() has been removed, the name of a renderer can be retrieved using SDL_GetRendererName(), and the other information is available as properties on the renderer.
+SDL_GetRendererInfo() has been removed. The name of a renderer can be retrieved using SDL_GetRendererName(), and the other information is available as properties on the renderer.
+
+SDL_QueryTexture() has been removed. The properties of the texture can be queried using SDL_PROP_TEXTURE_FORMAT_NUMBER, SDL_PROP_TEXTURE_ACCESS_NUMBER, SDL_PROP_TEXTURE_WIDTH_NUMBER, and SDL_PROP_TEXTURE_HEIGHT_NUMBER. A function SDL_GetTextureSize() has been added to get the size of the texture as floating point values.
 
 Mouse and touch events are no longer filtered to change their coordinates, instead you
 can call SDL_ConvertEventToRenderCoordinates() to explicitly map event coordinates into

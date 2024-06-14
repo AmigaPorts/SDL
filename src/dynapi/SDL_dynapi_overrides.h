@@ -468,6 +468,7 @@
 #define SDL_GetTextureColorModFloat SDL_GetTextureColorModFloat_REAL
 #define SDL_GetTextureProperties SDL_GetTextureProperties_REAL
 #define SDL_GetTextureScaleMode SDL_GetTextureScaleMode_REAL
+#define SDL_GetTextureSize SDL_GetTextureSize_REAL
 #define SDL_GetThreadID SDL_GetThreadID_REAL
 #define SDL_GetThreadName SDL_GetThreadName_REAL
 #define SDL_GetTicks SDL_GetTicks_REAL
@@ -629,7 +630,6 @@
 #define SDL_PumpEvents SDL_PumpEvents_REAL
 #define SDL_PushEvent SDL_PushEvent_REAL
 #define SDL_PutAudioStreamData SDL_PutAudioStreamData_REAL
-#define SDL_QueryTexture SDL_QueryTexture_REAL
 #define SDL_Quit SDL_Quit_REAL
 #define SDL_QuitSubSystem SDL_QuitSubSystem_REAL
 #define SDL_RaiseWindow SDL_RaiseWindow_REAL
@@ -640,6 +640,7 @@
 #define SDL_ReadS32LE SDL_ReadS32LE_REAL
 #define SDL_ReadS64BE SDL_ReadS64BE_REAL
 #define SDL_ReadS64LE SDL_ReadS64LE_REAL
+#define SDL_ReadS8 SDL_ReadS8_REAL
 #define SDL_ReadStorageFile SDL_ReadStorageFile_REAL
 #define SDL_ReadSurfacePixel SDL_ReadSurfacePixel_REAL
 #define SDL_ReadU16BE SDL_ReadU16BE_REAL
@@ -874,6 +875,7 @@
 #define SDL_WriteS32LE SDL_WriteS32LE_REAL
 #define SDL_WriteS64BE SDL_WriteS64BE_REAL
 #define SDL_WriteS64LE SDL_WriteS64LE_REAL
+#define SDL_WriteS8 SDL_WriteS8_REAL
 #define SDL_WriteStorageFile SDL_WriteStorageFile_REAL
 #define SDL_WriteU16BE SDL_WriteU16BE_REAL
 #define SDL_WriteU16LE SDL_WriteU16LE_REAL

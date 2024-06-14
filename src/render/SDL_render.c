@@ -222,23 +222,23 @@ static SDL_INLINE void DebugLogRenderCommands(const SDL_RenderCommand *cmd)
             case SDL_RENDERCMD_SETDRAWCOLOR:
                 SDL_Log(" %u. set draw color (first=%u, r=%d, g=%d, b=%d, a=%d, color_scale=%g)", i++,
                         (unsigned int) cmd->data.color.first,
-                        (int) cmd->data.color.r, (int) cmd->data.color.g,
-                        (int) cmd->data.color.b, (int) cmd->data.color.a, cmd->data.color.color_scale);
+                        (int) cmd->data.color.color.r, (int) cmd->data.color.color.g,
+                        (int) cmd->data.color.color.b, (int) cmd->data.color.color.a, cmd->data.color.color_scale);
                 break;
 
             case SDL_RENDERCMD_CLEAR:
                 SDL_Log(" %u. clear (first=%u, r=%d, g=%d, b=%d, a=%d, color_scale=%g)", i++,
                         (unsigned int) cmd->data.color.first,
-                        (int) cmd->data.color.r, (int) cmd->data.color.g,
-                        (int) cmd->data.color.b, (int) cmd->data.color.a, cmd->data.color.color_scale);
+                        (int) cmd->data.color.color.r, (int) cmd->data.color.color.g,
+                        (int) cmd->data.color.color.b, (int) cmd->data.color.color.a, cmd->data.color.color_scale);
                 break;
 
             case SDL_RENDERCMD_DRAW_POINTS:
                 SDL_Log(" %u. draw points (first=%u, count=%u, r=%d, g=%d, b=%d, a=%d, blend=%d, color_scale=%g)", i++,
                         (unsigned int) cmd->data.draw.first,
                         (unsigned int) cmd->data.draw.count,
-                        (int) cmd->data.draw.r, (int) cmd->data.draw.g,
-                        (int) cmd->data.draw.b, (int) cmd->data.draw.a,
+                        (int) cmd->data.draw.color.r, (int) cmd->data.draw.color.g,
+                        (int) cmd->data.draw.color.b, (int) cmd->data.draw.color.a,
                         (int) cmd->data.draw.blend, cmd->data.draw.color_scale);
                 break;
 
@@ -246,8 +246,8 @@ static SDL_INLINE void DebugLogRenderCommands(const SDL_RenderCommand *cmd)
                 SDL_Log(" %u. draw lines (first=%u, count=%u, r=%d, g=%d, b=%d, a=%d, blend=%d, color_scale=%g)", i++,
                         (unsigned int) cmd->data.draw.first,
                         (unsigned int) cmd->data.draw.count,
-                        (int) cmd->data.draw.r, (int) cmd->data.draw.g,
-                        (int) cmd->data.draw.b, (int) cmd->data.draw.a,
+                        (int) cmd->data.draw.color.r, (int) cmd->data.draw.color.g,
+                        (int) cmd->data.draw.color.b, (int) cmd->data.draw.color.a,
                         (int) cmd->data.draw.blend, cmd->data.draw.color_scale);
                 break;
 
@@ -255,8 +255,8 @@ static SDL_INLINE void DebugLogRenderCommands(const SDL_RenderCommand *cmd)
                 SDL_Log(" %u. fill rects (first=%u, count=%u, r=%d, g=%d, b=%d, a=%d, blend=%d, color_scale=%g)", i++,
                         (unsigned int) cmd->data.draw.first,
                         (unsigned int) cmd->data.draw.count,
-                        (int) cmd->data.draw.r, (int) cmd->data.draw.g,
-                        (int) cmd->data.draw.b, (int) cmd->data.draw.a,
+                        (int) cmd->data.draw.color.r, (int) cmd->data.draw.color.g,
+                        (int) cmd->data.draw.color.b, (int) cmd->data.draw.color.a,
                         (int) cmd->data.draw.blend, cmd->data.draw.color_scale);
                 break;
 
@@ -264,8 +264,8 @@ static SDL_INLINE void DebugLogRenderCommands(const SDL_RenderCommand *cmd)
                 SDL_Log(" %u. copy (first=%u, count=%u, r=%d, g=%d, b=%d, a=%d, blend=%d, color_scale=%g, tex=%p)", i++,
                         (unsigned int) cmd->data.draw.first,
                         (unsigned int) cmd->data.draw.count,
-                        (int) cmd->data.draw.r, (int) cmd->data.draw.g,
-                        (int) cmd->data.draw.b, (int) cmd->data.draw.a,
+                        (int) cmd->data.draw.color.r, (int) cmd->data.draw.color.g,
+                        (int) cmd->data.draw.color.b, (int) cmd->data.draw.color.a,
                         (int) cmd->data.draw.blend, cmd->data.draw.color_scale, cmd->data.draw.texture);
                 break;
 
@@ -274,8 +274,8 @@ static SDL_INLINE void DebugLogRenderCommands(const SDL_RenderCommand *cmd)
                 SDL_Log(" %u. copyex (first=%u, count=%u, r=%d, g=%d, b=%d, a=%d, blend=%d, color_scale=%g, tex=%p)", i++,
                         (unsigned int) cmd->data.draw.first,
                         (unsigned int) cmd->data.draw.count,
-                        (int) cmd->data.draw.r, (int) cmd->data.draw.g,
-                        (int) cmd->data.draw.b, (int) cmd->data.draw.a,
+                        (int) cmd->data.draw.color.r, (int) cmd->data.draw.color.g,
+                        (int) cmd->data.draw.color.b, (int) cmd->data.draw.color.a,
                         (int) cmd->data.draw.blend, cmd->data.draw.color_scale, cmd->data.draw.texture);
                 break;
 
@@ -283,8 +283,8 @@ static SDL_INLINE void DebugLogRenderCommands(const SDL_RenderCommand *cmd)
                 SDL_Log(" %u. geometry (first=%u, count=%u, r=%d, g=%d, b=%d, a=%d, blend=%d, color_scale=%g, tex=%p)", i++,
                         (unsigned int) cmd->data.draw.first,
                         (unsigned int) cmd->data.draw.count,
-                        (int) cmd->data.draw.r, (int) cmd->data.draw.g,
-                        (int) cmd->data.draw.b, (int) cmd->data.draw.a,
+                        (int) cmd->data.draw.color.r, (int) cmd->data.draw.color.g,
+                        (int) cmd->data.draw.color.b, (int) cmd->data.draw.color.a,
                         (int) cmd->data.draw.blend, cmd->data.draw.color_scale, cmd->data.draw.texture);
                 break;
 
@@ -405,19 +405,19 @@ static SDL_RenderCommand *AllocateRenderCommand(SDL_Renderer *renderer)
     return retval;
 }
 
-static void GetRenderViewportInPixels(SDL_Renderer *renderer, SDL_Rect *rect)
+static void UpdatePixelViewport(SDL_Renderer *renderer, SDL_RenderViewState *view)
 {
-    rect->x = (int)SDL_floorf(renderer->view->viewport.x * renderer->view->scale.x);
-    rect->y = (int)SDL_floorf(renderer->view->viewport.y * renderer->view->scale.y);
-    if (renderer->view->viewport.w >= 0) {
-        rect->w = (int)SDL_floorf(renderer->view->viewport.w * renderer->view->scale.x);
+    view->pixel_viewport.x = (int)SDL_floorf(view->viewport.x * view->scale.x);
+    view->pixel_viewport.y = (int)SDL_floorf(view->viewport.y * view->scale.y);
+    if (view->viewport.w >= 0) {
+        view->pixel_viewport.w = (int)SDL_ceilf(view->viewport.w * view->scale.x);
     } else {
-        rect->w = renderer->view->pixel_w;
+        view->pixel_viewport.w = view->pixel_w;
     }
-    if (renderer->view->viewport.h >= 0) {
-        rect->h = (int)SDL_floorf(renderer->view->viewport.h * renderer->view->scale.y);
+    if (view->viewport.h >= 0) {
+        view->pixel_viewport.h = (int)SDL_ceilf(view->viewport.h * view->scale.y);
     } else {
-        rect->h = renderer->view->pixel_h;
+        view->pixel_viewport.h = view->pixel_h;
     }
 }
 
@@ -426,7 +426,7 @@ static int QueueCmdSetViewport(SDL_Renderer *renderer)
     SDL_Rect viewport;
     int retval = 0;
 
-    GetRenderViewportInPixels(renderer, &viewport);
+    viewport = renderer->view->pixel_viewport;
 
     if (!renderer->viewport_queued ||
         SDL_memcmp(&viewport, &renderer->last_queued_viewport, sizeof(viewport)) != 0) {
@@ -449,15 +449,20 @@ static int QueueCmdSetViewport(SDL_Renderer *renderer)
     return retval;
 }
 
+static void UpdatePixelClipRect(SDL_Renderer *renderer, SDL_RenderViewState *view)
+{
+    view->pixel_clip_rect.x = (int)SDL_floorf(view->clip_rect.x * view->scale.x);
+    view->pixel_clip_rect.y = (int)SDL_floorf(view->clip_rect.y * view->scale.y);
+    view->pixel_clip_rect.w = (int)SDL_ceilf(view->clip_rect.w * view->scale.x);
+    view->pixel_clip_rect.h = (int)SDL_ceilf(view->clip_rect.h * view->scale.y);
+}
+
 static int QueueCmdSetClipRect(SDL_Renderer *renderer)
 {
     SDL_Rect clip_rect;
     int retval = 0;
 
-    clip_rect.x = (int)SDL_floorf(renderer->view->clip_rect.x * renderer->view->scale.x);
-    clip_rect.y = (int)SDL_floorf(renderer->view->clip_rect.y * renderer->view->scale.y);
-    clip_rect.w = (int)SDL_floorf(renderer->view->clip_rect.w * renderer->view->scale.x);
-    clip_rect.h = (int)SDL_floorf(renderer->view->clip_rect.h * renderer->view->scale.y);
+    clip_rect = renderer->view->pixel_clip_rect;
 
     if (!renderer->cliprect_queued ||
         renderer->view->clipping_enabled != renderer->last_queued_cliprect_enabled ||
@@ -730,6 +735,7 @@ static void UpdateMainViewDimensions(SDL_Renderer *renderer)
         renderer->dpi_scale.x = 1.0f;
         renderer->dpi_scale.y = 1.0f;
     }
+    UpdatePixelViewport(renderer, &renderer->main_view);
 }
 
 static void UpdateHDRProperties(SDL_Renderer *renderer)
@@ -1036,6 +1042,8 @@ SDL_Renderer *SDL_CreateRendererWithProperties(SDL_PropertiesID props)
     renderer->view = &renderer->main_view;
     renderer->dpi_scale.x = 1.0f;
     renderer->dpi_scale.y = 1.0f;
+    UpdatePixelViewport(renderer, &renderer->main_view);
+    UpdatePixelClipRect(renderer, &renderer->main_view);
     UpdateMainViewDimensions(renderer);
 
     /* Default value, if not specified by the renderer back-end */
@@ -1342,6 +1350,9 @@ SDL_Texture *SDL_CreateTextureWithProperties(SDL_Renderer *renderer, SDL_Propert
     }
     renderer->textures = texture;
 
+    UpdatePixelViewport(renderer, &texture->view);
+    UpdatePixelClipRect(renderer, &texture->view);
+
     texture->SDR_white_point = SDL_GetFloatProperty(props, SDL_PROP_TEXTURE_CREATE_SDR_WHITE_POINT_FLOAT, SDL_GetDefaultSDRWhitePoint(texture->colorspace));
     texture->HDR_headroom = SDL_GetFloatProperty(props, SDL_PROP_TEXTURE_CREATE_HDR_HEADROOM_FLOAT, SDL_GetDefaultHDRHeadroom(texture->colorspace));
 
@@ -1363,7 +1374,12 @@ SDL_Texture *SDL_CreateTextureWithProperties(SDL_Renderer *renderer, SDL_Propert
             closest_format = renderer->texture_formats[0];
         }
 
-        SDL_SetNumberProperty(native_props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, texture->colorspace);
+        default_colorspace = SDL_GetDefaultColorspaceForFormat(closest_format);
+        if (SDL_COLORSPACETYPE(texture->colorspace) == SDL_COLORSPACETYPE(default_colorspace)) {
+            SDL_SetNumberProperty(native_props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, texture->colorspace);
+        } else {
+            SDL_SetNumberProperty(native_props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, default_colorspace);
+        }
         SDL_SetNumberProperty(native_props, SDL_PROP_TEXTURE_CREATE_FORMAT_NUMBER, closest_format);
         SDL_SetNumberProperty(native_props, SDL_PROP_TEXTURE_CREATE_ACCESS_NUMBER, texture->access);
         SDL_SetNumberProperty(native_props, SDL_PROP_TEXTURE_CREATE_WIDTH_NUMBER, texture->w);
@@ -1415,6 +1431,10 @@ SDL_Texture *SDL_CreateTextureWithProperties(SDL_Renderer *renderer, SDL_Propert
     /* Now set the properties for the new texture */
     props = SDL_GetTextureProperties(texture);
     SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_COLORSPACE_NUMBER, texture->colorspace);
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_FORMAT_NUMBER, texture->format);
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_ACCESS_NUMBER, texture->access);
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_WIDTH_NUMBER, texture->w);
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_HEIGHT_NUMBER, texture->h);
     SDL_SetFloatProperty(props, SDL_PROP_TEXTURE_SDR_WHITE_POINT_FLOAT, texture->SDR_white_point);
     if (texture->HDR_headroom > 0.0f) {
         SDL_SetFloatProperty(props, SDL_PROP_TEXTURE_HDR_HEADROOM_FLOAT, texture->HDR_headroom);
@@ -1645,21 +1665,15 @@ SDL_PropertiesID SDL_GetTextureProperties(SDL_Texture *texture)
     return texture->props;
 }
 
-int SDL_QueryTexture(SDL_Texture *texture, SDL_PixelFormatEnum *format, int *access, int *w, int *h)
+int SDL_GetTextureSize(SDL_Texture *texture, float *w, float *h)
 {
     CHECK_TEXTURE_MAGIC(texture, -1);
 
-    if (format) {
-        *format = texture->format;
-    }
-    if (access) {
-        *access = texture->access;
-    }
     if (w) {
-        *w = texture->w;
+        *w = (float)texture->w;
     }
     if (h) {
-        *h = texture->h;
+        *h = (float)texture->h;
     }
     return 0;
 }
@@ -2408,9 +2422,9 @@ SDL_Texture *SDL_GetRenderTarget(SDL_Renderer *renderer)
 
 static int UpdateLogicalPresentation(SDL_Renderer *renderer)
 {
-    int logical_w = 1, logical_h = 1;
-    int output_w = renderer->main_view.pixel_w;
-    int output_h = renderer->main_view.pixel_h;
+    float logical_w = 1.0f, logical_h = 1.0f;
+    float output_w = (float)renderer->main_view.pixel_w;
+    float output_h = (float)renderer->main_view.pixel_h;
     float want_aspect = 1.0f;
     float real_aspect = 1.0f;
     float scale;
@@ -2420,23 +2434,23 @@ static int UpdateLogicalPresentation(SDL_Renderer *renderer)
         return 0;
     }
 
-    if (SDL_QueryTexture(renderer->logical_target, NULL, NULL, &logical_w, &logical_h) < 0) {
+    if (SDL_GetTextureSize(renderer->logical_target, &logical_w, &logical_h) < 0) {
         goto error;
     }
 
-    want_aspect = (float)logical_w / logical_h;
-    real_aspect = (float)output_w / output_h;
+    want_aspect = logical_w / logical_h;
+    real_aspect = output_w / output_h;
 
     renderer->logical_src_rect.x = 0.0f;
     renderer->logical_src_rect.y = 0.0f;
-    renderer->logical_src_rect.w = (float)logical_w;
-    renderer->logical_src_rect.h = (float)logical_h;
+    renderer->logical_src_rect.w = logical_w;
+    renderer->logical_src_rect.h = logical_h;
 
     if (renderer->logical_presentation_mode == SDL_LOGICAL_PRESENTATION_INTEGER_SCALE) {
         if (want_aspect > real_aspect) {
-            scale = (float)(output_w / logical_w); /* This an integer division! */
+            scale = (float)((int)output_w / (int)logical_w); /* This an integer division! */
         } else {
-            scale = (float)(output_h / logical_h); /* This an integer division! */
+            scale = (float)((int)output_h / (int)logical_h); /* This an integer division! */
         }
 
         if (scale < 1.0f) {
@@ -2452,15 +2466,15 @@ static int UpdateLogicalPresentation(SDL_Renderer *renderer)
                SDL_fabsf(want_aspect - real_aspect) < 0.0001f) {
         renderer->logical_dst_rect.x = 0.0f;
         renderer->logical_dst_rect.y = 0.0f;
-        renderer->logical_dst_rect.w = (float)output_w;
-        renderer->logical_dst_rect.h = (float)output_h;
+        renderer->logical_dst_rect.w = output_w;
+        renderer->logical_dst_rect.h = output_h;
 
     } else if (want_aspect > real_aspect) {
         if (renderer->logical_presentation_mode == SDL_LOGICAL_PRESENTATION_LETTERBOX) {
             /* We want a wider aspect ratio than is available - letterbox it */
-            scale = (float)output_w / logical_w;
+            scale = output_w / logical_w;
             renderer->logical_dst_rect.x = 0.0f;
-            renderer->logical_dst_rect.w = (float)output_w;
+            renderer->logical_dst_rect.w = output_w;
             renderer->logical_dst_rect.h = SDL_floorf(logical_h * scale);
             renderer->logical_dst_rect.y = (output_h - renderer->logical_dst_rect.h) / 2.0f;
         } else { /* renderer->logical_presentation_mode == SDL_LOGICAL_PRESENTATION_OVERSCAN */
@@ -2468,18 +2482,18 @@ static int UpdateLogicalPresentation(SDL_Renderer *renderer)
                zoom so logical height matches the real height
                and the width will grow off the screen
              */
-            scale = (float)output_h / logical_h;
+            scale = output_h / logical_h;
             renderer->logical_dst_rect.y = 0.0f;
-            renderer->logical_dst_rect.h = (float)output_h;
+            renderer->logical_dst_rect.h = output_h;
             renderer->logical_dst_rect.w = SDL_floorf(logical_w * scale);
             renderer->logical_dst_rect.x = (output_w - renderer->logical_dst_rect.w) / 2.0f;
         }
     } else {
         if (renderer->logical_presentation_mode == SDL_LOGICAL_PRESENTATION_LETTERBOX) {
             /* We want a narrower aspect ratio than is available - use side-bars */
-            scale = (float)output_h / logical_h;
+            scale = output_h / logical_h;
             renderer->logical_dst_rect.y = 0.0f;
-            renderer->logical_dst_rect.h = (float)output_h;
+            renderer->logical_dst_rect.h = output_h;
             renderer->logical_dst_rect.w = SDL_floorf(logical_w * scale);
             renderer->logical_dst_rect.x = (output_w - renderer->logical_dst_rect.w) / 2.0f;
         } else { /* renderer->logical_presentation_mode == SDL_LOGICAL_PRESENTATION_OVERSCAN */
@@ -2487,9 +2501,9 @@ static int UpdateLogicalPresentation(SDL_Renderer *renderer)
                zoom so logical width matches the real width
                and the height will grow off the screen
              */
-            scale = (float)output_w / logical_w;
+            scale = output_w / logical_w;
             renderer->logical_dst_rect.x = 0.0f;
-            renderer->logical_dst_rect.w = (float)output_w;
+            renderer->logical_dst_rect.w = output_w;
             renderer->logical_dst_rect.h = SDL_floorf(logical_h * scale);
             renderer->logical_dst_rect.y = (output_h - renderer->logical_dst_rect.h) / 2.0f;
         }
@@ -2518,11 +2532,14 @@ int SDL_SetRenderLogicalPresentation(SDL_Renderer *renderer, int w, int h, SDL_R
         }
     } else {
         if (renderer->logical_target) {
-            int existing_w = 0, existing_h = 0;
-
-            if (SDL_QueryTexture(renderer->logical_target, NULL, NULL, &existing_w, &existing_h) < 0) {
+            SDL_PropertiesID props = SDL_GetTextureProperties(renderer->logical_target);
+            if (!props) {
                 goto error;
             }
+
+            int existing_w = (int)SDL_GetNumberProperty(props, SDL_PROP_TEXTURE_WIDTH_NUMBER, 0);
+            int existing_h = (int)SDL_GetNumberProperty(props, SDL_PROP_TEXTURE_HEIGHT_NUMBER, 0);
+
             if (w != existing_w || h != existing_h) {
                 SDL_DestroyTexture(renderer->logical_target);
             }
@@ -2548,18 +2565,32 @@ error:
 
 int SDL_GetRenderLogicalPresentation(SDL_Renderer *renderer, int *w, int *h, SDL_RendererLogicalPresentation *mode, SDL_ScaleMode *scale_mode)
 {
+    if (w) {
+        *w = 0;
+    }
+    if (h) {
+        *h = 0;
+    }
+    if (mode) {
+        *mode = SDL_LOGICAL_PRESENTATION_DISABLED;
+    }
+    if (scale_mode) {
+        *scale_mode = SDL_SCALEMODE_NEAREST;
+    }
+
     CHECK_RENDERER_MAGIC(renderer, -1);
 
     if (renderer->logical_target) {
-        if (SDL_QueryTexture(renderer->logical_target, NULL, NULL, w, h) < 0) {
+        SDL_PropertiesID props = SDL_GetTextureProperties(renderer->logical_target);
+        if (!props) {
             return -1;
         }
-    } else {
+
         if (w) {
-            *w = 0;
+            *w = (int)SDL_GetNumberProperty(props, SDL_PROP_TEXTURE_WIDTH_NUMBER, 0);
         }
         if (h) {
-            *h = 0;
+            *h = (int)SDL_GetNumberProperty(props, SDL_PROP_TEXTURE_HEIGHT_NUMBER, 0);
         }
     }
 
@@ -2569,6 +2600,7 @@ int SDL_GetRenderLogicalPresentation(SDL_Renderer *renderer, int *w, int *h, SDL
     if (scale_mode) {
         *scale_mode = renderer->logical_scale_mode;
     }
+
     return 0;
 }
 
@@ -2797,16 +2829,15 @@ int SDL_SetRenderViewport(SDL_Renderer *renderer, const SDL_Rect *rect)
     CHECK_RENDERER_MAGIC(renderer, -1);
 
     if (rect) {
-        renderer->view->viewport.x = rect->x;
-        renderer->view->viewport.y = rect->y;
-        renderer->view->viewport.w = rect->w;
-        renderer->view->viewport.h = rect->h;
+        SDL_copyp(&renderer->view->viewport, rect);
     } else {
         renderer->view->viewport.x = 0;
         renderer->view->viewport.y = 0;
         renderer->view->viewport.w = -1;
         renderer->view->viewport.h = -1;
     }
+    UpdatePixelViewport(renderer, renderer->view);
+
     return QueueCmdSetViewport(renderer);
 }
 
@@ -2835,11 +2866,11 @@ SDL_bool SDL_RenderViewportSet(SDL_Renderer *renderer)
 {
     CHECK_RENDERER_MAGIC(renderer, -1);
 
-	if (renderer->view->viewport.w >= 0 &&
-		renderer->view->viewport.h >= 0) {
-		return SDL_TRUE;
-	}
-	return SDL_FALSE;
+    if (renderer->view->viewport.w >= 0 &&
+        renderer->view->viewport.h >= 0) {
+        return SDL_TRUE;
+    }
+    return SDL_FALSE;
 }
 
 static void GetRenderViewportSize(SDL_Renderer *renderer, SDL_FRect *rect)
@@ -2864,14 +2895,12 @@ int SDL_SetRenderClipRect(SDL_Renderer *renderer, const SDL_Rect *rect)
 
     if (rect && rect->w >= 0 && rect->h >= 0) {
         renderer->view->clipping_enabled = SDL_TRUE;
-        renderer->view->clip_rect.x = rect->x;
-        renderer->view->clip_rect.y = rect->y;
-        renderer->view->clip_rect.w = rect->w;
-        renderer->view->clip_rect.h = rect->h;
+        SDL_copyp(&renderer->view->clip_rect, rect);
     } else {
         renderer->view->clipping_enabled = SDL_FALSE;
         SDL_zero(renderer->view->clip_rect);
     }
+    UpdatePixelClipRect(renderer, renderer->view);
 
     return QueueCmdSetClipRect(renderer);
 }
@@ -2881,10 +2910,7 @@ int SDL_GetRenderClipRect(SDL_Renderer *renderer, SDL_Rect *rect)
     CHECK_RENDERER_MAGIC(renderer, -1)
 
     if (rect) {
-        rect->x = renderer->view->clip_rect.x;
-        rect->y = renderer->view->clip_rect.y;
-        rect->w = renderer->view->clip_rect.w;
-        rect->h = renderer->view->clip_rect.h;
+        SDL_copyp(rect, &renderer->view->clip_rect);
     }
     return 0;
 }
@@ -2908,6 +2934,8 @@ int SDL_SetRenderScale(SDL_Renderer *renderer, float scaleX, float scaleY)
 
     renderer->view->scale.x = scaleX;
     renderer->view->scale.y = scaleY;
+    UpdatePixelViewport(renderer, renderer->view);
+    UpdatePixelClipRect(renderer, renderer->view);
 
     /* The scale affects the existing viewport and clip rectangle */
     retval += QueueCmdSetViewport(renderer);
@@ -3131,7 +3159,7 @@ static int RenderLineBresenham(SDL_Renderer *renderer, int x1, int y1, int x2, i
     /* the backend might clip this further to the clipping rect, but we
        just want a basic safety against generating millions of points for
        massive lines. */
-    GetRenderViewportInPixels(renderer, &viewport);
+    viewport = renderer->view->pixel_viewport;
     viewport.x = 0;
     viewport.y = 0;
     if (!SDL_GetRectAndLineIntersection(&viewport, &x1, &y1, &x2, &y2)) {
@@ -3899,7 +3927,7 @@ static int SDLCALL SDL_SW_RenderGeometryRaw(SDL_Renderer *renderer,
     int retval = 0;
     int count = indices ? num_indices : num_vertices;
     int prev[3]; /* Previous triangle vertex indices */
-    int texw = 0, texh = 0;
+    float texw = 0.0f, texh = 0.0f;
     SDL_BlendMode blendMode = SDL_BLENDMODE_NONE;
     float r = 0, g = 0, b = 0, a = 0;
 
@@ -3908,7 +3936,7 @@ static int SDLCALL SDL_SW_RenderGeometryRaw(SDL_Renderer *renderer,
     SDL_GetRenderDrawColorFloat(renderer, &r, &g, &b, &a);
 
     if (texture) {
-        SDL_QueryTexture(texture, NULL, NULL, &texw, &texh);
+        SDL_GetTextureSize(texture, &texw, &texh);
     }
 
     prev[0] = -1;
@@ -4355,7 +4383,7 @@ SDL_Surface *SDL_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rect *rect)
 
     FlushRenderCommands(renderer); /* we need to render before we read the results. */
 
-    GetRenderViewportInPixels(renderer, &real_rect);
+    real_rect = renderer->view->pixel_viewport;
 
     if (rect) {
         if (!SDL_GetRectIntersection(rect, &real_rect, &real_rect)) {

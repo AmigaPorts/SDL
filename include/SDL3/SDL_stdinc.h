@@ -282,6 +282,15 @@ typedef Sint64 SDL_Time;
 #ifdef FLT_EPSILON
 #define SDL_FLT_EPSILON FLT_EPSILON
 #else
+
+/**
+ * Epsilon constant, used for comparing floating-point numbers.
+ *
+ * Equals by default to platform-defined `FLT_EPSILON`, or
+ * `1.1920928955078125e-07F` if that's not available.
+ *
+ * \since This macro is available since SDL 3.0.0.
+ */
 #define SDL_FLT_EPSILON 1.1920928955078125e-07F /* 0x0.000002p0 */
 #endif
 
@@ -495,10 +504,17 @@ typedef void (SDLCALL *SDL_free_func)(void *mem);
 /**
  * Get the original set of SDL memory functions.
  *
- * \param malloc_func filled with malloc function
- * \param calloc_func filled with calloc function
- * \param realloc_func filled with realloc function
- * \param free_func filled with free function
+ * This is what SDL_malloc and friends will use by default, if there has been
+ * no call to SDL_SetMemoryFunctions. This is not necessarily using the C
+ * runtime's `malloc` functions behind the scenes! Different platforms and
+ * build configurations might do any number of unexpected things.
+ *
+ * \param malloc_func filled with malloc function.
+ * \param calloc_func filled with calloc function.
+ * \param realloc_func filled with realloc function.
+ * \param free_func filled with free function.
+ *
+ * \threadsafety It is safe to call this function from any thread.
  *
  * \since This function is available since SDL 3.0.0.
  */
@@ -510,12 +526,19 @@ extern SDL_DECLSPEC void SDLCALL SDL_GetOriginalMemoryFunctions(SDL_malloc_func 
 /**
  * Get the current set of SDL memory functions.
  *
- * \param malloc_func filled with malloc function
- * \param calloc_func filled with calloc function
- * \param realloc_func filled with realloc function
- * \param free_func filled with free function
+ * \param malloc_func filled with malloc function.
+ * \param calloc_func filled with calloc function.
+ * \param realloc_func filled with realloc function.
+ * \param free_func filled with free function.
+ *
+ * \threadsafety This does not hold a lock, so do not call this in the
+ *               unlikely event of a background thread calling
+ *               SDL_SetMemoryFunctions simultaneously.
  *
  * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_SetMemoryFunctions
+ * \sa SDL_GetOriginalMemoryFunctions
  */
 extern SDL_DECLSPEC void SDLCALL SDL_GetMemoryFunctions(SDL_malloc_func *malloc_func,
                                                     SDL_calloc_func *calloc_func,
@@ -525,14 +548,28 @@ extern SDL_DECLSPEC void SDLCALL SDL_GetMemoryFunctions(SDL_malloc_func *malloc_
 /**
  * Replace SDL's memory allocation functions with a custom set.
  *
- * \param malloc_func custom malloc function
- * \param calloc_func custom calloc function
- * \param realloc_func custom realloc function
- * \param free_func custom free function
+ * It is not safe to call this function once any allocations have been made,
+ * as future calls to SDL_free will use the new allocator, even if they came
+ * from an SDL_malloc made with the old one!
+ *
+ * If used, usually this needs to be the first call made into the SDL library,
+ * if not the very first thing done at program startup time.
+ *
+ * \param malloc_func custom malloc function.
+ * \param calloc_func custom calloc function.
+ * \param realloc_func custom realloc function.
+ * \param free_func custom free function.
  * \returns 0 on success or a negative error code on failure; call
  *          SDL_GetError() for more information.
  *
+ * \threadsafety It is safe to call this function from any thread, but one
+ *               should not replace the memory functions once any allocations
+ *               are made!
+ *
  * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_GetMemoryFunctions
+ * \sa SDL_GetOriginalMemoryFunctions
  */
 extern SDL_DECLSPEC int SDLCALL SDL_SetMemoryFunctions(SDL_malloc_func malloc_func,
                                                    SDL_calloc_func calloc_func,
@@ -548,11 +585,14 @@ extern SDL_DECLSPEC int SDLCALL SDL_SetMemoryFunctions(SDL_malloc_func malloc_fu
  * The returned memory address will be a multiple of the alignment value, and
  * the amount of memory allocated will be a multiple of the alignment value.
  *
- * The memory returned by this function must be freed with SDL_aligned_free()
+ * The memory returned by this function must be freed with SDL_aligned_free(),
+ * and _not_ SDL_free.
  *
- * \param alignment the alignment requested
- * \param size the size to allocate
- * \returns a pointer to the aligned memory
+ * \param alignment the alignment requested.
+ * \param size the size to allocate.
+ * \returns a pointer to the aligned memory.
+ *
+ * \threadsafety It is safe to call this function from any thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -563,6 +603,13 @@ extern SDL_DECLSPEC SDL_MALLOC void *SDLCALL SDL_aligned_alloc(size_t alignment,
 /**
  * Free memory allocated by SDL_aligned_alloc().
  *
+ * The pointer is no longer valid after this call and cannot be dereferenced
+ * anymore.
+ *
+ * \param mem a pointer previously returned by SDL_aligned_alloc.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_aligned_alloc
@@ -572,7 +619,9 @@ extern SDL_DECLSPEC void SDLCALL SDL_aligned_free(void *mem);
 /**
  * Get the number of outstanding (unfreed) allocations.
  *
- * \returns the number of allocations
+ * \returns the number of allocations.
+ *
+ * \threadsafety It is safe to call this function from any thread.
  *
  * \since This function is available since SDL 3.0.0.
  */
@@ -581,11 +630,13 @@ extern SDL_DECLSPEC int SDLCALL SDL_GetNumAllocations(void);
 extern SDL_DECLSPEC char *SDLCALL SDL_getenv(const char *name);
 extern SDL_DECLSPEC int SDLCALL SDL_setenv(const char *name, const char *value, int overwrite);
 
-extern SDL_DECLSPEC void SDLCALL SDL_qsort(void *base, size_t nmemb, size_t size, int (SDLCALL *compare) (const void *, const void *));
-extern SDL_DECLSPEC void * SDLCALL SDL_bsearch(const void *key, const void *base, size_t nmemb, size_t size, int (SDLCALL *compare) (const void *, const void *));
+typedef int (SDLCALL *SDL_CompareCallback)(const void *a, const void *b);
+extern SDL_DECLSPEC void SDLCALL SDL_qsort(void *base, size_t nmemb, size_t size, SDL_CompareCallback compare);
+extern SDL_DECLSPEC void * SDLCALL SDL_bsearch(const void *key, const void *base, size_t nmemb, size_t size, SDL_CompareCallback compare);
 
-extern SDL_DECLSPEC void SDLCALL SDL_qsort_r(void *base, size_t nmemb, size_t size, int (SDLCALL *compare) (void *, const void *, const void *), void *userdata);
-extern SDL_DECLSPEC void * SDLCALL SDL_bsearch_r(const void *key, const void *base, size_t nmemb, size_t size, int (SDLCALL *compare) (void *, const void *, const void *), void *userdata);
+typedef int (SDLCALL *SDL_CompareCallback_r)(void *userdata, const void *a, const void *b);
+extern SDL_DECLSPEC void SDLCALL SDL_qsort_r(void *base, size_t nmemb, size_t size, SDL_CompareCallback_r compare, void *userdata);
+extern SDL_DECLSPEC void * SDLCALL SDL_bsearch_r(const void *key, const void *base, size_t nmemb, size_t size, SDL_CompareCallback_r compare, void *userdata);
 
 extern SDL_DECLSPEC int SDLCALL SDL_abs(int x);
 
@@ -804,7 +855,7 @@ extern SDL_DECLSPEC int SDLCALL SDL_isgraph(int x);
  * cannot be converted, or is already uppercase, this function returns `x`.
  *
  * \param x character value to check.
- * \returns Capitalized version of x, or x if no conversion available.
+ * \returns capitalized version of x, or x if no conversion available.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -822,7 +873,7 @@ extern SDL_DECLSPEC int SDLCALL SDL_toupper(int x);
  * cannot be converted, or is already lowercase, this function returns `x`.
  *
  * \param x character value to check.
- * \returns Lowercase version of x, or x if no conversion available.
+ * \returns lowercase version of x, or x if no conversion available.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -889,8 +940,8 @@ extern SDL_DECLSPEC wchar_t *SDLCALL SDL_wcsnstr(const wchar_t *haystack, const 
  * character; it does not care if the string is well-formed UTF-16 (or UTF-32,
  * depending on your platform's wchar_t size), or uses valid Unicode values.
  *
- * \param str1 The first string to compare. NULL is not permitted!
- * \param str2 The second string to compare. NULL is not permitted!
+ * \param str1 the first string to compare. NULL is not permitted!
+ * \param str2 the second string to compare. NULL is not permitted!
  * \returns less than zero if str1 is "less than" str2, greater than zero if
  *          str1 is "greater than" str2, and zero if the strings match
  *          exactly.
@@ -919,9 +970,9 @@ extern SDL_DECLSPEC int SDLCALL SDL_wcscmp(const wchar_t *str1, const wchar_t *s
  * null-terminator character before this count), they will be considered
  * equal.
  *
- * \param str1 The first string to compare. NULL is not permitted!
- * \param str2 The second string to compare. NULL is not permitted!
- * \param maxlen The maximum number of wchar_t to compare.
+ * \param str1 the first string to compare. NULL is not permitted!
+ * \param str2 the second string to compare. NULL is not permitted!
+ * \param maxlen the maximum number of wchar_t to compare.
  * \returns less than zero if str1 is "less than" str2, greater than zero if
  *          str1 is "greater than" str2, and zero if the strings match
  *          exactly.
@@ -950,8 +1001,8 @@ extern SDL_DECLSPEC int SDLCALL SDL_wcsncmp(const wchar_t *str1, const wchar_t *
  * CHARACTER), which is to say two strings of random bits may turn out to
  * match if they convert to the same amount of replacement characters.
  *
- * \param str1 The first string to compare. NULL is not permitted!
- * \param str2 The second string to compare. NULL is not permitted!
+ * \param str1 the first string to compare. NULL is not permitted!
+ * \param str2 the second string to compare. NULL is not permitted!
  * \returns less than zero if str1 is "less than" str2, greater than zero if
  *          str1 is "greater than" str2, and zero if the strings match
  *          exactly.
@@ -991,9 +1042,9 @@ extern SDL_DECLSPEC int SDLCALL SDL_wcscasecmp(const wchar_t *str1, const wchar_
  * null-terminator character before this number of bytes), they will be
  * considered equal.
  *
- * \param str1 The first string to compare. NULL is not permitted!
- * \param str2 The second string to compare. NULL is not permitted!
- * \param maxlen The maximum number of wchar_t values to compare.
+ * \param str1 the first string to compare. NULL is not permitted!
+ * \param str2 the second string to compare. NULL is not permitted!
+ * \param maxlen the maximum number of wchar_t values to compare.
  * \returns less than zero if str1 is "less than" str2, greater than zero if
  *          str1 is "greater than" str2, and zero if the strings match
  *          exactly.
@@ -1025,6 +1076,9 @@ extern SDL_DECLSPEC char *SDLCALL SDL_strrev(char *str);
  * malformed UTF-8!--and converts ASCII characters 'a' through 'z' to their
  * uppercase equivalents in-place, returning the original `str` pointer.
  *
+ * \param str the string to convert in-place. Can not be NULL.
+ * \returns the `str` pointer passed into this function.
+ *
  * \threadsafety It is safe to call this function from any thread.
  *
  * \since This function is available since SDL 3.0.0.
@@ -1043,8 +1097,8 @@ extern SDL_DECLSPEC char *SDLCALL SDL_strupr(char *str);
  * malformed UTF-8!--and converts ASCII characters 'A' through 'Z' to their
  * lowercase equivalents in-place, returning the original `str` pointer.
  *
- * \param str The string to convert in-place.
- * \returns The `str` pointer passed into this function.
+ * \param str the string to convert in-place. Can not be NULL.
+ * \returns the `str` pointer passed into this function.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1086,8 +1140,8 @@ extern SDL_DECLSPEC double SDLCALL SDL_strtod(const char *str, char **endp);
  * null-terminating character. Also due to the nature of UTF-8, this can be
  * used with SDL_qsort() to put strings in (roughly) alphabetical order.
  *
- * \param str1 The first string to compare. NULL is not permitted!
- * \param str2 The second string to compare. NULL is not permitted!
+ * \param str1 the first string to compare. NULL is not permitted!
+ * \param str2 the second string to compare. NULL is not permitted!
  * \returns less than zero if str1 is "less than" str2, greater than zero if
  *          str1 is "greater than" str2, and zero if the strings match
  *          exactly.
@@ -1115,9 +1169,9 @@ extern SDL_DECLSPEC int SDLCALL SDL_strcmp(const char *str1, const char *str2);
  * match to this number of bytes (or both have matched to a null-terminator
  * character before this number of bytes), they will be considered equal.
  *
- * \param str1 The first string to compare. NULL is not permitted!
- * \param str2 The second string to compare. NULL is not permitted!
- * \param maxlen The maximum number of _bytes_ to compare.
+ * \param str1 the first string to compare. NULL is not permitted!
+ * \param str2 the second string to compare. NULL is not permitted!
+ * \param maxlen the maximum number of _bytes_ to compare.
  * \returns less than zero if str1 is "less than" str2, greater than zero if
  *          str1 is "greater than" str2, and zero if the strings match
  *          exactly.
@@ -1144,8 +1198,8 @@ extern SDL_DECLSPEC int SDLCALL SDL_strncmp(const char *str1, const char *str2, 
  * CHARACTER), which is to say two strings of random bits may turn out to
  * match if they convert to the same amount of replacement characters.
  *
- * \param str1 The first string to compare. NULL is not permitted!
- * \param str2 The second string to compare. NULL is not permitted!
+ * \param str1 the first string to compare. NULL is not permitted!
+ * \param str2 the second string to compare. NULL is not permitted!
  * \returns less than zero if str1 is "less than" str2, greater than zero if
  *          str1 is "greater than" str2, and zero if the strings match
  *          exactly.
@@ -1183,9 +1237,9 @@ extern SDL_DECLSPEC int SDLCALL SDL_strcasecmp(const char *str1, const char *str
  * match to this number of bytes (or both have matched to a null-terminator
  * character before this number of bytes), they will be considered equal.
  *
- * \param str1 The first string to compare. NULL is not permitted!
- * \param str2 The second string to compare. NULL is not permitted!
- * \param maxlen The maximum number of bytes to compare.
+ * \param str1 the first string to compare. NULL is not permitted!
+ * \param str2 the second string to compare. NULL is not permitted!
+ * \param maxlen the maximum number of bytes to compare.
  * \returns less than zero if str1 is "less than" str2, greater than zero if
  *          str1 is "greater than" str2, and zero if the strings match
  *          exactly.
@@ -1229,8 +1283,8 @@ extern SDL_DECLSPEC int SDLCALL SDL_vasprintf(char **strp, SDL_PRINTF_FORMAT_STR
  * the same input on different machines or operating systems, or if SDL is
  * updated.
  *
- * \param x floating point value
- * \returns arc cosine of `x`, in radians
+ * \param x floating point value.
+ * \returns arc cosine of `x`, in radians.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1260,7 +1314,7 @@ extern SDL_DECLSPEC double SDLCALL SDL_acos(double x);
  * updated.
  *
  * \param x floating point value.
- * \returns arc cosine of `x`, in radians
+ * \returns arc cosine of `x`, in radians.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1384,7 +1438,7 @@ extern SDL_DECLSPEC double SDLCALL SDL_atan(double x);
  * updated.
  *
  * \param x floating point value.
- * \returns arc tangent of of `x` in radians, or 0 if `x = 0`
+ * \returns arc tangent of of `x` in radians, or 0 if `x = 0`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1417,8 +1471,8 @@ extern SDL_DECLSPEC float SDLCALL SDL_atanf(float x);
  * the same input on different machines or operating systems, or if SDL is
  * updated.
  *
+ * \param y floating point value of the numerator (y coordinate).
  * \param x floating point value of the denominator (x coordinate).
- * \param y floating point value of the numerator (y coordinate)
  * \returns arc tangent of of `y / x` in radians, or, if `x = 0`, either
  *          `-Pi/2`, `0`, or `Pi/2`, depending on the value of `y`.
  *
@@ -1453,8 +1507,8 @@ extern SDL_DECLSPEC double SDLCALL SDL_atan2(double y, double x);
  * the same input on different machines or operating systems, or if SDL is
  * updated.
  *
+ * \param y floating point value of the numerator (y coordinate).
  * \param x floating point value of the denominator (x coordinate).
- * \param y floating point value of the numerator (y coordinate)
  * \returns arc tangent of of `y / x` in radians, or, if `x = 0`, either
  *          `-Pi/2`, `0`, or `Pi/2`, depending on the value of `y`.
  *
@@ -1481,8 +1535,8 @@ extern SDL_DECLSPEC float SDLCALL SDL_atan2f(float y, float x);
  * This function operates on double-precision floating point values, use
  * SDL_ceilf for single-precision floats.
  *
- * \param x floating point value
- * \returns the ceiling of `x`
+ * \param x floating point value.
+ * \returns the ceiling of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1509,8 +1563,8 @@ extern SDL_DECLSPEC double SDLCALL SDL_ceil(double x);
  * This function operates on single-precision floating point values, use
  * SDL_ceil for double-precision floats.
  *
- * \param x floating point value
- * \returns the ceiling of `x`
+ * \param x floating point value.
+ * \returns the ceiling of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1536,9 +1590,10 @@ extern SDL_DECLSPEC float SDLCALL SDL_ceilf(float x);
  * This function operates on double-precision floating point values, use
  * SDL_copysignf for single-precision floats.
  *
- * \param x floating point value to use as the magnitude
- * \param y floating point value to use as the sign
- * \returns the floating point value with the sign of y and the magnitude of x
+ * \param x floating point value to use as the magnitude.
+ * \param y floating point value to use as the sign.
+ * \returns the floating point value with the sign of y and the magnitude of
+ *          x.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1561,9 +1616,10 @@ extern SDL_DECLSPEC double SDLCALL SDL_copysign(double x, double y);
  * This function operates on single-precision floating point values, use
  * SDL_copysign for double-precision floats.
  *
- * \param x floating point value to use as the magnitude
- * \param y floating point value to use as the sign
- * \returns the floating point value with the sign of y and the magnitude of x
+ * \param x floating point value to use as the magnitude.
+ * \param y floating point value to use as the sign.
+ * \returns the floating point value with the sign of y and the magnitude of
+ *          x.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1589,8 +1645,8 @@ extern SDL_DECLSPEC float SDLCALL SDL_copysignf(float x, float y);
  * the same input on different machines or operating systems, or if SDL is
  * updated.
  *
- * \param x floating point value, in radians
- * \returns cosine of `x`
+ * \param x floating point value, in radians.
+ * \returns cosine of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1617,8 +1673,8 @@ extern SDL_DECLSPEC double SDLCALL SDL_cos(double x);
  * the same input on different machines or operating systems, or if SDL is
  * updated.
  *
- * \param x floating point value, in radians
- * \returns cosine of `x`
+ * \param x floating point value, in radians.
+ * \returns cosine of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1650,8 +1706,8 @@ extern SDL_DECLSPEC float SDLCALL SDL_cosf(float x);
  * the same input on different machines or operating systems, or if SDL is
  * updated.
  *
- * \param x floating point value
- * \returns value of `e^x`
+ * \param x floating point value.
+ * \returns value of `e^x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1682,8 +1738,8 @@ extern SDL_DECLSPEC double SDLCALL SDL_exp(double x);
  * the same input on different machines or operating systems, or if SDL is
  * updated.
  *
- * \param x floating point value
- * \returns value of `e^x`
+ * \param x floating point value.
+ * \returns value of `e^x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1704,8 +1760,8 @@ extern SDL_DECLSPEC float SDLCALL SDL_expf(float x);
  * This function operates on double-precision floating point values, use
  * SDL_copysignf for single-precision floats.
  *
- * \param x floating point value to use as the magnitude
- * \returns the absolute value of `x`
+ * \param x floating point value to use as the magnitude.
+ * \returns the absolute value of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1725,8 +1781,8 @@ extern SDL_DECLSPEC double SDLCALL SDL_fabs(double x);
  * This function operates on single-precision floating point values, use
  * SDL_copysignf for double-precision floats.
  *
- * \param x floating point value to use as the magnitude
- * \returns the absolute value of `x`
+ * \param x floating point value to use as the magnitude.
+ * \returns the absolute value of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1749,8 +1805,8 @@ extern SDL_DECLSPEC float SDLCALL SDL_fabsf(float x);
  * This function operates on double-precision floating point values, use
  * SDL_floorf for single-precision floats.
  *
- * \param x floating point value
- * \returns the floor of `x`
+ * \param x floating point value.
+ * \returns the floor of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1777,8 +1833,8 @@ extern SDL_DECLSPEC double SDLCALL SDL_floor(double x);
  * This function operates on single-precision floating point values, use
  * SDL_floorf for double-precision floats.
  *
- * \param x floating point value
- * \returns the floor of `x`
+ * \param x floating point value.
+ * \returns the floor of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1805,8 +1861,8 @@ extern SDL_DECLSPEC float SDLCALL SDL_floorf(float x);
  * This function operates on double-precision floating point values, use
  * SDL_truncf for single-precision floats.
  *
- * \param x floating point value
- * \returns `x` truncated to an integer
+ * \param x floating point value.
+ * \returns `x` truncated to an integer.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1834,8 +1890,8 @@ extern SDL_DECLSPEC double SDLCALL SDL_trunc(double x);
  * This function operates on single-precision floating point values, use
  * SDL_truncf for double-precision floats.
  *
- * \param x floating point value
- * \returns `x` truncated to an integer
+ * \param x floating point value.
+ * \returns `x` truncated to an integer.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1862,9 +1918,9 @@ extern SDL_DECLSPEC float SDLCALL SDL_truncf(float x);
  * This function operates on double-precision floating point values, use
  * SDL_fmodf for single-precision floats.
  *
- * \param x the numerator
+ * \param x the numerator.
  * \param y the denominator. Must not be 0.
- * \returns the remainder of `x / y`
+ * \returns the remainder of `x / y`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1892,9 +1948,9 @@ extern SDL_DECLSPEC double SDLCALL SDL_fmod(double x, double y);
  * This function operates on single-precision floating point values, use
  * SDL_fmod for single-precision floats.
  *
- * \param x the numerator
+ * \param x the numerator.
  * \param y the denominator. Must not be 0.
- * \returns the remainder of `x / y`
+ * \returns the remainder of `x / y`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1928,7 +1984,7 @@ extern SDL_DECLSPEC float SDLCALL SDL_fmodf(float x, float y);
  * updated.
  *
  * \param x floating point value. Must be greater than 0.
- * \returns the natural logarithm of `x`
+ * \returns the natural logarithm of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1958,7 +2014,7 @@ extern SDL_DECLSPEC double SDLCALL SDL_log(double x);
  * updated.
  *
  * \param x floating point value. Must be greater than 0.
- * \returns the natural logarithm of `x`
+ * \returns the natural logarithm of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -1987,7 +2043,7 @@ extern SDL_DECLSPEC float SDLCALL SDL_logf(float x);
  * updated.
  *
  * \param x floating point value. Must be greater than 0.
- * \returns the logarithm of `x`
+ * \returns the logarithm of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2017,7 +2073,7 @@ extern SDL_DECLSPEC double SDLCALL SDL_log10(double x);
  * updated.
  *
  * \param x floating point value. Must be greater than 0.
- * \returns the logarithm of `x`
+ * \returns the logarithm of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2035,9 +2091,9 @@ extern SDL_DECLSPEC float SDLCALL SDL_log10f(float x);
  * This function operates on double-precision floating point values, use
  * SDL_modff for single-precision floats.
  *
- * \param x floating point value
- * \param y output pointer to store the integer part of `x`
- * \returns the fractional part of `x`
+ * \param x floating point value.
+ * \param y output pointer to store the integer part of `x`.
+ * \returns the fractional part of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2055,9 +2111,9 @@ extern SDL_DECLSPEC double SDLCALL SDL_modf(double x, double *y);
  * This function operates on single-precision floating point values, use
  * SDL_modf for double-precision floats.
  *
- * \param x floating point value
- * \param y output pointer to store the integer part of `x`
- * \returns the fractional part of `x`
+ * \param x floating point value.
+ * \param y output pointer to store the integer part of `x`.
+ * \returns the fractional part of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2087,9 +2143,9 @@ extern SDL_DECLSPEC float SDLCALL SDL_modff(float x, float *y);
  * the same input on different machines or operating systems, or if SDL is
  * updated.
  *
- * \param x the base
- * \param y the exponent
- * \returns `x` raised to the power `y`
+ * \param x the base.
+ * \param y the exponent.
+ * \returns `x` raised to the power `y`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2119,9 +2175,9 @@ extern SDL_DECLSPEC double SDLCALL SDL_pow(double x, double y);
  * the same input on different machines or operating systems, or if SDL is
  * updated.
  *
- * \param x the base
- * \param y the exponent
- * \returns `x` raised to the power `y`
+ * \param x the base.
+ * \param y the exponent.
+ * \returns `x` raised to the power `y`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2147,8 +2203,8 @@ extern SDL_DECLSPEC float SDLCALL SDL_powf(float x, float y);
  * SDL_roundf for single-precision floats. To get the result as an integer
  * type, use SDL_lround.
  *
- * \param x floating point value
- * \returns the nearest integer to `x`
+ * \param x floating point value.
+ * \returns the nearest integer to `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2176,8 +2232,8 @@ extern SDL_DECLSPEC double SDLCALL SDL_round(double x);
  * SDL_roundf for single-precision floats. To get the result as an integer
  * type, use SDL_lroundf.
  *
- * \param x floating point value
- * \returns the nearest integer to `x`
+ * \param x floating point value.
+ * \returns the nearest integer to `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2205,8 +2261,8 @@ extern SDL_DECLSPEC float SDLCALL SDL_roundf(float x);
  * SDL_lround for single-precision floats. To get the result as a
  * floating-point type, use SDL_round.
  *
- * \param x floating point value
- * \returns the nearest integer to `x`
+ * \param x floating point value.
+ * \returns the nearest integer to `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2234,8 +2290,8 @@ extern SDL_DECLSPEC long SDLCALL SDL_lround(double x);
  * SDL_lroundf for double-precision floats. To get the result as a
  * floating-point type, use SDL_roundf,
  *
- * \param x floating point value
- * \returns the nearest integer to `x`
+ * \param x floating point value.
+ * \returns the nearest integer to `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2261,9 +2317,9 @@ extern SDL_DECLSPEC long SDLCALL SDL_lroundf(float x);
  * This function operates on double-precision floating point values, use
  * SDL_scalbnf for single-precision floats.
  *
- * \param x floating point value to be scaled
- * \param n integer exponent
- * \returns `x * 2^n`
+ * \param x floating point value to be scaled.
+ * \param n integer exponent.
+ * \returns `x * 2^n`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2286,9 +2342,9 @@ extern SDL_DECLSPEC double SDLCALL SDL_scalbn(double x, int n);
  * This function operates on single-precision floating point values, use
  * SDL_scalbn for double-precision floats.
  *
- * \param x floating point value to be scaled
- * \param n integer exponent
- * \returns `x * 2^n`
+ * \param x floating point value to be scaled.
+ * \param n integer exponent.
+ * \returns `x * 2^n`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2314,8 +2370,8 @@ extern SDL_DECLSPEC float SDLCALL SDL_scalbnf(float x, int n);
  * the same input on different machines or operating systems, or if SDL is
  * updated.
  *
- * \param x floating point value, in radians
- * \returns sine of `x`
+ * \param x floating point value, in radians.
+ * \returns sine of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2342,8 +2398,8 @@ extern SDL_DECLSPEC double SDLCALL SDL_sin(double x);
  * the same input on different machines or operating systems, or if SDL is
  * updated.
  *
- * \param x floating point value, in radians
- * \returns sine of `x`
+ * \param x floating point value, in radians.
+ * \returns sine of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2371,7 +2427,7 @@ extern SDL_DECLSPEC float SDLCALL SDL_sinf(float x);
  * updated.
  *
  * \param x floating point value. Must be greater than or equal to 0.
- * \returns square root of `x`
+ * \returns square root of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2397,7 +2453,7 @@ extern SDL_DECLSPEC double SDLCALL SDL_sqrt(double x);
  * updated.
  *
  * \param x floating point value. Must be greater than or equal to 0.
- * \returns square root of `x`
+ * \returns square root of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2422,8 +2478,8 @@ extern SDL_DECLSPEC float SDLCALL SDL_sqrtf(float x);
  * the same input on different machines or operating systems, or if SDL is
  * updated.
  *
- * \param x floating point value, in radians
- * \returns tangent of `x`
+ * \param x floating point value, in radians.
+ * \returns tangent of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2452,8 +2508,8 @@ extern SDL_DECLSPEC double SDLCALL SDL_tan(double x);
  * the same input on different machines or operating systems, or if SDL is
  * updated.
  *
- * \param x floating point value, in radians
- * \returns tangent of `x`
+ * \param x floating point value, in radians.
+ * \returns tangent of `x`.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -2483,8 +2539,23 @@ extern SDL_DECLSPEC size_t SDLCALL SDL_iconv(SDL_iconv_t cd, const char **inbuf,
                                          size_t * outbytesleft);
 
 /**
- * This function converts a buffer or string between encodings in one pass,
- * returning a string that must be freed with SDL_free() or NULL on error.
+ * Helper function to convert a string's encoding in one call.
+ *
+ * This function converts a buffer or string between encodings in one pass.
+ *
+ * The string does not need to be NULL-terminated; this function operates on
+ * the number of bytes specified in `inbytesleft` whether there is a NULL
+ * character anywhere in the buffer.
+ *
+ * The returned string is owned by the caller, and should be passed to
+ * SDL_free when no longer needed.
+ *
+ * \param tocode the character encoding of the output string. Examples are
+ *               "UTF-8", "UCS-4", etc.
+ * \param fromcode the character encoding of data in `inbuf`.
+ * \param inbuf the string to convert to a different encoding.
+ * \param inbytesleft the size of the input string _in bytes_.
+ * \returns a new string, converted to the new encoding, or NULL on error.
  *
  * \since This function is available since SDL 3.0.0.
  */
@@ -2566,9 +2637,19 @@ size_t wcslcat(wchar_t *dst, const wchar_t *src, size_t size);
 #endif
 
 /**
- * If a * b would overflow, return -1.
+ * Multiply two integers, checking for overflow.
  *
- * Otherwise store a * b via ret and return 0.
+ * If `a * b` would overflow, return -1.
+ *
+ * Otherwise store `a * b` via ret and return 0.
+ *
+ * \param a the multiplicand.
+ * \param b the multiplier.
+ * \param ret on non-overflow output, stores the multiplication result. May
+ *            not be NULL.
+ * \returns -1 on overflow, 0 if result doesn't overflow.
+ *
+ * \threadsafety It is safe to call this function from any thread.
  *
  * \since This function is available since SDL 3.0.0.
  */
@@ -2599,9 +2680,19 @@ SDL_FORCE_INLINE int SDL_size_mul_overflow_builtin (size_t a,
 #endif
 
 /**
- * If a + b would overflow, return -1.
+ * Add two integers, checking for overflow.
  *
- * Otherwise store a + b via ret and return 0.
+ * If `a + b` would overflow, return -1.
+ *
+ * Otherwise store `a + b` via ret and return 0.
+ *
+ * \param a the first addend.
+ * \param b the second addend.
+ * \param ret on non-overflow output, stores the addition result. May not be
+ *            NULL.
+ * \returns -1 on overflow, 0 if result doesn't overflow.
+ *
+ * \threadsafety It is safe to call this function from any thread.
  *
  * \since This function is available since SDL 3.0.0.
  */

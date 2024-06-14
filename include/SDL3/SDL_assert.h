@@ -234,27 +234,17 @@ typedef struct SDL_AssertData
  *
  * Use the SDL_assert* macros instead.
  *
- * \param data assert data structure
- * \param func function name
- * \param file file name
- * \param line line number
- * \returns assert state
+ * \param data assert data structure.
+ * \param func function name.
+ * \param file file name.
+ * \param line line number.
+ * \returns assert state.
  *
  * \since This function is available since SDL 3.0.0.
  */
 extern SDL_DECLSPEC SDL_AssertState SDLCALL SDL_ReportAssertion(SDL_AssertData *data,
                                                             const char *func,
-                                                            const char *file, int line)
-#ifdef __clang__
-#if __has_feature(attribute_analyzer_noreturn)
-   __attribute__((analyzer_noreturn))
-#endif
-#endif
-;
-/* Previous 'analyzer_noreturn' attribute tells Clang's static analysis that we're a custom assert function,
-   and that the analyzer should assume the condition was always true past this
-   SDL_assert test. */
-
+                                                            const char *file, int line) SDL_ANALYZER_NORETURN;
 
 /* Define the trigger breakpoint call used in asserts */
 #ifndef SDL_AssertBreakpoint
@@ -316,7 +306,7 @@ extern SDL_DECLSPEC SDL_AssertState SDLCALL SDL_ReportAssertion(SDL_AssertData *
  * Note that SDL_ASSERT is an _environment variable_ and not an SDL hint!
  * Please refer to your platform's documentation for how to set it!
  *
- * \param condition boolean value to test
+ * \param condition boolean value to test.
  *
  * \since This macro is available since SDL 3.0.0.
  */
@@ -349,7 +339,7 @@ extern SDL_DECLSPEC SDL_AssertState SDLCALL SDL_ReportAssertion(SDL_AssertData *
  * Note that SDL_ASSERT is an _environment variable_ and not an SDL hint!
  * Please refer to your platform's documentation for how to set it!
  *
- * \param condition boolean value to test
+ * \param condition boolean value to test.
  *
  * \since This macro is available since SDL 3.0.0.
  */
@@ -379,7 +369,7 @@ extern SDL_DECLSPEC SDL_AssertState SDLCALL SDL_ReportAssertion(SDL_AssertData *
  * Note that SDL_ASSERT is an _environment variable_ and not an SDL hint!
  * Please refer to your platform's documentation for how to set it!
  *
- * \param condition boolean value to test
+ * \param condition boolean value to test.
  *
  * \since This macro is available since SDL 3.0.0.
  */
@@ -425,7 +415,7 @@ extern SDL_DECLSPEC SDL_AssertState SDLCALL SDL_ReportAssertion(SDL_AssertData *
  * Note that SDL_ASSERT is an _environment variable_ and not an SDL hint!
  * Please refer to your platform's documentation for how to set it!
  *
- * \param condition boolean value to test
+ * \param condition boolean value to test.
  *
  * \since This macro is available since SDL 3.0.0.
  */
@@ -436,8 +426,8 @@ extern SDL_DECLSPEC SDL_AssertState SDLCALL SDL_ReportAssertion(SDL_AssertData *
  * A callback that fires when an SDL assertion fails.
  *
  * \param data a pointer to the SDL_AssertData structure corresponding to the
- *             current assertion
- * \param userdata what was passed as `userdata` to SDL_SetAssertionHandler()
+ *             current assertion.
+ * \param userdata what was passed as `userdata` to SDL_SetAssertionHandler().
  * \returns an SDL_AssertState value indicating how to handle the failure.
  *
  * \since This datatype is available since SDL 3.0.0.
@@ -459,8 +449,8 @@ typedef SDL_AssertState (SDLCALL *SDL_AssertionHandler)(
  * This callback is NOT reset to SDL's internal handler upon SDL_Quit()!
  *
  * \param handler the SDL_AssertionHandler function to call when an assertion
- *                fails or NULL for the default handler
- * \param userdata a pointer that is passed to `handler`
+ *                fails or NULL for the default handler.
+ * \param userdata a pointer that is passed to `handler`.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -501,7 +491,7 @@ extern SDL_DECLSPEC SDL_AssertionHandler SDLCALL SDL_GetDefaultAssertionHandler(
  * data, it is safe to pass a NULL pointer to this function to ignore it.
  *
  * \param puserdata pointer which is filled with the "userdata" pointer that
- *                  was passed to SDL_SetAssertionHandler()
+ *                  was passed to SDL_SetAssertionHandler().
  * \returns the SDL_AssertionHandler that is called when an assert triggers.
  *
  * \since This function is available since SDL 3.0.0.
