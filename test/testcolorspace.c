@@ -59,8 +59,8 @@ static void UpdateHDRState(void)
     SDL_PropertiesID props;
     SDL_bool HDR_enabled;
 
-    props = SDL_GetDisplayProperties(SDL_GetDisplayForWindow(window));
-    HDR_enabled = SDL_GetBooleanProperty(props, SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN, SDL_FALSE);
+    props = SDL_GetWindowProperties(window);
+    HDR_enabled = SDL_GetBooleanProperty(props, SDL_PROP_WINDOW_HDR_ENABLED_BOOLEAN, SDL_FALSE);
 
     SDL_Log("HDR %s\n", HDR_enabled ? "enabled" : "disabled");
 
@@ -388,7 +388,7 @@ static void DrawGradient(float x, float y, float width, float height, float star
     color[2] = max_color;
     color[3] = min_color;
 
-    SDL_RenderGeometryRawFloat(renderer, NULL, xy, xy_stride, color, color_stride, NULL, 0, num_vertices, indices, num_indices, size_indices);
+    SDL_RenderGeometryRaw(renderer, NULL, xy, xy_stride, color, color_stride, NULL, 0, num_vertices, indices, num_indices, size_indices);
 }
 
 static void RenderGradientDrawing(void)
@@ -503,7 +503,7 @@ static void loop(void)
     /* Check for events */
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_EVENT_KEY_DOWN) {
-            switch (event.key.keysym.sym) {
+            switch (event.key.key) {
             case SDLK_ESCAPE:
                 done = 1;
                 break;
@@ -523,7 +523,7 @@ static void loop(void)
             default:
                 break;
             }
-        } else if (event.type == SDL_EVENT_DISPLAY_HDR_STATE_CHANGED) {
+        } else if (event.type == SDL_EVENT_WINDOW_HDR_STATE_CHANGED) {
             UpdateHDRState();
         } else if (event.type == SDL_EVENT_QUIT) {
             done = 1;

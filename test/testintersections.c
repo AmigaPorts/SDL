@@ -12,15 +12,12 @@
 
 /* Simple program:  draw as many random objects on the screen as possible */
 
-#include <SDL3/SDL_test_common.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3/SDL_test_common.h>
 
 #ifdef SDL_PLATFORM_EMSCRIPTEN
 #include <emscripten/emscripten.h>
 #endif
-
-#include <stdlib.h>
-#include <time.h>
 
 #define SWAP(typ, a, b) \
     do {                \
@@ -77,8 +74,8 @@ static void DrawPoints(SDL_Renderer *renderer)
         SDL_SetRenderDrawColor(renderer, 255, (Uint8)current_color,
                                (Uint8)current_color, (Uint8)current_alpha);
 
-        x = (float)(rand() % viewport.w);
-        y = (float)(rand() % viewport.h);
+        x = (float)SDL_rand(viewport.w);
+        y = (float)SDL_rand(viewport.h);
         SDL_RenderPoint(renderer, x, y);
     }
 }
@@ -209,7 +206,7 @@ static void loop(void *arg)
 {
     int i;
     SDL_Event event;
-    int *done = (int*)arg;
+    int *done = (int *)arg;
 
     /* Check for events */
     while (SDL_PollEvent(&event)) {
@@ -228,28 +225,26 @@ static void loop(void *arg)
             }
             break;
         case SDL_EVENT_KEY_DOWN:
-            switch (event.key.keysym.sym) {
-            case 'l':
-                if (event.key.keysym.mod & SDL_KMOD_SHIFT) {
-                    num_lines = 0;
-                } else {
-                    add_line(
-                        (float)(rand() % 640),
-                        (float)(rand() % 480),
-                        (float)(rand() % 640),
-                        (float)(rand() % 480));
-                }
+            switch (event.key.key) {
+            case SDLK_L:
+                num_lines = 0;
                 break;
-            case 'r':
-                if (event.key.keysym.mod & SDL_KMOD_SHIFT) {
-                    num_rects = 0;
-                } else {
-                    add_rect(
-                        (float)(rand() % 640),
-                        (float)(rand() % 480),
-                        (float)(rand() % 640),
-                        (float)(rand() % 480));
-                }
+            case SDLK_l:
+                add_line(
+                    (float)SDL_rand(640),
+                    (float)SDL_rand(480),
+                    (float)SDL_rand(640),
+                    (float)SDL_rand(480));
+                break;
+            case SDLK_R:
+                num_rects = 0;
+                break;
+            case SDLK_r:
+                add_rect(
+                    (float)SDL_rand(640),
+                    (float)SDL_rand(480),
+                    (float)SDL_rand(640),
+                    (float)SDL_rand(480));
                 break;
             default:
                 break;
@@ -290,7 +285,7 @@ int main(int argc, char *argv[])
     int done;
 
     /* Initialize parameters */
-    num_objects = -1;  /* -1 means not initialized */
+    num_objects = -1; /* -1 means not initialized */
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
@@ -362,8 +357,6 @@ int main(int argc, char *argv[])
         SDL_SetRenderDrawColor(renderer, 0xA0, 0xA0, 0xA0, 0xFF);
         SDL_RenderClear(renderer);
     }
-
-    srand((unsigned int)time(NULL));
 
     /* Main render loop */
     frames = 0;

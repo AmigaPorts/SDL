@@ -1466,7 +1466,7 @@ SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state)
         }
 
         const SDL_AudioSpec spec = { state->audio_format, state->audio_channels, state->audio_freq };
-        state->audio_id = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &spec);
+        state->audio_id = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec);
         if (!state->audio_id) {
             SDL_Log("Couldn't open audio: %s\n", SDL_GetError());
             return SDL_FALSE;
@@ -1576,12 +1576,6 @@ static void SDLTest_PrintEvent(const SDL_Event *event)
                     event->display.displayID, (int)(scale * 100.0f));
         }
         break;
-    case SDL_EVENT_DISPLAY_HDR_STATE_CHANGED:
-        {
-            SDL_Log("SDL EVENT: Display %" SDL_PRIu32 " HDR %s",
-                    event->display.displayID, event->display.data1 ? "enabled" : "disabled");
-        }
-        break;
     case SDL_EVENT_DISPLAY_MOVED:
         SDL_Log("SDL EVENT: Display %" SDL_PRIu32 " changed position",
                 event->display.displayID);
@@ -1668,6 +1662,9 @@ static void SDLTest_PrintEvent(const SDL_Event *event)
     case SDL_EVENT_WINDOW_DESTROYED:
         SDL_Log("SDL EVENT: Window %" SDL_PRIu32 " destroyed", event->window.windowID);
         break;
+    case SDL_EVENT_WINDOW_HDR_STATE_CHANGED:
+        SDL_Log("SDL EVENT: Window %" SDL_PRIu32 " HDR %s", event->window.windowID, event->window.data1 ? "enabled" : "disabled");
+        break;
     case SDL_EVENT_KEYBOARD_ADDED:
         SDL_Log("SDL EVENT: Keyboard %" SDL_PRIu32 " attached",
                 event->kdevice.which);
@@ -1679,9 +1676,9 @@ static void SDLTest_PrintEvent(const SDL_Event *event)
     case SDL_EVENT_KEY_DOWN:
     case SDL_EVENT_KEY_UP: {
         char modstr[64];
-        if (event->key.keysym.mod) {
+        if (event->key.mod) {
             modstr[0] = '\0';
-            SDLTest_PrintModState(modstr, sizeof (modstr), event->key.keysym.mod);
+            SDLTest_PrintModState(modstr, sizeof (modstr), event->key.mod);
         } else {
             SDL_strlcpy(modstr, "NONE", sizeof (modstr));
         }
@@ -1689,9 +1686,9 @@ static void SDLTest_PrintEvent(const SDL_Event *event)
         SDL_Log("SDL EVENT: Keyboard: key %s in window %" SDL_PRIu32 ": scancode 0x%08X = %s, keycode 0x%08" SDL_PRIX32 " = %s, mods = %s",
                 (event->type == SDL_EVENT_KEY_DOWN) ? "pressed" : "released",
                 event->key.windowID,
-                event->key.keysym.scancode,
-                SDL_GetScancodeName(event->key.keysym.scancode),
-                event->key.keysym.sym, SDL_GetKeyName(event->key.keysym.sym),
+                event->key.scancode,
+                SDL_GetScancodeName(event->key.scancode),
+                event->key.key, SDL_GetKeyName(event->key.key),
                 modstr);
         break;
     }
@@ -2098,13 +2095,21 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
             }
         }
         break;
+    case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+    {
+        SDL_Window *window = SDL_GetWindowFromID(event->window.windowID);
+        if (window) {
+            SDL_HideWindow(window);
+        }
+        break;
+    }
     case SDL_EVENT_KEY_DOWN:
     {
-        SDL_bool withControl = !!(event->key.keysym.mod & SDL_KMOD_CTRL);
-        SDL_bool withShift = !!(event->key.keysym.mod & SDL_KMOD_SHIFT);
-        SDL_bool withAlt = !!(event->key.keysym.mod & SDL_KMOD_ALT);
+        SDL_bool withControl = !!(event->key.mod & SDL_KMOD_CTRL);
+        SDL_bool withShift = !!(event->key.mod & SDL_KMOD_SHIFT);
+        SDL_bool withAlt = !!(event->key.mod & SDL_KMOD_ALT);
 
-        switch (event->key.keysym.sym) {
+        switch (event->key.key) {
             /* Add hotkeys here */
         case SDLK_PRINTSCREEN:
         {
@@ -2161,7 +2166,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                         }
                         if (current_index >= 0) {
                             SDL_DisplayID dest;
-                            if (event->key.keysym.sym == SDLK_UP || event->key.keysym.sym == SDLK_LEFT) {
+                            if (event->key.key == SDLK_UP || event->key.key == SDLK_LEFT) {
                                 dest = displays[(current_index + num_displays - 1) % num_displays];
                             } else {
                                 dest = displays[(current_index + num_displays + 1) % num_displays];
@@ -2183,16 +2188,16 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                     int x, y;
                     SDL_GetWindowPosition(window, &x, &y);
 
-                    if (event->key.keysym.sym == SDLK_UP) {
+                    if (event->key.key == SDLK_UP) {
                         y -= delta;
                     }
-                    if (event->key.keysym.sym == SDLK_DOWN) {
+                    if (event->key.key == SDLK_DOWN) {
                         y += delta;
                     }
-                    if (event->key.keysym.sym == SDLK_LEFT) {
+                    if (event->key.key == SDLK_LEFT) {
                         x -= delta;
                     }
-                    if (event->key.keysym.sym == SDLK_RIGHT) {
+                    if (event->key.key == SDLK_RIGHT) {
                         x += delta;
                     }
 
@@ -2201,6 +2206,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 }
             }
             break;
+        case SDLK_O:
         case SDLK_o:
             if (withControl) {
                 /* Ctrl-O (or Ctrl-Shift-O) changes window opacity. */
@@ -2218,6 +2224,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 }
             }
             break;
+        case SDLK_H:
         case SDLK_h:
             if (withControl) {
                 /* Ctrl-H changes cursor visibility. */
@@ -2228,6 +2235,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 }
             }
             break;
+        case SDLK_C:
         case SDLK_c:
             if (withAlt) {
                 /* Alt-C copy awesome text to the primary selection! */
@@ -2253,6 +2261,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 break;
             }
             break;
+        case SDLK_V:
         case SDLK_v:
             if (withAlt) {
                 /* Alt-V paste awesome text from the primary selection! */
@@ -2280,6 +2289,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 }
             }
             break;
+        case SDLK_F:
         case SDLK_f:
             if (withControl) {
                 /* Ctrl-F flash the window */
@@ -2289,6 +2299,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 }
             }
             break;
+        case SDLK_G:
         case SDLK_g:
             if (withControl) {
                 /* Ctrl-G toggle mouse grab */
@@ -2298,6 +2309,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 }
             }
             break;
+        case SDLK_K:
         case SDLK_k:
             if (withControl) {
                 /* Ctrl-K toggle keyboard grab */
@@ -2307,6 +2319,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 }
             }
             break;
+        case SDLK_M:
         case SDLK_m:
             if (withControl) {
                 /* Ctrl-M maximize */
@@ -2329,12 +2342,14 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 }
             }
             break;
+        case SDLK_R:
         case SDLK_r:
             if (withControl) {
                 /* Ctrl-R toggle mouse relative mode */
                 SDL_SetRelativeMouseMode(!SDL_GetRelativeMouseMode());
             }
             break;
+        case SDLK_T:
         case SDLK_t:
             if (withControl) {
                 /* Ctrl-T toggle topmost mode */
@@ -2349,6 +2364,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 }
             }
             break;
+        case SDLK_Z:
         case SDLK_z:
             if (withControl) {
                 /* Ctrl-Z minimize */
@@ -2388,6 +2404,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
             }
 
             break;
+        case SDLK_B:
         case SDLK_b:
             if (withControl) {
                 /* Ctrl-B toggle window border */
@@ -2399,6 +2416,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
                 }
             }
             break;
+        case SDLK_A:
         case SDLK_a:
             if (withControl) {
                 /* Ctrl-A toggle aspect ratio */

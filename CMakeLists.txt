@@ -1100,6 +1100,43 @@ if(SDL_LIBC)
   endforeach()
   cmake_pop_check_state()
 
+  cmake_push_check_state()
+  if(MSVC)
+    string(APPEND CMAKE_REQUIRED_FLAGS " -we4244 -WX")  # 'conversion' conversion from 'type1' to 'type2', possible loss of data
+  else()
+    string(APPEND CMAKE_REQUIRED_FLAGS " -Wfloat-conversion -Werror")
+  endif()
+  foreach(math_fn isinf isnan)
+    string(TOUPPER "${math_fn}" MATH_FN)
+    check_c_source_compiles("
+        #include <math.h>
+        int main() {
+          double d = 3.14159;
+          return ${math_fn}(d);
+        }
+      " LIBC_HAS_${MATH_FN})
+    set(HAVE_${MATH_FN} ${LIBC_HAS_${MATH_FN}})
+
+    check_c_source_compiles("
+      #include <math.h>
+      int main() {
+        float f = 3.14159f;
+        return ${math_fn}(f);
+      }
+    " LIBC_${MATH_FN}_HANDLES_FLOAT)
+    set(HAVE_${MATH_FN}_FLOAT_MACRO ${LIBC_${MATH_FN}_HANDLES_FLOAT})
+
+    check_c_source_compiles("
+      #include <math.h>
+      int main() {
+        float f = 3.14159f;
+        return ${math_fn}f(f);
+      }
+    " LIBC_HAS_${MATH_FN}F)
+    set(HAVE_${MATH_FN}F "${LIBC_HAS_${MATH_FN}}")
+  endforeach()
+  cmake_pop_check_state()
+
   if(NOT WINDOWS)
     check_symbol_exists(getpagesize "unistd.h" HAVE_GETPAGESIZE)
     check_symbol_exists(sigaction "signal.h" HAVE_SIGACTION)
@@ -1732,7 +1769,7 @@ elseif(UNIX AND NOT APPLE AND NOT RISCOS AND NOT HAIKU)
     if(FREEBSD OR NETBSD OR OPENBSD OR BSDI)
       CheckUSBHID()
     endif()
-    if(LINUX AND HAVE_LINUX_INPUT_H AND NOT ANDROID)
+    if((LINUX OR FREEBSD) AND HAVE_LINUX_INPUT_H AND NOT ANDROID)
       set(SDL_JOYSTICK_LINUX 1)
       sdl_glob_sources(
         "${SDL3_SOURCE_DIR}/src/joystick/linux/*.c"

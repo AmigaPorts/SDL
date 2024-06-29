@@ -200,7 +200,7 @@ typedef enum SDL_FlashOperation
  *
  * \sa SDL_GL_CreateContext
  */
-typedef void *SDL_GLContext;
+typedef struct SDL_GLContextState *SDL_GLContext;
 
 /**
  * Opaque EGL types.
@@ -384,7 +384,8 @@ extern SDL_DECLSPEC SDL_SystemTheme SDLCALL SDL_GetSystemTheme(void);
 /**
  * Get a list of currently connected displays.
  *
- * \param count a pointer filled in with the number of displays returned.
+ * \param count a pointer filled in with the number of displays returned, may
+ *              be NULL.
  * \returns a 0 terminated array of display instance IDs which should be freed
  *          with SDL_free(), or NULL on error; call SDL_GetError() for more
  *          details.
@@ -411,17 +412,9 @@ extern SDL_DECLSPEC SDL_DisplayID SDLCALL SDL_GetPrimaryDisplay(void);
  * The following read-only properties are provided by SDL:
  *
  * - `SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN`: true if the display has HDR
- *   headroom above the SDR white point. This property can change dynamically
- *   when SDL_EVENT_DISPLAY_HDR_STATE_CHANGED is sent.
- * - `SDL_PROP_DISPLAY_SDR_WHITE_POINT_FLOAT`: the value of SDR white in the
- *   SDL_COLORSPACE_SRGB_LINEAR colorspace. On Windows this corresponds to the
- *   SDR white level in scRGB colorspace, and on Apple platforms this is
- *   always 1.0 for EDR content. This property can change dynamically when
- *   SDL_EVENT_DISPLAY_HDR_STATE_CHANGED is sent.
- * - `SDL_PROP_DISPLAY_HDR_HEADROOM_FLOAT`: the additional high dynamic range
- *   that can be displayed, in terms of the SDR white point. When HDR is not
- *   enabled, this will be 1.0. This property can change dynamically when
- *   SDL_EVENT_DISPLAY_HDR_STATE_CHANGED is sent.
+ *   headroom above the SDR white point. This is for informational and
+ *   diagnostic purposes only, as not all platforms provide this information
+ *   at the display level.
  *
  * On KMS/DRM:
  *
@@ -443,8 +436,6 @@ extern SDL_DECLSPEC SDL_DisplayID SDLCALL SDL_GetPrimaryDisplay(void);
 extern SDL_DECLSPEC SDL_PropertiesID SDLCALL SDL_GetDisplayProperties(SDL_DisplayID displayID);
 
 #define SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN             "SDL.display.HDR_enabled"
-#define SDL_PROP_DISPLAY_SDR_WHITE_POINT_FLOAT           "SDL.display.SDR_white_point"
-#define SDL_PROP_DISPLAY_HDR_HEADROOM_FLOAT              "SDL.display.HDR_headroom"
 #define SDL_PROP_DISPLAY_KMSDRM_PANEL_ORIENTATION_NUMBER "SDL.display.KMSDRM.panel_orientation"
 
 /**
@@ -794,6 +785,19 @@ extern SDL_DECLSPEC void *SDLCALL SDL_GetWindowICCProfile(SDL_Window *window, si
 extern SDL_DECLSPEC Uint32 SDLCALL SDL_GetWindowPixelFormat(SDL_Window *window);
 
 /**
+ * Get a list of valid windows.
+ *
+ * \param count a pointer filled in with the number of windows returned, may
+ *              be NULL.
+ * \returns a 0 terminated array of window pointers which should be freed with
+ *          SDL_free(), or NULL on error; call SDL_GetError() for more
+ *          details.
+ *
+ * \since This function is available since SDL 3.0.0.
+ */
+extern SDL_DECLSPEC SDL_Window **SDLCALL SDL_GetWindows(int *count);
+
+/**
  * Create a window with the specified dimensions and flags.
  *
  * `flags` may be any of the following OR'd together:
@@ -1113,6 +1117,18 @@ extern SDL_DECLSPEC SDL_Window *SDLCALL SDL_GetWindowParent(SDL_Window *window);
  *
  * - `SDL_PROP_WINDOW_SHAPE_POINTER`: the surface associated with a shaped
  *   window
+ * - `SDL_PROP_WINDOW_HDR_ENABLED_BOOLEAN`: true if the window has HDR
+ *   headroom above the SDR white point. This property can change dynamically
+ *   when SDL_EVENT_WINDOW_HDR_STATE_CHANGED is sent.
+ * - `SDL_PROP_WINDOW_SDR_WHITE_LEVEL_FLOAT`: the value of SDR white in the
+ *   SDL_COLORSPACE_SRGB_LINEAR colorspace. On Windows this corresponds to the
+ *   SDR white level in scRGB colorspace, and on Apple platforms this is
+ *   always 1.0 for EDR content. This property can change dynamically when
+ *   SDL_EVENT_WINDOW_HDR_STATE_CHANGED is sent.
+ * - `SDL_PROP_WINDOW_HDR_HEADROOM_FLOAT`: the additional high dynamic range
+ *   that can be displayed, in terms of the SDR white point. When HDR is not
+ *   enabled, this will be 1.0. This property can change dynamically when
+ *   SDL_EVENT_WINDOW_HDR_STATE_CHANGED is sent.
  *
  * On Android:
  *
@@ -1216,6 +1232,9 @@ extern SDL_DECLSPEC SDL_Window *SDLCALL SDL_GetWindowParent(SDL_Window *window);
 extern SDL_DECLSPEC SDL_PropertiesID SDLCALL SDL_GetWindowProperties(SDL_Window *window);
 
 #define SDL_PROP_WINDOW_SHAPE_POINTER                               "SDL.window.shape"
+#define SDL_PROP_WINDOW_HDR_ENABLED_BOOLEAN                         "SDL.window.HDR_enabled"
+#define SDL_PROP_WINDOW_SDR_WHITE_LEVEL_FLOAT                       "SDL.window.SDR_white_level"
+#define SDL_PROP_WINDOW_HDR_HEADROOM_FLOAT                          "SDL.window.HDR_headroom"
 #define SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER                      "SDL.window.android.window"
 #define SDL_PROP_WINDOW_ANDROID_SURFACE_POINTER                     "SDL.window.android.surface"
 #define SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER                        "SDL.window.uikit.window"
@@ -2578,7 +2597,7 @@ extern SDL_DECLSPEC int SDLCALL SDL_GL_GetAttribute(SDL_GLattr attr, int *value)
  * extension-handling library or with SDL_GL_GetProcAddress() and its related
  * functions.
  *
- * SDL_GLContext is an alias for `void *`. It's opaque to the application.
+ * SDL_GLContext is opaque to the application.
  *
  * \param window the window to associate with the context.
  * \returns the OpenGL context associated with `window` or NULL on error; call

@@ -135,6 +135,14 @@ void *SDL_AllocateEventMemory(size_t size)
     return SDL_FreeLater(SDL_malloc(size));
 }
 
+const char *SDL_AllocateEventString(const char *string)
+{
+    if (string) {
+        return SDL_FreeLater(SDL_strdup(string));
+    }
+    return NULL;
+}
+
 static void SDL_FlushEventMemory(Uint32 eventID)
 {
     SDL_LockMutex(SDL_event_memory_lock);
@@ -285,7 +293,6 @@ static void SDL_LogEvent(const SDL_Event *event)
         SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_REMOVED);
         SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_MOVED);
         SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_CONTENT_SCALE_CHANGED);
-        SDL_DISPLAYEVENT_CASE(SDL_EVENT_DISPLAY_HDR_STATE_CHANGED);
 #undef SDL_DISPLAYEVENT_CASE
 
 #define SDL_WINDOWEVENT_CASE(x)                \
@@ -319,6 +326,7 @@ static void SDL_LogEvent(const SDL_Event *event)
         SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_ENTER_FULLSCREEN);
         SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_LEAVE_FULLSCREEN);
         SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_DESTROYED);
+        SDL_WINDOWEVENT_CASE(SDL_EVENT_WINDOW_HDR_STATE_CHANGED);
 #undef SDL_WINDOWEVENT_CASE
 
 #define PRINT_KEYDEV_EVENT(event) (void)SDL_snprintf(details, sizeof(details), " (timestamp=%u which=%u)", (uint)event->kdevice.timestamp, (uint)event->kdevice.which)
@@ -330,14 +338,14 @@ static void SDL_LogEvent(const SDL_Event *event)
         break;
 #undef PRINT_KEYDEV_EVENT
 
-#define PRINT_KEY_EVENT(event)                                                                                                   \
-    (void)SDL_snprintf(details, sizeof(details), " (timestamp=%u windowid=%u which=%u state=%s repeat=%s scancode=%u keycode=%u mod=%u)", \
-                       (uint)event->key.timestamp, (uint)event->key.windowID, (uint)event->key.which,                            \
-                       event->key.state == SDL_PRESSED ? "pressed" : "released",                                                 \
-                       event->key.repeat ? "true" : "false",                                                                     \
-                       (uint)event->key.keysym.scancode,                                                                         \
-                       (uint)event->key.keysym.sym,                                                                              \
-                       (uint)event->key.keysym.mod)
+#define PRINT_KEY_EVENT(event)                                                                                                              \
+    (void)SDL_snprintf(details, sizeof(details), " (timestamp=%u windowid=%u which=%u state=%s repeat=%s scancode=%u keycode=%u mod=0x%x)", \
+                       (uint)event->key.timestamp, (uint)event->key.windowID, (uint)event->key.which,                                       \
+                       event->key.state == SDL_PRESSED ? "pressed" : "released",                                                            \
+                       event->key.repeat ? "true" : "false",                                                                                \
+                       (uint)event->key.scancode,                                                                                           \
+                       (uint)event->key.key,                                                                                                \
+                       (uint)event->key.mod)
         SDL_EVENT_CASE(SDL_EVENT_KEY_DOWN)
         PRINT_KEY_EVENT(event);
         break;
@@ -350,6 +358,12 @@ static void SDL_LogEvent(const SDL_Event *event)
         (void)SDL_snprintf(details, sizeof(details), " (timestamp=%u windowid=%u text='%s' start=%d length=%d)",
                            (uint)event->edit.timestamp, (uint)event->edit.windowID,
                            event->edit.text, (int)event->edit.start, (int)event->edit.length);
+        break;
+
+        SDL_EVENT_CASE(SDL_EVENT_TEXT_EDITING_CANDIDATES)
+        (void)SDL_snprintf(details, sizeof(details), " (timestamp=%u windowid=%u num_candidates=%d selected_candidate=%d)",
+                           (uint)event->edit_candidates.timestamp, (uint)event->edit_candidates.windowID,
+                           (int)event->edit_candidates.num_candidates, (int)event->edit_candidates.selected_candidate);
         break;
 
         SDL_EVENT_CASE(SDL_EVENT_TEXT_INPUT)
@@ -581,7 +595,7 @@ static void SDL_LogEvent(const SDL_Event *event)
         break;
 #undef PRINT_DROP_EVENT
 
-#define PRINT_AUDIODEV_EVENT(event) (void)SDL_snprintf(details, sizeof(details), " (timestamp=%u which=%u iscapture=%s)", (uint)event->adevice.timestamp, (uint)event->adevice.which, event->adevice.iscapture ? "true" : "false")
+#define PRINT_AUDIODEV_EVENT(event) (void)SDL_snprintf(details, sizeof(details), " (timestamp=%u which=%u recording=%s)", (uint)event->adevice.timestamp, (uint)event->adevice.which, event->adevice.recording ? "true" : "false")
         SDL_EVENT_CASE(SDL_EVENT_AUDIO_DEVICE_ADDED)
         PRINT_AUDIODEV_EVENT(event);
         break;

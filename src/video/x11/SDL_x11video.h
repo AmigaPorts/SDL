@@ -121,10 +121,11 @@ struct SDL_VideoData
 
     int xrandr_event_base;
 
-#ifdef SDL_VIDEO_DRIVER_X11_HAS_XKBKEYCODETOKEYSYM
+#ifdef SDL_VIDEO_DRIVER_X11_HAS_XKBLOOKUPKEYSYM
     XkbDescPtr xkb;
 #endif
     int xkb_event;
+    unsigned int xkb_group;
 
     KeyCode filter_code;
     Time filter_time;

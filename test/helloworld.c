@@ -54,20 +54,20 @@ static SDL_bool eventLoopInner(void)
                 {
                     SDL_KeyboardEvent * ke = (SDL_KeyboardEvent *)&e;
                     printf("Key down scancode %d (%s), keycode %d (%s), mod %d\n",
-                        ke->keysym.scancode, SDL_GetScancodeName(ke->keysym.scancode),
-                        ke->keysym.sym, SDL_GetKeyName(ke->keysym.sym), ke->keysym.mod);
+                        ke->scancode, SDL_GetScancodeName(ke->scancode),
+                        ke->key, SDL_GetKeyName(ke->key), ke->mod);
 
-                    if (ke->keysym.sym == 13 && ke->keysym.mod == 256) {
-                        SDL_Window * w = SDL_GetWindowFromID(ke->windowID);
-                        ToggleFullscreen(w);
-                    }
+                    //if (ke->key == 13 && ke->mod == 256) {
+                    //    SDL_Window * w = SDL_GetWindowFromID(ke->windowID);
+                    //    ToggleFullscreen(w);
+                    //}
                 }
                 break;
 
             case SDL_EVENT_KEY_UP:
                 {
                     SDL_KeyboardEvent * ke = (SDL_KeyboardEvent *)&e;
-                    printf("Key up %d\n", ke->keysym.scancode);
+                    printf("Key up %d\n", ke->scancode);
                 }
                 break;
 

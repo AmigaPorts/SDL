@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -454,7 +454,7 @@ OS4_GetDeviceBuf(SDL_AudioDevice *_this, int *buffer_size)
 }
 
 static int
-OS4_WaitCaptureDevice(SDL_AudioDevice *device)
+OS4_WaitRecordingDevice(SDL_AudioDevice *device)
 {
     dprintf("Called for device %p\n", device);
     return 0;
@@ -467,7 +467,7 @@ OS4_WaitCaptureDevice(SDL_AudioDevice *device)
 #define RESTART_CAPTURE_THRESHOLD 500
 
 static int
-OS4_CaptureFromDevice(SDL_AudioDevice *_this, void * buffer, int buflen)
+OS4_RecordDevice(SDL_AudioDevice *_this, void * buffer, int buflen)
 {
     struct AHIRequest  *request;
     SDL_AudioSpec      *spec    = &_this->spec;
@@ -543,7 +543,7 @@ OS4_CaptureFromDevice(SDL_AudioDevice *_this, void * buffer, int buflen)
 }
 
 static void
-OS4_FlushCapture(SDL_AudioDevice *this)
+OS4_FlushRecording(SDL_AudioDevice *this)
 {
     dprintf("Called\n");
 }
@@ -584,18 +584,18 @@ OS4_Init(SDL_AudioDriverImpl * impl)
     impl->WaitDevice = OS4_WaitDevice;
     impl->PlayDevice = OS4_PlayDevice;
     impl->GetDeviceBuf = OS4_GetDeviceBuf;
-    impl->WaitCaptureDevice = OS4_WaitCaptureDevice;
-    impl->CaptureFromDevice = OS4_CaptureFromDevice;
-    impl->FlushCapture = OS4_FlushCapture;
+    impl->WaitRecordingDevice = OS4_WaitRecordingDevice;
+    impl->RecordDevice = OS4_RecordDevice;
+    impl->FlushRecording = OS4_FlushRecording;
     impl->CloseDevice = OS4_CloseDevice;
     impl->FreeDeviceHandle = OS4_FreeDeviceHandle;
     impl->DeinitializeStart = OS4_DeinitializeStart;
     impl->Deinitialize = OS4_Deinitialize;
 
     impl->ProvidesOwnCallbackThread = SDL_FALSE;
-    impl->HasCaptureSupport = SDL_TRUE;
-    impl->OnlyHasDefaultOutputDevice = SDL_TRUE;
-    impl->OnlyHasDefaultCaptureDevice = SDL_TRUE;
+    impl->HasRecordingSupport = SDL_TRUE;
+    impl->OnlyHasDefaultPlaybackDevice = SDL_TRUE;
+    impl->OnlyHasDefaultRecordingDevice = SDL_TRUE;
 
     return SDL_TRUE;
 }

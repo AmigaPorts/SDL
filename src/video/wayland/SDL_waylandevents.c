@@ -24,6 +24,7 @@
 #ifdef SDL_VIDEO_DRIVER_WAYLAND
 
 #include "../../core/unix/SDL_poll.h"
+#include "../../core/unix/SDL_uri_decode.h"
 #include "../../events/SDL_events_c.h"
 #include "../../events/SDL_scancode_tables_c.h"
 #include "../../core/linux/SDL_system_theme.h"
@@ -88,8 +89,6 @@ struct SDL_WaylandTouchPoint
 };
 
 static struct wl_list touch_points;
-
-static char *Wayland_URIToLocal(char *uri);
 
 static void touch_add(SDL_TouchID id, wl_fixed_t fx, wl_fixed_t fy, struct wl_surface *surface)
 {
@@ -267,7 +266,7 @@ static SDL_bool keyboard_repeat_handle(SDL_WaylandKeyboardRepeat *repeat_info, U
     while (elapsed >= repeat_info->next_repeat_ns) {
         if (repeat_info->scancode != SDL_SCANCODE_UNKNOWN) {
             const Uint64 timestamp = repeat_info->wl_press_time_ns + repeat_info->next_repeat_ns;
-            SDL_SendKeyboardKeyIgnoreModifiers(Wayland_GetEventTimestamp(timestamp), repeat_info->keyboard_id, SDL_PRESSED, repeat_info->scancode);
+            SDL_SendKeyboardKeyIgnoreModifiers(Wayland_GetEventTimestamp(timestamp), repeat_info->keyboard_id, repeat_info->key, repeat_info->scancode, SDL_PRESSED);
         }
         if (repeat_info->text[0]) {
             SDL_SendKeyboardText(repeat_info->text);
@@ -381,7 +380,8 @@ int Wayland_WaitEventTimeout(SDL_VideoDevice *_this, Sint64 timeoutNS)
     WAYLAND_wl_display_flush(d->display);
 
 #ifdef SDL_USE_IME
-    if (!d->text_input_manager && SDL_TextInputActive()) {
+    SDL_Window *keyboard_focus = SDL_GetKeyboardFocus();
+    if (!d->text_input_manager && keyboard_focus && SDL_TextInputActive(keyboard_focus)) {
         SDL_IME_PumpEvents();
     }
 #endif
@@ -454,7 +454,8 @@ void Wayland_PumpEvents(SDL_VideoDevice *_this)
     int err;
 
 #ifdef SDL_USE_IME
-    if (!d->text_input_manager && SDL_TextInputActive()) {
+    SDL_Window *keyboard_focus = SDL_GetKeyboardFocus();
+    if (!d->text_input_manager && keyboard_focus && SDL_TextInputActive(keyboard_focus)) {
         SDL_IME_PumpEvents();
     }
 #endif
@@ -1084,14 +1085,15 @@ static const struct wl_touch_listener touch_listener = {
 
 typedef struct Wayland_Keymap
 {
-    xkb_layout_index_t layout;
-    SDL_Keycode keymap[SDL_NUM_SCANCODES];
+    SDL_Keymap *keymap;
+    struct xkb_state *state;
+    SDL_Keymod modstate;
 } Wayland_Keymap;
 
 static void Wayland_keymap_iter(struct xkb_keymap *keymap, xkb_keycode_t key, void *data)
 {
-    const xkb_keysym_t *syms;
     Wayland_Keymap *sdlKeymap = (Wayland_Keymap *)data;
+    const xkb_keysym_t *syms;
     SDL_Scancode scancode;
 
     scancode = SDL_GetScancodeFromTable(SDL_SCANCODE_TABLE_XFREE86_2, (key - 8));
@@ -1099,44 +1101,94 @@ static void Wayland_keymap_iter(struct xkb_keymap *keymap, xkb_keycode_t key, vo
         return;
     }
 
-    if (WAYLAND_xkb_keymap_key_get_syms_by_level(keymap, key, sdlKeymap->layout, 0, &syms) > 0) {
+    if (WAYLAND_xkb_state_key_get_syms(sdlKeymap->state, key, &syms) > 0) {
         uint32_t keycode = SDL_KeySymToUcs4(syms[0]);
 
         if (!keycode) {
             const SDL_Scancode sc = SDL_GetScancodeFromKeySym(syms[0], key);
 
-            /* Note: The default SDL keymap always sets this to right alt instead of AltGr/Mode, so handle it separately. */
+            /* Note: The default SDL scancode table sets this to right alt instead of AltGr/Mode, so handle it separately. */
             if (syms[0] != XKB_KEY_ISO_Level3_Shift) {
-                keycode = SDL_GetDefaultKeyFromScancode(sc);
+                keycode = SDL_GetDefaultKeyFromScancode(sc, SDL_KMOD_NONE);
             } else {
                 keycode = SDLK_MODE;
             }
         }
 
-        if (keycode) {
-            sdlKeymap->keymap[scancode] = keycode;
-        } else {
+        if (!keycode) {
             switch (scancode) {
             case SDL_SCANCODE_RETURN:
-                sdlKeymap->keymap[scancode] = SDLK_RETURN;
+                keycode = SDLK_RETURN;
                 break;
             case SDL_SCANCODE_ESCAPE:
-                sdlKeymap->keymap[scancode] = SDLK_ESCAPE;
+                keycode = SDLK_ESCAPE;
                 break;
             case SDL_SCANCODE_BACKSPACE:
-                sdlKeymap->keymap[scancode] = SDLK_BACKSPACE;
+                keycode = SDLK_BACKSPACE;
                 break;
             case SDL_SCANCODE_TAB:
-                sdlKeymap->keymap[scancode] = SDLK_TAB;
+                keycode = SDLK_TAB;
                 break;
             case SDL_SCANCODE_DELETE:
-                sdlKeymap->keymap[scancode] = SDLK_DELETE;
+                keycode = SDLK_DELETE;
                 break;
             default:
-                sdlKeymap->keymap[scancode] = SDL_SCANCODE_TO_KEYCODE(scancode);
+                keycode = SDL_SCANCODE_TO_KEYCODE(scancode);
                 break;
             }
         }
+
+        SDL_SetKeymapEntry(sdlKeymap->keymap, scancode, sdlKeymap->modstate, keycode);
+    }
+}
+
+static void Wayland_UpdateKeymap(struct SDL_WaylandInput *input)
+{
+    struct Keymod_masks
+    {
+        SDL_Keymod sdl_mask;
+        xkb_mod_mask_t xkb_mask;
+    } const keymod_masks[] = {
+        { SDL_KMOD_NONE, 0 },
+        { SDL_KMOD_SHIFT, input->xkb.idx_shift },
+        { SDL_KMOD_CAPS, input->xkb.idx_caps },
+        { SDL_KMOD_SHIFT | SDL_KMOD_CAPS, input->xkb.idx_shift | input->xkb.idx_caps },
+        { SDL_KMOD_MODE, input->xkb.idx_mode },
+        { SDL_KMOD_MODE | SDL_KMOD_SHIFT, input->xkb.idx_mode | input->xkb.idx_shift },
+        { SDL_KMOD_MODE | SDL_KMOD_CAPS, input->xkb.idx_mode | input->xkb.idx_caps },
+        { SDL_KMOD_MODE | SDL_KMOD_SHIFT | SDL_KMOD_CAPS, input->xkb.idx_mode | input->xkb.idx_shift | input->xkb.idx_caps }
+    };
+
+    if (!input->keyboard_is_virtual) {
+        Wayland_Keymap keymap;
+
+        keymap.keymap = SDL_CreateKeymap();
+        if (!keymap.keymap) {
+            return;
+        }
+
+        keymap.state = WAYLAND_xkb_state_new(input->xkb.keymap);
+        if (!keymap.state) {
+            SDL_SetError("failed to create XKB state");
+            SDL_DestroyKeymap(keymap.keymap);
+            return;
+        }
+
+        for (int i = 0; i < SDL_arraysize(keymod_masks); ++i) {
+            keymap.modstate = keymod_masks[i].sdl_mask;
+            WAYLAND_xkb_state_update_mask(keymap.state,
+                                          keymod_masks[i].xkb_mask & (input->xkb.idx_shift | input->xkb.idx_mode), 0, keymod_masks[i].xkb_mask & input->xkb.idx_caps,
+                                          0, 0, input->xkb.current_group);
+            WAYLAND_xkb_keymap_key_for_each(input->xkb.keymap,
+                                            Wayland_keymap_iter,
+                                            &keymap);
+        }
+
+        WAYLAND_xkb_state_unref(keymap.state);
+        SDL_SetKeymap(keymap.keymap, SDL_TRUE);
+    } else {
+        /* Virtual keyboards use the default keymap. */
+        SDL_SetKeymap(NULL, SDL_TRUE);
     }
 }
 
@@ -1214,17 +1266,9 @@ static void keyboard_handle_keymap(void *data, struct wl_keyboard *keyboard,
      */
     input->keyboard_is_virtual = WAYLAND_xkb_keymap_layout_get_name(input->xkb.keymap, 0) == NULL;
 
-    /* Update the keymap if changed. Virtual keyboards use the default keymap. */
+    /* Update the keymap if changed. */
     if (input->xkb.current_group != XKB_GROUP_INVALID) {
-        Wayland_Keymap keymap;
-        keymap.layout = input->xkb.current_group;
-        SDL_GetDefaultKeymap(keymap.keymap);
-        if (!input->keyboard_is_virtual) {
-            WAYLAND_xkb_keymap_key_for_each(input->xkb.keymap,
-                                            Wayland_keymap_iter,
-                                            &keymap);
-        }
-        SDL_SetKeymap(0, keymap.keymap, SDL_NUM_SCANCODES, SDL_TRUE);
+        Wayland_UpdateKeymap(input);
     }
 
     /*
@@ -1398,7 +1442,7 @@ static void Wayland_ReconcileModifiers(struct SDL_WaylandInput *input)
 
 static void Wayland_HandleModifierKeys(struct SDL_WaylandInput *input, SDL_Scancode scancode, SDL_bool pressed)
 {
-    const SDL_Keycode keycode = SDL_GetKeyFromScancode(scancode);
+    const SDL_Keycode keycode = SDL_GetKeyFromScancode(scancode, SDL_KMOD_NONE);
     SDL_Keymod mod;
 
     switch (keycode) {
@@ -1475,7 +1519,7 @@ static void keyboard_handle_enter(void *data, struct wl_keyboard *keyboard,
 
     wl_array_for_each (key, keys) {
         const SDL_Scancode scancode = Wayland_get_scancode_from_key(input, *key + 8);
-        const SDL_Keycode keycode = SDL_GetKeyFromScancode(scancode);
+        const SDL_Keycode keycode = SDL_GetKeyFromScancode(scancode, SDL_KMOD_NONE);
 
         switch (keycode) {
         case SDLK_LSHIFT:
@@ -1488,7 +1532,7 @@ static void keyboard_handle_enter(void *data, struct wl_keyboard *keyboard,
         case SDLK_RGUI:
         case SDLK_MODE:
             Wayland_HandleModifierKeys(input, scancode, SDL_TRUE);
-            SDL_SendKeyboardKeyIgnoreModifiers(0, input->keyboard_id, SDL_PRESSED, scancode);
+            SDL_SendKeyboardKeyIgnoreModifiers(0, input->keyboard_id, *key, scancode, SDL_PRESSED);
             break;
         default:
             break;
@@ -1606,7 +1650,8 @@ static void keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
     Wayland_UpdateImplicitGrabSerial(input, serial);
 
     if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-        if (SDL_TextInputActive()) {
+        SDL_Window *keyboard_focus = SDL_GetKeyboardFocus();
+        if (keyboard_focus && SDL_TextInputActive(keyboard_focus)) {
             has_text = keyboard_input_get_text(text, input, key, SDL_PRESSED, &handled_by_ime);
         }
     } else {
@@ -1624,7 +1669,7 @@ static void keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
 
     scancode = Wayland_get_scancode_from_key(input, key + 8);
     Wayland_HandleModifierKeys(input, scancode, state == WL_KEYBOARD_KEY_STATE_PRESSED);
-    SDL_SendKeyboardKeyIgnoreModifiers(Wayland_GetKeyboardTimestamp(input, time), input->keyboard_id, state == WL_KEYBOARD_KEY_STATE_PRESSED ? SDL_PRESSED : SDL_RELEASED, scancode);
+    SDL_SendKeyboardKeyIgnoreModifiers(Wayland_GetKeyboardTimestamp(input, time), input->keyboard_id, key, scancode, state == WL_KEYBOARD_KEY_STATE_PRESSED ? SDL_PRESSED : SDL_RELEASED);
 
     if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
         if (has_text && !(SDL_GetModState() & SDL_KMOD_CTRL)) {
@@ -1644,7 +1689,6 @@ static void keyboard_handle_modifiers(void *data, struct wl_keyboard *keyboard,
                                       uint32_t group)
 {
     struct SDL_WaylandInput *input = data;
-    Wayland_Keymap keymap;
 
     if (input->xkb.state == NULL) {
         /* if we get a modifier notification before the keymap, there's nothing we can do with the information
@@ -1676,14 +1720,7 @@ static void keyboard_handle_modifiers(void *data, struct wl_keyboard *keyboard,
 
     /* The layout changed, remap and fire an event. Virtual keyboards use the default keymap. */
     input->xkb.current_group = group;
-    keymap.layout = group;
-    SDL_GetDefaultKeymap(keymap.keymap);
-    if (!input->keyboard_is_virtual) {
-        WAYLAND_xkb_keymap_key_for_each(input->xkb.keymap,
-                                        Wayland_keymap_iter,
-                                        &keymap);
-    }
-    SDL_SetKeymap(0, keymap.keymap, SDL_NUM_SCANCODES, SDL_TRUE);
+    Wayland_UpdateKeymap(input);
 }
 
 static void keyboard_handle_repeat_info(void *data, struct wl_keyboard *wl_keyboard,
@@ -2022,127 +2059,6 @@ static void data_device_handle_motion(void *data, struct wl_data_device *wl_data
     }
 }
 
-/* Decodes URI escape sequences in string buf of len bytes
- * (excluding the terminating NULL byte) in-place. Since
- * URI-encoded characters take three times the space of
- * normal characters, this should not be an issue.
- *
- * Returns the number of decoded bytes that wound up in
- * the buffer, excluding the terminating NULL byte.
- *
- * The buffer is guaranteed to be NULL-terminated but
- * may contain embedded NULL bytes.
- *
- * On error, -1 is returned.
- *
- * FIXME: This was shamelessly copied from SDL_x11events.c
- */
-static int Wayland_URIDecode(char *buf, int len)
-{
-    int ri, wi, di;
-    char decode = '\0';
-    if (!buf || len < 0) {
-        errno = EINVAL;
-        return -1;
-    }
-    if (len == 0) {
-        len = SDL_strlen(buf);
-    }
-    for (ri = 0, wi = 0, di = 0; ri < len && wi < len; ri += 1) {
-        if (di == 0) {
-            /* start decoding */
-            if (buf[ri] == '%') {
-                decode = '\0';
-                di += 1;
-                continue;
-            }
-            /* normal write */
-            buf[wi] = buf[ri];
-            wi += 1;
-            continue;
-        } else if (di == 1 || di == 2) {
-            char off = '\0';
-            char isa = buf[ri] >= 'a' && buf[ri] <= 'f';
-            char isA = buf[ri] >= 'A' && buf[ri] <= 'F';
-            char isn = buf[ri] >= '0' && buf[ri] <= '9';
-            if (!(isa || isA || isn)) {
-                /* not a hexadecimal */
-                int sri;
-                for (sri = ri - di; sri <= ri; sri += 1) {
-                    buf[wi] = buf[sri];
-                    wi += 1;
-                }
-                di = 0;
-                continue;
-            }
-            /* itsy bitsy magicsy */
-            if (isn) {
-                off = 0 - '0';
-            } else if (isa) {
-                off = 10 - 'a';
-            } else if (isA) {
-                off = 10 - 'A';
-            }
-            decode |= (buf[ri] + off) << (2 - di) * 4;
-            if (di == 2) {
-                buf[wi] = decode;
-                wi += 1;
-                di = 0;
-            } else {
-                di += 1;
-            }
-            continue;
-        }
-    }
-    buf[wi] = '\0';
-    return wi;
-}
-
-/* Convert URI to local filename
- * return filename if possible, else NULL
- *
- *  FIXME: This was shamelessly copied from SDL_x11events.c
- */
-static char *Wayland_URIToLocal(char *uri)
-{
-    char *file = NULL;
-    SDL_bool local;
-
-    if (SDL_memcmp(uri, "file:/", 6) == 0) {
-        uri += 6; /* local file? */
-    } else if (SDL_strstr(uri, ":/") != NULL) {
-        return file; /* wrong scheme */
-    }
-
-    local = uri[0] != '/' || (uri[0] != '\0' && uri[1] == '/');
-
-    /* got a hostname? */
-    if (!local && uri[0] == '/' && uri[2] != '/') {
-        char *hostname_end = SDL_strchr(uri + 1, '/');
-        if (hostname_end) {
-            char hostname[257];
-            if (gethostname(hostname, 255) == 0) {
-                hostname[256] = '\0';
-                if (SDL_memcmp(uri + 1, hostname, hostname_end - (uri + 1)) == 0) {
-                    uri = hostname_end + 1;
-                    local = SDL_TRUE;
-                }
-            }
-        }
-    }
-    if (local) {
-        file = uri;
-        /* Convert URI escape sequences to real characters */
-        Wayland_URIDecode(file, 0);
-        if (uri[1] == '/') {
-            file++;
-        } else {
-            file--;
-        }
-    }
-    return file;
-}
-
 static void data_device_handle_drop(void *data, struct wl_data_device *wl_data_device)
 {
     SDL_WaylandDataDevice *data_device = data;
@@ -2188,9 +2104,8 @@ static void data_device_handle_drop(void *data, struct wl_data_device *wl_data_d
                 char *saveptr = NULL;
                 char *token = SDL_strtok_r((char *)buffer, "\r\n", &saveptr);
                 while (token) {
-                    char *fn = Wayland_URIToLocal(token);
-                    if (fn) {
-                        SDL_SendDropFile(data_device->dnd_window, NULL, fn);
+                    if (SDL_URIToLocal(token, token) >= 0) {
+                        SDL_SendDropFile(data_device->dnd_window, NULL, token);
                     }
                     token = SDL_strtok_r(NULL, "\r\n", &saveptr);
                 }

@@ -202,6 +202,11 @@ static SDL_bool SDL_DisableMouseWarpOnFullscreenTransitions(SDL_VideoDevice *_th
     return !!(_this->device_caps & VIDEO_DEVICE_CAPS_DISABLE_MOUSE_WARP_ON_FULLSCREEN_TRANSITIONS);
 }
 
+static SDL_bool SDL_DriverSendsHDRChanges(SDL_VideoDevice *_this)
+{
+    return !!(_this->device_caps & VIDEO_DEVICE_CAPS_SENDS_HDR_CHANGES);
+}
+
 /* Hint to treat all window ops as synchronous */
 static SDL_bool syncHint;
 
@@ -770,23 +775,11 @@ SDL_DisplayID SDL_AddVideoDisplay(const SDL_VideoDisplay *display, SDL_bool send
         new_display->fullscreen_modes[i].displayID = id;
     }
 
-    props = SDL_GetDisplayProperties(id);
+    new_display->HDR.HDR_headroom = SDL_max(display->HDR.HDR_headroom, 1.0f);
+    new_display->HDR.SDR_white_level = SDL_max(display->HDR.SDR_white_level, 1.0f);
 
-    if (display->HDR.HDR_headroom > 1.0f) {
-        SDL_SetBooleanProperty(props, SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN, SDL_TRUE);
-    } else {
-        SDL_SetBooleanProperty(props, SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN, SDL_FALSE);
-    }
-    if (display->HDR.SDR_white_point <= 1.0f) {
-        SDL_SetFloatProperty(props, SDL_PROP_DISPLAY_SDR_WHITE_POINT_FLOAT, 1.0f);
-    } else {
-        SDL_SetFloatProperty(props, SDL_PROP_DISPLAY_SDR_WHITE_POINT_FLOAT, display->HDR.SDR_white_point);
-    }
-    if (display->HDR.HDR_headroom <= 1.0f) {
-        SDL_SetFloatProperty(props, SDL_PROP_DISPLAY_HDR_HEADROOM_FLOAT, 1.0f);
-    } else {
-        SDL_SetFloatProperty(props, SDL_PROP_DISPLAY_HDR_HEADROOM_FLOAT, display->HDR.HDR_headroom);
-    }
+    props = SDL_GetDisplayProperties(id);
+    SDL_SetBooleanProperty(props, SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN, new_display->HDR.HDR_headroom > 1.0f);
 
     SDL_UpdateDesktopBounds();
 
@@ -1060,37 +1053,42 @@ float SDL_GetDisplayContentScale(SDL_DisplayID displayID)
     return display->content_scale;
 }
 
-void SDL_SetDisplayHDRProperties(SDL_VideoDisplay *display, const SDL_HDRDisplayProperties *HDR)
+void SDL_SetWindowHDRProperties(SDL_Window *window, const SDL_HDROutputProperties *HDR, SDL_bool send_event)
 {
-    SDL_PropertiesID props = SDL_GetDisplayProperties(display->id);
+    if (window->HDR.HDR_headroom != HDR->HDR_headroom || window->HDR.SDR_white_level != window->HDR.SDR_white_level) {
+        SDL_PropertiesID window_props = SDL_GetWindowProperties(window);
+
+        SDL_SetFloatProperty(window_props, SDL_PROP_WINDOW_HDR_HEADROOM_FLOAT, SDL_max(HDR->HDR_headroom, 1.0f));
+        SDL_SetFloatProperty(window_props, SDL_PROP_WINDOW_SDR_WHITE_LEVEL_FLOAT, SDL_max(HDR->SDR_white_level, 1.0f));
+        SDL_SetBooleanProperty(window_props, SDL_PROP_WINDOW_HDR_ENABLED_BOOLEAN, HDR->HDR_headroom > 1.0f);
+        SDL_copyp(&window->HDR, HDR);
+
+        if (send_event) {
+            SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_HDR_STATE_CHANGED, HDR->HDR_headroom > 1.0f, 0);
+        }
+    }
+}
+
+void SDL_SetDisplayHDRProperties(SDL_VideoDisplay *display, const SDL_HDROutputProperties *HDR)
+{
     SDL_bool changed = SDL_FALSE;
 
-    if (HDR->SDR_white_point != display->HDR.SDR_white_point) {
-        if (HDR->SDR_white_point <= 1.0f) {
-            SDL_SetFloatProperty(props, SDL_PROP_DISPLAY_SDR_WHITE_POINT_FLOAT, 1.0f);
-        } else {
-            SDL_SetFloatProperty(props, SDL_PROP_DISPLAY_SDR_WHITE_POINT_FLOAT, HDR->SDR_white_point);
-        }
+    if (HDR->SDR_white_level != display->HDR.SDR_white_level) {
+        display->HDR.SDR_white_level = SDL_max(HDR->SDR_white_level, 1.0f);
         changed = SDL_TRUE;
     }
     if (HDR->HDR_headroom != display->HDR.HDR_headroom) {
-        if (HDR->HDR_headroom > 1.0f) {
-            SDL_SetBooleanProperty(props, SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN, SDL_TRUE);
-        } else {
-            SDL_SetBooleanProperty(props, SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN, SDL_FALSE);
-        }
-        if (HDR->HDR_headroom <= 1.0f) {
-            SDL_SetFloatProperty(props, SDL_PROP_DISPLAY_HDR_HEADROOM_FLOAT, 1.0f);
-        } else {
-            SDL_SetFloatProperty(props, SDL_PROP_DISPLAY_HDR_HEADROOM_FLOAT, HDR->HDR_headroom);
-        }
+        display->HDR.HDR_headroom = SDL_max(HDR->HDR_headroom, 1.0f);
         changed = SDL_TRUE;
     }
     SDL_copyp(&display->HDR, HDR);
 
-    if (changed) {
-        SDL_bool enabled = SDL_GetBooleanProperty(props, SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN, SDL_FALSE);
-        SDL_SendDisplayEvent(display, SDL_EVENT_DISPLAY_HDR_STATE_CHANGED, enabled);
+    if (changed && !SDL_DriverSendsHDRChanges(_this)) {
+        for (SDL_Window *w = display->device->windows; w; w = w->next) {
+            if (SDL_GetDisplayForWindow(w) == display->id) {
+                SDL_SetWindowHDRProperties(w, &display->HDR, SDL_TRUE);
+            }
+        }
     }
 }
 
@@ -2049,6 +2047,44 @@ void SDL_ToggleDragAndDropSupport(void)
     }
 }
 
+SDL_Window **SDLCALL SDL_GetWindows(int *count)
+{
+    if (count) {
+        *count = 0;
+    }
+
+    if (!_this) {
+        SDL_UninitializedVideo();
+        return NULL;
+    }
+
+    SDL_Window *window;
+    int num_added = 0;
+    int num_windows = 0;
+    for (window = _this->windows; window; window = window->next) {
+        ++num_windows;
+    }
+
+    SDL_Window **windows = SDL_malloc((num_windows + 1) * sizeof(*windows));
+    if (!windows) {
+        return NULL;
+    }
+
+    for (window = _this->windows; window; window = window->next) {
+        windows[num_added++] = window;
+        if (num_added == num_windows) {
+            // Race condition? Multi-threading not supported, ignore it
+            break;
+        }
+    }
+    windows[num_added] = NULL;
+
+    if (count) {
+        *count = num_added;
+    }
+    return windows;
+}
+
 static void ApplyWindowFlags(SDL_Window *window, SDL_WindowFlags flags)
 {
     if (!SDL_WINDOW_IS_POPUP(window)) {
@@ -2295,8 +2331,10 @@ SDL_Window *SDL_CreateWindowWithProperties(SDL_PropertiesID props)
     window->undefined_x = undefined_x;
     window->undefined_y = undefined_y;
 
+    SDL_VideoDisplay *display = SDL_GetVideoDisplayForWindow(window);
+    SDL_SetWindowHDRProperties(window, &display->HDR, SDL_FALSE);
+
     if (flags & SDL_WINDOW_FULLSCREEN || IsFullscreenOnly(_this)) {
-        SDL_VideoDisplay *display = SDL_GetVideoDisplayForWindow(window);
         SDL_Rect bounds;
 
         SDL_GetDisplayBounds(display->id, &bounds);
@@ -3485,7 +3523,7 @@ int SDL_SetWindowModalFor(SDL_Window *modal_window, SDL_Window *parent_window)
     const int ret = _this->SetWindowModalFor(_this, modal_window, parent_window);
 
     /* The existing parent might be needed when changing the modal status,
-     * so don't change the heirarchy until after setting the new modal state.
+     * so don't change the hierarchy until after setting the new modal state.
      */
     if (!ret) {
         SDL_SetWindowParent(modal_window, !ret ? parent_window : NULL);
@@ -4012,7 +4050,7 @@ SDL_bool SDL_ScreenSaverEnabled(void)
 int SDL_EnableScreenSaver(void)
 {
     if (!_this) {
-        return 0;
+        return SDL_UninitializedVideo();
     }
     if (!_this->suspend_screensaver) {
         return 0;
@@ -4028,7 +4066,7 @@ int SDL_EnableScreenSaver(void)
 int SDL_DisableScreenSaver(void)
 {
     if (!_this) {
-        return 0;
+        return SDL_UninitializedVideo();
     }
     if (_this->suspend_screensaver) {
         return 0;
@@ -5043,74 +5081,104 @@ void SDL_WM_SetIcon(SDL_Surface *icon, Uint8 *mask)
 }
 #endif
 
-void SDL_StartTextInput(void)
+int SDL_StartTextInput(SDL_Window *window)
 {
-    if (!_this) {
-        return;
-    }
+    CHECK_WINDOW_MAGIC(window, -1);
 
     /* Show the on-screen keyboard, if desired */
     const char *hint = SDL_GetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD);
     if (((!hint || SDL_strcasecmp(hint, "auto") == 0) && !SDL_HasKeyboard()) ||
         SDL_GetStringBoolean(hint, SDL_FALSE)) {
-        SDL_Window *window = SDL_GetKeyboardFocus();
-        if (window && _this->ShowScreenKeyboard) {
+        if (_this->ShowScreenKeyboard) {
             _this->ShowScreenKeyboard(_this, window);
         }
     }
 
-    /* Finally start the text input system */
-    if (_this->StartTextInput) {
-        _this->StartTextInput(_this);
+    if (!window->text_input_active) {
+        /* Finally start the text input system */
+        if (_this->StartTextInput) {
+            if (_this->StartTextInput(_this, window) < 0) {
+                return -1;
+            }
+        }
+        window->text_input_active = SDL_TRUE;
     }
-    _this->text_input_active = SDL_TRUE;
+    return 0;
 }
 
-void SDL_ClearComposition(void)
+SDL_bool SDL_TextInputActive(SDL_Window *window)
 {
-    if (_this && _this->ClearComposition) {
-        _this->ClearComposition(_this);
-    }
+    CHECK_WINDOW_MAGIC(window, SDL_FALSE);
+
+    return window->text_input_active;
 }
 
-SDL_bool SDL_TextInputActive(void)
+int SDL_StopTextInput(SDL_Window *window)
 {
-    return _this && _this->text_input_active;
-}
+    CHECK_WINDOW_MAGIC(window, -1);
 
-void SDL_StopTextInput(void)
-{
-    if (!_this) {
-        return;
+    if (window->text_input_active) {
+        /* Stop the text input system */
+        if (_this->StopTextInput) {
+            _this->StopTextInput(_this, window);
+        }
+        window->text_input_active = SDL_FALSE;
     }
-
-    /* Stop the text input system */
-    if (_this->StopTextInput) {
-        _this->StopTextInput(_this);
-    }
-    _this->text_input_active = SDL_FALSE;
 
     /* Hide the on-screen keyboard, if desired */
     const char *hint = SDL_GetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD);
     if (((!hint || SDL_strcasecmp(hint, "auto") == 0) && !SDL_HasKeyboard()) ||
         SDL_GetStringBoolean(hint, SDL_FALSE)) {
-        SDL_Window *window = SDL_GetKeyboardFocus();
-        if (window && _this->HideScreenKeyboard) {
+        if (_this->HideScreenKeyboard) {
             _this->HideScreenKeyboard(_this, window);
         }
     }
+    return 0;
 }
 
-int SDL_SetTextInputRect(const SDL_Rect *rect)
+int SDL_SetTextInputArea(SDL_Window *window, const SDL_Rect *rect, int cursor)
 {
-    if (!rect) {
-        return SDL_InvalidParamError("rect");
+    CHECK_WINDOW_MAGIC(window, -1);
+
+    if (rect) {
+        SDL_copyp(&window->text_input_rect, rect);
+        window->text_input_cursor = cursor;
+    } else {
+        SDL_zero(window->text_input_rect);
+        window->text_input_cursor = 0;
     }
 
-    if (_this && _this->SetTextInputRect) {
-        return _this->SetTextInputRect(_this, rect);
+    if (_this && _this->UpdateTextInputArea) {
+        if (_this->UpdateTextInputArea(_this, window) < 0) {
+            return -1;
+        }
     }
-    return SDL_Unsupported();
+    return 0;
+}
+
+int SDL_GetTextInputArea(SDL_Window *window, SDL_Rect *rect, int *cursor)
+{
+    CHECK_WINDOW_MAGIC(window, -1);
+
+    if (rect) {
+        SDL_copyp(rect, &window->text_input_rect);
+    }
+    if (cursor) {
+        *cursor = window->text_input_cursor;
+    }
+    return 0;
+}
+
+int SDL_ClearComposition(SDL_Window *window)
+{
+    CHECK_WINDOW_MAGIC(window, -1);
+
+    if (_this->ClearComposition) {
+        if (_this->ClearComposition(_this, window) < 0) {
+            return -1;
+        }
+    }
+    return 0;
 }
 
 SDL_bool SDL_HasScreenKeyboardSupport(void)
@@ -5478,7 +5546,7 @@ char const* const* SDL_Vulkan_GetInstanceExtensions(Uint32 *count)
     return _this->Vulkan_GetInstanceExtensions(_this, count);
 }
 
-SDL_bool SDL_Vulkan_CreateSurface(SDL_Window *window,
+int SDL_Vulkan_CreateSurface(SDL_Window *window,
                                   VkInstance instance,
                                   const struct VkAllocationCallbacks *allocator,
                                   VkSurfaceKHR *surface)
@@ -5486,18 +5554,15 @@ SDL_bool SDL_Vulkan_CreateSurface(SDL_Window *window,
     CHECK_WINDOW_MAGIC(window, SDL_FALSE);
 
     if (!(window->flags & SDL_WINDOW_VULKAN)) {
-        SDL_SetError(NOT_A_VULKAN_WINDOW);
-        return SDL_FALSE;
+        return SDL_SetError(NOT_A_VULKAN_WINDOW);
     }
 
     if (!instance) {
-        SDL_InvalidParamError("instance");
-        return SDL_FALSE;
+        return SDL_InvalidParamError("instance");
     }
 
     if (!surface) {
-        SDL_InvalidParamError("surface");
-        return SDL_FALSE;
+        return SDL_InvalidParamError("surface");
     }
 
     return _this->Vulkan_CreateSurface(_this, window, instance, allocator, surface);

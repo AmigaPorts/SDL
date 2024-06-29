@@ -375,7 +375,6 @@
     <ClInclude Include="..\..\include\SDL3\SDL_test_log.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_test_md5.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_test_memory.h" />
-    <ClInclude Include="..\..\include\SDL3\SDL_test_random.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_thread.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_time.h" />
     <ClInclude Include="..\..\include\SDL3\SDL_timer.h" />
@@ -414,6 +413,7 @@
     <ClInclude Include="..\..\src\events\SDL_dropevents_c.h" />
     <ClInclude Include="..\..\src\events\SDL_events_c.h" />
     <ClInclude Include="..\..\src\events\SDL_keyboard_c.h" />
+    <ClInclude Include="..\..\src\events\SDL_keymap_c.h" />
     <ClInclude Include="..\..\src\events\SDL_mouse_c.h" />
     <ClInclude Include="..\..\src\events\SDL_touch_c.h" />
     <ClInclude Include="..\..\src\events\SDL_windowevents_c.h" />
@@ -634,6 +634,7 @@
     <ClCompile Include="..\..\src\events\SDL_dropevents.c" />
     <ClCompile Include="..\..\src\events\SDL_events.c" />
     <ClCompile Include="..\..\src\events\SDL_keyboard.c" />
+    <ClCompile Include="..\..\src\events\SDL_keymap.c" />
     <ClCompile Include="..\..\src\events\SDL_mouse.c" />
     <ClCompile Include="..\..\src\events\SDL_pen.c" />
     <ClCompile Include="..\..\src\events\SDL_quit.c" />
@@ -722,6 +723,10 @@
     <ClCompile Include="..\..\src\libm\s_cos.c" />
     <ClCompile Include="..\..\src\libm\s_fabs.c" />
     <ClCompile Include="..\..\src\libm\s_floor.c" />
+    <ClCompile Include="..\..\src\libm\s_isinf.c" />
+    <ClCompile Include="..\..\src\libm\s_isinff.c" />
+    <ClCompile Include="..\..\src\libm\s_isnan.c" />
+    <ClCompile Include="..\..\src\libm\s_isnanf.c" />
     <ClCompile Include="..\..\src\libm\s_modf.c" />
     <ClCompile Include="..\..\src\libm\s_scalbn.c" />
     <ClCompile Include="..\..\src\libm\s_sin.c" />
@@ -785,6 +790,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </MASM>
     <ClCompile Include="..\..\src\stdlib\SDL_qsort.c" />
+    <ClCompile Include="..\..\src\stdlib\SDL_random.c" />
     <ClCompile Include="..\..\src\stdlib\SDL_stdlib.c" />
     <ClCompile Include="..\..\src\stdlib\SDL_string.c" />
     <ClCompile Include="..\..\src\stdlib\SDL_strtokr.c" />

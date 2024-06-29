@@ -10,9 +10,6 @@
   freely.
 */
 
-#include <stdlib.h>
-#include <time.h>
-
 #include <SDL3/SDL.h>
 #include <wayland-client.h>
 #include <xdg-shell-client-protocol.h>
@@ -99,17 +96,16 @@ static int InitSprites(void)
         return -1;
     }
 
-    srand((unsigned int)time(NULL));
     for (int i = 0; i < NUM_SPRITES; ++i) {
-        positions[i].x = (float)(rand() % (WINDOW_WIDTH - sprite_w));
-        positions[i].y = (float)(rand() % (WINDOW_HEIGHT - sprite_h));
+        positions[i].x = (float)SDL_rand(WINDOW_WIDTH - sprite_w);
+        positions[i].y = (float)SDL_rand(WINDOW_HEIGHT - sprite_h);
         positions[i].w = (float)sprite_w;
         positions[i].h = (float)sprite_h;
         velocities[i].x = 0.0f;
         velocities[i].y = 0.0f;
         while (velocities[i].x == 0.f && velocities[i].y == 0.f) {
-            velocities[i].x = (float)((rand() % (MAX_SPEED * 2 + 1)) - MAX_SPEED);
-            velocities[i].y = (float)((rand() % (MAX_SPEED * 2 + 1)) - MAX_SPEED);
+            velocities[i].x = (float)(SDL_rand(MAX_SPEED * 2 + 1) - MAX_SPEED);
+            velocities[i].y = (float)(SDL_rand(MAX_SPEED * 2 + 1) - MAX_SPEED);
         }
     }
 
@@ -264,13 +260,13 @@ int main(int argc, char **argv)
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_KEY_DOWN) {
-                switch (event.key.keysym.sym) {
+                switch (event.key.key) {
                 case SDLK_ESCAPE:
                     done = 1;
                     break;
                 case SDLK_EQUALS:
                     /* Ctrl+ enlarges the window */
-                    if (event.key.keysym.mod & SDL_KMOD_CTRL) {
+                    if (event.key.mod & SDL_KMOD_CTRL) {
                         int w, h;
                         SDL_GetWindowSize(window, &w, &h);
                         SDL_SetWindowSize(window, w * 2, h * 2);
@@ -278,7 +274,7 @@ int main(int argc, char **argv)
                     break;
                 case SDLK_MINUS:
                     /* Ctrl- shrinks the window */
-                    if (event.key.keysym.mod & SDL_KMOD_CTRL) {
+                    if (event.key.mod & SDL_KMOD_CTRL) {
                         int w, h;
                         SDL_GetWindowSize(window, &w, &h);
                         SDL_SetWindowSize(window, w / 2, h / 2);

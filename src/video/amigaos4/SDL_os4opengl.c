@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -234,7 +234,7 @@ OS4_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
             mglMakeCurrent(data->glContext);
             mglLockMode(MGL_LOCK_SMART);
 
-            return data->glContext;
+            return (SDL_GLContext)data->glContext;
         } else {
             dprintf("Failed to create MiniGL context for window '%s'\n", window->title);
 
@@ -396,8 +396,8 @@ OS4_GL_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context)
             for (sdlwin = _this->windows; sdlwin; sdlwin = sdlwin->next) {
                 SDL_WindowData *data = sdlwin->driverdata;
 
-                if (data->glContext == context) {
-                    struct GLContextIFace *IGL = context;
+                if ((SDL_GLContext)data->glContext == context) {
+                    struct GLContextIFace *IGL = (struct GLContextIFace *)context;
 
                     dprintf("Found MiniGL context, clearing window binding\n");
 

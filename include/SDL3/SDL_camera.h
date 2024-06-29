@@ -79,10 +79,11 @@ typedef struct SDL_Camera SDL_Camera;
 typedef struct SDL_CameraSpec
 {
     SDL_PixelFormatEnum format; /**< Frame format */
+    SDL_Colorspace colorspace;  /**< Frame colorspace */
     int width;                  /**< Frame width */
     int height;                 /**< Frame height */
-    int interval_numerator;     /**< Frame rate numerator ((dom / num) == fps, (num / dom) == duration) */
-    int interval_denominator;   /**< Frame rate demoninator ((dom / num) == fps, (num / dom) == duration) */
+    int framerate_numerator;     /**< Frame rate numerator ((num / denom) == FPS, (denom / num) == duration in seconds) */
+    int framerate_denominator;   /**< Frame rate demoninator ((num / denom) == FPS, (denom / num) == duration in seconds) */
 } SDL_CameraSpec;
 
 /**
@@ -248,7 +249,7 @@ extern SDL_DECLSPEC const char * SDLCALL SDL_GetCameraDeviceName(SDL_CameraDevic
  * Get the position of the camera in relation to the system.
  *
  * Most platforms will report UNKNOWN, but mobile devices, like phones, can
- * often make a distiction between cameras on the front of the device (that
+ * often make a distinction between cameras on the front of the device (that
  * points towards the user, for taking "selfies") and cameras on the back (for
  * filming in the direction the user is facing).
  *
@@ -264,7 +265,7 @@ extern SDL_DECLSPEC const char * SDLCALL SDL_GetCameraDeviceName(SDL_CameraDevic
 extern SDL_DECLSPEC SDL_CameraPosition SDLCALL SDL_GetCameraDevicePosition(SDL_CameraDeviceID instance_id);
 
 /**
- * Open a video capture device (a "camera").
+ * Open a video recording device (a "camera").
  *
  * You can open the device with any reasonable spec, and if the hardware can't
  * directly support it, it will convert data seamlessly to the requested

@@ -136,6 +136,14 @@ static const SDL_RenderDriver *render_drivers[] = {
 };
 #endif /* !SDL_RENDER_DISABLED */
 
+static SDL_Renderer *SDL_renderers;
+
+void SDL_QuitRender(void)
+{
+    while (SDL_renderers) {
+        SDL_DestroyRenderer(SDL_renderers);
+    }
+}
 
 int SDL_AddSupportedTextureFormat(SDL_Renderer *renderer, SDL_PixelFormatEnum format)
 {
@@ -740,16 +748,11 @@ static void UpdateMainViewDimensions(SDL_Renderer *renderer)
 
 static void UpdateHDRProperties(SDL_Renderer *renderer)
 {
-    SDL_DisplayID displayID = SDL_GetDisplayForWindow(renderer->window);
-    SDL_PropertiesID display_props;
+    SDL_PropertiesID window_props;
     SDL_PropertiesID renderer_props;
 
-    if (!displayID) {
-        return;
-    }
-
-    display_props = SDL_GetDisplayProperties(displayID);
-    if (!display_props) {
+    window_props = SDL_GetWindowProperties(renderer->window);
+    if (!window_props) {
         return;
     }
 
@@ -761,8 +764,8 @@ static void UpdateHDRProperties(SDL_Renderer *renderer)
     renderer->color_scale /= renderer->SDR_white_point;
 
     if (renderer->output_colorspace == SDL_COLORSPACE_SRGB_LINEAR) {
-        renderer->SDR_white_point = SDL_GetFloatProperty(display_props, SDL_PROP_DISPLAY_SDR_WHITE_POINT_FLOAT, 1.0f);
-        renderer->HDR_headroom = SDL_GetFloatProperty(display_props, SDL_PROP_DISPLAY_HDR_HEADROOM_FLOAT, 1.0f);
+        renderer->SDR_white_point = SDL_GetFloatProperty(window_props, SDL_PROP_WINDOW_SDR_WHITE_LEVEL_FLOAT, 1.0f);
+        renderer->HDR_headroom = SDL_GetFloatProperty(window_props, SDL_PROP_WINDOW_HDR_HEADROOM_FLOAT, 1.0f);
     } else {
         renderer->SDR_white_point = 1.0f;
         renderer->HDR_headroom = 1.0f;
@@ -839,7 +842,7 @@ static int SDLCALL SDL_RendererEventWatch(void *userdata, SDL_Event *event)
                 UpdateHDRProperties(renderer);
             }
         }
-    } else if (event->type == SDL_EVENT_DISPLAY_HDR_STATE_CHANGED) {
+    } else if (event->type == SDL_EVENT_WINDOW_HDR_STATE_CHANGED) {
         UpdateHDRProperties(renderer);
     }
 
@@ -1112,6 +1115,9 @@ SDL_Renderer *SDL_CreateRendererWithProperties(SDL_PropertiesID props)
 
     SDL_LogInfo(SDL_LOG_CATEGORY_RENDER,
                 "Created renderer: %s", renderer->name);
+
+    renderer->next = SDL_renderers;
+    SDL_renderers = renderer;
 
 #ifdef SDL_PLATFORM_ANDROID
     Android_ActivityMutex_Unlock();
@@ -3846,7 +3852,7 @@ int SDL_RenderGeometry(SDL_Renderer *renderer,
         const float *uv = &vertices->tex_coord.x;
         int uv_stride = sizeof(SDL_Vertex);
         int size_indices = 4;
-        return SDL_RenderGeometryRawFloat(renderer, texture, xy, xy_stride, color, color_stride, uv, uv_stride, num_vertices, indices, num_indices, size_indices);
+        return SDL_RenderGeometryRaw(renderer, texture, xy, xy_stride, color, color_stride, uv, uv_stride, num_vertices, indices, num_indices, size_indices);
     } else {
         return SDL_InvalidParamError("vertices");
     }
@@ -4223,7 +4229,7 @@ end:
 }
 #endif /* SDL_VIDEO_RENDER_SW */
 
-int SDL_RenderGeometryRawFloat(SDL_Renderer *renderer,
+int SDL_RenderGeometryRaw(SDL_Renderer *renderer,
                           SDL_Texture *texture,
                           const float *xy, int xy_stride,
                           const SDL_FColor *color, int color_stride,
@@ -4333,40 +4339,6 @@ int SDL_RenderGeometryRawFloat(SDL_Renderer *renderer,
                               indices, num_indices, size_indices,
                               renderer->view->scale.x,
                               renderer->view->scale.y);
-}
-
-int SDL_RenderGeometryRaw(SDL_Renderer *renderer, SDL_Texture *texture, const float *xy, int xy_stride, const SDL_Color *color, int color_stride, const float *uv, int uv_stride, int num_vertices, const void *indices, int num_indices, int size_indices)
-{
-    int i, retval, isstack;
-    const Uint8 *color2 = (const Uint8 *)color;
-    SDL_FColor *color3;
-
-    if (num_vertices <= 0) {
-        return SDL_InvalidParamError("num_vertices");
-    }
-    if (!color) {
-        return SDL_InvalidParamError("color");
-    }
-
-    color3 = (SDL_FColor *)SDL_small_alloc(SDL_FColor, num_vertices, &isstack);
-    if (!color3) {
-        return -1;
-    }
-
-    for (i = 0; i < num_vertices; ++i) {
-        color3[i].r = color->r / 255.0f;
-        color3[i].g = color->g / 255.0f;
-        color3[i].b = color->b / 255.0f;
-        color3[i].a = color->a / 255.0f;
-        color2 += color_stride;
-        color = (const SDL_Color *)color2;
-    }
-
-    retval = SDL_RenderGeometryRawFloat(renderer, texture, xy, xy_stride, color3, sizeof(*color3), uv, uv_stride, num_vertices, indices, num_indices, size_indices);
-
-    SDL_small_free(color3, isstack);
-
-    return retval;
 }
 
 SDL_Surface *SDL_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rect *rect)
@@ -4627,6 +4599,22 @@ void SDL_DestroyRenderer(SDL_Renderer *renderer)
     if (!renderer->destroyed) {
         SDL_DestroyRendererWithoutFreeing(renderer);
     }
+
+    SDL_Renderer *curr = SDL_renderers;
+    SDL_Renderer *prev = NULL;
+    while (curr) {
+        if (curr == renderer) {
+            if (prev) {
+                prev->next = renderer->next;
+            } else {
+                SDL_renderers = renderer->next;
+            }
+            break;
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+
     SDL_SetObjectValid(renderer, SDL_OBJECT_TYPE_RENDERER, SDL_FALSE);  // It's no longer magical...
 
     SDL_free(renderer->texture_formats);

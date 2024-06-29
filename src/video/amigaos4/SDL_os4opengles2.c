@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -156,7 +156,7 @@ OS4_GLES_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
 
             aglMakeCurrent(data->glContext);
             glViewport(0, 0, window->w, window->h);
-            return data->glContext;
+            return (SDL_GLContext)data->glContext;
         } else {
             dprintf("Failed to create OpenGL ES 2 context for window '%s' (error code %d)\n",
                 window->title, errCode);
@@ -279,7 +279,7 @@ OS4_GLES_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context)
             for (sdlwin = _this->windows; sdlwin; sdlwin = sdlwin->next) {
                 SDL_WindowData *data = sdlwin->driverdata;
 
-                if (data->glContext == context) {
+                if ((SDL_GLContext)data->glContext == context) {
                     dprintf("Found OpenGL ES 2 context, clearing window binding\n");
 
                     aglDestroyContext(context);
