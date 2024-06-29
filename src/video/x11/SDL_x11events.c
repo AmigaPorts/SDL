@@ -36,6 +36,7 @@
 #include "SDL_x11settings.h"
 #include "../SDL_clipboard_c.h"
 #include "../../core/unix/SDL_poll.h"
+#include "../../core/unix/SDL_uri_decode.h"
 #include "../../events/SDL_events_c.h"
 #include "../../events/SDL_mouse_c.h"
 #include "../../events/SDL_touch_c.h"
@@ -207,123 +208,6 @@ static SDL_bool X11_IsWheelEvent(Display *display, int button, int *xticks, int 
     return SDL_FALSE;
 }
 
-/* Decodes URI escape sequences in string buf of len bytes
-   (excluding the terminating NULL byte) in-place. Since
-   URI-encoded characters take three times the space of
-   normal characters, this should not be an issue.
-
-   Returns the number of decoded bytes that wound up in
-   the buffer, excluding the terminating NULL byte.
-
-   The buffer is guaranteed to be NULL-terminated but
-   may contain embedded NULL bytes.
-
-   On error, -1 is returned.
- */
-static int X11_URIDecode(char *buf, int len)
-{
-    int ri, wi, di;
-    char decode = '\0';
-    if (!buf || len < 0) {
-        errno = EINVAL;
-        return -1;
-    }
-    if (len == 0) {
-        len = SDL_strlen(buf);
-    }
-    for (ri = 0, wi = 0, di = 0; ri < len && wi < len; ri += 1) {
-        if (di == 0) {
-            /* start decoding */
-            if (buf[ri] == '%') {
-                decode = '\0';
-                di += 1;
-                continue;
-            }
-            /* normal write */
-            buf[wi] = buf[ri];
-            wi += 1;
-            continue;
-        } else if (di == 1 || di == 2) {
-            char off = '\0';
-            char isa = buf[ri] >= 'a' && buf[ri] <= 'f';
-            char isA = buf[ri] >= 'A' && buf[ri] <= 'F';
-            char isn = buf[ri] >= '0' && buf[ri] <= '9';
-            if (!(isa || isA || isn)) {
-                /* not a hexadecimal */
-                int sri;
-                for (sri = ri - di; sri <= ri; sri += 1) {
-                    buf[wi] = buf[sri];
-                    wi += 1;
-                }
-                di = 0;
-                continue;
-            }
-            /* itsy bitsy magicsy */
-            if (isn) {
-                off = 0 - '0';
-            } else if (isa) {
-                off = 10 - 'a';
-            } else if (isA) {
-                off = 10 - 'A';
-            }
-            decode |= (buf[ri] + off) << (2 - di) * 4;
-            if (di == 2) {
-                buf[wi] = decode;
-                wi += 1;
-                di = 0;
-            } else {
-                di += 1;
-            }
-            continue;
-        }
-    }
-    buf[wi] = '\0';
-    return wi;
-}
-
-/* Convert URI to local filename
-   return filename if possible, else NULL
-*/
-static char *X11_URIToLocal(char *uri)
-{
-    char *file = NULL;
-    SDL_bool local;
-
-    if (SDL_memcmp(uri, "file:/", 6) == 0) {
-        uri += 6; /* local file? */
-    } else if (SDL_strstr(uri, ":/") != NULL) {
-        return file; /* wrong scheme */
-    }
-
-    local = uri[0] != '/' || (uri[0] != '\0' && uri[1] == '/');
-
-    /* got a hostname? */
-    if (!local && uri[0] == '/' && uri[2] != '/') {
-        char *hostname_end = SDL_strchr(uri + 1, '/');
-        if (hostname_end) {
-            char hostname[257];
-            if (gethostname(hostname, 255) == 0) {
-                hostname[256] = '\0';
-                if (SDL_memcmp(uri + 1, hostname, hostname_end - (uri + 1)) == 0) {
-                    uri = hostname_end + 1;
-                    local = SDL_TRUE;
-                }
-            }
-        }
-    }
-    if (local) {
-        file = uri;
-        /* Convert URI escape sequences to real characters */
-        X11_URIDecode(file, 0);
-        if (uri[1] == '/') {
-            file++;
-        } else {
-            file--;
-        }
-    }
-    return file;
-}
-
 /* An X11 event hook */
 static SDL_X11EventHook g_X11EventHook = NULL;
 static void *g_X11EventHookData = NULL;
@@ -428,7 +312,7 @@ void X11_ReconcileKeyboardState(SDL_VideoDevice *_this)
 
         if (x11KeyPressed && !sdlKeyPressed) {
             /* Only update modifier state for keys that are pressed in another application */
-            switch (SDL_GetKeyFromScancode(scancode)) {
+            switch (SDL_GetKeyFromScancode(scancode, SDL_KMOD_NONE)) {
             case SDLK_LCTRL:
             case SDLK_RCTRL:
             case SDLK_LSHIFT:
@@ -438,13 +322,13 @@ void X11_ReconcileKeyboardState(SDL_VideoDevice *_this)
             case SDLK_LGUI:
             case SDLK_RGUI:
             case SDLK_MODE:
-                SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, SDL_PRESSED, scancode);
+                SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, keycode, scancode, SDL_PRESSED);
                 break;
             default:
                 break;
             }
         } else if (!x11KeyPressed && sdlKeyPressed) {
-            SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, SDL_RELEASED, scancode);
+            SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, keycode, scancode, SDL_RELEASED);
         }
     }
 }
@@ -883,12 +767,14 @@ void X11_HandleKeyEvent(SDL_VideoDevice *_this, SDL_WindowData *windowdata, SDL_
 
     text[0] = '\0';
 
-    if (SDL_TextInputActive()) {
+    if (SDL_TextInputActive(windowdata->window)) {
+#if defined(HAVE_IBUS_IBUS_H) || defined(HAVE_FCITX)
         /* Save the original keycode for dead keys, which are filtered out by
            the XFilterEvent() call below.
         */
         int orig_event_type = xevent->type;
         KeyCode orig_keycode = xevent->xkey.keycode;
+#endif
 
         /* filter events catches XIM events and sends them to the correct handler */
         if (X11_XFilterEvent(xevent, None)) {
@@ -905,9 +791,9 @@ void X11_HandleKeyEvent(SDL_VideoDevice *_this, SDL_WindowData *windowdata, SDL_
             videodata->filter_time = xevent->xkey.time;
 
             if (orig_event_type == KeyPress) {
-                SDL_SendKeyboardKey(0, keyboardID, SDL_PRESSED, scancode);
+                SDL_SendKeyboardKey(0, keyboardID, orig_keycode, scancode, SDL_PRESSED);
             } else {
-                SDL_SendKeyboardKey(0, keyboardID, SDL_RELEASED, scancode);
+                SDL_SendKeyboardKey(0, keyboardID, orig_keycode, scancode, SDL_RELEASED);
             }
 #endif
             return;
@@ -933,7 +819,7 @@ void X11_HandleKeyEvent(SDL_VideoDevice *_this, SDL_WindowData *windowdata, SDL_
         if (xevent->type == KeyPress) {
             /* Don't send the key if it looks like a duplicate of a filtered key sent by an IME */
             if (xevent->xkey.keycode != videodata->filter_code || xevent->xkey.time != videodata->filter_time) {
-                SDL_SendKeyboardKey(0, keyboardID, SDL_PRESSED, videodata->key_layout[keycode]);
+                SDL_SendKeyboardKey(0, keyboardID, keycode, videodata->key_layout[keycode], SDL_PRESSED);
             }
             if (*text) {
                 text[text_length] = '\0';
@@ -944,7 +830,7 @@ void X11_HandleKeyEvent(SDL_VideoDevice *_this, SDL_WindowData *windowdata, SDL_
                 /* We're about to get a repeated key down, ignore the key up */
                 return;
             }
-            SDL_SendKeyboardKey(0, keyboardID, SDL_RELEASED, videodata->key_layout[keycode]);
+            SDL_SendKeyboardKey(0, keyboardID, keycode, videodata->key_layout[keycode], SDL_RELEASED);
         }
     }
 
@@ -1129,6 +1015,17 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
             printf("window %p: KeymapNotify!\n", data);
 #endif
             if (SDL_GetKeyboardFocus() != NULL) {
+#ifdef SDL_VIDEO_DRIVER_X11_HAS_XKBLOOKUPKEYSYM
+                if (videodata->xkb) {
+                    XkbStateRec state;
+                    if (X11_XkbGetState(videodata->display, XkbUseCoreKbd, &state) == Success) {
+                        if (state.group != videodata->xkb_group) {
+                            /* Only rebuild the keymap if the layout has changed. */
+                            X11_UpdateKeymap(_this, SDL_TRUE);
+                        }
+                    }
+                }
+#endif
                 X11_ReconcileKeyboardState(_this);
             }
         } else if (xevent->type == MappingNotify) {
@@ -1394,9 +1291,9 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
                 SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_MOVED, x, y);
 
 #ifdef SDL_USE_IME
-                if (SDL_TextInputActive()) {
+                if (SDL_TextInputActive(data->window)) {
                     /* Update IME candidate list position */
-                    SDL_IME_UpdateTextRect(NULL);
+                    SDL_IME_UpdateTextInputArea(NULL);
                 }
 #endif
                 for (w = data->window->first_child; w; w = w->next_sibling) {
@@ -1873,9 +1770,8 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
                         if (SDL_strcmp("text/plain", name) == 0) {
                             SDL_SendDropText(data->window, token);
                         } else if (SDL_strcmp("text/uri-list", name) == 0) {
-                            char *fn = X11_URIToLocal(token);
-                            if (fn) {
-                                SDL_SendDropFile(data->window, NULL, fn);
+                            if (SDL_URIToLocal(token, token) >= 0) {
+                                SDL_SendDropFile(data->window, NULL, token);
                             }
                         }
                         token = SDL_strtok_r(NULL, "\r\n", &saveptr);
@@ -2011,7 +1907,8 @@ int X11_WaitEventTimeout(SDL_VideoDevice *_this, Sint64 timeoutNS)
     X11_DispatchEvent(_this, &xevent);
 
 #ifdef SDL_USE_IME
-    if (SDL_TextInputActive()) {
+    SDL_Window *keyboard_focus = SDL_GetKeyboardFocus();
+    if (keyboard_focus && SDL_TextInputActive(keyboard_focus)) {
         SDL_IME_PumpEvents();
     }
 #endif
@@ -2071,7 +1968,8 @@ void X11_PumpEvents(SDL_VideoDevice *_this)
     }
 
 #ifdef SDL_USE_IME
-    if (SDL_TextInputActive()) {
+    SDL_Window *keyboard_focus = SDL_GetKeyboardFocus();
+    if (keyboard_focus && SDL_TextInputActive(keyboard_focus)) {
         SDL_IME_PumpEvents();
     }
 #endif

@@ -191,11 +191,11 @@
 #define SDL_GetAndroidSDKVersion SDL_GetAndroidSDKVersion_REAL
 #define SDL_GetAssertionHandler SDL_GetAssertionHandler_REAL
 #define SDL_GetAssertionReport SDL_GetAssertionReport_REAL
-#define SDL_GetAudioCaptureDevices SDL_GetAudioCaptureDevices_REAL
 #define SDL_GetAudioDeviceFormat SDL_GetAudioDeviceFormat_REAL
 #define SDL_GetAudioDeviceName SDL_GetAudioDeviceName_REAL
 #define SDL_GetAudioDriver SDL_GetAudioDriver_REAL
-#define SDL_GetAudioOutputDevices SDL_GetAudioOutputDevices_REAL
+#define SDL_GetAudioPlaybackDevices SDL_GetAudioPlaybackDevices_REAL
+#define SDL_GetAudioRecordingDevices SDL_GetAudioRecordingDevices_REAL
 #define SDL_GetAudioStreamAvailable SDL_GetAudioStreamAvailable_REAL
 #define SDL_GetAudioStreamData SDL_GetAudioStreamData_REAL
 #define SDL_GetAudioStreamDevice SDL_GetAudioStreamDevice_REAL
@@ -235,6 +235,7 @@
 #define SDL_GetDefaultAssertionHandler SDL_GetDefaultAssertionHandler_REAL
 #define SDL_GetDefaultCursor SDL_GetDefaultCursor_REAL
 #define SDL_GetDefaultKeyFromScancode SDL_GetDefaultKeyFromScancode_REAL
+#define SDL_GetDefaultScancodeFromKey SDL_GetDefaultScancodeFromKey_REAL
 #define SDL_GetDesktopDisplayMode SDL_GetDesktopDisplayMode_REAL
 #define SDL_GetDisplayBounds SDL_GetDisplayBounds_REAL
 #define SDL_GetDisplayContentScale SDL_GetDisplayContentScale_REAL
@@ -461,6 +462,7 @@
 #define SDL_GetSystemRAM SDL_GetSystemRAM_REAL
 #define SDL_GetSystemTheme SDL_GetSystemTheme_REAL
 #define SDL_GetTLS SDL_GetTLS_REAL
+#define SDL_GetTextInputArea SDL_GetTextInputArea_REAL
 #define SDL_GetTextureAlphaMod SDL_GetTextureAlphaMod_REAL
 #define SDL_GetTextureAlphaModFloat SDL_GetTextureAlphaModFloat_REAL
 #define SDL_GetTextureBlendMode SDL_GetTextureBlendMode_REAL
@@ -504,6 +506,7 @@
 #define SDL_GetWindowSurface SDL_GetWindowSurface_REAL
 #define SDL_GetWindowSurfaceVSync SDL_GetWindowSurfaceVSync_REAL
 #define SDL_GetWindowTitle SDL_GetWindowTitle_REAL
+#define SDL_GetWindows SDL_GetWindows_REAL
 #define SDL_GlobDirectory SDL_GlobDirectory_REAL
 #define SDL_GlobStorageDirectory SDL_GlobStorageDirectory_REAL
 #define SDL_HapticEffectSupported SDL_HapticEffectSupported_REAL
@@ -667,7 +670,6 @@
 #define SDL_RenderFillRects SDL_RenderFillRects_REAL
 #define SDL_RenderGeometry SDL_RenderGeometry_REAL
 #define SDL_RenderGeometryRaw SDL_RenderGeometryRaw_REAL
-#define SDL_RenderGeometryRawFloat SDL_RenderGeometryRawFloat_REAL
 #define SDL_RenderLine SDL_RenderLine_REAL
 #define SDL_RenderLines SDL_RenderLines_REAL
 #define SDL_RenderPoint SDL_RenderPoint_REAL
@@ -757,6 +759,7 @@
 #define SDL_SetRenderTarget SDL_SetRenderTarget_REAL
 #define SDL_SetRenderVSync SDL_SetRenderVSync_REAL
 #define SDL_SetRenderViewport SDL_SetRenderViewport_REAL
+#define SDL_SetScancodeName SDL_SetScancodeName_REAL
 #define SDL_SetStringProperty SDL_SetStringProperty_REAL
 #define SDL_SetSurfaceAlphaMod SDL_SetSurfaceAlphaMod_REAL
 #define SDL_SetSurfaceBlendMode SDL_SetSurfaceBlendMode_REAL
@@ -767,7 +770,7 @@
 #define SDL_SetSurfacePalette SDL_SetSurfacePalette_REAL
 #define SDL_SetSurfaceRLE SDL_SetSurfaceRLE_REAL
 #define SDL_SetTLS SDL_SetTLS_REAL
-#define SDL_SetTextInputRect SDL_SetTextInputRect_REAL
+#define SDL_SetTextInputArea SDL_SetTextInputArea_REAL
 #define SDL_SetTextureAlphaMod SDL_SetTextureAlphaMod_REAL
 #define SDL_SetTextureAlphaModFloat SDL_SetTextureAlphaModFloat_REAL
 #define SDL_SetTextureBlendMode SDL_SetTextureBlendMode_REAL
@@ -810,6 +813,7 @@
 #define SDL_SignalCondition SDL_SignalCondition_REAL
 #define SDL_SoftStretch SDL_SoftStretch_REAL
 #define SDL_StartTextInput SDL_StartTextInput_REAL
+#define SDL_StepUTF8 SDL_StepUTF8_REAL
 #define SDL_StopHapticEffect SDL_StopHapticEffect_REAL
 #define SDL_StopHapticEffects SDL_StopHapticEffects_REAL
 #define SDL_StopHapticRumble SDL_StopHapticRumble_REAL
@@ -953,7 +957,11 @@
 #define SDL_iscntrl SDL_iscntrl_REAL
 #define SDL_isdigit SDL_isdigit_REAL
 #define SDL_isgraph SDL_isgraph_REAL
+#define SDL_isinf SDL_isinf_REAL
+#define SDL_isinff SDL_isinff_REAL
 #define SDL_islower SDL_islower_REAL
+#define SDL_isnan SDL_isnan_REAL
+#define SDL_isnanf SDL_isnanf_REAL
 #define SDL_isprint SDL_isprint_REAL
 #define SDL_ispunct SDL_ispunct_REAL
 #define SDL_isspace SDL_isspace_REAL
@@ -980,6 +988,12 @@
 #define SDL_powf SDL_powf_REAL
 #define SDL_qsort SDL_qsort_REAL
 #define SDL_qsort_r SDL_qsort_r_REAL
+#define SDL_rand SDL_rand_REAL
+#define SDL_rand_bits SDL_rand_bits_REAL
+#define SDL_rand_bits_r SDL_rand_bits_r_REAL
+#define SDL_rand_r SDL_rand_r_REAL
+#define SDL_randf SDL_randf_REAL
+#define SDL_randf_r SDL_randf_r_REAL
 #define SDL_realloc SDL_realloc_REAL
 #define SDL_round SDL_round_REAL
 #define SDL_roundf SDL_roundf_REAL
@@ -991,6 +1005,7 @@
 #define SDL_snprintf    SDL_snprintf_REAL
 #define SDL_sqrt SDL_sqrt_REAL
 #define SDL_sqrtf SDL_sqrtf_REAL
+#define SDL_srand SDL_srand_REAL
 #define SDL_sscanf  SDL_sscanf_REAL
 #define SDL_strcasecmp SDL_strcasecmp_REAL
 #define SDL_strcasestr SDL_strcasestr_REAL

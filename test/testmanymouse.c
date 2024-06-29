@@ -391,7 +391,7 @@ static void HandleKeyboardKeyDown(SDL_KeyboardEvent *event)
             continue;
         }
         if (event->which == keyboard_state->instance_id) {
-            switch (event->keysym.sym) {
+            switch (event->key) {
             case SDLK_LEFT:
                 keyboard_state->position.x -= CURSOR_SIZE;
                 if (keyboard_state->position.x < 0.0f) {
@@ -507,6 +507,9 @@ int main(int argc, char *argv[])
     /* Log all events, including mouse motion */
     SDL_SetHint(SDL_HINT_EVENT_LOGGING, "2");
 
+    /* Support for multiple keyboards requires raw keyboard events on Windows */
+    SDL_SetHint(SDL_HINT_WINDOWS_RAW_KEYBOARD, "1");
+
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
     if (!state) {
@@ -521,6 +524,7 @@ int main(int argc, char *argv[])
             SDLTest_CommonQuit(state);
             return 1;
         }
+        i += consumed;
     }
 
     if (!SDLTest_CommonInit(state)) {

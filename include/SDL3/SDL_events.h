@@ -46,9 +46,26 @@
 extern "C" {
 #endif
 
-/* General keyboard/mouse state definitions */
+/* General keyboard/mouse/pen state definitions */
+
+/**
+ * A value that signifies a button is no longer pressed.
+ *
+ * \since This macro is available since SDL 3.0.0.
+ *
+ * \sa SDL_PRESSED
+ */
 #define SDL_RELEASED    0
+
+/**
+ * A value that signifies a button has been pressed down.
+ *
+ * \since This macro is available since SDL 3.0.0.
+ *
+ * \sa SDL_RELEASED
+ */
 #define SDL_PRESSED     1
+
 
 /**
  * The types of events that can be delivered.
@@ -94,14 +111,13 @@ typedef enum SDL_EventType
 
     /* Display events */
     /* 0x150 was SDL_DISPLAYEVENT, reserve the number for sdl2-compat */
-    SDL_EVENT_DISPLAY_ORIENTATION = 0x151, /**< Display orientation has changed to data1 */
-    SDL_EVENT_DISPLAY_ADDED,               /**< Display has been added to the system */
-    SDL_EVENT_DISPLAY_REMOVED,             /**< Display has been removed from the system */
-    SDL_EVENT_DISPLAY_MOVED,               /**< Display has changed position */
+    SDL_EVENT_DISPLAY_ORIENTATION = 0x151,   /**< Display orientation has changed to data1 */
+    SDL_EVENT_DISPLAY_ADDED,                 /**< Display has been added to the system */
+    SDL_EVENT_DISPLAY_REMOVED,               /**< Display has been removed from the system */
+    SDL_EVENT_DISPLAY_MOVED,                 /**< Display has changed position */
     SDL_EVENT_DISPLAY_CONTENT_SCALE_CHANGED, /**< Display has changed content scale */
-    SDL_EVENT_DISPLAY_HDR_STATE_CHANGED,   /**< Display HDR properties have changed */
     SDL_EVENT_DISPLAY_FIRST = SDL_EVENT_DISPLAY_ORIENTATION,
-    SDL_EVENT_DISPLAY_LAST = SDL_EVENT_DISPLAY_HDR_STATE_CHANGED,
+    SDL_EVENT_DISPLAY_LAST = SDL_EVENT_DISPLAY_CONTENT_SCALE_CHANGED,
 
     /* Window events */
     /* 0x200 was SDL_WINDOWEVENT, reserve the number for sdl2-compat */
@@ -134,6 +150,7 @@ typedef enum SDL_EventType
                                              associated with it are invalid */
     SDL_EVENT_WINDOW_PEN_ENTER,         /**< Window has gained focus of the pressure-sensitive pen with ID "data1" */
     SDL_EVENT_WINDOW_PEN_LEAVE,         /**< Window has lost focus of the pressure-sensitive pen with ID "data1" */
+    SDL_EVENT_WINDOW_HDR_STATE_CHANGED, /**< Window HDR properties have changed */
     SDL_EVENT_WINDOW_FIRST = SDL_EVENT_WINDOW_SHOWN,
     SDL_EVENT_WINDOW_LAST = SDL_EVENT_WINDOW_PEN_LEAVE,
 
@@ -146,6 +163,7 @@ typedef enum SDL_EventType
                                             input language or keyboard layout change. */
     SDL_EVENT_KEYBOARD_ADDED,          /**< A new keyboard has been inserted into the system */
     SDL_EVENT_KEYBOARD_REMOVED,        /**< A keyboard has been removed */
+    SDL_EVENT_TEXT_EDITING_CANDIDATES, /**< Keyboard text editing candidates */
 
     /* Mouse events */
     SDL_EVENT_MOUSE_MOTION    = 0x400, /**< Mouse moved */
@@ -301,42 +319,64 @@ typedef struct SDL_KeyboardDeviceEvent
  */
 typedef struct SDL_KeyboardEvent
 {
-    SDL_EventType type; /**< SDL_EVENT_KEY_DOWN or SDL_EVENT_KEY_UP */
+    SDL_EventType type;     /**< SDL_EVENT_KEY_DOWN or SDL_EVENT_KEY_UP */
     Uint32 reserved;
-    Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window with keyboard focus, if any */
-    SDL_KeyboardID which;  /**< The keyboard instance id, or 0 if unknown or virtual */
-    Uint8 state;        /**< SDL_PRESSED or SDL_RELEASED */
-    Uint8 repeat;       /**< Non-zero if this is a key repeat */
-    Uint8 padding2;
-    Uint8 padding3;
-    SDL_Keysym keysym;  /**< The key that was pressed or released */
+    Uint64 timestamp;       /**< In nanoseconds, populated using SDL_GetTicksNS() */
+    SDL_WindowID windowID;  /**< The window with keyboard focus, if any */
+    SDL_KeyboardID which;   /**< The keyboard instance id, or 0 if unknown or virtual */
+    SDL_Scancode scancode;  /**< SDL physical key code */
+    SDL_Keycode key;        /**< SDL virtual key code */
+    SDL_Keymod mod;         /**< current key modifiers */
+    Uint16 raw;             /**< The platform dependent scancode for this event */
+    Uint8 state;            /**< SDL_PRESSED or SDL_RELEASED */
+    Uint8 repeat;           /**< Non-zero if this is a key repeat */
 } SDL_KeyboardEvent;
 
 /**
  * Keyboard text editing event structure (event.edit.*)
  *
- * The `text` is owned by SDL and should be copied if the application wants to
- * hold onto it beyond the scope of handling this event.
+ * The start cursor is the position, in UTF-8 characters, where new typing
+ * will be inserted into the editing text. The length is the number of UTF-8
+ * characters that will be replaced by new typing.
+ *
+ * The text string follows the SDL_GetStringRule.
  *
  * \since This struct is available since SDL 3.0.0.
  */
 typedef struct SDL_TextEditingEvent
 {
-    SDL_EventType type; /**< SDL_EVENT_TEXT_EDITING */
+    SDL_EventType type;         /**< SDL_EVENT_TEXT_EDITING */
     Uint32 reserved;
-    Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window with keyboard focus, if any */
-    char *text;         /**< The editing text */
-    Sint32 start;       /**< The start cursor of selected editing text */
-    Sint32 length;      /**< The length of selected editing text */
+    Uint64 timestamp;           /**< In nanoseconds, populated using SDL_GetTicksNS() */
+    SDL_WindowID windowID;      /**< The window with keyboard focus, if any */
+    const char *text;           /**< The editing text */
+    Sint32 start;               /**< The start cursor of selected editing text, or -1 if not set */
+    Sint32 length;              /**< The length of selected editing text, or -1 if not set */
 } SDL_TextEditingEvent;
+
+/**
+ * Keyboard IME candidates event structure (event.edit_candidates.*)
+ *
+ * The candidates follow the SDL_GetStringRule.
+ *
+ * \since This struct is available since SDL 3.0.0.
+ */
+typedef struct SDL_TextEditingCandidatesEvent
+{
+    SDL_EventType type;         /**< SDL_EVENT_TEXT_EDITING_CANDIDATES */
+    Uint32 reserved;
+    Uint64 timestamp;           /**< In nanoseconds, populated using SDL_GetTicksNS() */
+    SDL_WindowID windowID;      /**< The window with keyboard focus, if any */
+    const char * const *candidates;    /**< The list of candidates, or NULL if there are no candidates available */
+    Sint32 num_candidates;      /**< The number of strings in `candidates` */
+    Sint32 selected_candidate;  /**< The index of the selected candidate, or -1 if no candidate is selected */
+    SDL_bool horizontal;          /**< SDL_TRUE if the list is horizontal, SDL_FALSE if it's vertical */
+} SDL_TextEditingCandidatesEvent;
 
 /**
  * Keyboard text input event structure (event.text.*)
  *
- * The `text` is owned by SDL and should be copied if the application wants to
- * hold onto it beyond the scope of handling this event.
+ * The text string follows the SDL_GetStringRule.
  *
  * This event will never be delivered unless text input is enabled by calling
  * SDL_StartTextInput(). Text input is disabled by default!
@@ -352,7 +392,7 @@ typedef struct SDL_TextInputEvent
     Uint32 reserved;
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     SDL_WindowID windowID; /**< The window with keyboard focus, if any */
-    char *text;         /**< The input text, UTF-8 encoded */
+    const char *text;   /**< The input text, UTF-8 encoded */
 } SDL_TextInputEvent;
 
 /**
@@ -628,7 +668,7 @@ typedef struct SDL_AudioDeviceEvent
     Uint32 reserved;
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     SDL_AudioDeviceID which;       /**< SDL_AudioDeviceID for the device being added or removed or changing */
-    Uint8 iscapture;    /**< zero if an output device, non-zero if a capture device. */
+    Uint8 recording;    /**< zero if a playback device, non-zero if a recording device. */
     Uint8 padding1;
     Uint8 padding2;
     Uint8 padding3;
@@ -733,8 +773,7 @@ typedef struct SDL_PenButtonEvent
  * An event used to drop text or request a file open by the system
  * (event.drop.*)
  *
- * The `data` is owned by SDL and should be copied if the application wants to
- * hold onto it beyond the scope of handling this event. Do not free it!
+ * The source and data strings follow the SDL_GetStringRule.
  *
  * \since This struct is available since SDL 3.0.0.
  */
@@ -746,8 +785,8 @@ typedef struct SDL_DropEvent
     SDL_WindowID windowID;    /**< The window that was dropped on, if any */
     float x;            /**< X coordinate, relative to window (not on begin) */
     float y;            /**< Y coordinate, relative to window (not on begin) */
-    char *source;       /**< The source app that sent this drop event, or NULL if that isn't available */
-    char *data;         /**< The text for SDL_EVENT_DROP_TEXT and the file name for SDL_EVENT_DROP_FILE, NULL for other events */
+    const char *source; /**< The source app that sent this drop event, or NULL if that isn't available */
+    const char *data;   /**< The text for SDL_EVENT_DROP_TEXT and the file name for SDL_EVENT_DROP_FILE, NULL for other events */
 } SDL_DropEvent;
 
 /**
@@ -827,6 +866,7 @@ typedef union SDL_Event
     SDL_KeyboardDeviceEvent kdevice;        /**< Keyboard device change event data */
     SDL_KeyboardEvent key;                  /**< Keyboard event data */
     SDL_TextEditingEvent edit;              /**< Text editing event data */
+    SDL_TextEditingCandidatesEvent edit_candidates; /**< Text editing candidates event data */
     SDL_TextInputEvent text;                /**< Text input event data */
     SDL_MouseDeviceEvent mdevice;           /**< Mouse device change event data */
     SDL_MouseMotionEvent motion;            /**< Mouse motion event data */

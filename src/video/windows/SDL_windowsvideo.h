@@ -339,7 +339,6 @@ typedef struct
     void *data;
 } TSFSink;
 
-#ifndef SDL_DISABLE_WINDOWS_IME
 /* Definition from Win98DDK version of IMM.H */
 typedef struct tagINPUTCONTEXT2
 {
@@ -365,7 +364,6 @@ typedef struct tagINPUTCONTEXT2
     DWORD fdwInit;
     DWORD dwReserve[3];
 } INPUTCONTEXT2, *PINPUTCONTEXT2, NEAR *NPINPUTCONTEXT2, FAR *LPINPUTCONTEXT2;
-#endif /* !SDL_DISABLE_WINDOWS_IME */
 
 /* Private display data */
 
@@ -422,36 +420,37 @@ struct SDL_VideoData
     Uint32 raw_input_enabled;
 
 #ifndef SDL_DISABLE_WINDOWS_IME
-    SDL_bool ime_com_initialized;
-    struct ITfThreadMgr *ime_threadmgr;
     SDL_bool ime_initialized;
     SDL_bool ime_enabled;
     SDL_bool ime_available;
+    SDL_bool ime_internal_composition;
+    SDL_bool ime_internal_candidates;
     HWND ime_hwnd_main;
     HWND ime_hwnd_current;
-    SDL_bool ime_suppress_endcomposition_event;
+    SDL_bool ime_needs_clear_composition;
     HIMC ime_himc;
 
     WCHAR *ime_composition;
     int ime_composition_length;
     WCHAR ime_readingstring[16];
     int ime_cursor;
+    int ime_selected_start;
+    int ime_selected_length;
 
-    SDL_bool ime_candlist;
-    WCHAR *ime_candidates;
-    DWORD ime_candcount;
+    SDL_bool ime_candidates_open;
+    SDL_bool ime_update_candidates;
+    char *ime_candidates[MAX_CANDLIST];
+    int ime_candcount;
     DWORD ime_candref;
     DWORD ime_candsel;
-    UINT ime_candpgsize;
     int ime_candlistindexbase;
-    SDL_bool ime_candvertical;
+    SDL_bool ime_horizontal_candidates;
+#endif
 
-    SDL_bool ime_dirty;
-    SDL_Rect ime_rect;
-    SDL_Rect ime_candlistrect;
-    int ime_winwidth;
-    int ime_winheight;
+    COMPOSITIONFORM ime_composition_area;
+    CANDIDATEFORM ime_candidate_area;
 
+#ifndef SDL_DISABLE_WINDOWS_IME
     HKL ime_hkl;
     void *ime_himm32;
     /* *INDENT-OFF* */ /* clang-format off */
@@ -463,15 +462,6 @@ struct SDL_VideoData
     BOOL (WINAPI *ImmUnlockIMCC)(HIMCC himcc);
     /* *INDENT-ON* */ /* clang-format on */
 
-    SDL_bool ime_uiless;
-    struct ITfThreadMgrEx *ime_threadmgrex;
-    DWORD ime_uielemsinkcookie;
-    DWORD ime_alpnsinkcookie;
-    DWORD ime_openmodesinkcookie;
-    DWORD ime_convmodesinkcookie;
-    TSFSink *ime_uielemsink;
-    TSFSink *ime_ippasink;
-    LONG ime_uicontext;
 #endif /* !SDL_DISABLE_WINDOWS_IME */
 
     BYTE pre_hook_key_state[256];

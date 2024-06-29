@@ -279,11 +279,11 @@ static void loop(void)
             }
             break;
         case SDL_EVENT_KEY_DOWN:
-            if (event.key.keysym.sym == SDLK_SPACE) {
+            if (event.key.key == SDLK_SPACE) {
                 paused = !paused;
                 break;
             }
-            if (event.key.keysym.sym != SDLK_ESCAPE) {
+            if (event.key.key != SDLK_ESCAPE) {
                 break;
             }
             break;

@@ -414,10 +414,10 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
     if (!SDL_HasKeyboard()) {
         for (UIPress *press in presses) {
             SDL_Scancode scancode = [self scancodeFromPress:press];
-            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, SDL_PRESSED, scancode);
+            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, SDL_PRESSED);
         }
     }
-    if (SDL_TextInputActive()) {
+    if (SDL_TextInputActive(sdlwindow)) {
         [super pressesBegan:presses withEvent:event];
     }
 }
@@ -427,10 +427,10 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
     if (!SDL_HasKeyboard()) {
         for (UIPress *press in presses) {
             SDL_Scancode scancode = [self scancodeFromPress:press];
-            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, SDL_RELEASED, scancode);
+            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, SDL_RELEASED);
         }
     }
-    if (SDL_TextInputActive()) {
+    if (SDL_TextInputActive(sdlwindow)) {
         [super pressesEnded:presses withEvent:event];
     }
 }
@@ -440,10 +440,10 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
     if (!SDL_HasKeyboard()) {
         for (UIPress *press in presses) {
             SDL_Scancode scancode = [self scancodeFromPress:press];
-            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, SDL_RELEASED, scancode);
+            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, SDL_RELEASED);
         }
     }
-    if (SDL_TextInputActive()) {
+    if (SDL_TextInputActive(sdlwindow)) {
         [super pressesCancelled:presses withEvent:event];
     }
 }
@@ -451,7 +451,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
 - (void)pressesChanged:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
 {
     /* This is only called when the force of a press changes. */
-    if (SDL_TextInputActive()) {
+    if (SDL_TextInputActive(sdlwindow)) {
         [super pressesChanged:presses withEvent:event];
     }
 }

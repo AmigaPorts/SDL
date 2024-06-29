@@ -36,9 +36,11 @@
 #define DEFAULT_FONT "NoDefaultFont.ttf"
 #endif
 #else
-#define DEFAULT_FONT "unifont-13.0.06.hex"
+#define DEFAULT_FONT "unifont-15.1.05.hex"
 #endif
 #define MAX_TEXT_LENGTH 256
+
+#define CURSOR_BLINK_INTERVAL_MS    500
 
 static SDLTest_CommonState *state;
 static SDL_FRect textRect, markedRect;
@@ -47,19 +49,31 @@ static SDL_Color backColor = { 255, 255, 255, 255 };
 static SDL_Color textColor = { 0, 0, 0, 255 };
 static char text[MAX_TEXT_LENGTH], markedText[MAX_TEXT_LENGTH];
 static int cursor = 0;
+static int cursor_length = 0;
+static SDL_bool cursor_visible;
+static Uint64 last_cursor_change;
+static SDL_BlendMode highlight_mode;
+static char **candidates;
+static int num_candidates;
+static int selected_candidate;
+static SDL_bool horizontal_candidates;
 #ifdef HAVE_SDL_TTF
 static TTF_Font *font;
 #else
 #define UNIFONT_MAX_CODEPOINT     0x1ffff
 #define UNIFONT_NUM_GLYPHS        0x20000
+#define UNIFONT_REPLACEMENT       0xFFFD
 /* Using 512x512 textures that are supported everywhere. */
 #define UNIFONT_TEXTURE_WIDTH     512
-#define UNIFONT_GLYPHS_IN_ROW     (UNIFONT_TEXTURE_WIDTH / 16)
+#define UNIFONT_GLYPH_SIZE        16
+#define UNIFONT_GLYPH_BORDER      1
+#define UNIFONT_GLYPH_AREA        (UNIFONT_GLYPH_BORDER + UNIFONT_GLYPH_SIZE + UNIFONT_GLYPH_BORDER)
+#define UNIFONT_GLYPHS_IN_ROW     (UNIFONT_TEXTURE_WIDTH / UNIFONT_GLYPH_AREA)
 #define UNIFONT_GLYPHS_IN_TEXTURE (UNIFONT_GLYPHS_IN_ROW * UNIFONT_GLYPHS_IN_ROW)
 #define UNIFONT_NUM_TEXTURES      ((UNIFONT_NUM_GLYPHS + UNIFONT_GLYPHS_IN_TEXTURE - 1) / UNIFONT_GLYPHS_IN_TEXTURE)
 #define UNIFONT_TEXTURE_SIZE      (UNIFONT_TEXTURE_WIDTH * UNIFONT_TEXTURE_WIDTH * 4)
 #define UNIFONT_TEXTURE_PITCH     (UNIFONT_TEXTURE_WIDTH * 4)
-#define UNIFONT_DRAW_SCALE        2
+#define UNIFONT_DRAW_SCALE        2.0f
 static struct UnifontGlyph
 {
     Uint8 width;
@@ -228,8 +242,7 @@ static int unifont_init(const char *fontname)
     return 0;
 }
 
-static void
-unifont_make_rgba(const Uint8 *src, Uint8 *dst, Uint8 width)
+static void unifont_make_rgba(const Uint8 *src, Uint8 *dst, Uint8 width)
 {
     int i, j;
     Uint8 *row = dst;
@@ -281,7 +294,7 @@ static int unifont_load_texture(Uint32 textureID)
         Uint32 codepoint = UNIFONT_GLYPHS_IN_TEXTURE * textureID + i;
         if (unifontGlyph[codepoint].width > 0) {
             const Uint32 cInTex = codepoint % UNIFONT_GLYPHS_IN_TEXTURE;
-            const size_t offset = ((size_t)cInTex / UNIFONT_GLYPHS_IN_ROW) * UNIFONT_TEXTURE_PITCH * 16 + (cInTex % UNIFONT_GLYPHS_IN_ROW) * 16 * 4;
+            const size_t offset = ((size_t)cInTex / UNIFONT_GLYPHS_IN_ROW) * UNIFONT_TEXTURE_PITCH * UNIFONT_GLYPH_AREA + (cInTex % UNIFONT_GLYPHS_IN_ROW) * UNIFONT_GLYPH_AREA * 4;
             unifont_make_rgba(unifontGlyph[codepoint].data, textureRGBA + offset, unifontGlyph[codepoint].width);
         }
     }
@@ -310,15 +323,28 @@ static int unifont_load_texture(Uint32 textureID)
     return 0;
 }
 
-static Sint32 unifont_draw_glyph(Uint32 codepoint, int rendererID, SDL_FRect *dst)
+static int unifont_glyph_width(Uint32 codepoint)
+{
+    if (codepoint > UNIFONT_MAX_CODEPOINT ||
+        unifontGlyph[codepoint].width == 0) {
+        codepoint = UNIFONT_REPLACEMENT;
+    }
+    return unifontGlyph[codepoint].width;
+}
+
+static int unifont_draw_glyph(Uint32 codepoint, int rendererID, SDL_FRect *dst)
 {
     SDL_Texture *texture;
-    const Uint32 textureID = codepoint / UNIFONT_GLYPHS_IN_TEXTURE;
+    Uint32 textureID;
     SDL_FRect srcrect;
-    srcrect.w = srcrect.h = 16.0f;
-    if (codepoint > UNIFONT_MAX_CODEPOINT) {
-        return 0;
+    srcrect.w = srcrect.h = (float)UNIFONT_GLYPH_SIZE;
+
+    if (codepoint > UNIFONT_MAX_CODEPOINT ||
+        unifontGlyph[codepoint].width == 0) {
+        codepoint = UNIFONT_REPLACEMENT;
     }
+
+    textureID = codepoint / UNIFONT_GLYPHS_IN_TEXTURE;
     if (!unifontTextureLoaded[textureID]) {
         if (unifont_load_texture(textureID) < 0) {
             return 0;
@@ -327,8 +353,8 @@ static Sint32 unifont_draw_glyph(Uint32 codepoint, int rendererID, SDL_FRect *ds
     texture = unifontTexture[UNIFONT_NUM_TEXTURES * rendererID + textureID];
     if (texture) {
         const Uint32 cInTex = codepoint % UNIFONT_GLYPHS_IN_TEXTURE;
-        srcrect.x = (float)(cInTex % UNIFONT_GLYPHS_IN_ROW * 16);
-        srcrect.y = (float)(cInTex / UNIFONT_GLYPHS_IN_ROW * 16);
+        srcrect.x = (float)(cInTex % UNIFONT_GLYPHS_IN_ROW * UNIFONT_GLYPH_AREA);
+        srcrect.y = (float)(cInTex / UNIFONT_GLYPHS_IN_ROW * UNIFONT_GLYPH_AREA);
         SDL_RenderTexture(state->renderers[rendererID], texture, &srcrect, dst);
     }
     return unifontGlyph[codepoint].width;
@@ -431,6 +457,8 @@ static Uint32 utf8_decode(char *p, size_t len)
 
 static void InitInput(void)
 {
+    int i;
+
     /* Prepare a rect for text input */
     textRect.x = textRect.y = 100.0f;
     textRect.w = DEFAULT_WINDOW_WIDTH - 2 * textRect.x;
@@ -440,12 +468,207 @@ static void InitInput(void)
     markedRect = textRect;
     markedText[0] = 0;
 
-    SDL_StartTextInput();
+    for (i = 0; i < state->num_windows; ++i) {
+        SDL_StartTextInput(state->windows[i]);
+    }
+}
+
+
+static void ClearCandidates(void)
+{
+    int i;
+
+    for (i = 0; i < num_candidates; ++i) {
+        SDL_free(candidates[i]);
+    }
+    SDL_free(candidates);
+    candidates = NULL;
+    num_candidates = 0;
+}
+
+static void SaveCandidates(SDL_Event *event)
+{
+    int i;
+
+    ClearCandidates();
+
+    num_candidates = event->edit_candidates.num_candidates;
+    if (num_candidates > 0) {
+        candidates = (char **)SDL_malloc(num_candidates * sizeof(*candidates));
+        if (!candidates) {
+            num_candidates = 0;
+            return;
+        }
+        for (i = 0; i < num_candidates; ++i) {
+            candidates[i] = SDL_strdup(event->edit_candidates.candidates[i]);
+        }
+        selected_candidate = event->edit_candidates.selected_candidate;
+        horizontal_candidates = event->edit_candidates.horizontal;
+    }
+}
+
+static void DrawCandidates(int rendererID, SDL_FRect *cursorRect)
+{
+    SDL_Renderer *renderer = state->renderers[rendererID];
+    int i;
+    int output_w = 0, output_h = 0;
+    float w = 0.0f, h = 0.0f;
+    SDL_FRect candidatesRect, dstRect, underlineRect;
+
+    if (num_candidates == 0) {
+        return;
+    }
+
+    /* Calculate the size of the candidate list */
+    for (i = 0; i < num_candidates; ++i) {
+        if (!candidates[i]) {
+            continue;
+        }
+
+#ifdef HAVE_SDL_TTF
+        /* FIXME */
+#else
+        if (horizontal_candidates) {
+            char *utext = candidates[i];
+            Uint32 codepoint;
+            size_t len;
+            float advance = 0.0f;
+
+            if (i > 0) {
+                advance += unifont_glyph_width(' ') * UNIFONT_DRAW_SCALE;
+            }
+            while ((codepoint = utf8_decode(utext, len = utf8_length(*utext))) != 0) {
+                advance += unifont_glyph_width(codepoint) * UNIFONT_DRAW_SCALE;
+                utext += len;
+            }
+            w += advance;
+            h = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
+        } else {
+            char *utext = candidates[i];
+            Uint32 codepoint;
+            size_t len;
+            float advance = 0.0f;
+
+            while ((codepoint = utf8_decode(utext, len = utf8_length(*utext))) != 0) {
+                advance += unifont_glyph_width(codepoint) * UNIFONT_DRAW_SCALE;
+                utext += len;
+            }
+            w = SDL_max(w, advance);
+            if (i > 0) {
+                h += 2.0f;
+            }
+            h += UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
+        }
+#endif
+    }
+
+    /* Position the candidate window */
+    SDL_GetCurrentRenderOutputSize(renderer, &output_w, &output_h);
+    candidatesRect.x = cursorRect->x;
+    candidatesRect.y = cursorRect->y + cursorRect->h + 2.0f;
+    candidatesRect.w = 1.0f + 2.0f + w + 2.0f + 1.0f;
+    candidatesRect.h = 1.0f + 2.0f + h + 2.0f + 1.0f;
+    if ((candidatesRect.x + candidatesRect.w) > output_w) {
+        candidatesRect.x = (output_w - candidatesRect.w);
+        if (candidatesRect.x < 0.0f) {
+            candidatesRect.x = 0.0f;
+        }
+    }
+
+    /* Draw the candidate background */
+    SDL_SetRenderDrawColor(renderer, 0xAA, 0xAA, 0xAA, 0xFF);
+    SDL_RenderFillRect(renderer, &candidatesRect);
+    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
+    SDL_RenderRect(renderer, &candidatesRect);
+
+    /* Draw the candidates */
+    dstRect.x = candidatesRect.x + 3.0f;
+    dstRect.y = candidatesRect.y + 3.0f;
+    for (i = 0; i < num_candidates; ++i) {
+        if (!candidates[i]) {
+            continue;
+        }
+
+#ifdef HAVE_SDL_TTF
+        /* FIXME */
+#else
+        dstRect.w = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
+        dstRect.h = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
+
+        if (horizontal_candidates) {
+            char *utext = candidates[i];
+            Uint32 codepoint;
+            size_t len;
+            float start;
+
+            if (i > 0) {
+                dstRect.x += unifont_draw_glyph(' ', rendererID, &dstRect) * UNIFONT_DRAW_SCALE;
+            }
+
+            start = dstRect.x + 2 * unifont_glyph_width(' ') * UNIFONT_DRAW_SCALE;
+            while ((codepoint = utf8_decode(utext, len = utf8_length(*utext))) != 0) {
+                dstRect.x += unifont_draw_glyph(codepoint, rendererID, &dstRect) * UNIFONT_DRAW_SCALE;
+                utext += len;
+            }
+
+            if (i == selected_candidate) {
+                underlineRect.x = start;
+                underlineRect.y = dstRect.y + dstRect.h - 2;
+                underlineRect.h = 2;
+                underlineRect.w = dstRect.x - start;
+
+                SDL_SetRenderDrawColor(renderer, lineColor.r, lineColor.g, lineColor.b, lineColor.a);
+                SDL_RenderFillRect(renderer, &underlineRect);
+            }
+        } else {
+            char *utext = candidates[i];
+            Uint32 codepoint;
+            size_t len;
+            float start;
+
+            dstRect.x = candidatesRect.x + 3.0f;
+
+            start = dstRect.x + 2 * unifont_glyph_width(' ') * UNIFONT_DRAW_SCALE;
+            while ((codepoint = utf8_decode(utext, len = utf8_length(*utext))) != 0) {
+                dstRect.x += unifont_draw_glyph(codepoint, rendererID, &dstRect) * UNIFONT_DRAW_SCALE;
+                utext += len;
+            }
+
+            if (i == selected_candidate) {
+                underlineRect.x = start;
+                underlineRect.y = dstRect.y + dstRect.h - 2;
+                underlineRect.h = 2;
+                underlineRect.w = dstRect.x - start;
+
+                SDL_SetRenderDrawColor(renderer, lineColor.r, lineColor.g, lineColor.b, lineColor.a);
+                SDL_RenderFillRect(renderer, &underlineRect);
+            }
+
+            if (i > 0) {
+                dstRect.y += 2.0f;
+            }
+            dstRect.y += dstRect.h;
+        }
+#endif
+    }
+}
+
+static void UpdateTextInputArea(SDL_Window *window, const SDL_FRect *cursorRect)
+{
+    SDL_Rect rect;
+    int cursor_offset = (int)(cursorRect->x - textRect.x);
+
+    rect.x = (int)textRect.x;
+    rect.y = (int)textRect.y;
+    rect.w = (int)textRect.w;
+    rect.h = (int)textRect.h;
+    SDL_SetTextInputArea(window, &rect, cursor_offset);
 }
 
 static void CleanupVideo(void)
 {
-    SDL_StopTextInput();
+    SDL_StopTextInput(state->windows[0]);
+    ClearCandidates();
 #ifdef HAVE_SDL_TTF
     TTF_CloseFont(font);
     TTF_Quit();
@@ -454,17 +677,19 @@ static void CleanupVideo(void)
 #endif
 }
 
-static void _Redraw(int rendererID)
+static void RedrawWindow(int rendererID)
 {
     SDL_Renderer *renderer = state->renderers[rendererID];
     SDL_FRect drawnTextRect, cursorRect, underlineRect;
-    drawnTextRect.x = textRect.x;
-    drawnTextRect.y = 0;
-    drawnTextRect.w = 0;
-    drawnTextRect.h = 0;
 
     SDL_SetRenderDrawColor(renderer, backColor.r, backColor.g, backColor.b, backColor.a);
     SDL_RenderFillRect(renderer, &textRect);
+
+    /* Initialize the drawn text rectangle for the cursor */
+    drawnTextRect.x = textRect.x;
+    drawnTextRect.y = textRect.y + (textRect.h - UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE) / 2;
+    drawnTextRect.w = 0.0f;
+    drawnTextRect.h = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
 
     if (*text) {
 #ifdef HAVE_SDL_TTF
@@ -488,14 +713,14 @@ static void _Redraw(int rendererID)
         SDL_FRect dstrect;
 
         dstrect.x = textRect.x;
-        dstrect.y = textRect.y + (textRect.h - 16 * UNIFONT_DRAW_SCALE) / 2;
-        dstrect.w = 16 * UNIFONT_DRAW_SCALE;
-        dstrect.h = 16 * UNIFONT_DRAW_SCALE;
+        dstrect.y = textRect.y + (textRect.h - UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE) / 2;
+        dstrect.w = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
+        dstrect.h = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
         drawnTextRect.y = dstrect.y;
         drawnTextRect.h = dstrect.h;
 
         while ((codepoint = utf8_decode(utext, len = utf8_length(*utext))) != 0) {
-            Sint32 advance = unifont_draw_glyph(codepoint, rendererID, &dstrect) * UNIFONT_DRAW_SCALE;
+            float advance = unifont_draw_glyph(codepoint, rendererID, &dstrect) * UNIFONT_DRAW_SCALE;
             dstrect.x += advance;
             drawnTextRect.w += advance;
             utext += len;
@@ -503,26 +728,25 @@ static void _Redraw(int rendererID)
 #endif
     }
 
+    /* The marked text rectangle is the text area that hasn't been filled by committed text */
     markedRect.x = textRect.x + drawnTextRect.w;
     markedRect.w = textRect.w - drawnTextRect.w;
     if (markedRect.w < 0) {
         /* Stop text input because we cannot hold any more characters */
-        SDL_StopTextInput();
+        SDL_StopTextInput(state->windows[0]);
         return;
     } else {
-        SDL_StartTextInput();
+        SDL_StartTextInput(state->windows[0]);
     }
 
-    cursorRect = drawnTextRect;
-    cursorRect.x += cursorRect.w;
-    cursorRect.w = 2;
-    cursorRect.h = drawnTextRect.h;
-
+    /* Update the drawn text rectangle for composition text, after the committed text */
     drawnTextRect.x += drawnTextRect.w;
     drawnTextRect.w = 0;
 
-    SDL_SetRenderDrawColor(renderer, backColor.r, backColor.g, backColor.b, backColor.a);
-    SDL_RenderFillRect(renderer, &markedRect);
+    /* Set the cursor to the new location, we'll update it as we go, below */
+    cursorRect = drawnTextRect;
+    cursorRect.w = 2;
+    cursorRect.h = drawnTextRect.h;
 
     if (markedText[0]) {
 #ifdef HAVE_SDL_TTF
@@ -552,6 +776,11 @@ static void _Redraw(int rendererID)
 
         SDL_RenderTexture(renderer, texture, NULL, &drawnTextRect);
         SDL_DestroyTexture(texture);
+
+        if (cursor_length > 0) {
+            /* FIXME: Need to measure text extents */
+            cursorRect.w = cursor_length * UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
+        }
 #else
         int i = 0;
         char *utext = markedText;
@@ -560,14 +789,14 @@ static void _Redraw(int rendererID)
         SDL_FRect dstrect;
 
         dstrect.x = drawnTextRect.x;
-        dstrect.y = textRect.y + (textRect.h - 16 * UNIFONT_DRAW_SCALE) / 2;
-        dstrect.w = 16 * UNIFONT_DRAW_SCALE;
-        dstrect.h = 16 * UNIFONT_DRAW_SCALE;
+        dstrect.y = textRect.y + (textRect.h - UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE) / 2;
+        dstrect.w = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
+        dstrect.h = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
         drawnTextRect.y = dstrect.y;
         drawnTextRect.h = dstrect.h;
 
         while ((codepoint = utf8_decode(utext, len = utf8_length(*utext))) != 0) {
-            Sint32 advance = unifont_draw_glyph(codepoint, rendererID, &dstrect) * UNIFONT_DRAW_SCALE;
+            float advance = unifont_draw_glyph(codepoint, rendererID, &dstrect) * UNIFONT_DRAW_SCALE;
             dstrect.x += advance;
             drawnTextRect.w += advance;
             if (i < cursor) {
@@ -576,12 +805,14 @@ static void _Redraw(int rendererID)
             i++;
             utext += len;
         }
+
+        if (cursor_length > 0) {
+            cursorRect.w = cursor_length * UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
+        }
 #endif
 
-        if (cursor > 0) {
-            cursorRect.y = drawnTextRect.y;
-            cursorRect.h = drawnTextRect.h;
-        }
+        cursorRect.y = drawnTextRect.y;
+        cursorRect.h = drawnTextRect.h;
 
         underlineRect = markedRect;
         underlineRect.y = drawnTextRect.y + drawnTextRect.h - 2;
@@ -592,18 +823,28 @@ static void _Redraw(int rendererID)
         SDL_RenderFillRect(renderer, &underlineRect);
     }
 
-    SDL_SetRenderDrawColor(renderer, lineColor.r, lineColor.g, lineColor.b, lineColor.a);
-    SDL_RenderFillRect(renderer, &cursorRect);
-
-    {
-        SDL_Rect inputrect;
-
-        inputrect.x = (int)markedRect.x;
-        inputrect.y = (int)markedRect.y;
-        inputrect.w = (int)markedRect.w;
-        inputrect.h = (int)markedRect.h;
-        SDL_SetTextInputRect(&inputrect);
+    /* Draw the cursor */
+    Uint64 now = SDL_GetTicks();
+    if ((now - last_cursor_change) >= CURSOR_BLINK_INTERVAL_MS) {
+        cursor_visible = !cursor_visible;
+        last_cursor_change = now;
     }
+    if (cursor_length > 0) {
+        /* We'll show a highlight */
+        SDL_SetRenderDrawBlendMode(renderer, highlight_mode);
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_RenderFillRect(renderer, &cursorRect);
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+    } else if (cursor_visible) {
+        SDL_SetRenderDrawColor(renderer, lineColor.r, lineColor.g, lineColor.b, lineColor.a);
+        SDL_RenderFillRect(renderer, &cursorRect);
+    }
+
+    /* Draw the candidates */
+    DrawCandidates(rendererID, &cursorRect);
+
+    /* Update the area used to draw composition UI */
+    UpdateTextInputArea(state->windows[0], &cursorRect);
 }
 
 static void Redraw(void)
@@ -618,7 +859,7 @@ static void Redraw(void)
         SDL_RenderClear(renderer);
 
         /* Sending in the window id to let the font renderers know which one we're working with. */
-        _Redraw(i);
+        RedrawWindow(i);
 
         SDL_RenderPresent(renderer);
     }
@@ -626,6 +867,8 @@ static void Redraw(void)
 
 int main(int argc, char *argv[])
 {
+    SDL_bool render_composition = SDL_FALSE;
+    SDL_bool render_candidates = SDL_FALSE;
     int i, done;
     SDL_Event event;
     char *fontname = NULL;
@@ -645,18 +888,32 @@ int main(int argc, char *argv[])
 
         consumed = SDLTest_CommonArg(state, i);
         if (SDL_strcmp(argv[i], "--font") == 0) {
-            if (*argv[i+1]) {
-                fontname = argv[i+1];
+            if (*argv[i + 1]) {
+                fontname = argv[i + 1];
                 consumed = 2;
             }
+        } else if (SDL_strcmp(argv[i], "--render-composition") == 0) {
+            render_composition = SDL_TRUE;
+            consumed = 1;
+        } else if (SDL_strcmp(argv[i], "--render-candidates") == 0) {
+            render_candidates = SDL_TRUE;
+            consumed = 1;
         }
         if (consumed <= 0) {
-            static const char *options[] = { "[--font fontfile]", NULL };
+            static const char *options[] = { "[--font fontfile] [--render-composition] [--render-candidates]", NULL };
             SDLTest_CommonLogUsage(state, argv[0], options);
             return 1;
         }
 
         i += consumed;
+    }
+
+    if (render_composition && render_candidates) {
+        SDL_SetHint(SDL_HINT_IME_IMPLEMENTED_UI, "composition,candidates");
+    } else if (render_composition) {
+        SDL_SetHint(SDL_HINT_IME_IMPLEMENTED_UI, "composition");
+    } else if (render_candidates) {
+        SDL_SetHint(SDL_HINT_IME_IMPLEMENTED_UI, "candidates");
     }
 
     if (!SDLTest_CommonInit(state)) {
@@ -690,7 +947,13 @@ int main(int argc, char *argv[])
         SDL_SetRenderDrawColor(renderer, 0xA0, 0xA0, 0xA0, 0xFF);
         SDL_RenderClear(renderer);
     }
-    Redraw();
+    highlight_mode = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_ONE_MINUS_DST_COLOR,
+                                                SDL_BLENDFACTOR_ZERO,
+                                                SDL_BLENDOPERATION_ADD,
+                                                SDL_BLENDFACTOR_ZERO,
+                                                SDL_BLENDFACTOR_ONE,
+                                                SDL_BLENDOPERATION_ADD);
+
     /* Main render loop */
     done = 0;
     while (!done) {
@@ -699,10 +962,9 @@ int main(int argc, char *argv[])
             SDLTest_CommonEvent(state, &event, &done);
             switch (event.type) {
             case SDL_EVENT_KEY_DOWN:
-                switch (event.key.keysym.sym) {
+                switch (event.key.key) {
                 case SDLK_RETURN:
                     text[0] = 0x00;
-                    Redraw();
                     break;
                 case SDLK_BACKSPACE:
                     /* Only delete text if not in editing mode. */
@@ -729,8 +991,6 @@ int main(int argc, char *argv[])
                                 break;
                             }
                         } while (1);
-
-                        Redraw();
                     }
                     break;
                 default:
@@ -742,10 +1002,10 @@ int main(int argc, char *argv[])
                 }
 
                 SDL_Log("Keyboard: scancode 0x%08X = %s, keycode 0x%08" SDL_PRIX32 " = %s\n",
-                        event.key.keysym.scancode,
-                        SDL_GetScancodeName(event.key.keysym.scancode),
-                        SDL_static_cast(Uint32, event.key.keysym.sym),
-                        SDL_GetKeyName(event.key.keysym.sym));
+                        event.key.scancode,
+                        SDL_GetScancodeName(event.key.scancode),
+                        SDL_static_cast(Uint32, event.key.key),
+                        SDL_GetKeyName(event.key.key));
                 break;
 
             case SDL_EVENT_TEXT_INPUT:
@@ -764,7 +1024,6 @@ int main(int argc, char *argv[])
                 /* After text inputted, we can clear up markedText because it */
                 /* is committed */
                 markedText[0] = 0;
-                Redraw();
                 break;
 
             case SDL_EVENT_TEXT_EDITING:
@@ -773,13 +1032,25 @@ int main(int argc, char *argv[])
 
                 SDL_strlcpy(markedText, event.edit.text, sizeof(markedText));
                 cursor = event.edit.start;
-                Redraw();
+                cursor_length = event.edit.length;
+                break;
+
+            case SDL_EVENT_TEXT_EDITING_CANDIDATES:
+                SDL_Log("text candidates:\n");
+                for (i = 0; i < event.edit_candidates.num_candidates; ++i) {
+                    SDL_Log("%c%s\n", i == event.edit_candidates.selected_candidate ? '>' : ' ', event.edit_candidates.candidates[i]);
+                }
+
+                ClearCandidates();
+                SaveCandidates(&event);
                 break;
 
             default:
                 break;
             }
         }
+
+        Redraw();
     }
     SDL_free(fontname);
     CleanupVideo();

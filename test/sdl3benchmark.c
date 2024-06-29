@@ -568,7 +568,7 @@ checkEvents(Context *ctx)
         if (e.type == SDL_EVENT_KEY_DOWN) {
             SDL_KeyboardEvent *ke = (SDL_KeyboardEvent *)&e;
 
-            if (ke->keysym.sym == SDLK_ESCAPE) {
+            if (ke->key == SDLK_ESCAPE) {
                 SDL_Log("Quitting...\n");
                 ctx->running = SDL_FALSE;
             }

@@ -1250,6 +1250,65 @@ extern SDL_DECLSPEC int SDLCALL SDL_strcasecmp(const char *str1, const char *str
  */
 extern SDL_DECLSPEC int SDLCALL SDL_strncasecmp(const char *str1, const char *str2, size_t maxlen);
 
+/**
+ * The Unicode REPLACEMENT CHARACTER codepoint.
+ *
+ * SDL_StepUTF8() reports this codepoint when it encounters a UTF-8 string
+ * with encoding errors.
+ *
+ * This tends to render as something like a question mark in most places.
+ *
+ * \since This macro is available since SDL 3.0.0.
+ *
+ * \sa SDL_StepUTF8
+ */
+#define SDL_INVALID_UNICODE_CODEPOINT 0xFFFD
+
+/**
+ * Decode a UTF-8 string, one Unicode codepoint at a time.
+ *
+ * This will return the first Unicode codepoint in the UTF-8 encoded string in
+ * `*pstr`, and then advance `*pstr` past any consumed bytes before returning.
+ *
+ * It will not access more than `*pslen` bytes from the string. `*pslen` will
+ * be adjusted, as well, subtracting the number of bytes consumed.
+ *
+ * `pslen` is allowed to be NULL, in which case the string _must_ be
+ * NULL-terminated, as the function will blindly read until it sees the NULL
+ * char.
+ *
+ * if `*pslen` is zero, it assumes the end of string is reached and returns a
+ * zero codepoint regardless of the contents of the string buffer.
+ *
+ * If the resulting codepoint is zero (a NULL terminator), or `*pslen` is
+ * zero, it will not advance `*pstr` or `*pslen` at all.
+ *
+ * Generally this function is called in a loop until it returns zero,
+ * adjusting its parameters each iteration.
+ *
+ * If an invalid UTF-8 sequence is encountered, this function returns
+ * SDL_INVALID_UNICODE_CODEPOINT and advances the string/length by one byte
+ * (which is to say, a multibyte sequence might produce several
+ * SDL_INVALID_UNICODE_CODEPOINT returns before it syncs to the next valid
+ * UTF-8 sequence).
+ *
+ * Several things can generate invalid UTF-8 sequences, including overlong
+ * encodings, the use of UTF-16 surrogate values, and truncated data. Please
+ * refer to
+ * [RFC3629](https://www.ietf.org/rfc/rfc3629.txt)
+ * for details.
+ *
+ * \param pstr a pointer to a UTF-8 string pointer to be read and adjusted.
+ * \param pslen a pointer to the number of bytes in the string, to be read and
+ *              adjusted. NULL is allowed.
+ * \returns the first Unicode codepoint in the string.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.0.0.
+ */
+extern SDL_DECLSPEC Uint32 SDLCALL SDL_StepUTF8(const char **pstr, size_t *pslen);
+
 extern SDL_DECLSPEC int SDLCALL SDL_sscanf(const char *text, SDL_SCANF_FORMAT_STRING const char *fmt, ...) SDL_SCANF_VARARG_FUNC(2);
 extern SDL_DECLSPEC int SDLCALL SDL_vsscanf(const char *text, SDL_SCANF_FORMAT_STRING const char *fmt, va_list ap) SDL_SCANF_VARARG_FUNCV(2);
 extern SDL_DECLSPEC int SDLCALL SDL_snprintf(SDL_OUT_Z_CAP(maxlen) char *text, size_t maxlen, SDL_PRINTF_FORMAT_STRING const char *fmt, ... ) SDL_PRINTF_VARARG_FUNC(3);
@@ -1258,6 +1317,194 @@ extern SDL_DECLSPEC int SDLCALL SDL_vsnprintf(SDL_OUT_Z_CAP(maxlen) char *text, 
 extern SDL_DECLSPEC int SDLCALL SDL_vswprintf(SDL_OUT_Z_CAP(maxlen) wchar_t *text, size_t maxlen, const wchar_t *fmt, va_list ap);
 extern SDL_DECLSPEC int SDLCALL SDL_asprintf(char **strp, SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(2);
 extern SDL_DECLSPEC int SDLCALL SDL_vasprintf(char **strp, SDL_PRINTF_FORMAT_STRING const char *fmt, va_list ap) SDL_PRINTF_VARARG_FUNCV(2);
+
+/**
+ * Seeds the pseudo-random number generator.
+ *
+ * Reusing the seed number will cause SDL_rand_*() to repeat the same stream
+ * of 'random' numbers.
+ *
+ * \param seed the value to use as a random number seed, or 0 to use
+ *             SDL_GetPerformanceCounter().
+ *
+ * \threadsafety This should be called on the same thread that calls
+ *               SDL_rand*()
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_rand
+ * \sa SDL_rand_bits
+ * \sa SDL_randf
+ */
+extern SDL_DECLSPEC void SDLCALL SDL_srand(Uint64 seed);
+
+/**
+ * Generate a pseudo-random number less than n for positive n
+ *
+ * The method used is faster and of better quality than `rand() % n`. Odds are
+ * roughly 99.9% even for n = 1 million. Evenness is better for smaller n, and
+ * much worse as n gets bigger.
+ *
+ * Example: to simulate a d6 use `SDL_rand(6) + 1` The +1 converts 0..5 to
+ * 1..6
+ *
+ * If you want to generate a pseudo-random number in the full range of Sint32,
+ * you should use: (Sint32)SDL_rand_bits()
+ *
+ * If you want reproducible output, be sure to initialize with SDL_srand()
+ * first.
+ *
+ * There are no guarantees as to the quality of the random sequence produced,
+ * and this should not be used for security (cryptography, passwords) or where
+ * money is on the line (loot-boxes, casinos). There are many random number
+ * libraries available with different characteristics and you should pick one
+ * of those to meet any serious needs.
+ *
+ * \param n the number of possible outcomes. n must be positive.
+ * \returns a random value in the range of [0 .. n-1].
+ *
+ * \threadsafety All calls should be made from a single thread
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_srand
+ * \sa SDL_randf
+ */
+extern SDL_DECLSPEC Sint32 SDLCALL SDL_rand(Sint32 n);
+
+/**
+ * Generate a uniform pseudo-random floating point number less than 1.0
+ *
+ * If you want reproducible output, be sure to initialize with SDL_srand()
+ * first.
+ *
+ * There are no guarantees as to the quality of the random sequence produced,
+ * and this should not be used for security (cryptography, passwords) or where
+ * money is on the line (loot-boxes, casinos). There are many random number
+ * libraries available with different characteristics and you should pick one
+ * of those to meet any serious needs.
+ *
+ * \returns a random value in the range of [0.0, 1.0).
+ *
+ * \threadsafety All calls should be made from a single thread
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_srand
+ * \sa SDL_rand
+ */
+extern SDL_DECLSPEC float SDLCALL SDL_randf(void);
+
+/**
+ * Generate 32 pseudo-random bits.
+ *
+ * You likely want to use SDL_rand() to get a psuedo-random number instead.
+ *
+ * There are no guarantees as to the quality of the random sequence produced,
+ * and this should not be used for security (cryptography, passwords) or where
+ * money is on the line (loot-boxes, casinos). There are many random number
+ * libraries available with different characteristics and you should pick one
+ * of those to meet any serious needs.
+ *
+ * \returns a random value in the range of [0-SDL_MAX_UINT32].
+ *
+ * \threadsafety All calls should be made from a single thread
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_rand
+ * \sa SDL_randf
+ * \sa SDL_srand
+ */
+extern SDL_DECLSPEC Uint32 SDLCALL SDL_rand_bits(void);
+
+/**
+ * Generate a pseudo-random number less than n for positive n
+ *
+ * The method used is faster and of better quality than `rand() % n`. Odds are
+ * roughly 99.9% even for n = 1 million. Evenness is better for smaller n, and
+ * much worse as n gets bigger.
+ *
+ * Example: to simulate a d6 use `SDL_rand_r(state, 6) + 1` The +1 converts
+ * 0..5 to 1..6
+ *
+ * If you want to generate a pseudo-random number in the full range of Sint32,
+ * you should use: (Sint32)SDL_rand_bits_r(state)
+ *
+ * There are no guarantees as to the quality of the random sequence produced,
+ * and this should not be used for security (cryptography, passwords) or where
+ * money is on the line (loot-boxes, casinos). There are many random number
+ * libraries available with different characteristics and you should pick one
+ * of those to meet any serious needs.
+ *
+ * \param state a pointer to the current random number state, this may not be
+ *              NULL.
+ * \param n the number of possible outcomes. n must be positive.
+ * \returns a random value in the range of [0 .. n-1].
+ *
+ * \threadsafety This function is thread-safe, as long as the state pointer
+ *               isn't shared between threads.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_rand
+ * \sa SDL_rand_bits_r
+ * \sa SDL_randf_r
+ */
+extern SDL_DECLSPEC Sint32 SDLCALL SDL_rand_r(Uint64 *state, Sint32 n);
+
+/**
+ * Generate a uniform pseudo-random floating point number less than 1.0
+ *
+ * If you want reproducible output, be sure to initialize with SDL_srand()
+ * first.
+ *
+ * There are no guarantees as to the quality of the random sequence produced,
+ * and this should not be used for security (cryptography, passwords) or where
+ * money is on the line (loot-boxes, casinos). There are many random number
+ * libraries available with different characteristics and you should pick one
+ * of those to meet any serious needs.
+ *
+ * \param state a pointer to the current random number state, this may not be
+ *              NULL.
+ * \returns a random value in the range of [0.0, 1.0).
+ *
+ * \threadsafety This function is thread-safe, as long as the state pointer
+ *               isn't shared between threads.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_rand_bits_r
+ * \sa SDL_rand_r
+ * \sa SDL_randf
+ */
+extern SDL_DECLSPEC float SDLCALL SDL_randf_r(Uint64 *state);
+
+/**
+ * Generate 32 pseudo-random bits.
+ *
+ * You likely want to use SDL_rand_r() to get a psuedo-random number instead.
+ *
+ * There are no guarantees as to the quality of the random sequence produced,
+ * and this should not be used for security (cryptography, passwords) or where
+ * money is on the line (loot-boxes, casinos). There are many random number
+ * libraries available with different characteristics and you should pick one
+ * of those to meet any serious needs.
+ *
+ * \param state a pointer to the current random number state, this may not be
+ *              NULL.
+ * \returns a random value in the range of [0-SDL_MAX_UINT32].
+ *
+ * \threadsafety This function is thread-safe, as long as the state pointer
+ *               isn't shared between threads.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_rand_r
+ * \sa SDL_randf_r
+ */
+extern SDL_DECLSPEC Uint32 SDLCALL SDL_rand_bits_r(Uint64 *state);
+
 
 #ifndef SDL_PI_D
 #define SDL_PI_D   3.141592653589793238462643383279502884       /**< pi (double) */
@@ -1965,6 +2212,62 @@ extern SDL_DECLSPEC double SDLCALL SDL_fmod(double x, double y);
  * \sa SDL_lroundf
  */
 extern SDL_DECLSPEC float SDLCALL SDL_fmodf(float x, float y);
+
+/**
+ * Return whether the value is infinity.
+ *
+ * \param x double-precision floating point value.
+ * \returns non-zero if the value is infinity, 0 otherwise.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_isinff
+ */
+extern SDL_DECLSPEC int SDLCALL SDL_isinf(double x);
+
+/**
+ * Return whether the value is infinity.
+ *
+ * \param x floating point value.
+ * \returns non-zero if the value is infinity, 0 otherwise.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_isinf
+ */
+extern SDL_DECLSPEC int SDLCALL SDL_isinff(float x);
+
+/**
+ * Return whether the value is NaN.
+ *
+ * \param x double-precision floating point value.
+ * \returns non-zero if the value is NaN, 0 otherwise.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_isnanf
+ */
+extern SDL_DECLSPEC int SDLCALL SDL_isnan(double x);
+
+/**
+ * Return whether the value is NaN.
+ *
+ * \param x floating point value.
+ * \returns non-zero if the value is NaN, 0 otherwise.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_isnan
+ */
+extern SDL_DECLSPEC int SDLCALL SDL_isnanf(float x);
 
 /**
  * Compute the natural logarithm of `x`.

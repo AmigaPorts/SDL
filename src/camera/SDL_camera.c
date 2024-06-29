@@ -84,7 +84,7 @@ char *SDL_GetCameraThreadName(SDL_CameraDevice *device, char *buf, size_t buflen
     return buf;
 }
 
-int SDL_AddCameraFormat(CameraFormatAddData *data, SDL_PixelFormatEnum fmt, int w, int h, int interval_numerator, int interval_denominator)
+int SDL_AddCameraFormat(CameraFormatAddData *data, SDL_PixelFormatEnum format, SDL_Colorspace colorspace, int w, int h, int framerate_numerator, int framerate_denominator)
 {
     SDL_assert(data != NULL);
     if (data->allocated_specs <= data->num_specs) {
@@ -98,11 +98,12 @@ int SDL_AddCameraFormat(CameraFormatAddData *data, SDL_PixelFormatEnum fmt, int 
     }
 
     SDL_CameraSpec *spec = &data->specs[data->num_specs];
-    spec->format = fmt;
+    spec->format = format;
+    spec->colorspace = colorspace;
     spec->width = w;
     spec->height = h;
-    spec->interval_numerator = interval_numerator;
-    spec->interval_denominator = interval_denominator;
+    spec->framerate_numerator = framerate_numerator;
+    spec->framerate_denominator = framerate_denominator;
 
     data->num_specs++;
 
@@ -118,7 +119,7 @@ static int ZombieWaitDevice(SDL_CameraDevice *device)
 {
     if (!SDL_AtomicGet(&device->shutdown)) {
         // !!! FIXME: this is bad for several reasons (uses double, could be precalculated, doesn't track elasped time).
-        const double duration = ((double) device->actual_spec.interval_numerator / ((double) device->actual_spec.interval_denominator));
+        const double duration = ((double) device->actual_spec.framerate_denominator / ((double) device->actual_spec.framerate_numerator));
         SDL_Delay((Uint32) (duration * 1000.0));
     }
     return 0;
@@ -129,7 +130,7 @@ static size_t GetFrameBufLen(const SDL_CameraSpec *spec)
     const size_t w = (const size_t) spec->width;
     const size_t h = (const size_t) spec->height;
     const size_t wxh = w * h;
-    const Uint32 fmt = spec->format;
+    const SDL_PixelFormatEnum fmt = spec->format;
 
     switch (fmt) {
         // Some YUV formats have a larger Y plane than their U or V planes.
@@ -366,8 +367,8 @@ static int SDLCALL CameraSpecCmp(const void *vpa, const void *vpb)
     SDL_assert(b->width > 0);
     SDL_assert(b->height > 0);
 
-    const Uint32 afmt = a->format;
-    const Uint32 bfmt = b->format;
+    const SDL_PixelFormatEnum afmt = a->format;
+    const SDL_PixelFormatEnum bfmt = b->format;
     if (SDL_ISPIXELFORMAT_FOURCC(afmt) && !SDL_ISPIXELFORMAT_FOURCC(bfmt)) {
         return -1;
     } else if (!SDL_ISPIXELFORMAT_FOURCC(afmt) && SDL_ISPIXELFORMAT_FOURCC(bfmt)) {
@@ -387,17 +388,26 @@ static int SDLCALL CameraSpecCmp(const void *vpa, const void *vpb)
     }
 
     // still here? We care about framerate less than format or size, but faster is better than slow.
-    if (a->interval_numerator && !b->interval_numerator) {
+    if (a->framerate_numerator && !b->framerate_numerator) {
         return -1;
-    } else if (!a->interval_numerator && b->interval_numerator) {
+    } else if (!a->framerate_numerator && b->framerate_numerator) {
         return 1;
     }
 
-    const float fpsa = ((float) a->interval_denominator)/ ((float) a->interval_numerator);
-    const float fpsb = ((float) b->interval_denominator)/ ((float) b->interval_numerator);
+    const float fpsa = ((float)a->framerate_numerator / a->framerate_denominator);
+    const float fpsb = ((float)b->framerate_numerator / b->framerate_denominator);
     if (fpsa > fpsb) {
         return -1;
     } else if (fpsb > fpsa) {
+        return 1;
+    }
+
+    if (SDL_COLORSPACERANGE(a->colorspace) == SDL_COLOR_RANGE_FULL &&
+        SDL_COLORSPACERANGE(b->colorspace) != SDL_COLOR_RANGE_FULL) {
+        return -1;
+    }
+    if (SDL_COLORSPACERANGE(a->colorspace) != SDL_COLOR_RANGE_FULL &&
+        SDL_COLORSPACERANGE(b->colorspace) == SDL_COLOR_RANGE_FULL) {
         return 1;
     }
 
@@ -473,7 +483,7 @@ SDL_CameraDevice *SDL_AddCameraDevice(const char *name, SDL_CameraPosition posit
     SDL_Log("CAMERA: Adding device '%s' (%s) with %d spec%s%s", name, posstr, num_specs, (num_specs == 1) ? "" : "s", (num_specs == 0) ? "" : ":");
     for (int i = 0; i < num_specs; i++) {
         const SDL_CameraSpec *spec = &device->all_specs[i];
-        SDL_Log("CAMERA:   - fmt=%s, w=%d, h=%d, numerator=%d, denominator=%d", SDL_GetPixelFormatName(spec->format), spec->width, spec->height, spec->interval_numerator, spec->interval_denominator);
+        SDL_Log("CAMERA:   - fmt=%s, w=%d, h=%d, numerator=%d, denominator=%d", SDL_GetPixelFormatName(spec->format), spec->width, spec->height, spec->framerate_numerator, spec->framerate_denominator);
     }
     #endif
 
@@ -760,7 +770,7 @@ void SDL_CameraThreadSetup(SDL_CameraDevice *device)
     {
         // Set thread priority to THREAD_PRIORITY_VIDEO
         extern void Android_JNI_CameraSetThreadPriority(int, int);
-        Android_JNI_CameraSetThreadPriority(device->iscapture, device);
+        Android_JNI_CameraSetThreadPriority(device->recording, device);
     }*/
 #else
     // The camera capture is always a high priority thread
@@ -897,7 +907,7 @@ SDL_bool SDL_CameraThreadIterate(SDL_CameraDevice *device)
 
 void SDL_CameraThreadShutdown(SDL_CameraDevice *device)
 {
-    //device->FlushCapture(device);
+    //device->FlushRecording(device);
     //camera_driver.impl.ThreadDeinit(device);
     //SDL_CameraThreadFinalize(device);
 }
@@ -996,41 +1006,46 @@ static void ChooseBestCameraSpec(SDL_CameraDevice *device, const SDL_CameraSpec 
 
         // okay, we have what we think is the best resolution, now we just need the best format that supports it...
         const SDL_PixelFormatEnum wantfmt = spec->format;
-        SDL_PixelFormatEnum bestfmt = SDL_PIXELFORMAT_UNKNOWN;
+        SDL_PixelFormatEnum best_format = SDL_PIXELFORMAT_UNKNOWN;
+        SDL_Colorspace best_colorspace = SDL_COLORSPACE_UNKNOWN;
         for (int i = 0; i < num_specs; i++) {
             const SDL_CameraSpec *thisspec = &device->all_specs[i];
             if ((thisspec->width == closest->width) && (thisspec->height == closest->height)) {
-                if (bestfmt == SDL_PIXELFORMAT_UNKNOWN) {
-                    bestfmt = thisspec->format;  // spec list is sorted by what we consider "best" format, so unless we find an exact match later, first size match is the one!
+                if (best_format == SDL_PIXELFORMAT_UNKNOWN) {
+                    best_format = thisspec->format;  // spec list is sorted by what we consider "best" format, so unless we find an exact match later, first size match is the one!
+                    best_colorspace = thisspec->colorspace;
                 }
                 if (thisspec->format == wantfmt) {
-                    bestfmt = thisspec->format;
+                    best_format = thisspec->format;
+                    best_colorspace = thisspec->colorspace;
                     break;  // exact match, stop looking.
                 }
             }
         }
 
-        SDL_assert(bestfmt != SDL_PIXELFORMAT_UNKNOWN);
-        closest->format = bestfmt;
+        SDL_assert(best_format != SDL_PIXELFORMAT_UNKNOWN);
+        SDL_assert(best_colorspace != SDL_COLORSPACE_UNKNOWN);
+        closest->format = best_format;
+        closest->colorspace = best_colorspace;
 
         // We have a resolution and a format, find the closest framerate...
-        const float wantfps = spec->interval_denominator ? (spec->interval_numerator / spec->interval_denominator) : 0.0f;
+        const float wantfps = spec->framerate_denominator ? ((float)spec->framerate_numerator / spec->framerate_denominator) : 0.0f;
         float closestfps = 9999999.0f;
         for (int i = 0; i < num_specs; i++) {
             const SDL_CameraSpec *thisspec = &device->all_specs[i];
             if ((thisspec->format == closest->format) && (thisspec->width == closest->width) && (thisspec->height == closest->height)) {
-                if ((thisspec->interval_numerator == spec->interval_numerator) && (thisspec->interval_denominator == spec->interval_denominator)) {
-                    closest->interval_numerator = thisspec->interval_numerator;
-                    closest->interval_denominator = thisspec->interval_denominator;
+                if ((thisspec->framerate_numerator == spec->framerate_numerator) && (thisspec->framerate_denominator == spec->framerate_denominator)) {
+                    closest->framerate_numerator = thisspec->framerate_numerator;
+                    closest->framerate_denominator = thisspec->framerate_denominator;
                     break;  // exact match, stop looking.
                 }
 
-                const float thisfps = thisspec->interval_denominator ? (thisspec->interval_numerator / thisspec->interval_denominator) : 0.0f;
+                const float thisfps = thisspec->framerate_denominator ? ((float)thisspec->framerate_numerator / thisspec->framerate_denominator) : 0.0f;
                 const float fpsdiff = SDL_fabsf(wantfps - thisfps);
                 if (fpsdiff < closestfps) {  // this is a closest FPS? Take it until something closer arrives.
                     closestfps = fpsdiff;
-                    closest->interval_numerator = thisspec->interval_numerator;
-                    closest->interval_denominator = thisspec->interval_denominator;
+                    closest->framerate_numerator = thisspec->framerate_numerator;
+                    closest->framerate_denominator = thisspec->framerate_denominator;
                 }
             }
         }
@@ -1065,9 +1080,9 @@ SDL_Camera *SDL_OpenCameraDevice(SDL_CameraDeviceID instance_id, const SDL_Camer
     ChooseBestCameraSpec(device, spec, &closest);
 
     #if DEBUG_CAMERA
-    SDL_Log("CAMERA: App wanted [(%dx%d) fmt=%s interval=%d/%d], chose [(%dx%d) fmt=%s interval=%d/%d]",
-            spec ? spec->width : -1, spec ? spec->height : -1, spec ? SDL_GetPixelFormatName(spec->format) : "(null)", spec ? spec->interval_numerator : -1, spec ? spec->interval_denominator : -1,
-            closest.width, closest.height, SDL_GetPixelFormatName(closest.format), closest.interval_numerator, closest.interval_denominator);
+    SDL_Log("CAMERA: App wanted [(%dx%d) fmt=%s framerate=%d/%d], chose [(%dx%d) fmt=%s framerate=%d/%d]",
+            spec ? spec->width : -1, spec ? spec->height : -1, spec ? SDL_GetPixelFormatName(spec->format) : "(null)", spec ? spec->framerate_numerator : -1, spec ? spec->framerate_denominator : -1,
+            closest.width, closest.height, SDL_GetPixelFormatName(closest.format), closest.framerate_numerator, closest.framerate_denominator);
     #endif
 
     if (camera_driver.impl.OpenDevice(device, &closest) < 0) {
@@ -1085,9 +1100,9 @@ SDL_Camera *SDL_OpenCameraDevice(SDL_CameraDeviceID instance_id, const SDL_Camer
         if (spec->format == SDL_PIXELFORMAT_UNKNOWN) {
             device->spec.format = closest.format;
         }
-        if (spec->interval_denominator == 0) {
-            device->spec.interval_numerator = closest.interval_numerator;
-            device->spec.interval_denominator = closest.interval_denominator;
+        if (spec->framerate_denominator == 0) {
+            device->spec.framerate_numerator = closest.framerate_numerator;
+            device->spec.framerate_denominator = closest.framerate_denominator;
         }
     } else {
         SDL_copyp(&device->spec, &closest);
@@ -1115,6 +1130,7 @@ SDL_Camera *SDL_OpenCameraDevice(SDL_CameraDeviceID instance_id, const SDL_Camer
         ReleaseCameraDevice(device);
         return NULL;
     }
+    SDL_SetSurfaceColorspace(device->acquire_surface, closest.colorspace);
 
     // if we have to scale _and_ convert, we need a middleman surface, since we can't do both changes at once.
     if (device->needs_scaling && device->needs_conversion) {
@@ -1122,6 +1138,12 @@ SDL_Camera *SDL_OpenCameraDevice(SDL_CameraDeviceID instance_id, const SDL_Camer
         const SDL_CameraSpec *s = downsampling_first ? &device->spec : &closest;
         const SDL_PixelFormatEnum fmt = downsampling_first ? closest.format : device->spec.format;
         device->conversion_surface = SDL_CreateSurface(s->width, s->height, fmt);
+        if (!device->conversion_surface) {
+            ClosePhysicalCameraDevice(device);
+            ReleaseCameraDevice(device);
+            return NULL;
+        }
+        SDL_SetSurfaceColorspace(device->conversion_surface, closest.colorspace);
     }
 
     // output surfaces are in the app-requested format. If no conversion is necessary, we'll just use the pointers
@@ -1140,12 +1162,12 @@ SDL_Camera *SDL_OpenCameraDevice(SDL_CameraDeviceID instance_id, const SDL_Camer
         } else {
             surf = SDL_CreateSurfaceFrom(NULL, device->spec.width, device->spec.height, 0, device->spec.format);
         }
-
         if (!surf) {
             ClosePhysicalCameraDevice(device);
             ReleaseCameraDevice(device);
             return NULL;
         }
+        SDL_SetSurfaceColorspace(surf, closest.colorspace);
 
         device->output_surfaces[i].surface = surf;
     }

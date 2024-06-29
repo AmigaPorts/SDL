@@ -49,7 +49,7 @@
  *
  * These are listed in the order they are laid out in
  * memory, so "FL+FR" means "the front left speaker is
- * layed out in memory first, then the front right, then
+ * laid out in memory first, then the front right, then
  * it repeats for the next audio frame".
  *
  * 1 channel (mono) layout: FRONT
@@ -472,7 +472,7 @@ int SDL_SetAudioStreamFormat(SDL_AudioStream *stream, const SDL_AudioSpec *src_s
 
     // quietly refuse to change the format of the end currently bound to a device.
     if (stream->bound_device) {
-        if (stream->bound_device->physical_device->iscapture) {
+        if (stream->bound_device->physical_device->recording) {
             src_spec = NULL;
         } else {
             dst_spec = NULL;

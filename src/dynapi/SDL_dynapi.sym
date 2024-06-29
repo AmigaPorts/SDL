@@ -166,11 +166,11 @@ SDL3_0.0.0 {
     SDL_GetAndroidSDKVersion;
     SDL_GetAssertionHandler;
     SDL_GetAssertionReport;
-    SDL_GetAudioCaptureDevices;
     SDL_GetAudioDeviceFormat;
     SDL_GetAudioDeviceName;
     SDL_GetAudioDriver;
-    SDL_GetAudioOutputDevices;
+    SDL_GetAudioPlaybackDevices;
+    SDL_GetAudioRecordingDevices;
     SDL_GetAudioStreamAvailable;
     SDL_GetAudioStreamData;
     SDL_GetAudioStreamDevice;
@@ -210,6 +210,7 @@ SDL3_0.0.0 {
     SDL_GetDefaultAssertionHandler;
     SDL_GetDefaultCursor;
     SDL_GetDefaultKeyFromScancode;
+    SDL_GetDefaultScancodeFromKey;
     SDL_GetDesktopDisplayMode;
     SDL_GetDisplayBounds;
     SDL_GetDisplayContentScale;
@@ -436,6 +437,7 @@ SDL3_0.0.0 {
     SDL_GetSystemRAM;
     SDL_GetSystemTheme;
     SDL_GetTLS;
+    SDL_GetTextInputArea;
     SDL_GetTextureAlphaMod;
     SDL_GetTextureAlphaModFloat;
     SDL_GetTextureBlendMode;
@@ -479,6 +481,7 @@ SDL3_0.0.0 {
     SDL_GetWindowSurface;
     SDL_GetWindowSurfaceVSync;
     SDL_GetWindowTitle;
+    SDL_GetWindows;
     SDL_GlobDirectory;
     SDL_GlobStorageDirectory;
     SDL_HapticEffectSupported;
@@ -642,7 +645,6 @@ SDL3_0.0.0 {
     SDL_RenderFillRects;
     SDL_RenderGeometry;
     SDL_RenderGeometryRaw;
-    SDL_RenderGeometryRawFloat;
     SDL_RenderLine;
     SDL_RenderLines;
     SDL_RenderPoint;
@@ -732,6 +734,7 @@ SDL3_0.0.0 {
     SDL_SetRenderTarget;
     SDL_SetRenderVSync;
     SDL_SetRenderViewport;
+    SDL_SetScancodeName;
     SDL_SetStringProperty;
     SDL_SetSurfaceAlphaMod;
     SDL_SetSurfaceBlendMode;
@@ -742,7 +745,7 @@ SDL3_0.0.0 {
     SDL_SetSurfacePalette;
     SDL_SetSurfaceRLE;
     SDL_SetTLS;
-    SDL_SetTextInputRect;
+    SDL_SetTextInputArea;
     SDL_SetTextureAlphaMod;
     SDL_SetTextureAlphaModFloat;
     SDL_SetTextureBlendMode;
@@ -785,6 +788,7 @@ SDL3_0.0.0 {
     SDL_SignalCondition;
     SDL_SoftStretch;
     SDL_StartTextInput;
+    SDL_StepUTF8;
     SDL_StopHapticEffect;
     SDL_StopHapticEffects;
     SDL_StopHapticRumble;
@@ -928,7 +932,11 @@ SDL3_0.0.0 {
     SDL_iscntrl;
     SDL_isdigit;
     SDL_isgraph;
+    SDL_isinf;
+    SDL_isinff;
     SDL_islower;
+    SDL_isnan;
+    SDL_isnanf;
     SDL_isprint;
     SDL_ispunct;
     SDL_isspace;
@@ -955,6 +963,12 @@ SDL3_0.0.0 {
     SDL_powf;
     SDL_qsort;
     SDL_qsort_r;
+    SDL_rand;  
+    SDL_rand_bits;
+    SDL_rand_bits_r;
+    SDL_rand_r;
+    SDL_randf;
+    SDL_randf_r;
     SDL_realloc;
     SDL_round;
     SDL_roundf;
@@ -966,6 +980,7 @@ SDL3_0.0.0 {
     SDL_snprintf;
     SDL_sqrt;
     SDL_sqrtf;
+    SDL_srand;
     SDL_sscanf;
     SDL_strcasecmp;
     SDL_strcasestr;

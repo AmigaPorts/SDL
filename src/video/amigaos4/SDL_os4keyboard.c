@@ -94,30 +94,20 @@ OS4_TranslateUnicode(SDL_VideoDevice *_this, uint16 code, uint32 qualifier, APTR
 static void
 OS4_UpdateKeymap(SDL_VideoDevice *_this)
 {
-    SDL_Keycode keymap[SDL_NUM_SCANCODES];
-
-    SDL_GetDefaultKeymap(keymap);
+    SDL_Keymap *keymap = SDL_CreateKeymap();
 
     for (int i = 0; i < SDL_arraysize(amiga_scancode_table); i++) {
         /* Make sure this scancode is a valid character scancode */
         const SDL_Scancode scancode = amiga_scancode_table[i];
-        if (scancode == SDL_SCANCODE_UNKNOWN ) {
+        if (scancode == SDL_SCANCODE_UNKNOWN ||
+            (SDL_GetDefaultKeyFromScancode(scancode, SDL_KMOD_NONE) & SDLK_SCANCODE_MASK)) {
             continue;
         }
 
-        /* If this key is one of the non-mappable keys, ignore it */
-        /* Don't allow the number keys right above the qwerty row to translate or the top left key (grave/backquote) */
-        /* Not mapping numbers fixes the French layout, giving numeric keycodes for the number keys, which is the expected behavior */
-        if ((keymap[scancode] & SDLK_SCANCODE_MASK) ||
-            scancode == SDL_SCANCODE_GRAVE /*||
-            (scancode >= SDL_SCANCODE_1 && scancode <= SDL_SCANCODE_0)*/ ) {
-            continue;
-        }
-
-        keymap[scancode] = OS4_MapRawKey(_this, i);
+        SDL_SetKeymapEntry(keymap, scancode, 0, OS4_MapRawKey(_this, i)); // TODO: test me
     }
 
-    SDL_SetKeymap(0, keymap, SDL_NUM_SCANCODES, SDL_FALSE);
+    SDL_SetKeymap(keymap, SDL_FALSE);
 }
 
 int

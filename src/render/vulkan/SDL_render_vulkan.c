@@ -1761,7 +1761,7 @@ static VkResult VULKAN_CreateDeviceResources(SDL_Renderer *renderer, SDL_Propert
     if (rendererData->surface) {
         rendererData->surface_external = SDL_TRUE;
     } else {
-        if (!device->Vulkan_CreateSurface || !device->Vulkan_CreateSurface(device, renderer->window, rendererData->instance, NULL, &rendererData->surface)) {
+        if (!device->Vulkan_CreateSurface || (device->Vulkan_CreateSurface(device, renderer->window, rendererData->instance, NULL, &rendererData->surface) < 0)) {
             VULKAN_DestroyAll(renderer);
             SDL_LogError(SDL_LOG_CATEGORY_RENDER, "Vulkan_CreateSurface() failed.\n");
             return VK_ERROR_UNKNOWN;
@@ -2150,7 +2150,7 @@ static VkResult VULKAN_CreateSwapChain(SDL_Renderer *renderer, int w, int h)
     swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     swapchainCreateInfo.preTransform = rendererData->surfaceCapabilities.currentTransform;
-    swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    swapchainCreateInfo.compositeAlpha = (renderer->window->flags & SDL_WINDOW_TRANSPARENT) ? 0 : VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     swapchainCreateInfo.presentMode = presentMode;
     swapchainCreateInfo.clipped = VK_TRUE;
     swapchainCreateInfo.oldSwapchain = rendererData->swapchain;
@@ -4057,8 +4057,8 @@ static int VULKAN_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL
     SDL_SetupRendererColorspace(renderer, create_props);
 
     if (renderer->output_colorspace != SDL_COLORSPACE_SRGB &&
-        renderer->output_colorspace != SDL_COLORSPACE_SRGB_LINEAR &&
-        renderer->output_colorspace != SDL_COLORSPACE_HDR10) {
+        renderer->output_colorspace != SDL_COLORSPACE_SRGB_LINEAR
+        /*&& renderer->output_colorspace != SDL_COLORSPACE_HDR10*/) {
         return SDL_SetError("Unsupported output colorspace");
     }
 
