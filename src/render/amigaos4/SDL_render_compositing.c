@@ -713,7 +713,6 @@ OS4_DestroyRenderer(SDL_Renderer * renderer)
     }
 
     SDL_free(data);
-    SDL_free(renderer);
 }
 
 static int
@@ -1122,25 +1121,17 @@ OS4_PrecalculateIndices(void)
     }
 }
 
-SDL_Renderer *
-OS4_CreateRenderer(SDL_Window * window, Uint32 flags)
+int
+OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, Uint32 flags)
 {
-    SDL_Renderer *renderer;
     OS4_RenderData *data;
 
     dprintf("Creating renderer for '%s' (flags 0x%x)\n", window->title, flags);
 
-    renderer = (SDL_Renderer *) SDL_calloc(1, sizeof(*renderer));
-    if (!renderer) {
-        SDL_OutOfMemory();
-        return NULL;
-    }
-
     data = (OS4_RenderData *) SDL_calloc(1, sizeof(*data));
     if (!data) {
         OS4_DestroyRenderer(renderer);
-        SDL_OutOfMemory();
-        return NULL;
+        return SDL_OutOfMemory();
     }
 
     renderer->WindowEvent = OS4_WindowEvent;
@@ -1176,7 +1167,7 @@ OS4_CreateRenderer(SDL_Window * window, Uint32 flags)
 
     OS4_PrecalculateIndices();
 
-    return renderer;
+    return 0;
 }
 
 SDL_RenderDriver OS4_RenderDriver = {
