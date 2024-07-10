@@ -1159,6 +1159,12 @@ SDL_Renderer *SDL_CreateSoftwareRenderer(SDL_Surface *surface)
 {
 #if SDL_VIDEO_RENDER_SW
     SDL_Renderer *renderer;
+
+	if (!surface) {
+        SDL_InvalidParamError("surface");
+		return NULL;
+	}
+
     SDL_PropertiesID props = SDL_CreateProperties();
     SDL_SetProperty(props, SDL_PROP_RENDERER_CREATE_SURFACE_POINTER, surface);
     renderer = SDL_CreateRendererWithProperties(props);
@@ -2607,6 +2613,33 @@ int SDL_GetRenderLogicalPresentation(SDL_Renderer *renderer, int *w, int *h, SDL
         *scale_mode = renderer->logical_scale_mode;
     }
 
+    return 0;
+}
+
+int SDL_GetRenderLogicalPresentationRect(SDL_Renderer *renderer, SDL_FRect *rect)
+{
+    if (rect) {
+        SDL_zerop(rect);
+    }
+
+    CHECK_RENDERER_MAGIC(renderer, -1);
+
+    if (rect) {
+        if (renderer->logical_presentation_mode == SDL_LOGICAL_PRESENTATION_DISABLED) {
+            int output_w = 0, output_h = 0;
+
+            if (SDL_GetRenderOutputSize(renderer, &output_w, &output_h) < 0) {
+                return -1;
+            }
+
+            rect->x = 0.0f;
+            rect->y = 0.0f;
+            rect->w = (float)output_w;
+            rect->h = (float)output_h;
+        } else {
+            SDL_copyp(rect, &renderer->logical_dst_rect);
+        }
+    }
     return 0;
 }
 

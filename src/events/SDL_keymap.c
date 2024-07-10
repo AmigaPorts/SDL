@@ -69,11 +69,18 @@ void SDL_SetKeymapEntry(SDL_Keymap *keymap, SDL_Scancode scancode, SDL_Keymod mo
         return;
     }
 
-    if (keycode == SDL_GetDefaultKeyFromScancode(scancode, modstate)) {
+    if (keycode == SDL_GetKeymapKeycode(keymap, scancode, modstate)) {
         return;
     }
 
     Uint32 key = ((Uint32)NormalizeModifierStateForKeymap(modstate) << 16) | scancode;
+    const void *value;
+    if (SDL_FindInHashTable(keymap->scancode_to_keycode, (void *)(uintptr_t)key, &value)) {
+        // Changing the mapping, need to remove the existing entry from the keymap
+        SDL_RemoveFromHashTable(keymap->scancode_to_keycode, (void *)(uintptr_t)key);
+        SDL_RemoveFromHashTable(keymap->keycode_to_scancode, value);
+    }
+
     SDL_InsertIntoHashTable(keymap->scancode_to_keycode, (void *)(uintptr_t)key, (void *)(uintptr_t)keycode);
     SDL_InsertIntoHashTable(keymap->keycode_to_scancode, (void *)(uintptr_t)keycode, (void *)(uintptr_t)key);
 }
@@ -192,10 +199,6 @@ SDL_Keycode SDL_GetDefaultKeyFromScancode(SDL_Scancode scancode, SDL_Keymod mods
         return SDLK_UNKNOWN;
     }
 
-    if (modstate & SDL_KMOD_MODE) {
-        return SDLK_UNKNOWN;
-    }
-
     if (scancode < SDL_SCANCODE_A) {
         return SDLK_UNKNOWN;
     }
@@ -212,6 +215,9 @@ SDL_Keycode SDL_GetDefaultKeyFromScancode(SDL_Scancode scancode, SDL_Keymod mods
             shifted = !shifted;
         }
 #endif
+        if (modstate & SDL_KMOD_MODE) {
+            return SDLK_UNKNOWN;
+        }
         if (!shifted) {
             return (SDL_Keycode)('a' + scancode - SDL_SCANCODE_A);
         } else {
@@ -222,6 +228,9 @@ SDL_Keycode SDL_GetDefaultKeyFromScancode(SDL_Scancode scancode, SDL_Keymod mods
     if (scancode < SDL_SCANCODE_CAPSLOCK) {
         SDL_bool shifted = (modstate & SDL_KMOD_SHIFT) ? SDL_TRUE : SDL_FALSE;
 
+        if (modstate & SDL_KMOD_MODE) {
+            return SDLK_UNKNOWN;
+        }
         if (!shifted) {
             return normal_default_symbols[scancode - SDL_SCANCODE_1];
         } else {
@@ -250,15 +259,15 @@ SDL_Scancode SDL_GetDefaultScancodeFromKey(SDL_Keycode key, SDL_Keymod *modstate
         return (SDL_Scancode)(key & ~SDLK_SCANCODE_MASK);
     }
 
-    if (key >= SDLK_a && key <= SDLK_z) {
-        return (SDL_Scancode)(SDL_SCANCODE_A + key - SDLK_a);
+    if (key >= SDLK_A && key <= SDLK_Z) {
+        return (SDL_Scancode)(SDL_SCANCODE_A + key - SDLK_A);
     }
 
-    if (key >= SDLK_Z && key <= SDLK_Z) {
+    if (key >= 'A' && key <= 'Z') {
         if (modstate) {
             *modstate = SDL_KMOD_SHIFT;
         }
-        return (SDL_Scancode)(SDL_SCANCODE_A + key - SDLK_Z);
+        return (SDL_Scancode)(SDL_SCANCODE_A + key - 'Z');
     }
 
     for (int i = 0; i < SDL_arraysize(normal_default_symbols); ++i) {

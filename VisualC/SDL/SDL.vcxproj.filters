@@ -172,6 +172,9 @@
     <Filter Include="render\direct3d12">
       <UniqueIdentifier>{f48c2b17-1bee-4fec-a7c8-24cf619abe08}</UniqueIdentifier>
     </Filter>
+    <Filter Include="video\intrin">
+      <UniqueIdentifier>{653672cc-90ae-4eba-a256-6479f2c31804}</UniqueIdentifier>
+    </Filter>
     <Filter Include="main">
       <UniqueIdentifier>{00001967ea2801028a046a722a070000}</UniqueIdentifier>
     </Filter>
@@ -201,6 +204,9 @@
     </Filter>
     <Filter Include="video\offscreen">
       <UniqueIdentifier>{748cf015-00b8-4e71-ac48-02e947e4d93d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="main\windows">
+      <UniqueIdentifier>{00009d5ded166cc6c6680ec771a30000}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -865,6 +871,7 @@
     </ClInclude>
     <ClInclude Include="..\..\src\hidapi\SDL_hidapi_c.h" />
     <ClInclude Include="..\..\src\thread\generic\SDL_sysrwlock_c.h" />
+    <ClInclude Include="..\..\src\thread\generic\SDL_sysrwlock_c.h" />
     <ClInclude Include="..\..\src\video\yuv2rgb\yuv_rgb_common.h" />
     <ClInclude Include="..\..\src\video\yuv2rgb\yuv_rgb_internal.h" />
     <ClInclude Include="..\..\src\video\yuv2rgb\yuv_rgb_lsx.h" />
@@ -919,6 +926,12 @@
     <ClCompile Include="..\..\src\main\SDL_main_callbacks.c">
       <Filter>main</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\main\SDL_runapp.c">
+      <Filter>main</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\main\windows\SDL_sysmain_runapp.c">
+      <Filter>main\windows</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\SDL.c" />
     <ClCompile Include="..\..\src\SDL_assert.c" />
     <ClCompile Include="..\..\src\SDL_error.c" />
@@ -959,9 +972,6 @@
       <Filter>atomic</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\core\SDL_core_unsupported.c">
-      <Filter>core</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\core\SDL_runapp.c">
       <Filter>core</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\core\windows\SDL_hid.c">
@@ -1508,6 +1518,7 @@
     <ClCompile Include="..\..\src\stdlib\SDL_mslibc.c">
       <Filter>stdlib</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\thread\generic\SDL_sysrwlock.c" />
     <ClCompile Include="..\..\src\thread\generic\SDL_sysrwlock.c" />
     <ClCompile Include="..\..\src\video\yuv2rgb\yuv_rgb_lsx.c" />
     <ClCompile Include="..\..\src\video\yuv2rgb\yuv_rgb_sse.c" />

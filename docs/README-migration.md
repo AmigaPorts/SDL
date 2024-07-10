@@ -362,7 +362,7 @@ now looks like this:
     SDL_Keymod mod = event.key.mod;
 ```
 
-The keycode in key events is affected by modifiers by default. e.g. pressing the A key would generate the keycode `SDLK_a`, or 'a', and pressing it while holding the shift key would generate the keycode `SDLK_A`, or 'A'. This behavior can be customized with `SDL_HINT_KEYCODE_OPTIONS`.
+The keycode in key events is affected by modifiers by default. e.g. pressing the A key would generate the keycode `SDLK_A`, or 'a', and pressing it while holding the shift key would generate the keycode `SDLK_A`, or 'A'. This behavior can be customized with `SDL_HINT_KEYCODE_OPTIONS`.
 
 The gamepad event structures caxis, cbutton, cdevice, ctouchpad, and csensor have been renamed gaxis, gbutton, gdevice, gtouchpad, and gsensor.
 
@@ -975,6 +975,32 @@ The following symbols have been renamed:
 * SDLK_MEDIASELECT => SDLK_MEDIA_SELECT
 * SDLK_QUOTE => SDLK_APOSTROPHE
 * SDLK_QUOTEDBL => SDLK_DBLAPOSTROPHE
+* SDLK_a => SDLK_A
+* SDLK_b => SDLK_B
+* SDLK_c => SDLK_C
+* SDLK_d => SDLK_D
+* SDLK_e => SDLK_E
+* SDLK_f => SDLK_F
+* SDLK_g => SDLK_G
+* SDLK_h => SDLK_H
+* SDLK_i => SDLK_I
+* SDLK_j => SDLK_J
+* SDLK_k => SDLK_K
+* SDLK_l => SDLK_L
+* SDLK_m => SDLK_M
+* SDLK_n => SDLK_N
+* SDLK_o => SDLK_O
+* SDLK_p => SDLK_P
+* SDLK_q => SDLK_Q
+* SDLK_r => SDLK_R
+* SDLK_s => SDLK_S
+* SDLK_t => SDLK_T
+* SDLK_u => SDLK_U
+* SDLK_v => SDLK_V
+* SDLK_w => SDLK_W
+* SDLK_x => SDLK_X
+* SDLK_y => SDLK_Y
+* SDLK_z => SDLK_Z
 
 ## SDL_loadso.h
 
@@ -1957,6 +1983,7 @@ The following functions have been removed:
 * SDL_GetWindowData() - use SDL_GetWindowProperties() instead
 * SDL_SetWindowData() - use SDL_GetWindowProperties() instead
 * SDL_CreateWindowFrom() - use SDL_CreateWindowWithProperties() with the properties that allow you to wrap an existing window
+* SDL_SetWindowInputFocus() - use SDL_RaiseWindow() instead
 
 The SDL_Window id type is named SDL_WindowID
 
@@ -1981,9 +2008,11 @@ The following symbols have been renamed:
 * SDL_WINDOWEVENT_RESTORED => SDL_EVENT_WINDOW_RESTORED
 * SDL_WINDOWEVENT_SHOWN => SDL_EVENT_WINDOW_SHOWN
 * SDL_WINDOWEVENT_SIZE_CHANGED => SDL_EVENT_WINDOW_SIZE_CHANGED
-* SDL_WINDOWEVENT_TAKE_FOCUS => SDL_EVENT_WINDOW_TAKE_FOCUS
 * SDL_WINDOW_ALLOW_HIGHDPI => SDL_WINDOW_HIGH_PIXEL_DENSITY
 * SDL_WINDOW_INPUT_GRABBED => SDL_WINDOW_MOUSE_GRABBED
+
+The following symbols have been removed:
+* SDL_WINDOWEVENT_TAKE_FOCUS
 
 The following window operations are now considered to be asynchronous requests and should not be assumed to succeed unless
 a corresponding event has been received:
