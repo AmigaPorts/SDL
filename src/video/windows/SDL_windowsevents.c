@@ -43,7 +43,9 @@
 #include <tpcshrd.h>
 #endif /* HAVE_TPCSHRD_H */
 
-/* #define WMMSG_DEBUG */
+#if 0
+#define WMMSG_DEBUG
+#endif
 #ifdef WMMSG_DEBUG
 #include <stdio.h>
 #include "wmmsg.h"
@@ -1237,12 +1239,11 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         SDL_bool virtual_key = SDL_FALSE;
         Uint16 rawcode = 0;
         SDL_Scancode code = WindowsScanCodeToSDLScanCode(lParam, wParam, &rawcode, &virtual_key);
-        const Uint8 *keyboardState = SDL_GetKeyboardState(NULL);
 
         /* Detect relevant keyboard shortcuts */
-        if (keyboardState[SDL_SCANCODE_LALT] == SDL_PRESSED || keyboardState[SDL_SCANCODE_RALT] == SDL_PRESSED) {
+        if (code == SDL_SCANCODE_F4 && (SDL_GetModState() & SDL_KMOD_ALT)) {
             /* ALT+F4: Close window */
-            if (code == SDL_SCANCODE_F4 && ShouldGenerateWindowCloseOnAltF4()) {
+            if (ShouldGenerateWindowCloseOnAltF4()) {
                 SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_CLOSE_REQUESTED, 0, 0);
             }
         }
@@ -1285,9 +1286,9 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         } else {
             if (SDL_TextInputActive(data->window)) {
                 char text[5];
-                if (SDL_UCS4ToUTF8((Uint32)wParam, text) != text) {
-                    SDL_SendKeyboardText(text);
-                }
+                char *end = SDL_UCS4ToUTF8((Uint32)wParam, text);
+                *end = '\0';
+                SDL_SendKeyboardText(text);
             }
             returnCode = 0;
         }

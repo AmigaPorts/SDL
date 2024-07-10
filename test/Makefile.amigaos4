@@ -102,6 +102,7 @@ testaudioinfo: testaudioinfo.o
 
 testautomation: testautomation.o \
 		      testautomation_audio.o \
+		      testautomation_blit.o \
 		      testautomation_clipboard.o \
 		      testautomation_events.o \
 		      testautomation_guid.o \

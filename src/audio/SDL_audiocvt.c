@@ -29,39 +29,6 @@
 #define SDL_INT_MAX ((int)(~0u>>1))
 #endif
 
-/*
- * CHANNEL LAYOUTS AS SDL EXPECTS THEM:
- *
- * (Even if the platform expects something else later, that
- * SDL will swizzle between the app and the platform).
- *
- * Abbreviations:
- * - FRONT=single mono speaker
- * - FL=front left speaker
- * - FR=front right speaker
- * - FC=front center speaker
- * - BL=back left speaker
- * - BR=back right speaker
- * - SR=surround right speaker
- * - SL=surround left speaker
- * - BC=back center speaker
- * - LFE=low-frequency speaker
- *
- * These are listed in the order they are laid out in
- * memory, so "FL+FR" means "the front left speaker is
- * laid out in memory first, then the front right, then
- * it repeats for the next audio frame".
- *
- * 1 channel (mono) layout: FRONT
- * 2 channels (stereo) layout: FL+FR
- * 3 channels (2.1) layout: FL+FR+LFE
- * 4 channels (quad) layout: FL+FR+BL+BR
- * 5 channels (4.1) layout: FL+FR+LFE+BL+BR
- * 6 channels (5.1) layout: FL+FR+FC+LFE+BL+BR
- * 7 channels (6.1) layout: FL+FR+FC+LFE+BC+SL+SR
- * 8 channels (7.1) layout: FL+FR+FC+LFE+BL+BR+SL+SR
- */
-
 #ifdef SDL_SSE3_INTRINSICS
 // Convert from stereo to mono. Average left and right.
 static void SDL_TARGETING("sse3") SDL_ConvertStereoToMono_SSE3(float *dst, const float *src, int num_frames)
@@ -157,6 +124,69 @@ static SDL_bool SDL_IsSupportedChannelCount(const int channels)
     return ((channels >= 1) && (channels <= 8));
 }
 
+SDL_bool SDL_ChannelMapIsBogus(const Uint8 *map, int channels)
+{
+    if (map) {
+        for (int i = 0; i < channels; i++) {
+            if (map[i] >= ((Uint8) channels)) {
+                return SDL_TRUE;
+            }
+        }
+    }
+    return SDL_FALSE;
+}
+
+SDL_bool SDL_ChannelMapIsDefault(const Uint8 *map, int channels)
+{
+    if (map) {
+        for (int i = 0; i < channels; i++) {
+            if (map[i] != i) {
+                return SDL_FALSE;
+            }
+        }
+    }
+    return SDL_TRUE;
+}
+
+// Swizzle audio channels. src and dst can be the same pointer. It does not change the buffer size.
+static void SwizzleAudio(const int num_frames, void *dst, const void *src, int channels, const Uint8 *map, int bitsize)
+{
+    #define CHANNEL_SWIZZLE(bits) { \
+        Uint##bits *tdst = (Uint##bits *) dst; /* treat as UintX; we only care about moving bits and not the type here. */ \
+        const Uint##bits *tsrc = (const Uint##bits *) src; \
+        if (src != dst) {  /* don't need to copy to a temporary frame first. */ \
+            for (int i = 0; i < num_frames; i++, tsrc += channels, tdst += channels) { \
+                for (int ch = 0; ch < channels; ch++) { \
+                    tdst[ch] = tsrc[map[ch]]; \
+                } \
+            } \
+        } else { \
+            Uint##bits tmp[SDL_MAX_CHANNEL_MAP_SIZE]; \
+            SDL_zeroa(tmp); \
+            SDL_assert(SDL_arraysize(tmp) >= channels); \
+            for (int i = 0; i < num_frames; i++, tsrc += channels, tdst += channels) { \
+                for (int ch = 0; ch < channels; ch++) { \
+                    tmp[ch] = tsrc[map[ch]]; \
+                } \
+                for (int ch = 0; ch < channels; ch++) { \
+                    tdst[ch] = tmp[ch]; \
+                } \
+            } \
+        } \
+    }
+
+    switch (bitsize) {
+        case 8: CHANNEL_SWIZZLE(8); break;
+        case 16: CHANNEL_SWIZZLE(16); break;
+        case 32: CHANNEL_SWIZZLE(32); break;
+        // we don't currently have int64 or double audio datatypes, so no `case 64` for now.
+        default: SDL_assert(!"Unsupported audio datatype size"); break;
+    }
+
+    #undef CHANNEL_SWIZZLE
+}
+
+
 // This does type and channel conversions _but not resampling_ (resampling happens in SDL_AudioStream).
 // This does not check parameter validity, (beyond asserts), it expects you did that already!
 // All of this has to function as if src==dst==scratch (conversion in-place), but as a convenience
@@ -164,8 +194,14 @@ static SDL_bool SDL_IsSupportedChannelCount(const int channels)
 //
 // The scratch buffer must be able to store `num_frames * CalculateMaxSampleFrameSize(src_format, src_channels, dst_format, dst_channels)` bytes.
 // If the scratch buffer is NULL, this restriction applies to the output buffer instead.
-void ConvertAudio(int num_frames, const void *src, SDL_AudioFormat src_format, int src_channels,
-                  void *dst, SDL_AudioFormat dst_format, int dst_channels, void* scratch)
+//
+// Since this is a convenient point that audio goes through even if it doesn't need format conversion,
+// we also handle gain adjustment here, so we don't have to make another pass over the data later.
+// Strictly speaking, this is also a "conversion".  :)
+void ConvertAudio(int num_frames,
+                  const void *src, SDL_AudioFormat src_format, int src_channels, const Uint8 *src_map,
+                  void *dst, SDL_AudioFormat dst_format, int dst_channels, const Uint8 *dst_map,
+                  void* scratch, float gain)
 {
     SDL_assert(src != NULL);
     SDL_assert(dst != NULL);
@@ -188,11 +224,13 @@ void ConvertAudio(int num_frames, const void *src, SDL_AudioFormat src_format, i
     const int dst_sample_frame_size = (dst_bitsize / 8) * dst_channels;
 
     /* Type conversion goes like this now:
+        - swizzle through source channel map to "standard" layout.
         - byteswap to CPU native format first if necessary.
         - convert to native Float32 if necessary.
         - change channel count if necessary.
         - convert to final data format.
         - byteswap back to foreign format if necessary.
+        - swizzle through dest channel map from "standard" layout.
 
        The expectation is we can process data faster in float32
        (possibly with SIMD), and making several passes over the same
@@ -201,11 +239,20 @@ void ConvertAudio(int num_frames, const void *src, SDL_AudioFormat src_format, i
        (script-generated) custom converters for every data type and
        it was a bloat on SDL compile times and final library size. */
 
+    // swizzle input to "standard" format if necessary.
+    if (src_map) {
+        void* buf = scratch ? scratch : dst;  // use scratch if available, since it has to be big enough to hold src, unless it's NULL, then dst has to be.
+        SwizzleAudio(num_frames, buf, src, src_channels, src_map, src_bitsize);
+        src = buf;
+    }
+
     // see if we can skip float conversion entirely.
-    if (src_channels == dst_channels) {
+    if ((src_channels == dst_channels) && (gain == 1.0f)) {
         if (src_format == dst_format) {
             // nothing to do, we're already in the right format, just copy it over if necessary.
-            if (src != dst) {
+            if (dst_map) {
+                SwizzleAudio(num_frames, dst, src, dst_channels, dst_map, dst_bitsize);
+            } else if (src != dst) {
                 SDL_memcpy(dst, src, num_frames * dst_sample_frame_size);
             }
             return;
@@ -213,7 +260,11 @@ void ConvertAudio(int num_frames, const void *src, SDL_AudioFormat src_format, i
 
         // just a byteswap needed?
         if ((src_format ^ dst_format) == SDL_AUDIO_MASK_BIG_ENDIAN) {
-            ConvertAudioSwapEndian(dst, src, num_frames * src_channels, src_bitsize);
+            if (dst_map) {  // do this first, in case we duplicate channels, we can avoid an extra copy if src != dst.
+                SwizzleAudio(num_frames, dst, src, dst_channels, dst_map, dst_bitsize);
+                src = dst;
+            }
+            ConvertAudioSwapEndian(dst, src, num_frames * dst_channels, dst_bitsize);
             return;  // all done.
         }
     }
@@ -230,6 +281,23 @@ void ConvertAudio(int num_frames, const void *src, SDL_AudioFormat src_format, i
     if (srcconvert) {
         void* buf = (channelconvert || dstconvert) ? scratch : dst;
         ConvertAudioToFloat((float *) buf, src, num_frames * src_channels, src_format);
+        src = buf;
+    }
+
+    // Gain adjustment
+    if (gain != 1.0f) {
+        float *buf = (float *)(dstconvert ? scratch : dst);
+        const int total_samples = num_frames * src_channels;
+        if (src == buf) {
+            for (int i = 0; i < total_samples; i++) {
+                buf[i] *= gain;
+            }
+        } else {
+            float *fsrc = (float *)src;
+            for (int i = 0; i < total_samples; i++) {
+                buf[i] = fsrc[i] * gain;
+            }
+        }
         src = buf;
     }
 
@@ -275,6 +343,10 @@ void ConvertAudio(int num_frames, const void *src, SDL_AudioFormat src_format, i
     }
 
     SDL_assert(src == dst);  // if we got here, we _had_ to have done _something_. Otherwise, we should have memcpy'd!
+
+    if (dst_map) {
+        SwizzleAudio(num_frames, dst, src, dst_channels, dst_map, dst_bitsize);
+    }
 }
 
 // Calculate the largest frame size needed to convert between the two formats.
@@ -304,7 +376,7 @@ static Sint64 GetAudioStreamResampleRate(SDL_AudioStream* stream, int src_freq, 
 
 static int UpdateAudioStreamInputSpec(SDL_AudioStream *stream, const SDL_AudioSpec *spec)
 {
-    if (AUDIO_SPECS_EQUAL(stream->input_spec, *spec)) {
+    if (SDL_AudioSpecsEqual(&stream->input_spec, spec)) {
         return 0;
     }
 
@@ -328,6 +400,7 @@ SDL_AudioStream *SDL_CreateAudioStream(const SDL_AudioSpec *src_spec, const SDL_
     }
 
     retval->freq_ratio = 1.0f;
+    retval->gain = 1.0f;
     retval->queue = SDL_CreateAudioQueue(8192);
 
     if (!retval->queue) {
@@ -451,6 +524,8 @@ int SDL_SetAudioStreamFormat(SDL_AudioStream *stream, const SDL_AudioSpec *src_s
             return SDL_SetError("Source rate is too low");
         } else if (src_spec->freq > max_freq) {
             return SDL_SetError("Source rate is too high");
+        } else if (src_spec->use_channel_map && SDL_ChannelMapIsBogus(src_spec->channel_map, src_spec->channels)) {
+            return SDL_SetError("Source channel map is invalid");
         }
     }
 
@@ -465,6 +540,8 @@ int SDL_SetAudioStreamFormat(SDL_AudioStream *stream, const SDL_AudioSpec *src_s
             return SDL_SetError("Destination rate is too low");
         } else if (dst_spec->freq > max_freq) {
             return SDL_SetError("Destination rate is too high");
+        } else if (dst_spec->use_channel_map && SDL_ChannelMapIsBogus(dst_spec->channel_map, dst_spec->channels)) {
+            return SDL_SetError("Destination channel map is invalid");
         }
     }
 
@@ -481,11 +558,20 @@ int SDL_SetAudioStreamFormat(SDL_AudioStream *stream, const SDL_AudioSpec *src_s
 
     if (src_spec) {
         SDL_copyp(&stream->src_spec, src_spec);
+        if (src_spec->use_channel_map && SDL_ChannelMapIsDefault(src_spec->channel_map, src_spec->channels)) {
+            stream->src_spec.use_channel_map = SDL_FALSE;  // turn off the channel map, as this is just unnecessary work.
+        }
     }
 
     if (dst_spec) {
         SDL_copyp(&stream->dst_spec, dst_spec);
+        if (dst_spec->use_channel_map && !stream->src_spec.use_channel_map && SDL_ChannelMapIsDefault(dst_spec->channel_map, dst_spec->channels)) {
+            stream->dst_spec.use_channel_map = SDL_FALSE;  // turn off the channel map, as this is just unnecessary work.
+        }
     }
+
+    // !!! FIXME: decide if the source and dest channel maps would swizzle us back to the starting order and just turn them both off.
+    // !!! FIXME:  (but in this case, you can only do it if the channel count isn't changing, because source order is important to that.)
 
     SDL_UnlockMutex(stream->lock);
 
@@ -524,6 +610,35 @@ int SDL_SetAudioStreamFrequencyRatio(SDL_AudioStream *stream, float freq_ratio)
 
     SDL_LockMutex(stream->lock);
     stream->freq_ratio = freq_ratio;
+    SDL_UnlockMutex(stream->lock);
+
+    return 0;
+}
+
+float SDL_GetAudioStreamGain(SDL_AudioStream *stream)
+{
+    if (!stream) {
+        SDL_InvalidParamError("stream");
+        return -1.0f;
+    }
+
+    SDL_LockMutex(stream->lock);
+    const float gain = stream->gain;
+    SDL_UnlockMutex(stream->lock);
+
+    return gain;
+}
+
+int SDL_SetAudioStreamGain(SDL_AudioStream *stream, float gain)
+{
+    if (!stream) {
+        return SDL_InvalidParamError("stream");
+    } else if (gain < 0.0f) {
+        return SDL_InvalidParamError("gain");
+    }
+
+    SDL_LockMutex(stream->lock);
+    stream->gain = gain;
     SDL_UnlockMutex(stream->lock);
 
     return 0;
@@ -756,7 +871,7 @@ static Sint64 GetAudioStreamHead(SDL_AudioStream* stream, SDL_AudioSpec* out_spe
 
 // You must hold stream->lock and validate your parameters before calling this!
 // Enough input data MUST be available!
-static int GetAudioStreamDataInternal(SDL_AudioStream *stream, void *buf, int output_frames)
+static int GetAudioStreamDataInternal(SDL_AudioStream *stream, void *buf, int output_frames, float gain)
 {
     const SDL_AudioSpec* src_spec = &stream->input_spec;
     const SDL_AudioSpec* dst_spec = &stream->dst_spec;
@@ -766,6 +881,7 @@ static int GetAudioStreamDataInternal(SDL_AudioStream *stream, void *buf, int ou
 
     const SDL_AudioFormat dst_format = dst_spec->format;
     const int dst_channels = dst_spec->channels;
+    const Uint8 *dst_map = dst_spec->use_channel_map ? dst_spec->channel_map : NULL;
 
     const int max_frame_size = CalculateMaxFrameSize(src_format, src_channels, dst_format, dst_channels);
     const Sint64 resample_rate = GetAudioStreamResampleRate(stream, src_spec->freq, stream->resample_offset);
@@ -789,7 +905,7 @@ static int GetAudioStreamDataInternal(SDL_AudioStream *stream, void *buf, int ou
             }
         }
 
-        if (SDL_ReadFromAudioQueue(stream->queue, buf, dst_format, dst_channels, 0, output_frames, 0, work_buffer) != buf) {
+        if (SDL_ReadFromAudioQueue(stream->queue, buf, dst_format, dst_channels, dst_map, 0, output_frames, 0, work_buffer, gain) != buf) {
             return SDL_SetError("Not enough data in queue");
         }
 
@@ -854,9 +970,15 @@ static int GetAudioStreamDataInternal(SDL_AudioStream *stream, void *buf, int ou
         return -1;
     }
 
+    // adjust gain either before resampling or after, depending on which point has less
+    // samples to process.
+    const float preresample_gain = (input_frames > output_frames) ? 1.0f : gain;
+    const float postresample_gain = (input_frames > output_frames) ? gain : 1.0f;
+
+    // (dst channel map is NULL because we'll do the final swizzle on ConvertAudio after resample.)
     const Uint8* input_buffer = SDL_ReadFromAudioQueue(stream->queue,
-        NULL, resample_format, resample_channels,
-        padding_frames, input_frames, padding_frames, work_buffer);
+        NULL, resample_format, resample_channels, NULL,
+        padding_frames, input_frames, padding_frames, work_buffer, preresample_gain);
 
     if (!input_buffer) {
         return SDL_SetError("Not enough data in queue (resample)");
@@ -872,14 +994,14 @@ static int GetAudioStreamDataInternal(SDL_AudioStream *stream, void *buf, int ou
                   (float*) resample_buffer, output_frames,
                   resample_rate, &stream->resample_offset);
 
-    // Convert to the final format, if necessary
-    ConvertAudio(output_frames, resample_buffer, resample_format, resample_channels, buf, dst_format, dst_channels, work_buffer);
+    // Convert to the final format, if necessary (src channel map is NULL because SDL_ReadFromAudioQueue already handled this).
+    ConvertAudio(output_frames, resample_buffer, resample_format, resample_channels, NULL, buf, dst_format, dst_channels, dst_map, work_buffer, postresample_gain);
 
     return 0;
 }
 
 // get converted/resampled data from the stream
-int SDL_GetAudioStreamData(SDL_AudioStream *stream, void *voidbuf, int len)
+int SDL_GetAudioStreamDataAdjustGain(SDL_AudioStream *stream, void *voidbuf, int len, float extra_gain)
 {
     Uint8 *buf = (Uint8 *) voidbuf;
 
@@ -904,6 +1026,7 @@ int SDL_GetAudioStreamData(SDL_AudioStream *stream, void *voidbuf, int len)
         return -1;
     }
 
+    const float gain = stream->gain * extra_gain;
     const int dst_frame_size = SDL_AUDIO_FRAMESIZE(stream->dst_spec);
 
     len -= len % dst_frame_size;  // chop off any fractional sample frame.
@@ -963,7 +1086,7 @@ int SDL_GetAudioStreamData(SDL_AudioStream *stream, void *voidbuf, int len)
         output_frames = SDL_min(output_frames, chunk_size);
         output_frames = (int) SDL_min(output_frames, available_frames);
 
-        if (GetAudioStreamDataInternal(stream, &buf[total], output_frames) != 0) {
+        if (GetAudioStreamDataInternal(stream, &buf[total], output_frames, gain) != 0) {
             total = total ? total : -1;
             break;
         }
@@ -978,6 +1101,11 @@ int SDL_GetAudioStreamData(SDL_AudioStream *stream, void *voidbuf, int len)
 #endif
 
     return total;
+}
+
+int SDL_GetAudioStreamData(SDL_AudioStream *stream, void *voidbuf, int len)
+{
+    return SDL_GetAudioStreamDataAdjustGain(stream, voidbuf, len, 1.0f);
 }
 
 // number of converted/resampled bytes available for output

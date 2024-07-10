@@ -292,7 +292,6 @@ dep_option(SDL_MMX                 "Use MMX assembly routines" ON "SDL_ASSEMBLY;
 dep_option(SDL_ALTIVEC             "Use Altivec assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_POWERPC32 OR SDL_CPU_POWERPC64" OFF)
 dep_option(SDL_ARMSIMD             "Use SIMD assembly blitters on ARM" OFF "SDL_ASSEMBLY;SDL_CPU_ARM32" OFF)
 dep_option(SDL_ARMNEON             "Use NEON assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_ARM32 OR SDL_CPU_ARM64" OFF)
-dep_option(SDL_ARMNEON_BLITTERS    "Use NEON assembly blitters on ARM32" OFF "SDL_VIDEO;SDL_ASSEMBLY;SDL_ARMNEON;SDL_CPU_ARM32" OFF)
 dep_option(SDL_LSX                 "Use LSX assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_LOONGARCH64" OFF)
 dep_option(SDL_LASX                "Use LASX assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_LOONGARCH64" OFF)
 
@@ -880,67 +879,6 @@ if(SDL_ASSEMBLY)
       cmake_pop_check_state()
       if(COMPILER_SUPPORTS_LASX AND HAVE_LASXINTRIN_H)
         set(HAVE_LASX TRUE)
-      endif()
-    endif()
-
-    if(SDL_ARMSIMD)
-      cmake_push_check_state()
-      string(APPEND CMAKE_REQUIRED_FLAGS " -x assembler-with-cpp")
-      list(APPEND CMAKE_REQUIRED_LINK_OPTIONS -x none)
-      check_c_source_compiles("
-        .text
-        .arch armv6
-        .object_arch armv4
-        .arm
-        .altmacro
-        #ifndef __ARM_EABI__
-        #error EABI is required (to be sure that calling conventions are compatible)
-        #endif
-        main:
-        .global main
-        pld [r0]
-        uqadd8 r0, r0, r0
-      " ARMSIMD_FOUND)
-      cmake_pop_check_state()
-
-      if(ARMSIMD_FOUND)
-        set(HAVE_ARMSIMD TRUE)
-        set(SDL_ARM_SIMD_BLITTERS 1)
-        enable_language(ASM)
-        sdl_glob_sources("${SDL3_SOURCE_DIR}/src/video/arm/pixman-arm-simd*.S")
-        set_property(SOURCE ${ARMSIMD_SOURCES} APPEND PROPERTY COMPILE_OPTIONS -x assembler-with-cpp)
-        set(WARN_ABOUT_ARM_SIMD_ASM_MIT TRUE)
-      endif()
-    endif()
-
-    if(SDL_ARMNEON_BLITTERS)
-      cmake_push_check_state()
-      string(APPEND CMAKE_REQUIRED_FLAGS " -x assembler-with-cpp")
-      list(APPEND CMAKE_REQUIRED_LINK_OPTIONS -x none)
-      check_c_source_compiles("
-        .text
-        .fpu neon
-        .arch armv7a
-        .object_arch armv4
-        .eabi_attribute 10, 0
-        .arm
-        .altmacro
-        #ifndef __ARM_EABI__
-        #error EABI is required (to be sure that calling conventions are compatible)
-        #endif
-        main:
-        .global main
-        pld [r0]
-        vmovn.u16 d0, q0
-      " COMPILER_SUPPORTS_ARMNEON_ASSEMBLY)
-      cmake_pop_check_state()
-      if(COMPILER_SUPPORTS_ARMNEON_ASSEMBLY)
-        set(HAVE_ARMNEON_BLITTERS TRUE)
-        set(SDL_ARM_NEON_BLITTERS 1)
-        enable_language(ASM)
-        sdl_glob_sources("${SDL3_SOURCE_DIR}/src/video/arm/pixman-arm-neon*.S")
-        set_property(SOURCE ${ARMNEON_SOURCES} APPEND PROPERTY COMPILE_OPTIONS -x assembler-with-cpp)
-        set(WARN_ABOUT_ARM_NEON_ASM_MIT TRUE)
       endif()
     endif()
 
@@ -1864,12 +1802,14 @@ elseif(WINDOWS)
     int main(int argc, char **argv) { return 0; }" HAVE_WIN32_CC)
 
   sdl_glob_sources("${SDL3_SOURCE_DIR}/src/core/windows/*.c")
+  sdl_glob_sources("${SDL3_SOURCE_DIR}/src/main/windows/*.c")
 
   if(WINDOWS_STORE)
     enable_language(CXX)
     sdl_glob_sources(
       "${SDL3_SOURCE_DIR}/src/core/winrt/*.c"
       "${SDL3_SOURCE_DIR}/src/core/winrt/*.cpp"
+      "${SDL3_SOURCE_DIR}/src/main/winrt/*.cpp"
     )
   endif()
 
@@ -2725,7 +2665,7 @@ elseif(VITA)
   sdl_compile_definitions(PRIVATE "__VITA__")
 
 elseif(PSP)
-  sdl_glob_sources("${SDL3_SOURCE_DIR}/src/core/psp/*.c")
+  sdl_glob_sources("${SDL3_SOURCE_DIR}/src/main/psp/*.c")
 
   if(SDL_AUDIO)
     set(SDL_AUDIO_DRIVER_PSP 1)
@@ -2794,7 +2734,7 @@ elseif(PS2)
   sdl_compile_definitions(PRIVATE "PS2" "__PS2__")
   sdl_include_directories(PRIVATE SYSTEM "$ENV{PS2SDK}/ports/include" "$ENV{PS2DEV}/gsKit/include")
 
-  sdl_glob_sources("${SDL3_SOURCE_DIR}/src/core/ps2/*.c")
+  sdl_glob_sources("${SDL3_SOURCE_DIR}/src/main/ps2/*.c")
 
   if(SDL_AUDIO)
     set(SDL_AUDIO_DRIVER_PS2 1)
@@ -2851,7 +2791,7 @@ elseif(PS2)
       ps2_drivers
   )
 elseif(N3DS)
-  sdl_glob_sources("${SDL3_SOURCE_DIR}/src/core/n3ds/*.c")
+  sdl_glob_sources("${SDL3_SOURCE_DIR}/src/main/n3ds/*.c")
 
   if(SDL_AUDIO)
     set(SDL_AUDIO_DRIVER_N3DS 1)

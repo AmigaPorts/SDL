@@ -1109,7 +1109,7 @@ static void Wayland_keymap_iter(struct xkb_keymap *keymap, xkb_keycode_t key, vo
 
             /* Note: The default SDL scancode table sets this to right alt instead of AltGr/Mode, so handle it separately. */
             if (syms[0] != XKB_KEY_ISO_Level3_Shift) {
-                keycode = SDL_GetDefaultKeyFromScancode(sc, SDL_KMOD_NONE);
+                keycode = SDL_GetDefaultKeyFromScancode(sc, sdlKeymap->modstate);
             } else {
                 keycode = SDLK_MODE;
             }
@@ -1558,7 +1558,6 @@ static void keyboard_handle_leave(void *data, struct wl_keyboard *keyboard,
 
     wind->keyboard_device = NULL;
     window = wind->sdlwindow;
-    window->flags &= ~SDL_WINDOW_MOUSE_CAPTURE;
 
     /* Stop key repeat before clearing keyboard focus */
     keyboard_repeat_clear(&input->keyboard_repeat);
