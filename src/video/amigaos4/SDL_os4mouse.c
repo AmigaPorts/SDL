@@ -81,7 +81,7 @@ OS4_CreateCursorInternal()
         SDL_CursorData *data = SDL_calloc(1, sizeof(SDL_CursorData));
 
         if (data) {
-            cursor->driverdata = data;
+            cursor->internal = data;
         } else {
             dprintf("Failed to create cursor data\n");
         }
@@ -100,8 +100,8 @@ OS4_CreateDefaultCursor()
 
     dprintf("%p\n", cursor);
 
-    if (cursor && cursor->driverdata) {
-        SDL_CursorData *data = cursor->driverdata;
+    if (cursor && cursor->internal) {
+        SDL_CursorData *data = cursor->internal;
 
         data->type = POINTERTYPE_NORMAL;
     }
@@ -150,7 +150,7 @@ OS4_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
 
     dprintf("Surface %p, cursor %p, hot_x %d, hot_y %d\n", surface, cursor, hot_x, hot_y);
 
-    if (cursor && cursor->driverdata) {
+    if (cursor && cursor->internal) {
         if (surface->w > 64) {
             dprintf("Invalid width %d\n", surface->w);
         } else if (surface->h > 64) {
@@ -177,7 +177,7 @@ OS4_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
 
             if (object) {
                 dprintf("Object %p\n", object);
-                SDL_CursorData *data = cursor->driverdata;
+                SDL_CursorData *data = cursor->internal;
                 data->object = object;
                 data->imageData = buffer;
             } else {
@@ -239,8 +239,8 @@ OS4_CreateSystemCursor(SDL_SystemCursor id)
 
     //dprintf("Called %d\n", id);
 
-    if (cursor && cursor->driverdata) {
-        SDL_CursorData *data = cursor->driverdata;
+    if (cursor && cursor->internal) {
+        SDL_CursorData *data = cursor->internal;
 
         data->type = OS4_MapCursorIdToNative(id);
     }
@@ -278,7 +278,7 @@ OS4_SetPointerForEachWindow(ULONG type, Object * object)
     SDL_Window *sdlwin;
 
     for (sdlwin = _this->windows; sdlwin; sdlwin = sdlwin->next) {
-        SDL_WindowData *data = sdlwin->driverdata;
+        SDL_WindowData *data = sdlwin->internal;
 
         OS4_SetPointerObjectOrTypeForWindow(data->syswin, type, object);
     }
@@ -312,7 +312,7 @@ OS4_RestoreSdlCursorForWindow(struct Window * window)
     if (mouse->cursor_shown) {
         SDL_Cursor *cursor = mouse->cur_cursor;
         if (cursor) {
-            SDL_CursorData *data = cursor->driverdata;
+            SDL_CursorData *data = cursor->internal;
             if (data) {
                 type = data->type;
                 object = data->object;
@@ -323,7 +323,7 @@ OS4_RestoreSdlCursorForWindow(struct Window * window)
             dprintf("NULL cursor\n");
         }
     } else {
-        SDL_CursorData *data = hiddenCursor->driverdata;
+        SDL_CursorData *data = hiddenCursor->internal;
         if (data) {
             object = data->object;
         } else {
@@ -341,7 +341,7 @@ OS4_ShowCursor(SDL_Cursor * cursor)
     Object *object = NULL;
 
     if (cursor) {
-        SDL_CursorData *data = cursor->driverdata;
+        SDL_CursorData *data = cursor->internal;
 
         //dprintf("Called %p %p\n", cursor, data);
 
@@ -358,7 +358,7 @@ OS4_ShowCursor(SDL_Cursor * cursor)
         type = POINTERTYPE_NONE;
 
         if (hiddenCursor) {
-            SDL_CursorData *data = hiddenCursor->driverdata;
+            SDL_CursorData *data = hiddenCursor->internal;
 
             if (data) {
                 object = data->object;
@@ -374,7 +374,7 @@ OS4_ShowCursor(SDL_Cursor * cursor)
 static void
 OS4_FreeCursor(SDL_Cursor * cursor)
 {
-    SDL_CursorData *data = cursor->driverdata;
+    SDL_CursorData *data = cursor->internal;
 
     dprintf("Called %p\n", cursor);
 
@@ -397,7 +397,7 @@ OS4_FreeCursor(SDL_Cursor * cursor)
         }
 
         SDL_free(data);
-        cursor->driverdata = NULL;
+        cursor->internal = NULL;
     }
 }
 
@@ -416,7 +416,7 @@ static int
 OS4_WarpMouseInternal(struct Screen *screen, float x, float y)
 {
     SDL_VideoDevice *device = SDL_GetVideoDevice();
-    SDL_VideoData *videoData = device->driverdata;
+    SDL_VideoData *videoData = device->internal;
     int result = -1;
 
     if (videoData->inputReq != NULL) {
@@ -475,7 +475,7 @@ OS4_WarpMouseGlobal(float x, float y)
 static int
 OS4_WarpMouse(SDL_Window * window, float x, float y)
 {
-    SDL_WindowData *winData = window->driverdata;
+    SDL_WindowData *winData = window->internal;
     struct Window *syswin = winData->syswin;
 
     SDL_bool relativeMouseMode = SDL_GetRelativeMouseMode();

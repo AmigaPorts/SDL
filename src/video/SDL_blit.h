@@ -28,18 +28,20 @@ extern const Uint8 *SDL_expand_byte[9];
 extern const Uint16 SDL_expand_byte_10[];
 
 /* SDL blit copy flags */
-#define SDL_COPY_MODULATE_COLOR 0x00000001
-#define SDL_COPY_MODULATE_ALPHA 0x00000002
-#define SDL_COPY_BLEND          0x00000010
-#define SDL_COPY_ADD            0x00000020
-#define SDL_COPY_MOD            0x00000040
-#define SDL_COPY_MUL            0x00000080
-#define SDL_COPY_COLORKEY       0x00000100
-#define SDL_COPY_NEAREST        0x00000200
-#define SDL_COPY_RLE_DESIRED    0x00001000
-#define SDL_COPY_RLE_COLORKEY   0x00002000
-#define SDL_COPY_RLE_ALPHAKEY   0x00004000
-#define SDL_COPY_RLE_MASK       (SDL_COPY_RLE_DESIRED | SDL_COPY_RLE_COLORKEY | SDL_COPY_RLE_ALPHAKEY)
+#define SDL_COPY_MODULATE_COLOR         0x00000001
+#define SDL_COPY_MODULATE_ALPHA         0x00000002
+#define SDL_COPY_BLEND                  0x00000010
+#define SDL_COPY_BLEND_PREMULTIPLIED    0x00000020
+#define SDL_COPY_ADD                    0x00000040
+#define SDL_COPY_ADD_PREMULTIPLIED      0x00000080
+#define SDL_COPY_MOD                    0x00000100
+#define SDL_COPY_MUL                    0x00000200
+#define SDL_COPY_COLORKEY               0x00000400
+#define SDL_COPY_NEAREST                0x00000800
+#define SDL_COPY_RLE_DESIRED            0x00001000
+#define SDL_COPY_RLE_COLORKEY           0x00002000
+#define SDL_COPY_RLE_ALPHAKEY           0x00004000
+#define SDL_COPY_RLE_MASK               (SDL_COPY_RLE_DESIRED | SDL_COPY_RLE_COLORKEY | SDL_COPY_RLE_ALPHAKEY)
 
 /* SDL blit CPU flags */
 #define SDL_CPU_ANY                0x00000000
@@ -61,8 +63,10 @@ typedef struct
     int dst_w, dst_h;
     int dst_pitch;
     int dst_skip;
-    SDL_PixelFormat *src_fmt;
-    SDL_PixelFormat *dst_fmt;
+    const SDL_PixelFormatDetails *src_fmt;
+    const SDL_Palette *src_pal;
+    const SDL_PixelFormatDetails *dst_fmt;
+    const SDL_Palette *dst_pal;
     Uint8 *table;
     int flags;
     Uint32 colorkey;
@@ -73,8 +77,8 @@ typedef void (*SDL_BlitFunc)(SDL_BlitInfo *info);
 
 typedef struct
 {
-    Uint32 src_format;
-    Uint32 dst_format;
+    SDL_PixelFormat src_format;
+    SDL_PixelFormat dst_format;
     int flags;
     unsigned int cpu;
     SDL_BlitFunc func;
@@ -83,10 +87,8 @@ typedef struct
 typedef int (SDLCALL *SDL_Blit) (struct SDL_Surface *src, const SDL_Rect *srcrect, struct SDL_Surface *dst, const SDL_Rect *dstrect);
 
 /* Blit mapping definition */
-/* typedef'ed in SDL_surface.h */
-struct SDL_BlitMap
+typedef struct SDL_BlitMap
 {
-    SDL_Surface *dst;
     int identity;
     SDL_Blit blit;
     void *data;
@@ -96,10 +98,10 @@ struct SDL_BlitMap
        an invalid mapping */
     Uint32 dst_palette_version;
     Uint32 src_palette_version;
-};
+} SDL_BlitMap;
 
 /* Functions found in SDL_blit.c */
-extern int SDL_CalculateBlit(SDL_Surface *surface);
+extern int SDL_CalculateBlit(SDL_Surface *surface, SDL_Surface *dst);
 
 /* Functions found in SDL_blit_*.c */
 extern SDL_BlitFunc SDL_CalculateBlit0(SDL_Surface *surface);
@@ -122,21 +124,21 @@ extern SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface);
 /* Load pixel of the specified format from a buffer and get its R-G-B values */
 #define RGB_FROM_PIXEL(Pixel, fmt, r, g, b)                                     \
     {                                                                           \
-        r = SDL_expand_byte[fmt->Rloss][((Pixel & fmt->Rmask) >> fmt->Rshift)]; \
-        g = SDL_expand_byte[fmt->Gloss][((Pixel & fmt->Gmask) >> fmt->Gshift)]; \
-        b = SDL_expand_byte[fmt->Bloss][((Pixel & fmt->Bmask) >> fmt->Bshift)]; \
+        r = SDL_expand_byte[fmt->Rbits][((Pixel & fmt->Rmask) >> fmt->Rshift)]; \
+        g = SDL_expand_byte[fmt->Gbits][((Pixel & fmt->Gmask) >> fmt->Gshift)]; \
+        b = SDL_expand_byte[fmt->Bbits][((Pixel & fmt->Bmask) >> fmt->Bshift)]; \
     }
 #define RGB_FROM_RGB565(Pixel, r, g, b)                   \
     {                                                     \
-        r = SDL_expand_byte[3][((Pixel & 0xF800) >> 11)]; \
-        g = SDL_expand_byte[2][((Pixel & 0x07E0) >> 5)];  \
-        b = SDL_expand_byte[3][(Pixel & 0x001F)];         \
+        r = SDL_expand_byte[5][((Pixel & 0xF800) >> 11)]; \
+        g = SDL_expand_byte[6][((Pixel & 0x07E0) >> 5)];  \
+        b = SDL_expand_byte[5][(Pixel & 0x001F)];         \
     }
 #define RGB_FROM_RGB555(Pixel, r, g, b)                   \
     {                                                     \
-        r = SDL_expand_byte[3][((Pixel & 0x7C00) >> 10)]; \
-        g = SDL_expand_byte[3][((Pixel & 0x03E0) >> 5)];  \
-        b = SDL_expand_byte[3][(Pixel & 0x001F)];         \
+        r = SDL_expand_byte[5][((Pixel & 0x7C00) >> 10)]; \
+        g = SDL_expand_byte[5][((Pixel & 0x03E0) >> 5)];  \
+        b = SDL_expand_byte[5][(Pixel & 0x001F)];         \
     }
 #define RGB_FROM_XRGB8888(Pixel, r, g, b) \
     {                                   \
@@ -216,12 +218,16 @@ extern SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface);
     } while (0)
 
 /* Assemble R-G-B values into a specified pixel format and store them */
-#define PIXEL_FROM_RGB(Pixel, fmt, r, g, b)          \
-    {                                                \
-        Pixel = ((r >> fmt->Rloss) << fmt->Rshift) | \
-                ((g >> fmt->Gloss) << fmt->Gshift) | \
-                ((b >> fmt->Bloss) << fmt->Bshift) | \
-                fmt->Amask;                          \
+#define PIXEL_FROM_RGB(Pixel, fmt, r, g, b)                 \
+    {                                                       \
+        Pixel = ((r >> (8 - fmt->Rbits)) << fmt->Rshift) |  \
+                ((g >> (8 - fmt->Gbits)) << fmt->Gshift) |  \
+                ((b >> (8 - fmt->Bbits)) << fmt->Bshift) |  \
+                fmt->Amask;                                 \
+    }
+#define RGB332_FROM_RGB(Pixel, r, g, b)                        \
+    {                                                          \
+        Pixel = (Uint8)(((r >> 5) << 5) | ((g >> 5) << 2) | (b >> 6)); \
     }
 #define RGB565_FROM_RGB(Pixel, r, g, b)                        \
     {                                                          \
@@ -334,10 +340,10 @@ extern SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface);
 /* FIXME: Should we rescale alpha into 0..255 here? */
 #define RGBA_FROM_PIXEL(Pixel, fmt, r, g, b, a)                                 \
     {                                                                           \
-        r = SDL_expand_byte[fmt->Rloss][((Pixel & fmt->Rmask) >> fmt->Rshift)]; \
-        g = SDL_expand_byte[fmt->Gloss][((Pixel & fmt->Gmask) >> fmt->Gshift)]; \
-        b = SDL_expand_byte[fmt->Bloss][((Pixel & fmt->Bmask) >> fmt->Bshift)]; \
-        a = SDL_expand_byte[fmt->Aloss][((Pixel & fmt->Amask) >> fmt->Ashift)]; \
+        r = SDL_expand_byte[fmt->Rbits][((Pixel & fmt->Rmask) >> fmt->Rshift)]; \
+        g = SDL_expand_byte[fmt->Gbits][((Pixel & fmt->Gmask) >> fmt->Gshift)]; \
+        b = SDL_expand_byte[fmt->Bbits][((Pixel & fmt->Bmask) >> fmt->Bshift)]; \
+        a = SDL_expand_byte[fmt->Abits][((Pixel & fmt->Amask) >> fmt->Ashift)]; \
     }
 #define RGBA_FROM_8888(Pixel, fmt, r, g, b, a)   \
     {                                            \
@@ -379,7 +385,7 @@ extern SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface);
         r = ((Pixel >> 22) & 0xFF);              \
         g = ((Pixel >> 12) & 0xFF);              \
         b = ((Pixel >> 2) & 0xFF);               \
-        a = SDL_expand_byte[6][(Pixel >> 30)];   \
+        a = SDL_expand_byte[2][(Pixel >> 30)];   \
     }
 #define RGBAFLOAT_FROM_ARGB2101010(Pixel, r, g, b, a)   \
     {                                                   \
@@ -393,7 +399,7 @@ extern SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface);
         r = ((Pixel >> 2) & 0xFF);               \
         g = ((Pixel >> 12) & 0xFF);              \
         b = ((Pixel >> 22) & 0xFF);              \
-        a = SDL_expand_byte[6][(Pixel >> 30)];   \
+        a = SDL_expand_byte[2][(Pixel >> 30)];   \
     }
 #define RGBAFLOAT_FROM_ABGR2101010(Pixel, r, g, b, a)   \
     {                                                   \
@@ -444,12 +450,12 @@ extern SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface);
     } while (0)
 
 /* FIXME: this isn't correct, especially for Alpha (maximum != 255) */
-#define PIXEL_FROM_RGBA(Pixel, fmt, r, g, b, a)      \
-    {                                                \
-        Pixel = ((r >> fmt->Rloss) << fmt->Rshift) | \
-                ((g >> fmt->Gloss) << fmt->Gshift) | \
-                ((b >> fmt->Bloss) << fmt->Bshift) | \
-                ((a >> fmt->Aloss) << fmt->Ashift);  \
+#define PIXEL_FROM_RGBA(Pixel, fmt, r, g, b, a)             \
+    {                                                       \
+        Pixel = ((r >> (8 - fmt->Rbits)) << fmt->Rshift) |  \
+                ((g >> (8 - fmt->Gbits)) << fmt->Gshift) |  \
+                ((b >> (8 - fmt->Bbits)) << fmt->Bshift) |  \
+                ((a >> (8 - fmt->Abits)) << fmt->Ashift);   \
     }
 #define ASSEMBLE_RGBA(buf, bpp, fmt, r, g, b, a)      \
     {                                                 \
@@ -712,5 +718,7 @@ extern SDL_BlitFunc SDL_CalculateBlitA(SDL_Surface *surface);
 #if defined(_MSC_VER) && (_MSC_VER >= 600)
 #pragma warning(disable : 4244) /* '=': conversion from 'X' to 'Y', possible loss of data */
 #endif
+
+#include "SDL_surface_c.h"
 
 #endif /* SDL_blit_h_ */

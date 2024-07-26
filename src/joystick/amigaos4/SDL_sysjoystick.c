@@ -472,7 +472,7 @@ AMIGAINPUT_Quit(void)
     AMIGAINPUT_CloseLibrary();
 }
 
-static SDL_JoystickGUID
+static SDL_GUID
 AMIGAINPUT_GetDeviceGUID(int device_index)
 {
     Uint16 vendor = 0;

@@ -24,7 +24,6 @@
 #ifdef SDL_VIDEO_DRIVER_WAYLAND
 
 #include "../../core/unix/SDL_poll.h"
-#include "../../core/unix/SDL_uri_decode.h"
 #include "../../events/SDL_events_c.h"
 #include "../../events/SDL_scancode_tables_c.h"
 #include "../../core/linux/SDL_system_theme.h"
@@ -77,6 +76,9 @@
 /* Keyboard and mouse names to match XWayland */
 #define WAYLAND_DEFAULT_KEYBOARD_NAME "Virtual core keyboard"
 #define WAYLAND_DEFAULT_POINTER_NAME "Virtual core pointer"
+
+/* Focus clickthrough timeout */
+#define WAYLAND_FOCUS_CLICK_TIMEOUT_NS SDL_MS_TO_NS(10)
 
 struct SDL_WaylandTouchPoint
 {
@@ -343,7 +345,7 @@ static struct wl_callback_listener sync_listener = {
 
 void Wayland_SendWakeupEvent(SDL_VideoDevice *_this, SDL_Window *window)
 {
-    SDL_VideoData *d = _this->driverdata;
+    SDL_VideoData *d = _this->internal;
 
     /* Queue a sync event to unblock the event queue fd if it's empty and being waited on.
      * TODO: Maybe use a pipe to avoid the compositor roundtrip?
@@ -373,7 +375,7 @@ static int dispatch_queued_events(SDL_VideoData *viddata)
 
 int Wayland_WaitEventTimeout(SDL_VideoDevice *_this, Sint64 timeoutNS)
 {
-    SDL_VideoData *d = _this->driverdata;
+    SDL_VideoData *d = _this->internal;
     struct SDL_WaylandInput *input = d->input;
     SDL_bool key_repeat_active = SDL_FALSE;
 
@@ -449,7 +451,7 @@ int Wayland_WaitEventTimeout(SDL_VideoDevice *_this, Sint64 timeoutNS)
 
 void Wayland_PumpEvents(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *d = _this->driverdata;
+    SDL_VideoData *d = _this->internal;
     struct SDL_WaylandInput *input = d->input;
     int err;
 
@@ -695,6 +697,7 @@ static void pointer_handle_button_common(struct SDL_WaylandInput *input, uint32_
     SDL_WindowData *window = input->pointer_focus;
     enum wl_pointer_button_state state = state_w;
     uint32_t sdl_button;
+    SDL_bool ignore_click = SDL_FALSE;
 
     if (window) {
         SDL_VideoData *viddata = window->waylandData;
@@ -721,11 +724,21 @@ static void pointer_handle_button_common(struct SDL_WaylandInput *input, uint32_
             return;
         }
 
-        /* Wayland won't let you "capture" the mouse, but it will
-           automatically track the mouse outside the window if you
-           drag outside of it, until you let go of all buttons (even
-           if you add or remove presses outside the window, as long
-           as any button is still down, the capture remains) */
+        /* Possibly ignore this click if it was to gain focus. */
+        if (window->last_focus_event_time_ns) {
+            if (state == WL_POINTER_BUTTON_STATE_PRESSED &&
+                (SDL_GetTicksNS() - window->last_focus_event_time_ns) < WAYLAND_FOCUS_CLICK_TIMEOUT_NS) {
+                ignore_click = !SDL_GetHintBoolean(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, SDL_FALSE);
+            }
+
+            window->last_focus_event_time_ns = 0;
+        }
+
+        /* Wayland won't let you "capture" the mouse, but it will automatically track
+         * the mouse outside the window if you drag outside of it, until you let go
+         * of all buttons (even if you add or remove presses outside the window, as
+         * long as any button is still down, the capture remains).
+         */
         if (state) { /* update our mask of currently-pressed buttons */
             input->buttons_pressed |= SDL_BUTTON(sdl_button);
         } else {
@@ -745,8 +758,10 @@ static void pointer_handle_button_common(struct SDL_WaylandInput *input, uint32_
             Wayland_UpdateImplicitGrabSerial(input, serial);
         }
 
-        SDL_SendMouseButton(Wayland_GetPointerTimestamp(input, time), window->sdlwindow, input->pointer_id,
-                            state ? SDL_PRESSED : SDL_RELEASED, sdl_button);
+        if (!ignore_click) {
+            SDL_SendMouseButton(Wayland_GetPointerTimestamp(input, time), window->sdlwindow, input->pointer_id,
+                                state ? SDL_PRESSED : SDL_RELEASED, sdl_button);
+        }
     }
 }
 
@@ -1517,6 +1532,8 @@ static void keyboard_handle_enter(void *data, struct wl_keyboard *keyboard,
     }
 #endif
 
+    window->last_focus_event_time_ns = SDL_GetTicksNS();
+
     wl_array_for_each (key, keys) {
         const SDL_Scancode scancode = Wayland_get_scancode_from_key(input, *key + 8);
         const SDL_Keycode keycode = SDL_GetKeyFromScancode(scancode, SDL_KMOD_NONE);
@@ -1875,10 +1892,10 @@ SDL_WaylandDataSource *Wayland_data_source_create(SDL_VideoDevice *_this)
     SDL_VideoData *driver_data = NULL;
     struct wl_data_source *id = NULL;
 
-    if (!_this || !_this->driverdata) {
+    if (!_this || !_this->internal) {
         SDL_SetError("Video driver uninitialized");
     } else {
-        driver_data = _this->driverdata;
+        driver_data = _this->internal;
 
         if (driver_data->data_device_manager) {
             id = wl_data_device_manager_create_data_source(
@@ -1908,10 +1925,10 @@ SDL_WaylandPrimarySelectionSource *Wayland_primary_selection_source_create(SDL_V
     SDL_VideoData *driver_data = NULL;
     struct zwp_primary_selection_source_v1 *id = NULL;
 
-    if (!_this || !_this->driverdata) {
+    if (!_this || !_this->internal) {
         SDL_SetError("Video driver uninitialized");
     } else {
-        driver_data = _this->driverdata;
+        driver_data = _this->internal;
 
         if (driver_data->primary_selection_device_manager) {
             id = zwp_primary_selection_device_manager_v1_create_source(
@@ -3111,7 +3128,7 @@ static const struct zwp_locked_pointer_v1_listener locked_pointer_listener = {
 
 int Wayland_input_lock_pointer(struct SDL_WaylandInput *input, SDL_Window *window)
 {
-    SDL_WindowData *w = window->driverdata;
+    SDL_WindowData *w = window->internal;
     SDL_VideoData *d = input->display;
 
     if (!d->pointer_constraints || !input->pointer) {
@@ -3139,7 +3156,7 @@ int Wayland_input_lock_pointer(struct SDL_WaylandInput *input, SDL_Window *windo
 
 int Wayland_input_unlock_pointer(struct SDL_WaylandInput *input, SDL_Window *window)
 {
-    SDL_WindowData *w = window->driverdata;
+    SDL_WindowData *w = window->internal;
 
     if (w->locked_pointer) {
         zwp_locked_pointer_v1_destroy(w->locked_pointer);
@@ -3154,7 +3171,7 @@ int Wayland_input_unlock_pointer(struct SDL_WaylandInput *input, SDL_Window *win
 
 static void pointer_confine_destroy(SDL_Window *window)
 {
-    SDL_WindowData *w = window->driverdata;
+    SDL_WindowData *w = window->internal;
     if (w->confined_pointer) {
         zwp_confined_pointer_v1_destroy(w->confined_pointer);
         w->confined_pointer = NULL;
@@ -3245,7 +3262,7 @@ static const struct zwp_confined_pointer_v1_listener confined_pointer_listener =
 
 int Wayland_input_confine_pointer(struct SDL_WaylandInput *input, SDL_Window *window)
 {
-    SDL_WindowData *w = window->driverdata;
+    SDL_WindowData *w = window->internal;
     SDL_VideoData *d = input->display;
     struct zwp_confined_pointer_v1 *confined_pointer;
     struct wl_region *confine_rect;
@@ -3319,7 +3336,7 @@ int Wayland_input_unconfine_pointer(struct SDL_WaylandInput *input, SDL_Window *
 
 int Wayland_input_grab_keyboard(SDL_Window *window, struct SDL_WaylandInput *input)
 {
-    SDL_WindowData *w = window->driverdata;
+    SDL_WindowData *w = window->internal;
     SDL_VideoData *d = input->display;
 
     if (!d->key_inhibitor_manager) {
@@ -3340,7 +3357,7 @@ int Wayland_input_grab_keyboard(SDL_Window *window, struct SDL_WaylandInput *inp
 
 int Wayland_input_ungrab_keyboard(SDL_Window *window)
 {
-    SDL_WindowData *w = window->driverdata;
+    SDL_WindowData *w = window->internal;
 
     if (w->key_inhibitor) {
         zwp_keyboard_shortcuts_inhibitor_v1_destroy(w->key_inhibitor);

@@ -243,7 +243,7 @@ void SDL_QuitTimers(void)
     if (SDL_AtomicCompareAndSwap(&data->active, 1, 0)) { /* active? Move to inactive. */
         /* Shutdown the timer thread */
         if (data->thread) {
-            SDL_PostSemaphore(data->sem);
+            SDL_SignalSemaphore(data->sem);
             SDL_WaitThread(data->thread, NULL);
             data->thread = NULL;
         }
@@ -334,7 +334,7 @@ static SDL_TimerID SDL_CreateTimer(Uint64 interval, SDL_TimerCallback callback_m
     SDL_UnlockSpinlock(&data->lock);
 
     /* Wake up the timer thread if necessary */
-    SDL_PostSemaphore(data->sem);
+    SDL_SignalSemaphore(data->sem);
 
     return entry->timerID;
 }
@@ -643,5 +643,26 @@ Uint64 SDL_GetTicks(void)
 
 void SDL_Delay(Uint32 ms)
 {
-    SDL_DelayNS(SDL_MS_TO_NS(ms));
+    SDL_SYS_DelayNS(SDL_MS_TO_NS(ms));
+}
+
+void SDL_DelayNS(Uint64 ns)
+{
+    Uint64 current_value = SDL_GetTicksNS();
+    Uint64 target_value = current_value + ns;
+
+    // Sleep for a short number of cycles
+    // We'll use 1 ms as a scheduling timeslice, it's a good value for modern operating systems
+    const int SCHEDULING_TIMESLICE_NS = 1 * SDL_NS_PER_MS;
+    while (current_value < target_value) {
+        Uint64 remaining_ns = (target_value - current_value);
+        if (remaining_ns > (SCHEDULING_TIMESLICE_NS + SDL_NS_PER_US)) {
+            // Sleep for a short time, less than the scheduling timeslice
+            SDL_SYS_DelayNS(SCHEDULING_TIMESLICE_NS - SDL_NS_PER_US);
+        } else {
+            // Spin for any remaining time
+            SDL_CPUPauseInstruction();
+        }
+        current_value = SDL_GetTicksNS();
+    }
 }

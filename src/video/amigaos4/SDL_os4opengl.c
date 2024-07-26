@@ -196,7 +196,7 @@ OS4_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
     if (IMiniGL) {
         uint32 depth;
 
-        SDL_WindowData * data = window->driverdata;
+        SDL_WindowData * data = window->internal;
 
         if (data->glContext) {
             struct GLContextIFace *IGL = (struct GLContextIFace *)data->glContext;
@@ -279,7 +279,7 @@ OS4_GL_GetDrawableSize(SDL_VideoDevice *_this, SDL_Window * window, int * w, int
 int
 OS4_GL_SetSwapInterval(SDL_VideoDevice *_this, int interval)
 {
-    SDL_VideoData *data = _this->driverdata;
+    SDL_VideoData *data = _this->internal;
 
     switch (interval) {
         case 0:
@@ -298,7 +298,7 @@ OS4_GL_GetSwapInterval(SDL_VideoDevice *_this, int* interval)
 {
     //dprintf("Called\n");
 
-    SDL_VideoData *data = _this->driverdata;
+    SDL_VideoData *data = _this->internal;
 
     *interval = data->vsyncEnabled ? 1 : 0;
 
@@ -312,10 +312,10 @@ OS4_GL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 
     if (IMiniGL) {
 
-        SDL_WindowData *data = window->driverdata;
+        SDL_WindowData *data = window->internal;
 
         if (data->glContext) {
-            SDL_VideoData *videodata = _this->driverdata;
+            SDL_VideoData *videodata = _this->internal;
 
             struct BitMap *temp;
             int w, h;
@@ -394,7 +394,7 @@ OS4_GL_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context)
             Uint32 deletions = 0;
 
             for (sdlwin = _this->windows; sdlwin; sdlwin = sdlwin->next) {
-                SDL_WindowData *data = sdlwin->driverdata;
+                SDL_WindowData *data = sdlwin->internal;
 
                 if ((SDL_GLContext)data->glContext == context) {
                     struct GLContextIFace *IGL = (struct GLContextIFace *)context;
@@ -428,7 +428,7 @@ SDL_bool
 OS4_GL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
 {
     if (IMiniGL) {
-        SDL_WindowData *data = window->driverdata;
+        SDL_WindowData *data = window->internal;
 
         uint32 depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
 

@@ -81,7 +81,9 @@ static void MoveSprites(SDL_Renderer *renderer, SDL_Texture *sprite)
     SDL_FRect *position, *velocity;
 
     /* Query the sizes */
-    SDL_GetRenderViewport(renderer, &viewport);
+    SDL_SetRenderViewport(renderer, NULL);
+    SDL_GetRenderSafeArea(renderer, &viewport);
+    SDL_SetRenderViewport(renderer, &viewport);
 
     /* Cycle the color and alpha, if desired */
     if (cycle_color) {
@@ -424,6 +426,7 @@ int SDL_AppIterate(void *appstate)
 
 int SDL_AppInit(void **appstate, int argc, char *argv[])
 {
+    SDL_Rect safe_area;
     int i;
     Uint64 seed;
     const char *icon = "icon.bmp";
@@ -451,8 +454,14 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
                     } else if (SDL_strcasecmp(argv[i + 1], "blend") == 0) {
                         blendMode = SDL_BLENDMODE_BLEND;
                         consumed = 2;
+                    } else if (SDL_strcasecmp(argv[i + 1], "blend_premultiplied") == 0) {
+                        blendMode = SDL_BLENDMODE_BLEND_PREMULTIPLIED;
+                        consumed = 2;
                     } else if (SDL_strcasecmp(argv[i + 1], "add") == 0) {
                         blendMode = SDL_BLENDMODE_ADD;
+                        consumed = 2;
+                    } else if (SDL_strcasecmp(argv[i + 1], "add_premultiplied") == 0) {
+                        blendMode = SDL_BLENDMODE_ADD_PREMULTIPLIED;
                         consumed = 2;
                     } else if (SDL_strcasecmp(argv[i + 1], "mod") == 0) {
                         blendMode = SDL_BLENDMODE_MOD;
@@ -506,7 +515,7 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
         }
         if (consumed < 0) {
             static const char *options[] = {
-                "[--blend none|blend|add|mod|mul|sub]",
+                "[--blend none|blend|blend_premultiplied|add|add_premultiplied|mod|mul|sub]",
                 "[--cyclecolor]",
                 "[--cyclealpha]",
                 "[--suspend-when-occluded]",
@@ -550,6 +559,8 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
     }
 
     /* Position sprites and set their velocities using the fuzzer */
+    /* Really we should be using per-window safe area, but this is fine for a simple test */
+    SDL_GetRenderSafeArea(state->renderers[0], &safe_area);
     if (iterations >= 0) {
         /* Deterministic seed - used for visual tests */
         seed = (Uint64)iterations;
@@ -559,8 +570,8 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
     }
     SDLTest_FuzzerInit(seed);
     for (i = 0; i < num_sprites; ++i) {
-        positions[i].x = (float)SDLTest_RandomIntegerInRange(0, (int)(state->window_w - sprite_w));
-        positions[i].y = (float)SDLTest_RandomIntegerInRange(0, (int)(state->window_h - sprite_h));
+        positions[i].x = (float)SDLTest_RandomIntegerInRange(0, (int)(safe_area.w - sprite_w));
+        positions[i].y = (float)SDLTest_RandomIntegerInRange(0, (int)(safe_area.h - sprite_h));
         positions[i].w = sprite_w;
         positions[i].h = sprite_h;
         velocities[i].x = 0;

@@ -49,7 +49,7 @@ SDL_bool SDL_TouchDevicesAvailable(void)
     return SDL_num_touch > 0;
 }
 
-SDL_TouchID *SDL_GetTouchDevices(int *count)
+const SDL_TouchID *SDL_GetTouchDevices(int *count)
 {
     if (count) {
         *count = 0;
@@ -67,7 +67,7 @@ SDL_TouchID *SDL_GetTouchDevices(int *count)
         }
     }
 
-    return retval;
+    return SDL_FreeLater(retval);
 }
 
 static int SDL_GetTouchIndex(SDL_TouchID id)
@@ -102,7 +102,10 @@ SDL_Touch *SDL_GetTouch(SDL_TouchID id)
 const char *SDL_GetTouchDeviceName(SDL_TouchID id)
 {
     SDL_Touch *touch = SDL_GetTouch(id);
-    return touch ? touch->name : NULL;
+    if (!touch) {
+        return NULL;
+    }
+    return SDL_CreateTemporaryString(touch->name);
 }
 
 SDL_TouchDeviceType SDL_GetTouchDeviceType(SDL_TouchID id)
@@ -131,7 +134,7 @@ static SDL_Finger *SDL_GetFinger(const SDL_Touch *touch, SDL_FingerID id)
     return touch->fingers[index];
 }
 
-SDL_Finger **SDL_GetTouchFingers(SDL_TouchID touchID, int *count)
+const SDL_Finger * const * SDL_GetTouchFingers(SDL_TouchID touchID, int *count)
 {
     SDL_Finger **fingers;
     SDL_Finger *finger_data;
@@ -150,7 +153,7 @@ SDL_Finger **SDL_GetTouchFingers(SDL_TouchID touchID, int *count)
     if (!fingers) {
         return NULL;
     }
-    finger_data = (SDL_Finger *)((Uint8 *)fingers + (touch->num_fingers + 1) * sizeof(*fingers));
+    finger_data = (SDL_Finger *)(fingers + (touch->num_fingers + 1));
 
     for (int i = 0; i < touch->num_fingers; ++i) {
         fingers[i] = &finger_data[i];
@@ -161,7 +164,7 @@ SDL_Finger **SDL_GetTouchFingers(SDL_TouchID touchID, int *count)
     if (count) {
         *count = touch->num_fingers;
     }
-    return fingers;
+    return SDL_FreeLater(fingers);
 }
 
 int SDL_AddTouch(SDL_TouchID touchID, SDL_TouchDeviceType type, const char *name)
@@ -245,7 +248,7 @@ static int SDL_DelFinger(SDL_Touch *touch, SDL_FingerID fingerid)
         // Move the deleted finger to just past the end of the active fingers array and shift the active fingers by one.
         // This ensures that the descriptor for the now-deleted finger is located at `touch->fingers[touch->num_fingers]`
         // and is ready for use in SDL_AddFinger.
-        SDL_Finger *deleted_finger = touch->fingers[index]; 
+        SDL_Finger *deleted_finger = touch->fingers[index];
         SDL_memmove(&touch->fingers[index], &touch->fingers[index + 1], (touch->num_fingers - index) * sizeof(touch->fingers[index]));
         touch->fingers[touch->num_fingers] = deleted_finger;
     }
@@ -493,7 +496,7 @@ void SDL_DelTouch(SDL_TouchID id)
         SDL_free(touch->fingers[i]);
     }
     SDL_free(touch->fingers);
-    SDL_FreeLater(touch->name);  // this pointer might be given to the app by SDL_GetTouchDeviceName.
+    SDL_free(touch->name);
     SDL_free(touch);
 
     SDL_num_touch--;

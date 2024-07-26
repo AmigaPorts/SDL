@@ -27,6 +27,12 @@
 
 #include "../SDL_sysvideo.h"
 
+#ifdef HAVE_DXGI_H
+#define CINTERFACE
+#define COBJMACROS
+#include <dxgi.h>
+#endif
+
 #if defined(_MSC_VER) && (_MSC_VER >= 1500) && !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 #include <msctf.h>
 #else
@@ -339,6 +345,7 @@ typedef struct
     void *data;
 } TSFSink;
 
+#ifndef SDL_DISABLE_WINDOWS_IME
 /* Definition from Win98DDK version of IMM.H */
 typedef struct tagINPUTCONTEXT2
 {
@@ -364,6 +371,7 @@ typedef struct tagINPUTCONTEXT2
     DWORD fdwInit;
     DWORD dwReserve[3];
 } INPUTCONTEXT2, *PINPUTCONTEXT2, NEAR *NPINPUTCONTEXT2, FAR *LPINPUTCONTEXT2;
+#endif
 
 /* Private display data */
 
@@ -406,6 +414,11 @@ struct SDL_VideoData
     /* *INDENT-ON* */ /* clang-format on */
 #endif                /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
 
+#ifdef HAVE_DXGI_H
+    void *dxgiDLL;
+    IDXGIFactory *pDXGIFactory;
+#endif
+
     SDL_bool cleared;
 
     BYTE *rawinput;
@@ -447,8 +460,10 @@ struct SDL_VideoData
     SDL_bool ime_horizontal_candidates;
 #endif
 
+#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
     COMPOSITIONFORM ime_composition_area;
     CANDIDATEFORM ime_candidate_area;
+#endif /* !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES) */
 
 #ifndef SDL_DISABLE_WINDOWS_IME
     HKL ime_hkl;

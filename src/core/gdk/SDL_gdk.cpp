@@ -35,7 +35,7 @@ PAPPCONSTRAIN_REGISTRATION hCPLM = {};
 HANDLE plmSuspendComplete = nullptr;
 
 extern "C"
-int SDL_GDKGetTaskQueue(XTaskQueueHandle *outTaskQueue)
+int SDL_GetGDKTaskQueue(XTaskQueueHandle *outTaskQueue)
 {
     /* If this is the first call, first create the global task queue. */
     if (!GDK_GlobalTaskQueue) {
@@ -74,6 +74,66 @@ void GDK_DispatchTaskQueue(void)
 }
 
 extern "C"
+int GDK_RegisterChangeNotifications(void)
+{
+    /* Register suspend/resume handling */
+    plmSuspendComplete = CreateEventEx(nullptr, nullptr, 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
+    if (!plmSuspendComplete) {
+        SDL_SetError("[GDK] Unable to create plmSuspendComplete event");
+        return -1;
+    }
+    auto rascn = [](BOOLEAN quiesced, PVOID context) {
+        SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION, "[GDK] in RegisterAppStateChangeNotification handler");
+        if (quiesced) {
+            ResetEvent(plmSuspendComplete);
+            SDL_SendAppEvent(SDL_EVENT_DID_ENTER_BACKGROUND);
+
+            // To defer suspension, we must wait to exit this callback.
+            // IMPORTANT: The app must call SDL_GDKSuspendComplete() to release this lock.
+            (void)WaitForSingleObject(plmSuspendComplete, INFINITE);
+
+            SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION, "[GDK] in RegisterAppStateChangeNotification handler: plmSuspendComplete event signaled.");
+        } else {
+            SDL_SendAppEvent(SDL_EVENT_WILL_ENTER_FOREGROUND);
+        }
+    };
+    if (RegisterAppStateChangeNotification(rascn, NULL, &hPLM)) {
+        SDL_SetError("[GDK] Unable to call RegisterAppStateChangeNotification");
+        return -1;
+    }
+
+    /* Register constrain/unconstrain handling */
+    auto raccn = [](BOOLEAN constrained, PVOID context) {
+        SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION, "[GDK] in RegisterAppConstrainedChangeNotification handler");
+        SDL_VideoDevice *_this = SDL_GetVideoDevice();
+        if (_this) {
+            if (constrained) {
+                SDL_SetKeyboardFocus(NULL);
+            } else {
+                SDL_SetKeyboardFocus(_this->windows);
+            }
+        }
+    };
+    if (RegisterAppConstrainedChangeNotification(raccn, NULL, &hCPLM)) {
+        SDL_SetError("[GDK] Unable to call RegisterAppConstrainedChangeNotification");
+        return -1;
+    }
+
+    return 0;
+}
+
+extern "C"
+void GDK_UnregisterChangeNotifications(void)
+{
+    /* Unregister suspend/resume handling */
+    UnregisterAppStateChangeNotification(hPLM);
+    CloseHandle(plmSuspendComplete);
+
+    /* Unregister constrain/unconstrain handling */
+    UnregisterAppConstrainedChangeNotification(hCPLM);
+}
+
+extern "C"
 void SDL_GDKSuspendComplete()
 {
     if (plmSuspendComplete) {
@@ -82,7 +142,7 @@ void SDL_GDKSuspendComplete()
 }
 
 extern "C"
-int SDL_GDKGetDefaultUser(XUserHandle *outUserHandle)
+int SDL_GetGDKDefaultUser(XUserHandle *outUserHandle)
 {
     XAsyncBlock block = { 0 };
     HRESULT result;

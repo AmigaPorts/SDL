@@ -34,11 +34,11 @@ DWORD SDL_last_warp_time = 0;
 HCURSOR SDL_cursor = NULL;
 static SDL_Cursor *SDL_blank_cursor = NULL;
 
-static SDL_Cursor *WIN_CreateDefaultCursor()
+static SDL_Cursor *WIN_CreateDefaultCursor(void)
 {
     SDL_Cursor *cursor = (SDL_Cursor *)SDL_calloc(1, sizeof(*cursor));
     if (cursor) {
-        cursor->driverdata = LoadCursor(NULL, IDC_ARROW);
+        cursor->internal = LoadCursor(NULL, IDC_ARROW);
     }
 
     return cursor;
@@ -49,7 +49,7 @@ static SDL_bool IsMonochromeSurface(SDL_Surface *surface)
     int x, y;
     Uint8 r, g, b, a;
 
-    SDL_assert(surface->format->format == SDL_PIXELFORMAT_ARGB8888);
+    SDL_assert(surface->format == SDL_PIXELFORMAT_ARGB8888);
 
     for (y = 0; y < surface->h; y++) {
         for (x = 0; x < surface->w; x++) {
@@ -76,7 +76,7 @@ static HBITMAP CreateColorBitmap(SDL_Surface *surface)
     BITMAPINFO bi;
     void *pixels;
 
-    SDL_assert(surface->format->format == SDL_PIXELFORMAT_ARGB8888);
+    SDL_assert(surface->format == SDL_PIXELFORMAT_ARGB8888);
 
     SDL_zero(bi);
     bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -114,7 +114,7 @@ static HBITMAP CreateMaskBitmap(SDL_Surface *surface, SDL_bool is_monochrome)
     const int size = pitch * surface->h;
     static const unsigned char masks[] = { 0x80, 0x40, 0x20, 0x10, 0x8, 0x4, 0x2, 0x1 };
 
-    SDL_assert(surface->format->format == SDL_PIXELFORMAT_ARGB8888);
+    SDL_assert(surface->format == SDL_PIXELFORMAT_ARGB8888);
 
     pixels = SDL_small_alloc(Uint8, size * (is_monochrome ? 2 : 1), &isstack);
     if (!pixels) {
@@ -187,7 +187,7 @@ static SDL_Cursor *WIN_CreateCursor(SDL_Surface *surface, int hot_x, int hot_y)
 
     cursor = (SDL_Cursor *)SDL_calloc(1, sizeof(*cursor));
     if (cursor) {
-        cursor->driverdata = hcursor;
+        cursor->internal = hcursor;
     } else {
         DestroyCursor(hcursor);
     }
@@ -195,7 +195,7 @@ static SDL_Cursor *WIN_CreateCursor(SDL_Surface *surface, int hot_x, int hot_y)
     return cursor;
 }
 
-static SDL_Cursor *WIN_CreateBlankCursor()
+static SDL_Cursor *WIN_CreateBlankCursor(void)
 {
     SDL_Cursor *cursor = NULL;
     SDL_Surface *surface = SDL_CreateSurface(32, 32, SDL_PIXELFORMAT_ARGB8888);
@@ -283,7 +283,7 @@ static SDL_Cursor *WIN_CreateSystemCursor(SDL_SystemCursor id)
 
         hcursor = LoadCursor(NULL, name);
 
-        cursor->driverdata = hcursor;
+        cursor->internal = hcursor;
     }
 
     return cursor;
@@ -291,7 +291,7 @@ static SDL_Cursor *WIN_CreateSystemCursor(SDL_SystemCursor id)
 
 static void WIN_FreeCursor(SDL_Cursor *cursor)
 {
-    HCURSOR hcursor = (HCURSOR)cursor->driverdata;
+    HCURSOR hcursor = (HCURSOR)cursor->internal;
 
     DestroyCursor(hcursor);
     SDL_free(cursor);
@@ -303,7 +303,7 @@ static int WIN_ShowCursor(SDL_Cursor *cursor)
         cursor = SDL_blank_cursor;
     }
     if (cursor) {
-        SDL_cursor = (HCURSOR)cursor->driverdata;
+        SDL_cursor = (HCURSOR)cursor->internal;
     } else {
         SDL_cursor = NULL;
     }
@@ -336,7 +336,7 @@ void WIN_SetCursorPos(int x, int y)
 
 static int WIN_WarpMouse(SDL_Window *window, float x, float y)
 {
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
     HWND hwnd = data->hwnd;
     POINT pt;
 
@@ -373,13 +373,13 @@ static int WIN_SetRelativeMouseMode(SDL_bool enabled)
 static int WIN_CaptureMouse(SDL_Window *window)
 {
     if (window) {
-        SDL_WindowData *data = window->driverdata;
+        SDL_WindowData *data = window->internal;
         SetCapture(data->hwnd);
     } else {
         SDL_Window *focus_window = SDL_GetMouseFocus();
 
         if (focus_window) {
-            SDL_WindowData *data = focus_window->driverdata;
+            SDL_WindowData *data = focus_window->internal;
             if (!data->mouse_tracked) {
                 SDL_SetMouseFocus(NULL);
             }
@@ -522,7 +522,7 @@ static void WIN_SetLinearMouseScale(int mouse_speed)
     }
 }
 
-void WIN_UpdateMouseSystemScale()
+void WIN_UpdateMouseSystemScale(void)
 {
     int mouse_speed;
     int params[3] = { 0, 0, 0 };

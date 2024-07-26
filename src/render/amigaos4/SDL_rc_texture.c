@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -55,7 +55,7 @@ OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture, SDL_Properties
         return SDL_SetError("Not supported texture format");
     }
 
-    if (!SDL_GetMasksForPixelFormatEnum
+    if (!SDL_GetMasksForPixelFormat
         (texture->format, &bpp, &Rmask, &Gmask, &Bmask, &Amask)) {
         return SDL_SetError("Unknown texture format");
     }
@@ -80,7 +80,7 @@ OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture, SDL_Properties
     //OS4_IsColorModEnabled(texture);
     OS4_IsBlendModeSupported(texture->blendMode);
 
-    texture->driverdata = texturedata;
+    texture->internal = texturedata;
 
     return 0;
 }
@@ -90,7 +90,7 @@ OS4_ModulateRGB(SDL_Renderer * renderer, SDL_Texture * texture, Uint8 * src, int
 {
     SDL_bool result = SDL_FALSE;
 
-    OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
+    OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
 
     if (texturedata->finalbitmap) {
         APTR baseaddress;
@@ -143,7 +143,7 @@ OS4_ModulateRGB(SDL_Renderer * renderer, SDL_Texture * texture, Uint8 * src, int
 static SDL_bool
 OS4_NeedRemodulation(SDL_Texture * texture)
 {
-    OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
+    OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
 
     if (texture->color.r != texturedata->r ||
         texture->color.g != texturedata->g ||
@@ -161,8 +161,8 @@ OS4_SetTextureColorMod(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     /* Modulate only when needed, it's CPU heavy */
     if (OS4_IsColorModEnabled(texture) && OS4_NeedRemodulation(texture)) {
-        OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
-        OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
+        OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
+        OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
 
         if (!texturedata->rambuf) {
             struct BitMap *oldRastPortBM;
@@ -219,7 +219,7 @@ int
 OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                  const SDL_Rect * rect, const void *pixels, int pitch)
 {
-    OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
+    OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
 
     int32 ret = IGraphics->BltBitMapTags(
         BLITA_Source, pixels,
@@ -257,7 +257,7 @@ int
 OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                const SDL_Rect * rect, void **pixels, int *pitch)
 {
-    OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
+    OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
 
     APTR baseaddress;
     uint32 bytesperrow;
@@ -287,7 +287,7 @@ OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
 void
 OS4_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
-    OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
+    OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
 
     //dprintf("Called\n");
 
@@ -300,10 +300,10 @@ OS4_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 int
 OS4_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
 {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
+    OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
 
     if (texture) {
-        OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
+        OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
         data->target = texturedata->bitmap;
 
         //dprintf("Render target texture %p (bitmap %p)\n", texture, data->target);
@@ -317,7 +317,7 @@ OS4_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
 void
 OS4_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture)
 {
-    OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
+    OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
 
     if (texturedata) {
         if (texturedata->bitmap) {

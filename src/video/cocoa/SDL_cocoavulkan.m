@@ -165,7 +165,7 @@ char const* const* Cocoa_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this,
                                             Uint32 *count)
 {
     static const char *const extensionsForCocoa[] = {
-        VK_KHR_SURFACE_EXTENSION_NAME, VK_EXT_METAL_SURFACE_EXTENSION_NAME
+        VK_KHR_SURFACE_EXTENSION_NAME, VK_EXT_METAL_SURFACE_EXTENSION_NAME, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME
     };
     if(count) {
         *count = SDL_arraysize(extensionsForCocoa);
@@ -255,7 +255,7 @@ int Cocoa_Vulkan_CreateSurface(SDL_VideoDevice *_this,
 
     if (window->flags & SDL_WINDOW_EXTERNAL) {
         @autoreleasepool {
-            SDL_CocoaWindowData *data = (__bridge SDL_CocoaWindowData *)window->driverdata;
+            SDL_CocoaWindowData *data = (__bridge SDL_CocoaWindowData *)window->internal;
             if (![data.sdlContentView.layer isKindOfClass:[CAMetalLayer class]]) {
                 [data.sdlContentView setLayer:[CAMetalLayer layer]];
             }

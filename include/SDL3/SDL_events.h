@@ -79,14 +79,14 @@ typedef enum SDL_EventType
     /* Application events */
     SDL_EVENT_QUIT           = 0x100, /**< User-requested quit */
 
-    /* These application events have special meaning on iOS, see README-ios.md for details */
-    SDL_EVENT_TERMINATING,        /**< The application is being terminated by the OS
+    /* These application events have special meaning on iOS and Android, see README-ios.md and README-android.md for details */
+    SDL_EVENT_TERMINATING,      /**< The application is being terminated by the OS
                                      Called on iOS in applicationWillTerminate()
                                      Called on Android in onDestroy()
                                 */
-    SDL_EVENT_LOW_MEMORY,          /**< The application is low on memory, free memory if possible.
+    SDL_EVENT_LOW_MEMORY,       /**< The application is low on memory, free memory if possible.
                                      Called on iOS in applicationDidReceiveMemoryWarning()
-                                     Called on Android in onLowMemory()
+                                     Called on Android in onTrimMemory()
                                 */
     SDL_EVENT_WILL_ENTER_BACKGROUND, /**< The application is about to enter the background
                                      Called on iOS in applicationWillResignActive()
@@ -115,6 +115,8 @@ typedef enum SDL_EventType
     SDL_EVENT_DISPLAY_ADDED,                 /**< Display has been added to the system */
     SDL_EVENT_DISPLAY_REMOVED,               /**< Display has been removed from the system */
     SDL_EVENT_DISPLAY_MOVED,                 /**< Display has changed position */
+    SDL_EVENT_DISPLAY_DESKTOP_MODE_CHANGED,  /**< Display has changed desktop mode */
+    SDL_EVENT_DISPLAY_CURRENT_MODE_CHANGED,  /**< Display has changed current mode */
     SDL_EVENT_DISPLAY_CONTENT_SCALE_CHANGED, /**< Display has changed content scale */
     SDL_EVENT_DISPLAY_FIRST = SDL_EVENT_DISPLAY_ORIENTATION,
     SDL_EVENT_DISPLAY_LAST = SDL_EVENT_DISPLAY_CONTENT_SCALE_CHANGED,
@@ -128,6 +130,7 @@ typedef enum SDL_EventType
     SDL_EVENT_WINDOW_MOVED,             /**< Window has been moved to data1, data2 */
     SDL_EVENT_WINDOW_RESIZED,           /**< Window has been resized to data1xdata2 */
     SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED,/**< The pixel size of the window has changed to data1xdata2 */
+    SDL_EVENT_WINDOW_METAL_VIEW_RESIZED,/**< The pixel size of a Metal view associated with the window has changed */
     SDL_EVENT_WINDOW_MINIMIZED,         /**< Window has been minimized */
     SDL_EVENT_WINDOW_MAXIMIZED,         /**< Window has been maximized */
     SDL_EVENT_WINDOW_RESTORED,          /**< Window has been restored to normal size and position */
@@ -140,6 +143,7 @@ typedef enum SDL_EventType
     SDL_EVENT_WINDOW_ICCPROF_CHANGED,   /**< The ICC profile of the window's display has changed */
     SDL_EVENT_WINDOW_DISPLAY_CHANGED,   /**< Window has been moved to display data1 */
     SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED, /**< Window display scale has been changed */
+    SDL_EVENT_WINDOW_SAFE_AREA_CHANGED, /**< The window safe area has been changed */
     SDL_EVENT_WINDOW_OCCLUDED,          /**< The window has been occluded */
     SDL_EVENT_WINDOW_ENTER_FULLSCREEN,  /**< The window has entered fullscreen mode */
     SDL_EVENT_WINDOW_LEAVE_FULLSCREEN,  /**< The window has left fullscreen mode */
@@ -151,7 +155,7 @@ typedef enum SDL_EventType
     SDL_EVENT_WINDOW_PEN_LEAVE,         /**< Window has lost focus of the pressure-sensitive pen with ID "data1" */
     SDL_EVENT_WINDOW_HDR_STATE_CHANGED, /**< Window HDR properties have changed */
     SDL_EVENT_WINDOW_FIRST = SDL_EVENT_WINDOW_SHOWN,
-    SDL_EVENT_WINDOW_LAST = SDL_EVENT_WINDOW_PEN_LEAVE,
+    SDL_EVENT_WINDOW_LAST = SDL_EVENT_WINDOW_HDR_STATE_CHANGED,
 
     /* Keyboard events */
     SDL_EVENT_KEY_DOWN        = 0x300, /**< Key pressed */
@@ -281,6 +285,7 @@ typedef struct SDL_DisplayEvent
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     SDL_DisplayID displayID;/**< The associated display */
     Sint32 data1;       /**< event dependent data */
+    Sint32 data2;       /**< event dependent data */
 } SDL_DisplayEvent;
 
 /**
@@ -347,7 +352,8 @@ typedef struct SDL_KeyboardEvent
  * will be inserted into the editing text. The length is the number of UTF-8
  * characters that will be replaced by new typing.
  *
- * The text string follows the SDL_GetStringRule.
+ * The text string is temporary memory which will be automatically freed
+ * later, and can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \since This struct is available since SDL 3.0.0.
  */
@@ -365,7 +371,8 @@ typedef struct SDL_TextEditingEvent
 /**
  * Keyboard IME candidates event structure (event.edit_candidates.*)
  *
- * The candidates follow the SDL_GetStringRule.
+ * The candidates are temporary memory which will be automatically freed
+ * later, and can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \since This struct is available since SDL 3.0.0.
  */
@@ -384,7 +391,8 @@ typedef struct SDL_TextEditingCandidatesEvent
 /**
  * Keyboard text input event structure (event.text.*)
  *
- * The text string follows the SDL_GetStringRule.
+ * The text string is temporary memory which will be automatically freed
+ * later, and can be claimed with SDL_ClaimTemporaryMemory().
  *
  * This event will never be delivered unless text input is enabled by calling
  * SDL_StartTextInput(). Text input is disabled by default!
@@ -692,7 +700,7 @@ typedef struct SDL_CameraDeviceEvent
     SDL_EventType type; /**< SDL_EVENT_CAMERA_DEVICE_ADDED, SDL_EVENT_CAMERA_DEVICE_REMOVED, SDL_EVENT_CAMERA_DEVICE_APPROVED, SDL_EVENT_CAMERA_DEVICE_DENIED */
     Uint32 reserved;
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_CameraDeviceID which;       /**< SDL_CameraDeviceID for the device being added or removed or changing */
+    SDL_CameraID which;       /**< SDL_CameraID for the device being added or removed or changing */
 } SDL_CameraDeviceEvent;
 
 /**
@@ -781,7 +789,9 @@ typedef struct SDL_PenButtonEvent
  * An event used to drop text or request a file open by the system
  * (event.drop.*)
  *
- * The source and data strings follow the SDL_GetStringRule.
+ * The source and data strings are temporary memory which will be
+ * automatically freed later, and can be claimed with
+ * SDL_ClaimTemporaryMemory().
  *
  * \since This struct is available since SDL 3.0.0.
  */
@@ -1320,7 +1330,7 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_GetEventFilter(SDL_EventFilter *filter,
  *
  * \param filter an SDL_EventFilter function to call when an event happens.
  * \param userdata a pointer that is passed to `filter`.
- * \returns 0 on success, or a negative error code on failure; call
+ * \returns 0 on success or a negative error code on failure; call
  *          SDL_GetError() for more information.
  *
  * \threadsafety It is safe to call this function from any thread.
@@ -1404,10 +1414,10 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_EventEnabled(Uint32 type);
 extern SDL_DECLSPEC Uint32 SDLCALL SDL_RegisterEvents(int numevents);
 
 /**
- * Allocate dynamic memory for an SDL event.
+ * Allocate temporary memory.
  *
- * You can use this to allocate memory for user events that will be
- * automatically freed after the event is processed.
+ * You can use this to allocate memory that will be automatically freed later,
+ * after event processing is complete.
  *
  * \param size the amount of memory to allocate.
  * \returns a pointer to the memory allocated or NULL on failure; call
@@ -1416,8 +1426,35 @@ extern SDL_DECLSPEC Uint32 SDLCALL SDL_RegisterEvents(int numevents);
  * \threadsafety It is safe to call this function from any thread.
  *
  * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_ClaimTemporaryMemory
  */
-extern SDL_DECLSPEC void * SDLCALL SDL_AllocateEventMemory(size_t size);
+extern SDL_DECLSPEC void * SDLCALL SDL_AllocateTemporaryMemory(size_t size);
+
+/**
+ * Claim ownership of temporary memory.
+ *
+ * Some functions return temporary memory which SDL will automatically clean
+ * up. If you want to hold onto it past the current event being handled or
+ * beyond the current function scope, you can call this function to get a
+ * pointer that you own, and can free using SDL_free() when you're done.
+ *
+ * If the memory isn't temporary, this will return NULL, and you don't have
+ * ownership of the memory.
+ *
+ * \param mem a pointer allocated with SDL_AllocateTemporaryMemory().
+ * \returns a pointer to the memory now owned by the application, which must
+ *          be freed using SDL_free(), or NULL if the memory is not temporary
+ *          or is not owned by this thread.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.0.0.
+ *
+ * \sa SDL_AllocateTemporaryMemory
+ * \sa SDL_free
+ */
+extern SDL_DECLSPEC void * SDLCALL SDL_ClaimTemporaryMemory(const void *mem);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

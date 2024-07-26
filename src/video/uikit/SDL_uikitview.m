@@ -103,7 +103,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
     /* Remove ourself from the old window. */
     if (sdlwindow) {
         SDL_uikitview *view = nil;
-        data = (__bridge SDL_UIKitWindowData *)sdlwindow->driverdata;
+        data = (__bridge SDL_UIKitWindowData *)sdlwindow->internal;
 
         [data.views removeObject:self];
 
@@ -122,7 +122,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
 
     /* Add ourself to the new window. */
     if (window) {
-        data = (__bridge SDL_UIKitWindowData *)window->driverdata;
+        data = (__bridge SDL_UIKitWindowData *)window->internal;
 
         /* Make sure the SDL window has a strong reference to this view. */
         [data.views addObject:self];
@@ -146,6 +146,11 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
     }
 
     sdlwindow = window;
+}
+
+- (SDL_Window *)getSDLWindow
+{
+    return sdlwindow;
 }
 
 #if !defined(SDL_PLATFORM_TVOS) && defined(__IPHONE_13_4)
@@ -365,6 +370,18 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
                                 touchId, (SDL_FingerID)(uintptr_t)touch, sdlwindow,
                                 locationInView.x, locationInView.y, pressure);
         }
+    }
+}
+
+- (void)safeAreaInsetsDidChange
+{
+    // Update the safe area insets
+    if (@available(iOS 11.0, tvOS 11.0, *)) {
+        SDL_SetWindowSafeAreaInsets(sdlwindow,
+                                    (int)SDL_ceilf(self.safeAreaInsets.left),
+                                    (int)SDL_ceilf(self.safeAreaInsets.right),
+                                    (int)SDL_ceilf(self.safeAreaInsets.top),
+                                    (int)SDL_ceilf(self.safeAreaInsets.bottom));
     }
 }
 

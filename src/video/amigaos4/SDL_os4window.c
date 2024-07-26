@@ -78,7 +78,7 @@ OS4_GetWindowSize(struct Window * window, int * width, int * height)
 void
 OS4_WaitForResize(SDL_Window * window, int * width, int * height)
 {
-    SDL_WindowData * data = window->driverdata;
+    SDL_WindowData * data = window->internal;
 
     int counter = 0;
     int w = 0;
@@ -157,8 +157,8 @@ OS4_RemoveMenuObject(SDL_WindowData *data)
 static void
 OS4_CreateAppWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *) _this->driverdata;
-    SDL_WindowData *data = window->driverdata;
+    SDL_VideoData *videodata = (SDL_VideoData *) _this->internal;
+    SDL_WindowData *data = window->internal;
 
     if (data->appWin) {
         dprintf("AppWindow already exists for window '%s'\n", window->title);
@@ -179,8 +179,8 @@ OS4_SetupWindowData(SDL_Window * sdlwin, struct Window * syswin)
 {
     SDL_WindowData *data;
 
-    if (sdlwin->driverdata) {
-        data = sdlwin->driverdata;
+    if (sdlwin->internal) {
+        data = sdlwin->internal;
         dprintf("Old window data %p exists\n", data);
     } else {
         data = (SDL_WindowData *) SDL_calloc(1, sizeof(*data));
@@ -189,7 +189,7 @@ OS4_SetupWindowData(SDL_Window * sdlwin, struct Window * syswin)
             return SDL_OutOfMemory();
         }
 
-        sdlwin->driverdata = data;
+        sdlwin->internal = data;
     }
 
     data->sdlwin = sdlwin;
@@ -209,7 +209,7 @@ OS4_SetupWindowData(SDL_Window * sdlwin, struct Window * syswin)
 
         SDL_PropertiesID props = SDL_GetWindowProperties(sdlwin);
         //SDL_SetProperty(props, "SDL.window.amigaos4.screen", screen); TODO: set or not?
-        SDL_SetProperty(props, "SDL.window.amigaos4.window", data->syswin);
+        SDL_SetPointerProperty(props, "SDL.window.amigaos4.window", data->syswin);
     }
 
     return 0;
@@ -269,12 +269,12 @@ static struct Screen *
 OS4_GetScreenForWindow(SDL_VideoDevice *_this, SDL_VideoDisplay * display)
 {
     if (display) {
-        SDL_DisplayData *displaydata = (SDL_DisplayData *) display->driverdata;
+        SDL_DisplayData *displaydata = (SDL_DisplayData *) display->internal;
 
         dprintf("Fullscreen (displaydata %p, screen %p)\n", displaydata, displaydata->screen);
         return displaydata->screen;
     } else {
-        SDL_VideoData *videodata = (SDL_VideoData *) _this->driverdata;
+        SDL_VideoData *videodata = (SDL_VideoData *) _this->internal;
 
         dprintf("Window mode (public screen)\n");
         return videodata->publicScreen;
@@ -354,8 +354,8 @@ OS4_DefineWindowBox(SDL_Window * window, struct Screen * screen, SDL_bool fullsc
 static void
 OS4_CreateIconifyGadget(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *) _this->driverdata;
-    SDL_WindowData *data = window->driverdata;
+    SDL_VideoData *videodata = (SDL_VideoData *) _this->internal;
+    SDL_WindowData *data = window->internal;
 
     dprintf("Called\n");
 
@@ -416,7 +416,7 @@ OS4_CreateIconifyGadgetForWindow(SDL_VideoDevice *_this, SDL_Window * window)
 static void
 OS4_CreateMenu(SDL_Window * window)
 {
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     OS4_RemoveMenuObject(data);
 
@@ -503,7 +503,7 @@ OS4_SetWindowLimits(SDL_Window * window, struct Window * syswin)
 static struct Window *
 OS4_CreateSystemWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDisplay * display)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *videodata = (SDL_VideoData *) _this->internal;
 
     struct Window *syswin;
 
@@ -566,8 +566,8 @@ OS4_CreateControls(SDL_VideoDevice *_this, SDL_Window *window)
 int
 OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID create_props)
 {
-    struct Window *syswin = (struct Window *)SDL_GetProperty(create_props, "amigaos4.window",
-                                                             SDL_GetProperty(create_props, "sdl2-compat.external_window", NULL));
+    struct Window *syswin = (struct Window *)SDL_GetPointerProperty(create_props, "amigaos4.window",
+                                                                    SDL_GetPointerProperty(create_props, "sdl2-compat.external_window", NULL));
 
     dprintf("amigaos4.window %p\n", syswin);
 
@@ -607,7 +607,7 @@ OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID c
 void
 OS4_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     //dprintf("Called\n");
 
@@ -621,7 +621,7 @@ OS4_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window * window)
 void
 OS4_SetWindowBox(SDL_VideoDevice *_this, SDL_Window * window, SDL_Rect * rect)
 {
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     if (data->syswin) {
         LONG ret = IIntuition->SetWindowAttrs(data->syswin,
@@ -658,7 +658,7 @@ OS4_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window * window)
 void
 OS4_SetWindowSize(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     if (data->syswin) {
         int width = 0;
@@ -683,7 +683,7 @@ OS4_SetWindowSize(SDL_VideoDevice *_this, SDL_Window * window)
 void
 OS4_ShowWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     if (data->appIcon) {
         dprintf("Window '%s' is in iconified (minimized) stated, ignoring show request\n", window->title);
@@ -720,7 +720,7 @@ OS4_ShowWindow(SDL_VideoDevice *_this, SDL_Window * window)
 void
 OS4_HideWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     if (window->is_destroying) {
         dprintf("Ignore hide request, window '%s' is destroying\n", window->title);
@@ -744,7 +744,7 @@ OS4_HideWindow(SDL_VideoDevice *_this, SDL_Window * window)
 void
 OS4_RaiseWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     if (data->syswin) {
         dprintf("Raising window '%s'\n", window->title);
@@ -773,7 +773,7 @@ OS4_CloseSystemWindow(SDL_VideoDevice *_this, struct Window * window)
 static void
 OS4_CloseWindow(SDL_VideoDevice *_this, SDL_Window * sdlwin)
 {
-    SDL_WindowData *data = sdlwin->driverdata;
+    SDL_WindowData *data = sdlwin->internal;
 
     if (!data) {
         dprintf("data is NULL\n");
@@ -829,7 +829,7 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
         // This function gets also called during window closing
         dprintf("Window '%s' is being destroyed, mode change ignored\n", window->title);
     } else {
-        SDL_WindowData *data = window->driverdata;
+        SDL_WindowData *data = window->internal;
 
         dprintf("'%s': %s (%d)\n", window->title, OS4_DecodeFullscreenOp(fullscreen), fullscreen);
 
@@ -841,7 +841,7 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
 
             if (fullscreen == SDL_FULLSCREEN_OP_ENTER) {
                 // Detect dummy transition and keep calm
-                SDL_DisplayData *displayData = display->driverdata;
+                SDL_DisplayData *displayData = display->internal;
 
                 if (displayData->screen && data->syswin) {
                     if (data->syswin->WScreen == displayData->screen) {
@@ -957,7 +957,7 @@ OS4_SetWindowGrabPrivate(SDL_VideoDevice *_this, struct Window * w, SDL_bool act
 int
 OS4_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window * window, SDL_bool grabbed)
 {
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     data->pointerGrabTicks = 0;
     return OS4_SetWindowGrabPrivate(_this, data->syswin, grabbed);
@@ -966,7 +966,7 @@ OS4_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window * window, SDL_bool gra
 void
 OS4_DestroyWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     dprintf("Called for '%s' (flags 0x%X)\n", window->title, window->flags);
 
@@ -988,7 +988,7 @@ OS4_DestroyWindow(SDL_VideoDevice *_this, SDL_Window * window)
     }
 
     SDL_free(data);
-    window->driverdata = NULL;
+    window->internal = NULL;
 }
 
 int
@@ -1016,7 +1016,7 @@ OS4_SetWindowOpacityPrivate(struct Window * window, const UBYTE value)
 int
 OS4_SetWindowOpacity(SDL_VideoDevice *_this, SDL_Window * window, float opacity)
 {
-    struct Window *syswin = ((SDL_WindowData *) window->driverdata)->syswin;
+    struct Window *syswin = ((SDL_WindowData *) window->internal)->syswin;
 
     const UBYTE value = opacity * 255;
 
@@ -1028,7 +1028,7 @@ OS4_SetWindowOpacity(SDL_VideoDevice *_this, SDL_Window * window, float opacity)
 int
 OS4_GetWindowBordersSize(SDL_VideoDevice *_this, SDL_Window * window, int * top, int * left, int * bottom, int * right)
 {
-    struct Window *syswin = ((SDL_WindowData *) window->driverdata)->syswin;
+    struct Window *syswin = ((SDL_WindowData *) window->internal)->syswin;
 
     if (top) {
         *top = syswin->BorderTop;
@@ -1053,7 +1053,7 @@ void
 OS4_SetWindowMinMaxSize(SDL_VideoDevice *_this, SDL_Window * window)
 {
     if (window->flags & SDL_WINDOW_RESIZABLE) {
-        SDL_WindowData *data = window->driverdata;
+        SDL_WindowData *data = window->internal;
 
         OS4_SetWindowLimits(window, data->syswin);
     } else {
@@ -1064,7 +1064,7 @@ OS4_SetWindowMinMaxSize(SDL_VideoDevice *_this, SDL_Window * window)
 void
 OS4_MaximizeWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     struct Window* syswin = data->syswin;
     struct Screen* screen = syswin->WScreen;
@@ -1122,7 +1122,7 @@ OS4_RestoreWindow(SDL_VideoDevice *_this, SDL_Window * window)
 static struct DiskObject*
 OS4_GetDiskObject(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *videodata = (SDL_VideoData *) _this->internal;
     struct DiskObject *diskObject = NULL;
 
     if (videodata->appName) {
@@ -1144,9 +1144,9 @@ OS4_GetDiskObject(SDL_VideoDevice *_this)
 void
 OS4_IconifyWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *videodata = (SDL_VideoData *) _this->internal;
 
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     if (window->flags & SDL_WINDOW_MINIMIZED) {
         dprintf("Window '%s' is already iconified\n", window->title);
@@ -1186,7 +1186,7 @@ OS4_IconifyWindow(SDL_VideoDevice *_this, SDL_Window * window)
 void
 OS4_UniconifyWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     if (data->appIcon) {
         dprintf("Restoring '%s'\n", window->title);
@@ -1208,7 +1208,7 @@ OS4_RecreateWindow(SDL_VideoDevice *_this, SDL_Window * window)
         return;
     }
 
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     if (data->syswin) {
         dprintf("Closing system window '%s' before re-creation\n", window->title);
@@ -1246,7 +1246,7 @@ OS4_SetWindowBordered(SDL_VideoDevice *_this, SDL_Window * window, SDL_bool bord
 void
 OS4_SetWindowAlwaysOnTop(SDL_VideoDevice *_this, SDL_Window * window, SDL_bool on_top)
 {
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     if (data->syswin && on_top) {
         // It doesn't seem possible to set WA_StayTop after window creation
@@ -1288,7 +1288,7 @@ void OS4_FlashWindowPrivate(struct Window * window)
 int
 OS4_FlashWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_FlashOperation operation)
 {
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     if (data->syswin) {
         switch (operation) {

@@ -170,7 +170,7 @@ SDL_bool SDL_SensorsOpened(void)
     return opened;
 }
 
-SDL_SensorID *SDL_GetSensors(int *count)
+const SDL_SensorID *SDL_GetSensors(int *count)
 {
     int i, num_sensors, device_index;
     int sensor_index = 0, total_sensors = 0;
@@ -207,7 +207,7 @@ SDL_SensorID *SDL_GetSensors(int *count)
     }
     SDL_UnlockSensors();
 
-    return sensors;
+    return SDL_FreeLater(sensors);
 }
 
 /*
@@ -238,7 +238,7 @@ static SDL_bool SDL_GetDriverAndSensorIndex(SDL_SensorID instance_id, SDL_Sensor
 /*
  * Get the implementation dependent name of a sensor
  */
-const char *SDL_GetSensorInstanceName(SDL_SensorID instance_id)
+const char *SDL_GetSensorNameForID(SDL_SensorID instance_id)
 {
     SDL_SensorDriver *driver;
     int device_index;
@@ -246,14 +246,14 @@ const char *SDL_GetSensorInstanceName(SDL_SensorID instance_id)
 
     SDL_LockSensors();
     if (SDL_GetDriverAndSensorIndex(instance_id, &driver, &device_index)) {
-        name = driver->GetDeviceName(device_index);
+        name = SDL_CreateTemporaryString(driver->GetDeviceName(device_index));
     }
     SDL_UnlockSensors();
 
-    return name ? SDL_FreeLater(SDL_strdup(name)) : NULL;
+    return name;
 }
 
-SDL_SensorType SDL_GetSensorInstanceType(SDL_SensorID instance_id)
+SDL_SensorType SDL_GetSensorTypeForID(SDL_SensorID instance_id)
 {
     SDL_SensorDriver *driver;
     int device_index;
@@ -268,7 +268,7 @@ SDL_SensorType SDL_GetSensorInstanceType(SDL_SensorID instance_id)
     return type;
 }
 
-int SDL_GetSensorInstanceNonPortableType(SDL_SensorID instance_id)
+int SDL_GetSensorNonPortableTypeForID(SDL_SensorID instance_id)
 {
     SDL_SensorDriver *driver;
     int device_index;
@@ -361,7 +361,7 @@ SDL_Sensor *SDL_OpenSensor(SDL_SensorID instance_id)
 /*
  * Find the SDL_Sensor that owns this instance id
  */
-SDL_Sensor *SDL_GetSensorFromInstanceID(SDL_SensorID instance_id)
+SDL_Sensor *SDL_GetSensorFromID(SDL_SensorID instance_id)
 {
     SDL_Sensor *sensor;
 
@@ -407,7 +407,7 @@ const char *SDL_GetSensorName(SDL_Sensor *sensor)
     {
         CHECK_SENSOR_MAGIC(sensor, NULL);
 
-        retval = sensor->name;
+        retval = SDL_CreateTemporaryString(sensor->name);
     }
     SDL_UnlockSensors();
 
@@ -453,7 +453,7 @@ int SDL_GetSensorNonPortableType(SDL_Sensor *sensor)
 /*
  * Get the instance id for this opened sensor
  */
-SDL_SensorID SDL_GetSensorInstanceID(SDL_Sensor *sensor)
+SDL_SensorID SDL_GetSensorID(SDL_Sensor *sensor)
 {
     SDL_SensorID retval;
 
@@ -526,7 +526,7 @@ void SDL_CloseSensor(SDL_Sensor *sensor)
         }
 
         /* Free the data associated with this sensor */
-        SDL_FreeLater(sensor->name);  // this pointer gets handed to the app by SDL_GetSensorName().
+        SDL_free(sensor->name);
         SDL_free(sensor);
     }
     SDL_UnlockSensors();

@@ -31,7 +31,6 @@ typedef struct SDL_VideoDisplay SDL_VideoDisplay;
 typedef struct SDL_VideoDevice SDL_VideoDevice;
 typedef struct SDL_VideoData SDL_VideoData;
 typedef struct SDL_DisplayData SDL_DisplayData;
-typedef struct SDL_DisplayModeData SDL_DisplayModeData;
 typedef struct SDL_WindowData SDL_WindowData;
 
 typedef struct
@@ -101,6 +100,12 @@ struct SDL_Window
     SDL_bool is_destroying;
     SDL_bool is_dropping; /* drag/drop in progress, expecting SDL_SendDropComplete(). */
 
+    int safe_inset_left;
+    int safe_inset_right;
+    int safe_inset_top;
+    int safe_inset_bottom;
+    SDL_Rect safe_rect;
+
     SDL_bool text_input_active;
     SDL_Rect text_input_rect;
     int text_input_cursor;
@@ -112,7 +117,7 @@ struct SDL_Window
 
     SDL_PropertiesID props;
 
-    SDL_WindowData *driverdata;
+    SDL_WindowData *internal;
 
     SDL_Window *prev;
     SDL_Window *next;
@@ -154,7 +159,7 @@ struct SDL_VideoDisplay
 
     SDL_PropertiesID props;
 
-    SDL_DisplayData *driverdata;
+    SDL_DisplayData *internal;
 };
 
 /* Video device flags */
@@ -268,7 +273,7 @@ struct SDL_VideoDevice
     int (*SetWindowMouseGrab)(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
     int (*SetWindowKeyboardGrab)(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed);
     void (*DestroyWindow)(SDL_VideoDevice *_this, SDL_Window *window);
-    int (*CreateWindowFramebuffer)(SDL_VideoDevice *_this, SDL_Window *window, SDL_PixelFormatEnum *format, void **pixels, int *pitch);
+    int (*CreateWindowFramebuffer)(SDL_VideoDevice *_this, SDL_Window *window, SDL_PixelFormat *format, void **pixels, int *pitch);
     int (*SetWindowFramebufferVSync)(SDL_VideoDevice *_this, SDL_Window *window, int vsync);
     int (*GetWindowFramebufferVSync)(SDL_VideoDevice *_this, SDL_Window *window, int *vsync);
     int (*UpdateWindowFramebuffer)(SDL_VideoDevice *_this, SDL_Window *window, const SDL_Rect *rects, int numrects);
@@ -304,6 +309,7 @@ struct SDL_VideoDevice
     char const* const* (*Vulkan_GetInstanceExtensions)(SDL_VideoDevice *_this, Uint32 *count);
     int (*Vulkan_CreateSurface)(SDL_VideoDevice *_this, SDL_Window *window, VkInstance instance, const struct VkAllocationCallbacks *allocator, VkSurfaceKHR *surface);
     void (*Vulkan_DestroySurface)(SDL_VideoDevice *_this, VkInstance instance, VkSurfaceKHR surface, const struct VkAllocationCallbacks *allocator);
+    SDL_bool (*Vulkan_GetPresentationSupport)(SDL_VideoDevice *_this, VkInstance instance, VkPhysicalDevice physicalDevice, Uint32 queueFamilyIndex);
 
     /* * * */
     /*
@@ -455,7 +461,7 @@ struct SDL_VideoDevice
 
     /* * * */
     /* Data private to this driver */
-    SDL_VideoData *driverdata;
+    SDL_VideoData *internal;
     struct SDL_GLDriverData *gl_data;
 
 #ifdef SDL_VIDEO_OPENGL_EGL
@@ -527,6 +533,7 @@ extern SDL_DisplayData *SDL_GetDisplayDriverData(SDL_DisplayID display);
 extern SDL_DisplayData *SDL_GetDisplayDriverDataForWindow(SDL_Window *window);
 extern int SDL_GetMessageBoxCount(void);
 extern void SDL_SetWindowHDRProperties(SDL_Window *window, const SDL_HDROutputProperties *HDR, SDL_bool send_event);
+extern void SDL_SetWindowSafeAreaInsets(SDL_Window *window, int left, int right, int top, int bottom);
 
 extern void SDL_GL_DeduceMaxSupportedESProfile(int *major, int *minor);
 

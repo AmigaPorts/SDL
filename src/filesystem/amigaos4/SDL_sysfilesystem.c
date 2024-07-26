@@ -33,8 +33,8 @@
 
 #include <proto/dos.h>
 
-char *
-SDL_GetBasePath(void)
+const char *
+SDL_SYS_GetBasePath(void)
 {
     char* buffer = NULL;
     const char* const basePath = "PROGDIR:";
@@ -99,8 +99,8 @@ OS4_CreateDirTree(const char* path)
     return success;
 }
 
-char *
-SDL_GetPrefPath(const char *org, const char *app)
+const char *
+SDL_SYS_GetPrefPath(const char *org, const char *app)
 {
     const char* const envPath = "ENVARC:";
     size_t len = SDL_strlen(envPath) + 1;
@@ -139,8 +139,8 @@ SDL_GetPrefPath(const char *org, const char *app)
     return NULL;
 }
 
-char *
-SDL_GetUserFolder(SDL_Folder folder)
+const char *
+SDL_SYS_GetUserFolder(SDL_Folder folder)
 {
     const char* const path = "PROGDIR:";
     const size_t pathLen = strlen(path) + 1;
@@ -257,6 +257,12 @@ int SDL_SYS_RenamePath(const char *oldpath, const char *newpath)
     }
 
     return 0;
+}
+
+int SDL_SYS_CopyFile(const char *oldpath, const char *newpath)
+{
+    // TODO: implement me
+    return SDL_Unsupported();
 }
 
 int SDL_SYS_CreateDirectory(const char *path)

@@ -289,15 +289,16 @@
 extern "C" {
 #endif
 
+/* Do any initialization that needs to happen before threads are started */
+extern void SDL_InitMainThread(void);
+
 extern int SDLCALL SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore *sem, Sint64 timeoutNS);
 extern int SDLCALL SDL_WaitConditionTimeoutNS(SDL_Condition *cond, SDL_Mutex *mutex, Sint64 timeoutNS);
 extern SDL_bool SDLCALL SDL_WaitEventTimeoutNS(SDL_Event *event, Sint64 timeoutNS);
 
-/* Queue `memory` to be passed to SDL_free once the event queue is emptied.
-   this manages the list of pointers to SDL_AllocateEventMemory, but you
-   can use it to queue pointers from other subsystems that can die at any
-   moment but definitely need to live long enough for the app to copy them
-   if they happened to query them in their last moments. */
+extern const char *SDL_CreateTemporaryString(const char *string);
+
+/* Add memory to the temporary memory pool, to be freed automatically later */
 extern void *SDL_FreeLater(void *memory);
 
 /* Ends C function definitions when using C++ */

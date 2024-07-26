@@ -118,7 +118,7 @@ OS4_AllocBitMap(SDL_Renderer * renderer, int width, int height, int depth, const
 struct BitMap *
 OS4_ActivateRenderer(SDL_Renderer * renderer)
 {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
+    OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
 
     if (!data->target) {
         data->target = data->bitmap;
@@ -148,7 +148,7 @@ OS4_ActivateRenderer(SDL_Renderer * renderer)
 static void
 OS4_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
 {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
+    OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
 
     dprintf("Called with event %d\n", event->type);
 
@@ -203,7 +203,7 @@ OS4_GetOutputSize(SDL_Renderer * renderer, int *w, int *h)
 static SDL_bool
 OS4_SetSolidColor(SDL_Renderer * renderer, Uint32 color)
 {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
+    OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
 
     if (data->solidcolor) {
         APTR baseaddress;
@@ -379,7 +379,7 @@ static int
 OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, int count, SDL_BlendMode mode,
     Uint8 a, Uint8 r, Uint8 g, Uint8 b)
 {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
+    OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
     struct BitMap *bitmap = OS4_ActivateRenderer(renderer);
     int i, status;
 
@@ -478,8 +478,8 @@ OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Ver
     SDL_Texture * texture = cmd->data.draw.texture;
     const SDL_BlendMode mode = cmd->data.draw.blend;
 
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
-    OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
+    OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
+    OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
 
     struct BitMap *src = OS4_IsColorModEnabled(texture) ?
         texturedata->finalbitmap : texturedata->bitmap;
@@ -532,8 +532,8 @@ OS4_RenderGeometry(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_V
     SDL_Texture * texture = cmd->data.draw.texture;
     const SDL_BlendMode mode = cmd->data.draw.blend;
 
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
-    OS4_TextureData *texturedata = (OS4_TextureData *) texture->driverdata;
+    OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
+    OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
 
     OS4_CompositingParams params;
     uint32 ret_code;
@@ -577,7 +577,7 @@ OS4_RenderGeometry(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_V
 static SDL_Surface*
 OS4_RenderReadPixels(SDL_Renderer * renderer, const SDL_Rect * rect)
 {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
+    OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
     struct BitMap *bitmap = OS4_ActivateRenderer(renderer);
 
     //dprintf("Called\n");
@@ -626,7 +626,7 @@ OS4_RenderPresent(SDL_Renderer * renderer)
     if (window && source) {
         // TODO: should we take viewport into account?
 
-        SDL_WindowData *windowdata = (SDL_WindowData *)window->driverdata;
+        SDL_WindowData *windowdata = (SDL_WindowData *)window->internal;
 
         struct Window *syswin = windowdata->syswin;
 
@@ -635,7 +635,7 @@ OS4_RenderPresent(SDL_Renderer * renderer)
             int width;
             int height;
 
-            OS4_RenderData *data = (OS4_RenderData *)renderer->driverdata;
+            OS4_RenderData *data = (OS4_RenderData *)renderer->internal;
 
             //dprintf("target %p\n", data->target);
             if (data->vsync) {
@@ -673,7 +673,7 @@ OS4_RenderPresent(SDL_Renderer * renderer)
 static void
 OS4_RenderClear(SDL_Renderer * renderer, Uint8 a, Uint8 r, Uint8 g, Uint8 b, struct BitMap * bitmap)
 {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
+    OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
     const Uint32 color = (a << 24) | (r << 16) | (g << 8) | b;
 
     int width = 0;
@@ -695,7 +695,7 @@ OS4_RenderClear(SDL_Renderer * renderer, Uint8 a, Uint8 r, Uint8 g, Uint8 b, str
 static void
 OS4_DestroyRenderer(SDL_Renderer * renderer)
 {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
+    OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
 
     if (data->bitmap) {
         dprintf("Freeing renderer bitmap %p\n", data->bitmap);
@@ -866,7 +866,7 @@ OS4_ResetClipRect(SDL_Renderer * renderer, struct BitMap * bitmap)
 {
     // CompositeTags uses cliprect: with clipping disabled, maximize it
 
-    OS4_RenderData *data = (OS4_RenderData *)renderer->driverdata;
+    OS4_RenderData *data = (OS4_RenderData *)renderer->internal;
 
     int width, height;
 
@@ -881,7 +881,7 @@ OS4_ResetClipRect(SDL_Renderer * renderer, struct BitMap * bitmap)
 static int
 OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * vertices, size_t vertsize)
 {
-    OS4_RenderData *data = (OS4_RenderData *)renderer->driverdata;
+    OS4_RenderData *data = (OS4_RenderData *)renderer->internal;
 
     struct BitMap *bitmap = OS4_ActivateRenderer(renderer);
 
@@ -1131,7 +1131,7 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
 static int
 OS4_SetVSync(SDL_Renderer * renderer, int vsync)
 {
-    OS4_RenderData *data = renderer->driverdata;
+    OS4_RenderData *data = renderer->internal;
 
     dprintf("VSYNC %d\n", vsync);
 
@@ -1199,7 +1199,7 @@ OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, SDL_PropertiesI
     renderer->SetVSync = OS4_SetVSync;
     renderer->SetTextureScaleMode = OS4_SetTextureScaleMode;
     renderer->name = OS4_RenderDriver.name;
-    renderer->driverdata = data;
+    renderer->internal = data;
 
     SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_ARGB8888);
 

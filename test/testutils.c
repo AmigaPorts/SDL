@@ -23,10 +23,8 @@
 char *
 GetNearbyFilename(const char *file)
 {
-    char *base;
+    const char *base = SDL_GetBasePath();
     char *path;
-
-    base = SDL_GetBasePath();
 
     if (base) {
         SDL_IOStream *rw;
@@ -35,12 +33,10 @@ GetNearbyFilename(const char *file)
         path = SDL_malloc(len);
 
         if (!path) {
-            SDL_free(base);
             return NULL;
         }
 
         (void)SDL_snprintf(path, len, "%s%s", base, file);
-        SDL_free(base);
 
         rw = SDL_IOFromFile(path, "rb");
         if (rw) {
@@ -103,15 +99,15 @@ LoadTexture(SDL_Renderer *renderer, const char *file, SDL_bool transparent,
     } else {
         /* Set transparent pixel as the pixel at (0,0) */
         if (transparent) {
-            if (temp->format->palette) {
-                const Uint8 bpp = temp->format->bits_per_pixel;
+            if (SDL_GetSurfacePalette(temp)) {
+                const Uint8 bpp = SDL_BITSPERPIXEL(temp->format);
                 const Uint8 mask = (1 << bpp) - 1;
-                if (SDL_PIXELORDER(temp->format->format) == SDL_BITMAPORDER_4321)
+                if (SDL_PIXELORDER(temp->format) == SDL_BITMAPORDER_4321)
                     SDL_SetSurfaceColorKey(temp, SDL_TRUE, (*(Uint8 *)temp->pixels) & mask);
                 else
                     SDL_SetSurfaceColorKey(temp, SDL_TRUE, ((*(Uint8 *)temp->pixels) >> (8 - bpp)) & mask);
             } else {
-                switch (temp->format->bits_per_pixel) {
+                switch (SDL_BITSPERPIXEL(temp->format)) {
                 case 15:
                     SDL_SetSurfaceColorKey(temp, SDL_TRUE,
                                     (*(Uint16 *)temp->pixels) & 0x00007FFF);

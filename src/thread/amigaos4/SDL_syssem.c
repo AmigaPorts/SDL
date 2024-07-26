@@ -194,7 +194,7 @@ SDL_GetSemaphoreValue(SDL_Semaphore * sem)
 }
 
 int
-SDL_PostSemaphore(SDL_Semaphore * sem)
+SDL_SignalSemaphore(SDL_Semaphore * sem)
 {
     if (!sem) {
         return SDL_SetError("Passed a NULL sem");

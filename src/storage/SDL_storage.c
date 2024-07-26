@@ -291,6 +291,24 @@ int SDL_RenameStoragePath(SDL_Storage *storage, const char *oldpath, const char 
     return storage->iface.rename(storage->userdata, oldpath, newpath);
 }
 
+int SDL_CopyStorageFile(SDL_Storage *storage, const char *oldpath, const char *newpath)
+{
+    CHECK_STORAGE_MAGIC()
+
+    if (!oldpath) {
+        return SDL_InvalidParamError("oldpath");
+    }
+    if (!newpath) {
+        return SDL_InvalidParamError("newpath");
+    }
+
+    if (!storage->iface.copy) {
+        return SDL_Unsupported();
+    }
+
+    return storage->iface.copy(storage->userdata, oldpath, newpath);
+}
+
 int SDL_GetStoragePathInfo(SDL_Storage *storage, const char *path, SDL_PathInfo *info)
 {
     SDL_PathInfo dummy;
@@ -335,7 +353,7 @@ static int GlobStorageDirectoryEnumerator(const char *path, SDL_EnumerateDirecto
     return SDL_EnumerateStorageDirectory((SDL_Storage *) userdata, path, cb, cbuserdata);
 }
 
-char **SDL_GlobStorageDirectory(SDL_Storage *storage, const char *path, const char *pattern, SDL_GlobFlags flags, int *count)
+const char * const *SDL_GlobStorageDirectory(SDL_Storage *storage, const char *path, const char *pattern, SDL_GlobFlags flags, int *count)
 {
     CHECK_STORAGE_MAGIC_RET(NULL)
     return SDL_InternalGlobDirectory(path, pattern, flags, count, GlobStorageDirectoryEnumerator, GlobStorageDirectoryGetPathInfo, storage);

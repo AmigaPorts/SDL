@@ -156,13 +156,13 @@ typedef enum SDL_PenSubtype
  *
  * \param count the number of pens in the array (number of array elements
  *              minus 1, i.e., not counting the terminator 0).
- * \returns a 0 terminated array of SDL_PenID values, or NULL on error. The
+ * \returns a 0 terminated array of SDL_PenID values, or NULL on failure. The
  *          array must be freed with SDL_free(). On a NULL return,
  *          SDL_GetError() is set.
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC SDL_PenID *SDLCALL SDL_GetPens(int *count);
+extern SDL_DECLSPEC SDL_PenID * SDLCALL SDL_GetPens(int *count);
 
 /**
  * Retrieves the pen's current status.
@@ -224,7 +224,8 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_PenConnected(SDL_PenID instance_id);
 /**
  * Retrieves a human-readable description for a SDL_PenID.
  *
- * The returned string follows the SDL_GetStringRule.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param instance_id the pen to query.
  * \returns a string that contains the name of the pen, intended for human
@@ -237,7 +238,7 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_PenConnected(SDL_PenID instance_id);
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC const char *SDLCALL SDL_GetPenName(SDL_PenID instance_id);
+extern SDL_DECLSPEC const char * SDLCALL SDL_GetPenName(SDL_PenID instance_id);
 
 /**
  * Pen capabilities, as reported by SDL_GetPenCapabilities()

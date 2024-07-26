@@ -122,7 +122,7 @@ static void xinput2_normalize_touch_coordinates(SDL_Window *window, double in_x,
 SDL_bool X11_InitXinput2(SDL_VideoDevice *_this)
 {
 #ifdef SDL_VIDEO_DRIVER_X11_XINPUT2
-    SDL_VideoData *data = _this->driverdata;
+    SDL_VideoData *data = _this->internal;
 
     int version = 0;
     XIEventMask eventmask;
@@ -291,7 +291,7 @@ static void xinput2_pen_ensure_window(SDL_VideoDevice *_this, const SDL_Pen *pen
 void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
 {
 #ifdef SDL_VIDEO_DRIVER_X11_XINPUT2
-    SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
+    SDL_VideoData *videodata = (SDL_VideoData *)_this->internal;
 
     if (cookie->extension != xinput2_opcode) {
         return;
@@ -512,7 +512,7 @@ void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
             if (!mouse->relative_mode || mouse->relative_mode_warp) {
                 SDL_Window *window = xinput2_get_sdlwindow(videodata, xev->event);
                 if (window) {
-                    X11_ProcessHitTest(_this, window->driverdata, (float)xev->event_x, (float)xev->event_y, SDL_FALSE);
+                    X11_ProcessHitTest(_this, window->internal, (float)xev->event_x, (float)xev->event_y, SDL_FALSE);
                     SDL_SendMouseMotion(0, window, (SDL_MouseID)xev->sourceid, SDL_FALSE, (float)xev->event_x, (float)xev->event_y);
                 }
             }
@@ -567,8 +567,8 @@ void X11_Xinput2SelectTouch(SDL_VideoDevice *_this, SDL_Window *window)
         return;
     }
 
-    data = _this->driverdata;
-    window_data = window->driverdata;
+    data = _this->internal;
+    window_data = window->internal;
 
     eventmask.deviceid = XIAllMasterDevices;
     eventmask.mask_len = sizeof(mask);
@@ -594,10 +594,10 @@ int X11_Xinput2IsInitialized(void)
 
 SDL_bool X11_Xinput2SelectMouseAndKeyboard(SDL_VideoDevice *_this, SDL_Window *window)
 {
-    SDL_WindowData *windowdata = (SDL_WindowData *)window->driverdata;
+    SDL_WindowData *windowdata = (SDL_WindowData *)window->internal;
 
 #ifdef SDL_VIDEO_DRIVER_X11_XINPUT2
-    const SDL_VideoData *data = (SDL_VideoData *)_this->driverdata;
+    const SDL_VideoData *data = (SDL_VideoData *)_this->internal;
 
     if (X11_Xinput2IsInitialized()) {
         XIEventMask eventmask;
@@ -653,7 +653,7 @@ int X11_Xinput2IsMultitouchSupported(void)
 void X11_Xinput2GrabTouch(SDL_VideoDevice *_this, SDL_Window *window)
 {
 #ifdef SDL_VIDEO_DRIVER_X11_XINPUT2_SUPPORTS_MULTITOUCH
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
     Display *display = data->videodata->display;
 
     unsigned char mask[4] = { 0, 0, 0, 0 };
@@ -683,7 +683,7 @@ void X11_Xinput2GrabTouch(SDL_VideoDevice *_this, SDL_Window *window)
 void X11_Xinput2UngrabTouch(SDL_VideoDevice *_this, SDL_Window *window)
 {
 #ifdef SDL_VIDEO_DRIVER_X11_XINPUT2_SUPPORTS_MULTITOUCH
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
     Display *display = data->videodata->display;
 
     XIGrabModifiers mods;
@@ -715,7 +715,7 @@ static void AddDeviceID(Uint32 deviceID, Uint32 **list, int *count)
     *list = new_list;
 }
 
-static SDL_bool HasDeviceID(Uint32 deviceID, Uint32 *list, int count)
+static SDL_bool HasDeviceID(Uint32 deviceID, const Uint32 *list, int count)
 {
     for (int i = 0; i < count; ++i) {
         if (deviceID == list[i]) {
@@ -730,19 +730,19 @@ static SDL_bool HasDeviceID(Uint32 deviceID, Uint32 *list, int count)
 void X11_Xinput2UpdateDevices(SDL_VideoDevice *_this, SDL_bool initial_check)
 {
 #ifdef SDL_VIDEO_DRIVER_X11_XINPUT2
-    SDL_VideoData *data = _this->driverdata;
+    SDL_VideoData *data = _this->internal;
     XIDeviceInfo *info;
     int ndevices;
     int old_keyboard_count = 0;
-    SDL_KeyboardID *old_keyboards = NULL;
+    const SDL_KeyboardID *old_keyboards = NULL;
     int new_keyboard_count = 0;
     SDL_KeyboardID *new_keyboards = NULL;
     int old_mouse_count = 0;
-    SDL_MouseID *old_mice = NULL;
+    const SDL_MouseID *old_mice = NULL;
     int new_mouse_count = 0;
     SDL_MouseID *new_mice = NULL;
     int old_touch_count = 0;
-    SDL_TouchID *old_touch_devices64 = NULL;
+    const SDL_TouchID *old_touch_devices64 = NULL;
     Uint32 *old_touch_devices = NULL;
     int new_touch_count = 0;
     Uint32 *new_touch_devices = NULL;
@@ -765,7 +765,6 @@ void X11_Xinput2UpdateDevices(SDL_VideoDevice *_this, SDL_bool initial_check)
             }
         }
     }
-    SDL_free(old_touch_devices64);
 
     for (int i = 0; i < ndevices; i++) {
         XIDeviceInfo *dev = &info[i];
@@ -839,9 +838,7 @@ void X11_Xinput2UpdateDevices(SDL_VideoDevice *_this, SDL_bool initial_check)
         }
     }
 
-    SDL_free(old_keyboards);
     SDL_free(new_keyboards);
-    SDL_free(old_mice);
     SDL_free(new_mice);
     SDL_free(old_touch_devices);
     SDL_free(new_touch_devices);

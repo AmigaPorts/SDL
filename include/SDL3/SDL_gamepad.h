@@ -282,9 +282,9 @@ typedef struct SDL_GamepadBinding
  * existing gamepad.
  *
  * The mapping string has the format "GUID,name,mapping", where GUID is the
- * string value from SDL_GetJoystickGUIDString(), name is the human readable
- * string for the device and mappings are gamepad mappings to joystick ones.
- * Under Windows there is a reserved GUID of "xinput" that covers all XInput
+ * string value from SDL_GUIDToString(), name is the human readable string for
+ * the device and mappings are gamepad mappings to joystick ones. Under
+ * Windows there is a reserved GUID of "xinput" that covers all XInput
  * devices. The mapping format for joystick is:
  *
  * - `bX`: a joystick button, index X
@@ -301,7 +301,7 @@ typedef struct SDL_GamepadBinding
  *
  * \param mapping the mapping string.
  * \returns 1 if a new mapping is added, 0 if an existing mapping is updated,
- *          -1 on error; call SDL_GetError() for more information.
+ *          -1 on failure; call SDL_GetError() for more information.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
@@ -332,7 +332,7 @@ extern SDL_DECLSPEC int SDLCALL SDL_AddGamepadMapping(const char *mapping);
  * \param src the data stream for the mappings to be added.
  * \param closeio if SDL_TRUE, calls SDL_CloseIO() on `src` before returning,
  *                even in the case of an error.
- * \returns the number of mappings added or -1 on error; call SDL_GetError()
+ * \returns the number of mappings added or -1 on failure; call SDL_GetError()
  *          for more information.
  *
  * \threadsafety It is safe to call this function from any thread.
@@ -360,7 +360,7 @@ extern SDL_DECLSPEC int SDLCALL SDL_AddGamepadMappingsFromIO(SDL_IOStream *src, 
  * Windows, etc).
  *
  * \param file the mappings file to load.
- * \returns the number of mappings added or -1 on error; call SDL_GetError()
+ * \returns the number of mappings added or -1 on failure; call SDL_GetError()
  *          for more information.
  *
  * \threadsafety It is safe to call this function from any thread.
@@ -389,38 +389,40 @@ extern SDL_DECLSPEC int SDLCALL SDL_ReloadGamepadMappings(void);
 /**
  * Get the current gamepad mappings.
  *
- * You must free the returned pointer with SDL_free() when you are done with
- * it, but you do _not_ free each string in the array.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param count a pointer filled in with the number of mappings returned, can
  *              be NULL.
- * \returns an array of the mapping strings, NULL-terminated. Must be freed
- *          with SDL_free(). Returns NULL on error.
+ * \returns an array of the mapping strings, NULL-terminated, or NULL on
+ *          failure; call SDL_GetError() for more information.
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC char ** SDLCALL SDL_GetGamepadMappings(int *count);
+extern SDL_DECLSPEC const char * const * SDLCALL SDL_GetGamepadMappings(int *count);
 
 /**
  * Get the gamepad mapping string for a given GUID.
  *
- * The returned string must be freed with SDL_free().
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param guid a structure containing the GUID for which a mapping is desired.
- * \returns a mapping string or NULL on error; call SDL_GetError() for more
+ * \returns a mapping string or NULL on failure; call SDL_GetError() for more
  *          information.
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_GetJoystickInstanceGUID
+ * \sa SDL_GetJoystickGUIDForID
  * \sa SDL_GetJoystickGUID
  */
-extern SDL_DECLSPEC char * SDLCALL SDL_GetGamepadMappingForGUID(SDL_JoystickGUID guid);
+extern SDL_DECLSPEC const char * SDLCALL SDL_GetGamepadMappingForGUID(SDL_GUID guid);
 
 /**
  * Get the current mapping of a gamepad.
  *
- * The returned string must be freed with SDL_free().
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * Details about mappings are discussed with SDL_AddGamepadMapping().
  *
@@ -431,11 +433,11 @@ extern SDL_DECLSPEC char * SDLCALL SDL_GetGamepadMappingForGUID(SDL_JoystickGUID
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_AddGamepadMapping
- * \sa SDL_GetGamepadInstanceMapping
+ * \sa SDL_GetGamepadMappingForID
  * \sa SDL_GetGamepadMappingForGUID
  * \sa SDL_SetGamepadMapping
  */
-extern SDL_DECLSPEC char * SDLCALL SDL_GetGamepadMapping(SDL_Gamepad *gamepad);
+extern SDL_DECLSPEC const char * SDLCALL SDL_GetGamepadMapping(SDL_Gamepad *gamepad);
 
 /**
  * Set the current mapping of a joystick or gamepad.
@@ -469,17 +471,20 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_HasGamepad(void);
 /**
  * Get a list of currently connected gamepads.
  *
- * \param count a pointer filled in with the number of gamepads returned.
- * \returns a 0 terminated array of joystick instance IDs which should be
- *          freed with SDL_free(), or NULL on error; call SDL_GetError() for
- *          more details.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
+ *
+ * \param count a pointer filled in with the number of gamepads returned, may
+ *              be NULL.
+ * \returns a 0 terminated array of joystick instance IDs or NULL on failure;
+ *          call SDL_GetError() for more information.
  *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_HasGamepad
  * \sa SDL_OpenGamepad
  */
-extern SDL_DECLSPEC SDL_JoystickID *SDLCALL SDL_GetGamepads(int *count);
+extern SDL_DECLSPEC const SDL_JoystickID * SDLCALL SDL_GetGamepads(int *count);
 
 /**
  * Check if the given joystick is supported by the gamepad interface.
@@ -500,7 +505,8 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_IsGamepad(SDL_JoystickID instance_id);
  *
  * This can be called before any gamepads are opened.
  *
- * The returned string follows the SDL_GetStringRule.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param instance_id the joystick instance ID.
  * \returns the name of the selected gamepad. If no name can be found, this
@@ -511,14 +517,15 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_IsGamepad(SDL_JoystickID instance_id);
  * \sa SDL_GetGamepadName
  * \sa SDL_GetGamepads
  */
-extern SDL_DECLSPEC const char *SDLCALL SDL_GetGamepadInstanceName(SDL_JoystickID instance_id);
+extern SDL_DECLSPEC const char * SDLCALL SDL_GetGamepadNameForID(SDL_JoystickID instance_id);
 
 /**
  * Get the implementation dependent path of a gamepad.
  *
  * This can be called before any gamepads are opened.
  *
- * The returned string follows the SDL_GetStringRule.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param instance_id the joystick instance ID.
  * \returns the path of the selected gamepad. If no path can be found, this
@@ -529,7 +536,7 @@ extern SDL_DECLSPEC const char *SDLCALL SDL_GetGamepadInstanceName(SDL_JoystickI
  * \sa SDL_GetGamepadPath
  * \sa SDL_GetGamepads
  */
-extern SDL_DECLSPEC const char *SDLCALL SDL_GetGamepadInstancePath(SDL_JoystickID instance_id);
+extern SDL_DECLSPEC const char * SDLCALL SDL_GetGamepadPathForID(SDL_JoystickID instance_id);
 
 /**
  * Get the player index of a gamepad.
@@ -544,7 +551,7 @@ extern SDL_DECLSPEC const char *SDLCALL SDL_GetGamepadInstancePath(SDL_JoystickI
  * \sa SDL_GetGamepadPlayerIndex
  * \sa SDL_GetGamepads
  */
-extern SDL_DECLSPEC int SDLCALL SDL_GetGamepadInstancePlayerIndex(SDL_JoystickID instance_id);
+extern SDL_DECLSPEC int SDLCALL SDL_GetGamepadPlayerIndexForID(SDL_JoystickID instance_id);
 
 /**
  * Get the implementation-dependent GUID of a gamepad.
@@ -557,11 +564,10 @@ extern SDL_DECLSPEC int SDLCALL SDL_GetGamepadInstancePlayerIndex(SDL_JoystickID
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_GetGamepadGUID
- * \sa SDL_GetGamepadGUIDString
+ * \sa SDL_GUIDToString
  * \sa SDL_GetGamepads
  */
-extern SDL_DECLSPEC SDL_JoystickGUID SDLCALL SDL_GetGamepadInstanceGUID(SDL_JoystickID instance_id);
+extern SDL_DECLSPEC SDL_GUID SDLCALL SDL_GetGamepadGUIDForID(SDL_JoystickID instance_id);
 
 /**
  * Get the USB vendor ID of a gamepad, if available.
@@ -578,7 +584,7 @@ extern SDL_DECLSPEC SDL_JoystickGUID SDLCALL SDL_GetGamepadInstanceGUID(SDL_Joys
  * \sa SDL_GetGamepadVendor
  * \sa SDL_GetGamepads
  */
-extern SDL_DECLSPEC Uint16 SDLCALL SDL_GetGamepadInstanceVendor(SDL_JoystickID instance_id);
+extern SDL_DECLSPEC Uint16 SDLCALL SDL_GetGamepadVendorForID(SDL_JoystickID instance_id);
 
 /**
  * Get the USB product ID of a gamepad, if available.
@@ -595,7 +601,7 @@ extern SDL_DECLSPEC Uint16 SDLCALL SDL_GetGamepadInstanceVendor(SDL_JoystickID i
  * \sa SDL_GetGamepadProduct
  * \sa SDL_GetGamepads
  */
-extern SDL_DECLSPEC Uint16 SDLCALL SDL_GetGamepadInstanceProduct(SDL_JoystickID instance_id);
+extern SDL_DECLSPEC Uint16 SDLCALL SDL_GetGamepadProductForID(SDL_JoystickID instance_id);
 
 /**
  * Get the product version of a gamepad, if available.
@@ -612,7 +618,7 @@ extern SDL_DECLSPEC Uint16 SDLCALL SDL_GetGamepadInstanceProduct(SDL_JoystickID 
  * \sa SDL_GetGamepadProductVersion
  * \sa SDL_GetGamepads
  */
-extern SDL_DECLSPEC Uint16 SDLCALL SDL_GetGamepadInstanceProductVersion(SDL_JoystickID instance_id);
+extern SDL_DECLSPEC Uint16 SDLCALL SDL_GetGamepadProductVersionForID(SDL_JoystickID instance_id);
 
 /**
  * Get the type of a gamepad.
@@ -626,9 +632,9 @@ extern SDL_DECLSPEC Uint16 SDLCALL SDL_GetGamepadInstanceProductVersion(SDL_Joys
  *
  * \sa SDL_GetGamepadType
  * \sa SDL_GetGamepads
- * \sa SDL_GetRealGamepadInstanceType
+ * \sa SDL_GetRealGamepadTypeForID
  */
-extern SDL_DECLSPEC SDL_GamepadType SDLCALL SDL_GetGamepadInstanceType(SDL_JoystickID instance_id);
+extern SDL_DECLSPEC SDL_GamepadType SDLCALL SDL_GetGamepadTypeForID(SDL_JoystickID instance_id);
 
 /**
  * Get the type of a gamepad, ignoring any mapping override.
@@ -640,27 +646,29 @@ extern SDL_DECLSPEC SDL_GamepadType SDLCALL SDL_GetGamepadInstanceType(SDL_Joyst
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_GetGamepadInstanceType
+ * \sa SDL_GetGamepadTypeForID
  * \sa SDL_GetGamepads
  * \sa SDL_GetRealGamepadType
  */
-extern SDL_DECLSPEC SDL_GamepadType SDLCALL SDL_GetRealGamepadInstanceType(SDL_JoystickID instance_id);
+extern SDL_DECLSPEC SDL_GamepadType SDLCALL SDL_GetRealGamepadTypeForID(SDL_JoystickID instance_id);
 
 /**
  * Get the mapping of a gamepad.
  *
  * This can be called before any gamepads are opened.
  *
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
+ *
  * \param instance_id the joystick instance ID.
- * \returns the mapping string. Must be freed with SDL_free(). Returns NULL if
- *          no mapping is available.
+ * \returns the mapping string. Returns NULL if no mapping is available.
  *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetGamepads
  * \sa SDL_GetGamepadMapping
  */
-extern SDL_DECLSPEC char *SDLCALL SDL_GetGamepadInstanceMapping(SDL_JoystickID instance_id);
+extern SDL_DECLSPEC const char * SDLCALL SDL_GetGamepadMappingForID(SDL_JoystickID instance_id);
 
 /**
  * Open a gamepad for use.
@@ -674,7 +682,7 @@ extern SDL_DECLSPEC char *SDLCALL SDL_GetGamepadInstanceMapping(SDL_JoystickID i
  * \sa SDL_CloseGamepad
  * \sa SDL_IsGamepad
  */
-extern SDL_DECLSPEC SDL_Gamepad *SDLCALL SDL_OpenGamepad(SDL_JoystickID instance_id);
+extern SDL_DECLSPEC SDL_Gamepad * SDLCALL SDL_OpenGamepad(SDL_JoystickID instance_id);
 
 /**
  * Get the SDL_Gamepad associated with a joystick instance ID, if it has been
@@ -686,7 +694,7 @@ extern SDL_DECLSPEC SDL_Gamepad *SDLCALL SDL_OpenGamepad(SDL_JoystickID instance
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC SDL_Gamepad *SDLCALL SDL_GetGamepadFromInstanceID(SDL_JoystickID instance_id);
+extern SDL_DECLSPEC SDL_Gamepad * SDLCALL SDL_GetGamepadFromID(SDL_JoystickID instance_id);
 
 /**
  * Get the SDL_Gamepad associated with a player index.
@@ -699,7 +707,7 @@ extern SDL_DECLSPEC SDL_Gamepad *SDLCALL SDL_GetGamepadFromInstanceID(SDL_Joysti
  * \sa SDL_GetGamepadPlayerIndex
  * \sa SDL_SetGamepadPlayerIndex
  */
-extern SDL_DECLSPEC SDL_Gamepad *SDLCALL SDL_GetGamepadFromPlayerIndex(int player_index);
+extern SDL_DECLSPEC SDL_Gamepad * SDLCALL SDL_GetGamepadFromPlayerIndex(int player_index);
 
 /**
  * Get the properties associated with an opened gamepad.
@@ -725,9 +733,6 @@ extern SDL_DECLSPEC SDL_Gamepad *SDLCALL SDL_GetGamepadFromPlayerIndex(int playe
  *          SDL_GetError() for more information.
  *
  * \since This function is available since SDL 3.0.0.
- *
- * \sa SDL_GetProperty
- * \sa SDL_SetProperty
  */
 extern SDL_DECLSPEC SDL_PropertiesID SDLCALL SDL_GetGamepadProperties(SDL_Gamepad *gamepad);
 
@@ -747,12 +752,13 @@ extern SDL_DECLSPEC SDL_PropertiesID SDLCALL SDL_GetGamepadProperties(SDL_Gamepa
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC SDL_JoystickID SDLCALL SDL_GetGamepadInstanceID(SDL_Gamepad *gamepad);
+extern SDL_DECLSPEC SDL_JoystickID SDLCALL SDL_GetGamepadID(SDL_Gamepad *gamepad);
 
 /**
  * Get the implementation-dependent name for an opened gamepad.
  *
- * The returned string follows the SDL_GetStringRule.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param gamepad a gamepad identifier previously returned by
  *                SDL_OpenGamepad().
@@ -761,14 +767,15 @@ extern SDL_DECLSPEC SDL_JoystickID SDLCALL SDL_GetGamepadInstanceID(SDL_Gamepad 
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_GetGamepadInstanceName
+ * \sa SDL_GetGamepadNameForID
  */
-extern SDL_DECLSPEC const char *SDLCALL SDL_GetGamepadName(SDL_Gamepad *gamepad);
+extern SDL_DECLSPEC const char * SDLCALL SDL_GetGamepadName(SDL_Gamepad *gamepad);
 
 /**
  * Get the implementation-dependent path for an opened gamepad.
  *
- * The returned string follows the SDL_GetStringRule.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param gamepad a gamepad identifier previously returned by
  *                SDL_OpenGamepad().
@@ -777,9 +784,9 @@ extern SDL_DECLSPEC const char *SDLCALL SDL_GetGamepadName(SDL_Gamepad *gamepad)
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_GetGamepadInstancePath
+ * \sa SDL_GetGamepadPathForID
  */
-extern SDL_DECLSPEC const char *SDLCALL SDL_GetGamepadPath(SDL_Gamepad *gamepad);
+extern SDL_DECLSPEC const char * SDLCALL SDL_GetGamepadPath(SDL_Gamepad *gamepad);
 
 /**
  * Get the type of an opened gamepad.
@@ -790,7 +797,7 @@ extern SDL_DECLSPEC const char *SDLCALL SDL_GetGamepadPath(SDL_Gamepad *gamepad)
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_GetGamepadInstanceType
+ * \sa SDL_GetGamepadTypeForID
  */
 extern SDL_DECLSPEC SDL_GamepadType SDLCALL SDL_GetGamepadType(SDL_Gamepad *gamepad);
 
@@ -803,7 +810,7 @@ extern SDL_DECLSPEC SDL_GamepadType SDLCALL SDL_GetGamepadType(SDL_Gamepad *game
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_GetRealGamepadInstanceType
+ * \sa SDL_GetRealGamepadTypeForID
  */
 extern SDL_DECLSPEC SDL_GamepadType SDLCALL SDL_GetRealGamepadType(SDL_Gamepad *gamepad);
 
@@ -846,7 +853,7 @@ extern SDL_DECLSPEC int SDLCALL SDL_SetGamepadPlayerIndex(SDL_Gamepad *gamepad, 
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_GetGamepadInstanceVendor
+ * \sa SDL_GetGamepadVendorForID
  */
 extern SDL_DECLSPEC Uint16 SDLCALL SDL_GetGamepadVendor(SDL_Gamepad *gamepad);
 
@@ -860,7 +867,7 @@ extern SDL_DECLSPEC Uint16 SDLCALL SDL_GetGamepadVendor(SDL_Gamepad *gamepad);
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_GetGamepadInstanceProduct
+ * \sa SDL_GetGamepadProductForID
  */
 extern SDL_DECLSPEC Uint16 SDLCALL SDL_GetGamepadProduct(SDL_Gamepad *gamepad);
 
@@ -874,7 +881,7 @@ extern SDL_DECLSPEC Uint16 SDLCALL SDL_GetGamepadProduct(SDL_Gamepad *gamepad);
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_GetGamepadInstanceProductVersion
+ * \sa SDL_GetGamepadProductVersionForID
  */
 extern SDL_DECLSPEC Uint16 SDLCALL SDL_GetGamepadProductVersion(SDL_Gamepad *gamepad);
 
@@ -895,7 +902,8 @@ extern SDL_DECLSPEC Uint16 SDLCALL SDL_GetGamepadFirmwareVersion(SDL_Gamepad *ga
  *
  * Returns the serial number of the gamepad, or NULL if it is not available.
  *
- * The returned string follows the SDL_GetStringRule.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param gamepad the gamepad object to query.
  * \returns the serial number, or NULL if unavailable.
@@ -974,11 +982,12 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_GamepadConnected(SDL_Gamepad *gamepad);
  * SDL to crash.
  *
  * \param gamepad the gamepad object that you want to get a joystick from.
- * \returns an SDL_Joystick object; call SDL_GetError() for more information.
+ * \returns an SDL_Joystick object, or NULL on failure; call SDL_GetError()
+ *          for more information.
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC SDL_Joystick *SDLCALL SDL_GetGamepadJoystick(SDL_Gamepad *gamepad);
+extern SDL_DECLSPEC SDL_Joystick * SDLCALL SDL_GetGamepadJoystick(SDL_Gamepad *gamepad);
 
 /**
  * Set the state of gamepad event processing.
@@ -1013,15 +1022,17 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_GamepadEventsEnabled(void);
 /**
  * Get the SDL joystick layer bindings for a gamepad.
  *
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
+ *
  * \param gamepad a gamepad.
  * \param count a pointer filled in with the number of bindings returned.
- * \returns a NULL terminated array of pointers to bindings which should be
- *          freed with SDL_free(), or NULL on error; call SDL_GetError() for
- *          more details.
+ * \returns a NULL terminated array of pointers to bindings or NULL on
+ *          failure; call SDL_GetError() for more information.
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC SDL_GamepadBinding **SDLCALL SDL_GetGamepadBindings(SDL_Gamepad *gamepad, int *count);
+extern SDL_DECLSPEC const SDL_GamepadBinding * const * SDLCALL SDL_GetGamepadBindings(SDL_Gamepad *gamepad, int *count);
 
 /**
  * Manually pump gamepad updates if not using the loop.
@@ -1055,7 +1066,8 @@ extern SDL_DECLSPEC SDL_GamepadType SDLCALL SDL_GetGamepadTypeFromString(const c
 /**
  * Convert from an SDL_GamepadType enum to a string.
  *
- * The returned string follows the SDL_GetStringRule.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param type an enum value for a given SDL_GamepadType.
  * \returns a string for the given type, or NULL if an invalid type is
@@ -1066,7 +1078,7 @@ extern SDL_DECLSPEC SDL_GamepadType SDLCALL SDL_GetGamepadTypeFromString(const c
  *
  * \sa SDL_GetGamepadTypeFromString
  */
-extern SDL_DECLSPEC const char *SDLCALL SDL_GetGamepadStringForType(SDL_GamepadType type);
+extern SDL_DECLSPEC const char * SDLCALL SDL_GetGamepadStringForType(SDL_GamepadType type);
 
 /**
  * Convert a string into SDL_GamepadAxis enum.
@@ -1093,7 +1105,8 @@ extern SDL_DECLSPEC SDL_GamepadAxis SDLCALL SDL_GetGamepadAxisFromString(const c
 /**
  * Convert from an SDL_GamepadAxis enum to a string.
  *
- * The returned string follows the SDL_GetStringRule.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param axis an enum value for a given SDL_GamepadAxis.
  * \returns a string for the given axis, or NULL if an invalid axis is
@@ -1168,7 +1181,8 @@ extern SDL_DECLSPEC SDL_GamepadButton SDLCALL SDL_GetGamepadButtonFromString(con
 /**
  * Convert from an SDL_GamepadButton enum to a string.
  *
- * The returned string follows the SDL_GetStringRule.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param button an enum value for a given SDL_GamepadButton.
  * \returns a string for the given button, or NULL if an invalid button is
@@ -1179,7 +1193,7 @@ extern SDL_DECLSPEC SDL_GamepadButton SDLCALL SDL_GetGamepadButtonFromString(con
  *
  * \sa SDL_GetGamepadButtonFromString
  */
-extern SDL_DECLSPEC const char* SDLCALL SDL_GetGamepadStringForButton(SDL_GamepadButton button);
+extern SDL_DECLSPEC const char * SDLCALL SDL_GetGamepadStringForButton(SDL_GamepadButton button);
 
 /**
  * Query whether a gamepad has a given button.
@@ -1202,7 +1216,7 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_GamepadHasButton(SDL_Gamepad *gamepad, 
  *
  * \param gamepad a gamepad.
  * \param button a button index (one of the SDL_GamepadButton values).
- * \returns 1 for pressed state or 0 for not pressed state or error; call
+ * \returns 1 for pressed state or 0 for not pressed state or failure; call
  *          SDL_GetError() for more information.
  *
  * \since This function is available since SDL 3.0.0.
@@ -1456,7 +1470,8 @@ extern SDL_DECLSPEC void SDLCALL SDL_CloseGamepad(SDL_Gamepad *gamepad);
  * Return the sfSymbolsName for a given button on a gamepad on Apple
  * platforms.
  *
- * The returned string follows the SDL_GetStringRule.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param gamepad the gamepad to query.
  * \param button a button on the gamepad.
@@ -1466,12 +1481,13 @@ extern SDL_DECLSPEC void SDLCALL SDL_CloseGamepad(SDL_Gamepad *gamepad);
  *
  * \sa SDL_GetGamepadAppleSFSymbolsNameForAxis
  */
-extern SDL_DECLSPEC const char* SDLCALL SDL_GetGamepadAppleSFSymbolsNameForButton(SDL_Gamepad *gamepad, SDL_GamepadButton button);
+extern SDL_DECLSPEC const char * SDLCALL SDL_GetGamepadAppleSFSymbolsNameForButton(SDL_Gamepad *gamepad, SDL_GamepadButton button);
 
 /**
  * Return the sfSymbolsName for a given axis on a gamepad on Apple platforms.
  *
- * The returned string follows the SDL_GetStringRule.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param gamepad the gamepad to query.
  * \param axis an axis on the gamepad.
@@ -1481,7 +1497,7 @@ extern SDL_DECLSPEC const char* SDLCALL SDL_GetGamepadAppleSFSymbolsNameForButto
  *
  * \sa SDL_GetGamepadAppleSFSymbolsNameForButton
  */
-extern SDL_DECLSPEC const char* SDLCALL SDL_GetGamepadAppleSFSymbolsNameForAxis(SDL_Gamepad *gamepad, SDL_GamepadAxis axis);
+extern SDL_DECLSPEC const char * SDLCALL SDL_GetGamepadAppleSFSymbolsNameForAxis(SDL_Gamepad *gamepad, SDL_GamepadAxis axis);
 
 
 /* Ends C function definitions when using C++ */

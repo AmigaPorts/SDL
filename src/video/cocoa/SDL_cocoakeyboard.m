@@ -33,7 +33,7 @@
 /*#define DEBUG_IME NSLog */
 #define DEBUG_IME(...)
 
-@interface SDLTranslatorResponder : NSView <NSTextInputClient>
+@interface SDL3TranslatorResponder : NSView <NSTextInputClient>
 {
     NSString *_markedText;
     NSRange _markedRange;
@@ -44,7 +44,7 @@
 - (void)setInputRect:(const SDL_Rect *)rect;
 @end
 
-@implementation SDLTranslatorResponder
+@implementation SDL3TranslatorResponder
 
 - (void)setInputRect:(const SDL_Rect *)rect
 {
@@ -288,7 +288,8 @@ static void UpdateKeymap(SDL_CocoaVideoData *data, SDL_bool send_event)
             /* Make sure this scancode is a valid character scancode */
             SDL_Scancode scancode = darwin_scancode_table[i];
             if (scancode == SDL_SCANCODE_UNKNOWN ||
-                scancode >= SDL_SCANCODE_CAPSLOCK) {
+                scancode == SDL_SCANCODE_DELETE ||
+                (SDL_GetDefaultKeyFromScancode(scancode, SDL_KMOD_NONE) & SDLK_SCANCODE_MASK)) {
                 continue;
             }
 
@@ -327,7 +328,7 @@ static void UpdateKeymap(SDL_CocoaVideoData *data, SDL_bool send_event)
 
 void Cocoa_InitKeyboard(SDL_VideoDevice *_this)
 {
-    SDL_CocoaVideoData *data = (__bridge SDL_CocoaVideoData *)_this->driverdata;
+    SDL_CocoaVideoData *data = (__bridge SDL_CocoaVideoData *)_this->internal;
 
     UpdateKeymap(data, SDL_FALSE);
 
@@ -347,8 +348,8 @@ int Cocoa_StartTextInput(SDL_VideoDevice *_this, SDL_Window *window)
 {
     @autoreleasepool {
         NSView *parentView;
-        SDL_CocoaVideoData *data = (__bridge SDL_CocoaVideoData *)_this->driverdata;
-        NSWindow *nswindow = ((__bridge SDL_CocoaWindowData *)window->driverdata).nswindow;
+        SDL_CocoaVideoData *data = (__bridge SDL_CocoaVideoData *)_this->internal;
+        NSWindow *nswindow = ((__bridge SDL_CocoaWindowData *)window->internal).nswindow;
 
         parentView = [nswindow contentView];
 
@@ -358,7 +359,7 @@ int Cocoa_StartTextInput(SDL_VideoDevice *_this, SDL_Window *window)
          * text input, simply remove the field editor from its superview then add
          * it to the front most window's content view */
         if (!data.fieldEdit) {
-            data.fieldEdit = [[SDLTranslatorResponder alloc] initWithFrame:NSMakeRect(0.0, 0.0, 0.0, 0.0)];
+            data.fieldEdit = [[SDL3TranslatorResponder alloc] initWithFrame:NSMakeRect(0.0, 0.0, 0.0, 0.0)];
         }
 
         if (![[data.fieldEdit superview] isEqual:parentView]) {
@@ -374,7 +375,7 @@ int Cocoa_StartTextInput(SDL_VideoDevice *_this, SDL_Window *window)
 int Cocoa_StopTextInput(SDL_VideoDevice *_this, SDL_Window *window)
 {
     @autoreleasepool {
-        SDL_CocoaVideoData *data = (__bridge SDL_CocoaVideoData *)_this->driverdata;
+        SDL_CocoaVideoData *data = (__bridge SDL_CocoaVideoData *)_this->internal;
 
         if (data && data.fieldEdit) {
             [data.fieldEdit removeFromSuperview];
@@ -386,7 +387,7 @@ int Cocoa_StopTextInput(SDL_VideoDevice *_this, SDL_Window *window)
 
 int Cocoa_UpdateTextInputArea(SDL_VideoDevice *_this, SDL_Window *window)
 {
-    SDL_CocoaVideoData *data = (__bridge SDL_CocoaVideoData *)_this->driverdata;
+    SDL_CocoaVideoData *data = (__bridge SDL_CocoaVideoData *)_this->internal;
     if (data.fieldEdit) {
         [data.fieldEdit setInputRect:&window->text_input_rect];
     }
@@ -397,7 +398,7 @@ void Cocoa_HandleKeyEvent(SDL_VideoDevice *_this, NSEvent *event)
 {
     unsigned short scancode;
     SDL_Scancode code;
-    SDL_CocoaVideoData *data = _this ? ((__bridge SDL_CocoaVideoData *)_this->driverdata) : nil;
+    SDL_CocoaVideoData *data = _this ? ((__bridge SDL_CocoaVideoData *)_this->internal) : nil;
     if (!data) {
         return; /* can happen when returning from fullscreen Space on shutdown */
     }

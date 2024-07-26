@@ -13,7 +13,7 @@ TARGETS = \
 	loopwave \
 	sdl3benchmark \
 	testatomic \
-	testaudiocapture \
+	testaudiorecording \
 	testaudiohotplug \
 	testaudioinfo \
 	testautomation \
@@ -140,7 +140,7 @@ testmultiaudio: testmultiaudio.o testutils.o
 testaudiohotplug: testaudiohotplug.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
-testaudiocapture: testaudiocapture.o
+testaudiorecording: testaudiorecording.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testatomic: testatomic.o

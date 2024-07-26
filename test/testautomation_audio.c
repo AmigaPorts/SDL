@@ -108,7 +108,7 @@ static int audio_initQuitAudio(void *arg)
         }
 
         /* Call Init */
-        SDL_SetHint("SDL_AUDIO_DRIVER", audioDriver);
+        SDL_SetHint(SDL_HINT_AUDIO_DRIVER, audioDriver);
         result = SDL_InitSubSystem(SDL_INIT_AUDIO);
         SDLTest_AssertPass("Call to SDL_InitSubSystem(SDL_INIT_AUDIO) with driver='%s'", audioDriver);
         SDLTest_AssertCheck(result == 0, "Validate result value; expected: 0 got: %d", result);
@@ -122,7 +122,7 @@ static int audio_initQuitAudio(void *arg)
     audioDriver = NULL;
 
     /* Call Init */
-    SDL_SetHint("SDL_AUDIO_DRIVER", audioDriver);
+    SDL_SetHint(SDL_HINT_AUDIO_DRIVER, audioDriver);
     result = SDL_InitSubSystem(SDL_INIT_AUDIO);
     SDLTest_AssertPass("Call to SDL_AudioInit(NULL)");
     SDLTest_AssertCheck(result == 0, "Validate result value; expected: 0 got: %d", result);
@@ -175,7 +175,7 @@ static int audio_initOpenCloseQuitAudio(void *arg)
         for (j = 0; j < 2; j++) {
 
             /* Call Init */
-            SDL_SetHint("SDL_AUDIO_DRIVER", audioDriver);
+            SDL_SetHint(SDL_HINT_AUDIO_DRIVER, audioDriver);
             result = SDL_InitSubSystem(SDL_INIT_AUDIO);
             SDLTest_AssertPass("Call to SDL_InitSubSystem(SDL_INIT_AUDIO) with driver='%s'", audioDriver);
             SDLTest_AssertCheck(result == 0, "Validate result value; expected: 0 got: %d", result);
@@ -266,7 +266,7 @@ static int audio_pauseUnpauseAudio(void *arg)
         for (j = 0; j < 2; j++) {
 
             /* Call Init */
-            SDL_SetHint("SDL_AUDIO_DRIVER", audioDriver);
+            SDL_SetHint(SDL_HINT_AUDIO_DRIVER, audioDriver);
             result = SDL_InitSubSystem(SDL_INIT_AUDIO);
             SDLTest_AssertPass("Call to SDL_InitSubSystem(SDL_INIT_AUDIO) with driver='%s'", audioDriver);
             SDLTest_AssertCheck(result == 0, "Validate result value; expected: 0 got: %d", result);
@@ -366,7 +366,7 @@ static int audio_enumerateAndNameAudioDevices(void *arg)
     int t;
     int i, n;
     const char *name;
-    SDL_AudioDeviceID *devices = NULL;
+    const SDL_AudioDeviceID *devices = NULL;
 
     /* Iterate over types: t=0 playback device, t=1 recording device */
     for (t = 0; t < 2; t++) {
@@ -388,8 +388,6 @@ static int audio_enumerateAndNameAudioDevices(void *arg)
                 }
             }
         }
-
-        SDL_free(devices);
     }
 
     return TEST_COMPLETED;

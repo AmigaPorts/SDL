@@ -40,7 +40,7 @@
 
 static void WIN_UpdateDisplayMode(SDL_VideoDevice *_this, LPCWSTR deviceName, DWORD index, SDL_DisplayMode *mode)
 {
-    SDL_DisplayModeData *data = (SDL_DisplayModeData *)mode->driverdata;
+    SDL_DisplayModeData *data = (SDL_DisplayModeData *)mode->internal;
     HDC hdc;
 
     data->DeviceMode.dmFields = (DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY | DM_DISPLAYFLAGS);
@@ -111,6 +111,53 @@ static void WIN_UpdateDisplayMode(SDL_VideoDevice *_this, LPCWSTR deviceName, DW
     }
 }
 
+static void *WIN_GetDXGIOutput(SDL_VideoDevice *_this, const WCHAR *DeviceName)
+{
+    void *retval = NULL;
+
+#ifdef HAVE_DXGI_H
+    const SDL_VideoData *videodata = (const SDL_VideoData *)_this->internal;
+    int nAdapter, nOutput;
+    IDXGIAdapter *pDXGIAdapter;
+    IDXGIOutput *pDXGIOutput;
+
+    if (!videodata->pDXGIFactory) {
+        return NULL;
+    }
+
+    nAdapter = 0;
+    while (!retval && SUCCEEDED(IDXGIFactory_EnumAdapters(videodata->pDXGIFactory, nAdapter, &pDXGIAdapter))) {
+        nOutput = 0;
+        while (!retval && SUCCEEDED(IDXGIAdapter_EnumOutputs(pDXGIAdapter, nOutput, &pDXGIOutput))) {
+            DXGI_OUTPUT_DESC outputDesc;
+            if (SUCCEEDED(IDXGIOutput_GetDesc(pDXGIOutput, &outputDesc))) {
+                if (SDL_wcscmp(outputDesc.DeviceName, DeviceName) == 0) {
+                    retval = pDXGIOutput;
+                }
+            }
+            if (pDXGIOutput != retval) {
+                IDXGIOutput_Release(pDXGIOutput);
+            }
+            nOutput++;
+        }
+        IDXGIAdapter_Release(pDXGIAdapter);
+        nAdapter++;
+    }
+#endif
+    return retval;
+}
+
+static void WIN_ReleaseDXGIOutput(void *dxgi_output)
+{
+#ifdef HAVE_DXGI_H
+    IDXGIOutput *pDXGIOutput = (IDXGIOutput *)dxgi_output;
+
+    if (pDXGIOutput) {
+        IDXGIOutput_Release(pDXGIOutput);
+    }
+#endif
+}
+
 static SDL_DisplayOrientation WIN_GetNaturalOrientation(DEVMODE *mode)
 {
     int width = mode->dmPelsWidth;
@@ -161,22 +208,46 @@ static SDL_DisplayOrientation WIN_GetDisplayOrientation(DEVMODE *mode)
     }
 }
 
-static float WIN_GetRefreshRate(DEVMODE *mode)
+static void WIN_GetRefreshRate(void *dxgi_output, DEVMODE *mode, int *numerator, int *denominator)
 {
     /* We're not currently using DXGI to query display modes, so fake NTSC timings */
     switch (mode->dmDisplayFrequency) {
     case 119:
     case 59:
     case 29:
-        return ((100 * (mode->dmDisplayFrequency + 1) * 1000) / 1001) / 100.0f;
+        *numerator = (mode->dmDisplayFrequency + 1) * 1000;
+        *denominator = 1001;
+        break;
     default:
-        return (float)mode->dmDisplayFrequency;
+        *numerator = mode->dmDisplayFrequency;
+        *denominator = 1;
+        break;
     }
+
+#ifdef HAVE_DXGI_H
+    if (dxgi_output) {
+        IDXGIOutput *pDXGIOutput = (IDXGIOutput *)dxgi_output;
+        DXGI_MODE_DESC modeToMatch;
+        DXGI_MODE_DESC closestMatch;
+
+        SDL_zero(modeToMatch);
+        modeToMatch.Width = mode->dmPelsWidth;
+        modeToMatch.Height = mode->dmPelsHeight;
+        modeToMatch.RefreshRate.Numerator = *numerator;
+        modeToMatch.RefreshRate.Denominator = *denominator;
+        modeToMatch.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+        if (SUCCEEDED(IDXGIOutput_FindClosestMatchingMode(pDXGIOutput, &modeToMatch, &closestMatch, NULL))) {
+            *numerator = closestMatch.RefreshRate.Numerator;
+            *denominator = closestMatch.RefreshRate.Denominator;
+        }
+    }
+#endif // HAVE_DXGI_H
 }
 
 static float WIN_GetContentScale(SDL_VideoDevice *_this, HMONITOR hMonitor)
 {
-    const SDL_VideoData *videodata = (const SDL_VideoData *)_this->driverdata;
+    const SDL_VideoData *videodata = (const SDL_VideoData *)_this->internal;
     int dpi = 0;
 
     if (videodata->GetDpiForMonitor) {
@@ -200,7 +271,7 @@ static float WIN_GetContentScale(SDL_VideoDevice *_this, HMONITOR hMonitor)
     return dpi / (float)USER_DEFAULT_SCREEN_DPI;
 }
 
-static SDL_bool WIN_GetDisplayMode(SDL_VideoDevice *_this, HMONITOR hMonitor, LPCWSTR deviceName, DWORD index, SDL_DisplayMode *mode, SDL_DisplayOrientation *natural_orientation, SDL_DisplayOrientation *current_orientation)
+static SDL_bool WIN_GetDisplayMode(SDL_VideoDevice *_this, void *dxgi_output, HMONITOR hMonitor, LPCWSTR deviceName, DWORD index, SDL_DisplayMode *mode, SDL_DisplayOrientation *natural_orientation, SDL_DisplayOrientation *current_orientation)
 {
     SDL_DisplayModeData *data;
     DEVMODE devmode;
@@ -217,13 +288,13 @@ static SDL_bool WIN_GetDisplayMode(SDL_VideoDevice *_this, HMONITOR hMonitor, LP
     }
 
     SDL_zerop(mode);
-    mode->driverdata = data;
+    mode->internal = data;
     data->DeviceMode = devmode;
 
     mode->format = SDL_PIXELFORMAT_UNKNOWN;
     mode->w = data->DeviceMode.dmPelsWidth;
     mode->h = data->DeviceMode.dmPelsHeight;
-    mode->refresh_rate = WIN_GetRefreshRate(&data->DeviceMode);
+    WIN_GetRefreshRate(dxgi_output, &data->DeviceMode, &mode->refresh_rate_numerator, &mode->refresh_rate_denominator);
 
     /* Fill in the mode information */
     WIN_UpdateDisplayMode(_this, deviceName, index, mode);
@@ -442,7 +513,7 @@ done:
 static float WIN_GetSDRWhitePoint(SDL_VideoDevice *_this, HMONITOR hMonitor)
 {
     DISPLAYCONFIG_PATH_INFO path_info;
-    SDL_VideoData *videodata = _this->driverdata;
+    SDL_VideoData *videodata = _this->internal;
     float SDR_white_level = 1.0f;
 
     if (WIN_GetMonitorPathInfo(videodata, hMonitor, &path_info)) {
@@ -482,6 +553,7 @@ static void WIN_AddDisplay(SDL_VideoDevice *_this, HMONITOR hMonitor, const MONI
     int i, index = *display_index;
     SDL_VideoDisplay display;
     SDL_DisplayData *displaydata;
+    void *dxgi_output = NULL;
     SDL_DisplayMode mode;
     SDL_DisplayOrientation natural_orientation;
     SDL_DisplayOrientation current_orientation;
@@ -491,7 +563,10 @@ static void WIN_AddDisplay(SDL_VideoDevice *_this, HMONITOR hMonitor, const MONI
     SDL_Log("Display: %s\n", WIN_StringToUTF8W(info->szDevice));
 #endif
 
-    if (!WIN_GetDisplayMode(_this, hMonitor, info->szDevice, ENUM_CURRENT_SETTINGS, &mode, &natural_orientation, &current_orientation)) {
+    dxgi_output = WIN_GetDXGIOutput(_this, info->szDevice);
+    SDL_bool found = WIN_GetDisplayMode(_this, dxgi_output, hMonitor, info->szDevice, ENUM_CURRENT_SETTINGS, &mode, &natural_orientation, &current_orientation);
+    WIN_ReleaseDXGIOutput(dxgi_output);
+    if (!found) {
         return;
     }
 
@@ -499,12 +574,12 @@ static void WIN_AddDisplay(SDL_VideoDevice *_this, HMONITOR hMonitor, const MONI
     // ready to be added to allow any displays that we can't fully query to be
     // removed
     for (i = 0; i < _this->num_displays; ++i) {
-        SDL_DisplayData *driverdata = _this->displays[i]->driverdata;
-        if (SDL_wcscmp(driverdata->DeviceName, info->szDevice) == 0) {
+        SDL_DisplayData *internal = _this->displays[i]->internal;
+        if (SDL_wcscmp(internal->DeviceName, info->szDevice) == 0) {
             SDL_bool moved = (index != i);
             SDL_bool changed_bounds = SDL_FALSE;
 
-            if (driverdata->state != DisplayRemoved) {
+            if (internal->state != DisplayRemoved) {
                 /* We've already enumerated this display, don't move it */
                 return;
             }
@@ -523,8 +598,8 @@ static void WIN_AddDisplay(SDL_VideoDevice *_this, HMONITOR hMonitor, const MONI
                 i = index;
             }
 
-            driverdata->MonitorHandle = hMonitor;
-            driverdata->state = DisplayUnchanged;
+            internal->MonitorHandle = hMonitor;
+            internal->state = DisplayUnchanged;
 
             if (!_this->setting_display_mode) {
                 SDL_VideoDisplay *existing_display = _this->displays[i];
@@ -533,14 +608,14 @@ static void WIN_AddDisplay(SDL_VideoDevice *_this, HMONITOR hMonitor, const MONI
                 SDL_ResetFullscreenDisplayModes(existing_display);
                 SDL_SetDesktopDisplayMode(existing_display, &mode);
                 if (WIN_GetDisplayBounds(_this, existing_display, &bounds) == 0 &&
-                    SDL_memcmp(&driverdata->bounds, &bounds, sizeof(bounds)) != 0) {
+                    SDL_memcmp(&internal->bounds, &bounds, sizeof(bounds)) != 0) {
                     changed_bounds = SDL_TRUE;
-                    SDL_copyp(&driverdata->bounds, &bounds);
+                    SDL_copyp(&internal->bounds, &bounds);
                 }
                 if (moved || changed_bounds) {
-                    SDL_SendDisplayEvent(existing_display, SDL_EVENT_DISPLAY_MOVED, 0);
+                    SDL_SendDisplayEvent(existing_display, SDL_EVENT_DISPLAY_MOVED, 0, 0);
                 }
-                SDL_SendDisplayEvent(existing_display, SDL_EVENT_DISPLAY_ORIENTATION, current_orientation);
+                SDL_SendDisplayEvent(existing_display, SDL_EVENT_DISPLAY_ORIENTATION, current_orientation, 0);
                 SDL_SetDisplayContentScale(existing_display, content_scale);
 #ifdef HAVE_DXGI1_6_H
                 SDL_HDROutputProperties HDR;
@@ -561,7 +636,7 @@ static void WIN_AddDisplay(SDL_VideoDevice *_this, HMONITOR hMonitor, const MONI
     displaydata->state = DisplayAdded;
 
     SDL_zero(display);
-    display.name = WIN_GetDisplayNameVista(_this->driverdata, info->szDevice);
+    display.name = WIN_GetDisplayNameVista(_this->internal, info->szDevice);
     if (!display.name) {
         DISPLAY_DEVICEW device;
         SDL_zero(device);
@@ -576,7 +651,7 @@ static void WIN_AddDisplay(SDL_VideoDevice *_this, HMONITOR hMonitor, const MONI
     display.current_orientation = current_orientation;
     display.content_scale = content_scale;
     display.device = _this;
-    display.driverdata = displaydata;
+    display.internal = displaydata;
     WIN_GetDisplayBounds(_this, &display, &displaydata->bounds);
 #ifdef HAVE_DXGI1_6_H
     WIN_GetHDRProperties(_this, hMonitor, &display.HDR);
@@ -643,7 +718,7 @@ int WIN_InitModes(SDL_VideoDevice *_this)
 
 int WIN_GetDisplayBounds(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_Rect *rect)
 {
-    const SDL_DisplayData *data = display->driverdata;
+    const SDL_DisplayData *data = display->internal;
     MONITORINFO minfo;
     BOOL rc;
 
@@ -665,7 +740,7 @@ int WIN_GetDisplayBounds(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_
 
 int WIN_GetDisplayUsableBounds(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_Rect *rect)
 {
-    const SDL_DisplayData *data = display->driverdata;
+    const SDL_DisplayData *data = display->internal;
     MONITORINFO minfo;
     BOOL rc;
 
@@ -687,34 +762,40 @@ int WIN_GetDisplayUsableBounds(SDL_VideoDevice *_this, SDL_VideoDisplay *display
 
 int WIN_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay *display)
 {
-    SDL_DisplayData *data = display->driverdata;
+    SDL_DisplayData *data = display->internal;
+    void *dxgi_output;
     DWORD i;
     SDL_DisplayMode mode;
 
+    dxgi_output = WIN_GetDXGIOutput(_this, data->DeviceName);
+
     for (i = 0;; ++i) {
-        if (!WIN_GetDisplayMode(_this, data->MonitorHandle, data->DeviceName, i, &mode, NULL, NULL)) {
+        if (!WIN_GetDisplayMode(_this, dxgi_output, data->MonitorHandle, data->DeviceName, i, &mode, NULL, NULL)) {
             break;
         }
         if (SDL_ISPIXELFORMAT_INDEXED(mode.format)) {
             /* We don't support palettized modes now */
-            SDL_free(mode.driverdata);
+            SDL_free(mode.internal);
             continue;
         }
         if (mode.format != SDL_PIXELFORMAT_UNKNOWN) {
             if (!SDL_AddFullscreenDisplayMode(display, &mode)) {
-                SDL_free(mode.driverdata);
+                SDL_free(mode.internal);
             }
         } else {
-            SDL_free(mode.driverdata);
+            SDL_free(mode.internal);
         }
     }
+
+    WIN_ReleaseDXGIOutput(dxgi_output);
+
     return 0;
 }
 
 #ifdef DEBUG_MODES
 static void WIN_LogMonitor(SDL_VideoDevice *_this, HMONITOR mon)
 {
-    const SDL_VideoData *vid_data = (const SDL_VideoData *)_this->driverdata;
+    const SDL_VideoData *vid_data = (const SDL_VideoData *)_this->internal;
     MONITORINFOEX minfo;
     UINT xdpi = 0, ydpi = 0;
     char *name_utf8;
@@ -743,8 +824,8 @@ static void WIN_LogMonitor(SDL_VideoDevice *_this, HMONITOR mon)
 
 int WIN_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_DisplayMode *mode)
 {
-    SDL_DisplayData *displaydata = display->driverdata;
-    SDL_DisplayModeData *data = (SDL_DisplayModeData *)mode->driverdata;
+    SDL_DisplayData *displaydata = display->internal;
+    SDL_DisplayModeData *data = (SDL_DisplayModeData *)mode->internal;
     LONG status;
 
 #ifdef DEBUG_MODES
@@ -762,7 +843,7 @@ int WIN_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_Di
            reset the monitor DPI to 192. (200% scaling)
 
        NOTE: these are temporary changes in DPI, not modifications to the Control Panel setting. */
-    if (mode->driverdata == display->desktop_mode.driverdata) {
+    if (mode->internal == display->desktop_mode.internal) {
 #ifdef DEBUG_MODES
         SDL_Log("WIN_SetDisplayMode: resetting to original resolution");
 #endif
@@ -809,8 +890,8 @@ void WIN_RefreshDisplays(SDL_VideoDevice *_this)
     // Mark all displays as potentially invalid to detect
     // entries that have actually been removed
     for (i = 0; i < _this->num_displays; ++i) {
-        SDL_DisplayData *driverdata = _this->displays[i]->driverdata;
-        driverdata->state = DisplayRemoved;
+        SDL_DisplayData *internal = _this->displays[i]->internal;
+        internal->state = DisplayRemoved;
     }
 
     // Enumerate displays to add any new ones and mark still
@@ -821,8 +902,8 @@ void WIN_RefreshDisplays(SDL_VideoDevice *_this)
     // in reverse as each delete takes effect immediately
     for (i = _this->num_displays - 1; i >= 0; --i) {
         SDL_VideoDisplay *display = _this->displays[i];
-        SDL_DisplayData *driverdata = display->driverdata;
-        if (driverdata->state == DisplayRemoved) {
+        SDL_DisplayData *internal = display->internal;
+        if (internal->state == DisplayRemoved) {
             SDL_DelVideoDisplay(display->id, SDL_TRUE);
         }
     }
@@ -830,9 +911,9 @@ void WIN_RefreshDisplays(SDL_VideoDevice *_this)
     // Send events for any newly added displays
     for (i = 0; i < _this->num_displays; ++i) {
         SDL_VideoDisplay *display = _this->displays[i];
-        SDL_DisplayData *driverdata = display->driverdata;
-        if (driverdata->state == DisplayAdded) {
-            SDL_SendDisplayEvent(display, SDL_EVENT_DISPLAY_ADDED, 0);
+        SDL_DisplayData *internal = display->internal;
+        if (internal->state == DisplayAdded) {
+            SDL_SendDisplayEvent(display, SDL_EVENT_DISPLAY_ADDED, 0, 0);
         }
     }
 }
