@@ -1140,6 +1140,7 @@ OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, Uint32 flags)
     renderer->UpdateTexture = OS4_UpdateTexture;
     renderer->LockTexture = OS4_LockTexture;
     renderer->UnlockTexture = OS4_UnlockTexture;
+    renderer->SetTextureScaleMode = OS4_SetTextureScaleMode;
     renderer->SetRenderTarget = OS4_SetRenderTarget;
     renderer->QueueSetViewport = OS4_QueueNop;
     renderer->QueueSetDrawColor = OS4_QueueNop;

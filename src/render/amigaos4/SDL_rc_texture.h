@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -51,6 +51,8 @@ extern int OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
 extern void OS4_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture);
 
 extern void OS4_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture);
+
+extern void OS4_SetTextureScaleMode(SDL_Renderer *renderer, SDL_Texture *texture, SDL_ScaleMode scaleMode);
 
 #endif
 
