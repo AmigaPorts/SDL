@@ -368,16 +368,29 @@ KMSDRM_FBInfo *KMSDRM_FBFromBO(_THIS, struct gbm_bo *bo)
     num_planes = KMSDRM_gbm_bo_get_plane_count(bo);
     for (int i = 0; i < num_planes; i++) {
         strides[i] = KMSDRM_gbm_bo_get_stride_for_plane(bo, i);
-        handles[i] = KMSDRM_gbm_bo_get_handle(bo).u32;
+        handles[i] = KMSDRM_gbm_bo_get_handle_for_plane(bo, i).u32;
         offsets[i] = KMSDRM_gbm_bo_get_offset(bo, i);
         modifiers[i] = modifiers[0];
     }
 
-    if (modifiers[0]) {
+    if (modifiers[0] && modifiers[0] != DRM_FORMAT_MOD_INVALID) {
         flags = DRM_MODE_FB_MODIFIERS;
     }
 
     ret = KMSDRM_drmModeAddFB2WithModifiers(viddata->drm_fd, w, h, format, handles, strides, offsets, modifiers, &fb_info->fb_id, flags);
+
+    if (ret) {
+        handles[0] = KMSDRM_gbm_bo_get_handle(bo).u32;
+        strides[0] = KMSDRM_gbm_bo_get_stride(bo);
+        offsets[0] = 0;
+        for (int i = 1; i<4; i++) {
+            handles[i] = 0;
+            strides[i] = 0;
+            offsets[i] = 0;
+        }
+        ret = KMSDRM_drmModeAddFB2(viddata->drm_fd, w, h, format, handles, strides, offsets, &fb_info->fb_id, 0);
+    }
+
     if (ret) {
         SDL_free(fb_info);
         return NULL;
@@ -1464,6 +1477,12 @@ int KMSDRM_CreateWindow(_THIS, SDL_Window *window)
     /* Setup driver data for this window */
     windata->viddata = viddata;
     window->driverdata = windata;
+
+    /* Do we want a double buffering scheme to get low video lag? */
+    windata->double_buffer = SDL_FALSE;
+    if (SDL_GetHintBoolean(SDL_HINT_VIDEO_DOUBLE_BUFFER, SDL_FALSE)) {
+        windata->double_buffer = SDL_TRUE;
+    }
 
     if (!is_vulkan && !vulkan_mode) { /* NON-Vulkan block. */
 
