@@ -34,8 +34,8 @@ set(PKGCONFIG_DEPENDS)
 add_library(sdl-build-options INTERFACE)
 
 if(WINDOWS_STORE)
-  target_compile_definitions(sdl-build-options INTERFACE "-DSDL_BUILDING_WINRT=1")
-  target_compile_options(sdl-build-options INTERFACE "-ZW")
+  target_compile_definitions(sdl-build-options INTERFACE "-DSDL_BUILDING_WINRT=1" "WINAPI_FAMILY=WINAPI_FAMILY_APP")
+  target_compile_options(sdl-build-options INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:-ZW>" "$<$<COMPILE_LANGUAGE:CXX>:-EHsc>")
 endif()
 
 # CMake 3.0 expands the "if(${A})" in "set(OFF 1);set(A OFF);if(${A})" to "if(1)"
@@ -141,6 +141,7 @@ check_cpu_architecture(x86 SDL_CPU_X86)
 check_cpu_architecture(x64 SDL_CPU_X64)
 check_cpu_architecture(arm32 SDL_CPU_ARM32)
 check_cpu_architecture(arm64 SDL_CPU_ARM64)
+check_cpu_architecture(arm64ec SDL_CPU_ARM64EC)
 check_cpu_architecture(loongarch64 SDL_CPU_LOONGARCH64)
 
 # Check for 64 or 32 bit
@@ -239,7 +240,7 @@ if(USE_GCC OR USE_CLANG OR USE_INTELCC OR USE_QCC)
 endif()
 
 # Default option knobs
-if(UNIX OR MINGW OR MSYS OR (USE_CLANG AND NOT WINDOWS) OR VITA OR PSP OR PS2 OR N3DS)
+if(UNIX OR MINGW OR MSYS OR (USE_CLANG AND NOT WINDOWS) OR VITA OR PSP OR PS2 OR N3DS OR SDL_CPU_ARM64EC)
   set(OPT_DEF_LIBC ON)
 endif()
 if(WINDOWS OR DARWIN OR MACOSX OR IOS OR TVOS)
@@ -1779,14 +1780,6 @@ elseif(WINDOWS)
     list(APPEND SOURCE_FILES ${WINRT_SOURCE_FILES})
   endif()
 
-  if(MSVC AND NOT SDL_LIBC)
-    # Prevent codegen that would use the VC runtime libraries.
-    set_property(DIRECTORY . APPEND PROPERTY COMPILE_OPTIONS "/GS-;/Gs1048576")
-    if(NOT ARCH_64 AND NOT CMAKE_GENERATOR_PLATFORM STREQUAL "ARM")
-      set_property(DIRECTORY . APPEND PROPERTY COMPILE_OPTIONS "/arch:SSE")
-    endif()
-  endif()
-
   if(SDL_MISC)
     if(WINDOWS_STORE)
       file(GLOB MISC_SOURCES ${SDL2_SOURCE_DIR}/src/misc/winrt/*.cpp)
@@ -2064,6 +2057,7 @@ elseif(WINDOWS)
     endif()
   endif()
 
+  enable_language(RC)
   file(GLOB VERSION_SOURCES ${SDL2_SOURCE_DIR}/src/main/windows/*.rc)
   file(GLOB SDLMAIN_SOURCES ${SDL2_SOURCE_DIR}/src/main/windows/*.c)
   if(MINGW OR CYGWIN)
@@ -3527,6 +3521,20 @@ if(SDL_TEST)
   target_include_directories(SDL2_test PRIVATE ${EXTRA_TEST_INCLUDES})
   set_property(TARGET SDL2_test APPEND PROPERTY COMPATIBLE_INTERFACE_STRING "SDL_VERSION")
   set_property(TARGET SDL2_test PROPERTY INTERFACE_SDL_VERSION "SDL2")
+endif()
+
+if(MSVC AND NOT SDL_LIBC)
+  set(targets SDL2)
+  if(TARGET SDL2-static)
+    list(APPEND targets SDL2-static)
+  endif()
+  if(TARGET SDL2_test)
+    list(APPEND targets SDL2_test)
+  endif()
+  set_property(TARGET ${targets} APPEND PROPERTY COMPILE_OPTIONS "/GS-;/Gs1048576")
+  if(NOT ARCH_64 AND NOT CMAKE_GENERATOR_PLATFORM STREQUAL "ARM")
+    set_property(TARGET ${targets} APPEND PROPERTY COMPILE_OPTIONS "/arch:SSE")
+  endif()
 endif()
 
 ##### Installation targets #####
