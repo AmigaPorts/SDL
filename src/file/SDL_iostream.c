@@ -123,19 +123,19 @@ static int SDLCALL windows_file_open(IOStreamWindowsData *iodata, const char *fi
 #endif
 
     {
-        LPTSTR tstr = WIN_UTF8ToString(filename);
+        LPWSTR str = WIN_UTF8ToStringW(filename);
 #if defined(SDL_PLATFORM_WINRT)
         CREATEFILE2_EXTENDED_PARAMETERS extparams;
         SDL_zero(extparams);
         extparams.dwSize = sizeof(extparams);
         extparams.dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
-        h = CreateFile2(tstr,
+        h = CreateFile2(str,
                         (w_right | r_right),
                         (w_right) ? 0 : FILE_SHARE_READ,
                         (must_exist | truncate | a_mode),
                         &extparams);
 #else
-        h = CreateFile(tstr,
+        h = CreateFileW(str,
                        (w_right | r_right),
                        (w_right) ? 0 : FILE_SHARE_READ,
                        NULL,
@@ -143,7 +143,7 @@ static int SDLCALL windows_file_open(IOStreamWindowsData *iodata, const char *fi
                        FILE_ATTRIBUTE_NORMAL,
                        NULL);
 #endif
-        SDL_free(tstr);
+        SDL_free(str);
     }
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES) && !defined(SDL_PLATFORM_WINRT)
@@ -435,7 +435,7 @@ static SDL_IOStream *SDL_IOFromFP(FILE *fp, SDL_bool autoclose)
     } else {
         const SDL_PropertiesID props = SDL_GetIOProperties(iostr);
         if (props) {
-            SDL_SetProperty(props, SDL_PROP_IOSTREAM_STDIO_FILE_POINTER, fp);
+            SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_STDIO_FILE_POINTER, fp);
         }
     }
 
@@ -582,7 +582,7 @@ SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
     } else {
         /* Try opening it from internal storage if it's a relative path */
         char *path = NULL;
-        SDL_asprintf(&path, "%s/%s", SDL_AndroidGetInternalStoragePath(), file);
+        SDL_asprintf(&path, "%s/%s", SDL_GetAndroidInternalStoragePath(), file);
         if (path) {
             FILE *fp = fopen(path, mode);
             SDL_free(path);
@@ -619,7 +619,7 @@ SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
     } else {
         const SDL_PropertiesID props = SDL_GetIOProperties(iostr);
         if (props) {
-            SDL_SetProperty(props, SDL_PROP_IOSTREAM_ANDROID_AASSET_POINTER, iodata);
+            SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_ANDROID_AASSET_POINTER, iodata);
         }
     }
 
@@ -648,7 +648,7 @@ SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
     } else {
         const SDL_PropertiesID props = SDL_GetIOProperties(iostr);
         if (props) {
-            SDL_SetProperty(props, SDL_PROP_IOSTREAM_WINDOWS_HANDLE_POINTER, iodata->h);
+            SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_WINDOWS_HANDLE_POINTER, iodata->h);
         }
     }
 
@@ -797,7 +797,7 @@ static int dynamic_mem_realloc(IOStreamDynamicMemData *iodata, size_t size)
     iodata->data.here = base + here_offset;
     iodata->data.stop = base + stop_offset;
     iodata->end = base + length;
-    return SDL_SetProperty(SDL_GetIOProperties(iodata->stream), SDL_PROP_IOSTREAM_DYNAMIC_MEMORY_POINTER, base);
+    return SDL_SetPointerProperty(SDL_GetIOProperties(iodata->stream), SDL_PROP_IOSTREAM_DYNAMIC_MEMORY_POINTER, base);
 }
 
 static size_t SDLCALL dynamic_mem_write(void *userdata, const void *ptr, size_t size, SDL_IOStatus *status)
@@ -817,7 +817,7 @@ static size_t SDLCALL dynamic_mem_write(void *userdata, const void *ptr, size_t 
 static int SDLCALL dynamic_mem_close(void *userdata)
 {
     const IOStreamDynamicMemData *iodata = (IOStreamDynamicMemData *) userdata;
-    void *mem = SDL_GetProperty(SDL_GetIOProperties(iodata->stream), SDL_PROP_IOSTREAM_DYNAMIC_MEMORY_POINTER, NULL);
+    void *mem = SDL_GetPointerProperty(SDL_GetIOProperties(iodata->stream), SDL_PROP_IOSTREAM_DYNAMIC_MEMORY_POINTER, NULL);
     if (mem) {
         SDL_free(mem);
     }

@@ -357,7 +357,7 @@ static void param_update(struct spa_list *param_list, struct spa_list *pending_l
 }
 
 static struct sdl_video_format {
-    SDL_PixelFormatEnum format;
+    SDL_PixelFormat format;
     SDL_Colorspace colorspace;
     uint32_t id;
 } sdl_video_formats[] = {
@@ -389,7 +389,7 @@ static struct sdl_video_format {
 #endif
 };
 
-static uint32_t sdl_format_to_id(SDL_PixelFormatEnum format)
+static uint32_t sdl_format_to_id(SDL_PixelFormat format)
 {
     struct sdl_video_format *f;
     SPA_FOR_EACH_ELEMENT(sdl_video_formats, f) {
@@ -399,7 +399,7 @@ static uint32_t sdl_format_to_id(SDL_PixelFormatEnum format)
     return SPA_VIDEO_FORMAT_UNKNOWN;
 }
 
-static void id_to_sdl_format(uint32_t id, SDL_PixelFormatEnum *format, SDL_Colorspace *colorspace)
+static void id_to_sdl_format(uint32_t id, SDL_PixelFormat *format, SDL_Colorspace *colorspace)
 {
     struct sdl_video_format *f;
     SPA_FOR_EACH_ELEMENT(sdl_video_formats, f) {
@@ -429,12 +429,12 @@ static void on_process(void *data)
 static void on_stream_state_changed(void *data, enum pw_stream_state old,
                 enum pw_stream_state state, const char *error)
 {
-    SDL_CameraDevice *device = data;
+    SDL_Camera *device = data;
     switch (state) {
     case PW_STREAM_STATE_UNCONNECTED:
         break;
     case PW_STREAM_STATE_STREAMING:
-        SDL_CameraDevicePermissionOutcome(device, SDL_TRUE);
+        SDL_CameraPermissionOutcome(device, SDL_TRUE);
         break;
     default:
         break;
@@ -447,13 +447,13 @@ static void on_stream_param_changed(void *data, uint32_t id, const struct spa_po
 
 static void on_add_buffer(void *data, struct pw_buffer *buffer)
 {
-    SDL_CameraDevice *device = data;
+    SDL_Camera *device = data;
     pw_array_add_ptr(&device->hidden->buffers, buffer);
 }
 
 static void on_remove_buffer(void *data, struct pw_buffer *buffer)
 {
-    SDL_CameraDevice *device = data;
+    SDL_Camera *device = data;
     struct pw_buffer **p;
     pw_array_for_each(p, &device->hidden->buffers) {
         if (*p == buffer) {
@@ -472,7 +472,7 @@ static const struct pw_stream_events stream_events = {
     .process = on_process,
 };
 
-static int PIPEWIRECAMERA_OpenDevice(SDL_CameraDevice *device, const SDL_CameraSpec *spec)
+static int PIPEWIRECAMERA_OpenDevice(SDL_Camera *device, const SDL_CameraSpec *spec)
 {
     struct pw_properties *props;
     const struct spa_pod *params[3];
@@ -533,7 +533,7 @@ static int PIPEWIRECAMERA_OpenDevice(SDL_CameraDevice *device, const SDL_CameraS
     return 0;
 }
 
-static void PIPEWIRECAMERA_CloseDevice(SDL_CameraDevice *device)
+static void PIPEWIRECAMERA_CloseDevice(SDL_Camera *device)
 {
     if (!device) {
         return;
@@ -550,7 +550,7 @@ static void PIPEWIRECAMERA_CloseDevice(SDL_CameraDevice *device)
     PIPEWIRE_pw_thread_loop_unlock(hotplug.loop);
 }
 
-static int PIPEWIRECAMERA_WaitDevice(SDL_CameraDevice *device)
+static int PIPEWIRECAMERA_WaitDevice(SDL_Camera *device)
 {
     PIPEWIRE_pw_thread_loop_lock(hotplug.loop);
     PIPEWIRE_pw_thread_loop_wait(hotplug.loop);
@@ -558,7 +558,7 @@ static int PIPEWIRECAMERA_WaitDevice(SDL_CameraDevice *device)
     return 0;
 }
 
-static int PIPEWIRECAMERA_AcquireFrame(SDL_CameraDevice *device, SDL_Surface *frame, Uint64 *timestampNS)
+static int PIPEWIRECAMERA_AcquireFrame(SDL_Camera *device, SDL_Surface *frame, Uint64 *timestampNS)
 {
     struct pw_buffer *b;
 
@@ -590,7 +590,7 @@ static int PIPEWIRECAMERA_AcquireFrame(SDL_CameraDevice *device, SDL_Surface *fr
     return 1;
 }
 
-static void PIPEWIRECAMERA_ReleaseFrame(SDL_CameraDevice *device, SDL_Surface *frame)
+static void PIPEWIRECAMERA_ReleaseFrame(SDL_Camera *device, SDL_Surface *frame)
 {
     struct pw_buffer **p;
     PIPEWIRE_pw_thread_loop_lock(hotplug.loop);
@@ -603,7 +603,7 @@ static void PIPEWIRECAMERA_ReleaseFrame(SDL_CameraDevice *device, SDL_Surface *f
     PIPEWIRE_pw_thread_loop_unlock(hotplug.loop);
 }
 
-static void collect_rates(CameraFormatAddData *data, struct param *p, SDL_PixelFormatEnum sdlfmt, SDL_Colorspace colorspace, const struct spa_rectangle *size)
+static void collect_rates(CameraFormatAddData *data, struct param *p, SDL_PixelFormat sdlfmt, SDL_Colorspace colorspace, const struct spa_rectangle *size)
 {
     const struct spa_pod_prop *prop;
     struct spa_pod * values;
@@ -636,7 +636,7 @@ static void collect_rates(CameraFormatAddData *data, struct param *p, SDL_PixelF
     }
 }
 
-static void collect_size(CameraFormatAddData *data, struct param *p, SDL_PixelFormatEnum sdlfmt, SDL_Colorspace colorspace)
+static void collect_size(CameraFormatAddData *data, struct param *p, SDL_PixelFormat sdlfmt, SDL_Colorspace colorspace)
 {
     const struct spa_pod_prop *prop;
     struct spa_pod * values;
@@ -670,7 +670,7 @@ static void collect_size(CameraFormatAddData *data, struct param *p, SDL_PixelFo
 static void collect_format(CameraFormatAddData *data, struct param *p)
 {
     const struct spa_pod_prop *prop;
-    SDL_PixelFormatEnum sdlfmt;
+    SDL_PixelFormat sdlfmt;
     SDL_Colorspace colorspace;
     struct spa_pod * values;
     uint32_t i, n_vals, choice, *ids;
@@ -717,7 +717,7 @@ static void add_device(struct global *g)
         collect_format(&data, p);
     }
     if (data.num_specs > 0) {
-        SDL_AddCameraDevice(g->name, SDL_CAMERA_POSITION_UNKNOWN,
+        SDL_AddCamera(g->name, SDL_CAMERA_POSITION_UNKNOWN,
 				    data.num_specs, data.specs, g);
     }
     SDL_free(data.specs);
@@ -747,7 +747,7 @@ static void PIPEWIRECAMERA_DetectDevices(void)
     PIPEWIRE_pw_thread_loop_unlock(hotplug.loop);
 }
 
-static void PIPEWIRECAMERA_FreeDeviceHandle(SDL_CameraDevice *device)
+static void PIPEWIRECAMERA_FreeDeviceHandle(SDL_Camera *device)
 {
 }
 

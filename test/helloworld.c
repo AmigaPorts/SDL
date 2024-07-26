@@ -167,13 +167,13 @@ static void eventLoop()
 
 static void testPath(void)
 {
-    char * bp = SDL_GetBasePath();
+    const char * bp = SDL_GetBasePath();
     printf("'%s'\n", bp);
-    SDL_free(bp);
+    SDL_free((char*)bp);
 
-   char* pp = SDL_GetPrefPath("foo", "bar");
-   printf("'%s'\n", pp);
-   SDL_free(pp);
+    const char* pp = SDL_GetPrefPath("foo", "bar");
+    printf("'%s'\n", pp);
+    SDL_free((char*)pp);
 }
 
 static void testWindow()
@@ -339,7 +339,7 @@ static void drawUsingFixedFunctionPipeline(SDL_Window *w)
             printf("%u frames in %u ms - %f\n", frames, end - start, 1000.f * frames / (end - start));
 
 
-            SDL_GL_DeleteContext(c);
+            SDL_GL_DestroyContext(c);
         }
 
         SDL_DestroyWindow(w);
@@ -362,7 +362,7 @@ static void testDeleteContext()
         SDL_GLContext c = SDL_GL_CreateContext(w);
 
         if (c) {
-            SDL_GL_DeleteContext(c);
+            SDL_GL_DestroyContext(c);
 
             printf("Context after deletion: %p\n", SDL_GL_GetCurrentContext());
 
@@ -371,7 +371,7 @@ static void testDeleteContext()
             c = SDL_GL_CreateContext(w);
 
             if (c) {
-                SDL_GL_DeleteContext(c);
+                SDL_GL_DestroyContext(c);
             }
         }
         SDL_DestroyWindow(w);
@@ -407,7 +407,7 @@ static void testOpenGLES2()
 
         if (c) {
             puts("OGLES2 context created, now exiting");
-            SDL_GL_DeleteContext(c);
+            SDL_GL_DestroyContext(c);
         } else {
             puts("Failed to create OGLES2 context");
         }

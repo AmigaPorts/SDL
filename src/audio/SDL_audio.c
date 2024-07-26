@@ -134,19 +134,17 @@ int SDL_GetNumAudioDrivers(void)
     return num_drivers;
 }
 
-// this returns string literals, so there's no need to use SDL_FreeLater.
 const char *SDL_GetAudioDriver(int index)
 {
     if (index >= 0 && index < SDL_GetNumAudioDrivers()) {
-        return deduped_bootstrap[index]->name;
+        return SDL_CreateTemporaryString(deduped_bootstrap[index]->name);
     }
     return NULL;
 }
 
-// this returns string literals, so there's no need to use SDL_FreeLater.
 const char *SDL_GetCurrentAudioDriver(void)
 {
-    return current_audio.name;
+    return SDL_CreateTemporaryString(current_audio.name);
 }
 
 static int GetDefaultSampleFramesFromFreq(const int freq)
@@ -168,6 +166,16 @@ static int GetDefaultSampleFramesFromFreq(const int freq)
     } else {
         return 4096;
     }
+}
+
+int *SDL_ChannelMapDup(const int *origchmap, int channels)
+{
+    const size_t chmaplen = sizeof (*origchmap) * channels;
+    int *chmap = (int *)SDL_malloc(chmaplen);
+    if (chmap) {
+        SDL_memcpy(chmap, origchmap, chmaplen);
+    }
+    return chmap;
 }
 
 void OnAudioStreamCreated(SDL_AudioStream *stream)
@@ -229,7 +237,15 @@ static SDL_bool AudioDeviceCanUseSimpleCopy(SDL_AudioDevice *device)
 // should hold device->lock before calling.
 static void UpdateAudioStreamFormatsPhysical(SDL_AudioDevice *device)
 {
-    if (!device->recording) {  // for recording devices, we only want to move to float32 for postmix, which we'll handle elsewhere.
+    if (device->recording) {  // for recording devices, we only want to move to float32 for postmix and gain, which we'll handle elsewhere.
+        // we _do_ need to make sure the channel map is correct, though...
+        for (SDL_LogicalAudioDevice *logdev = device->logical_devices; logdev; logdev = logdev->next) {
+            for (SDL_AudioStream *stream = logdev->bound_streams; stream; stream = stream->next_binding) {
+                // set the proper end of the stream to the device's channel map. This will obtain stream->lock itself.
+                SetAudioStreamChannelMap(stream, &stream->src_spec, &stream->src_chmap, device->chmap, device->spec.channels, -1);
+            }
+        }
+    } else {
         const SDL_bool simple_copy = AudioDeviceCanUseSimpleCopy(device);
         SDL_AudioSpec spec;
 
@@ -246,17 +262,18 @@ static void UpdateAudioStreamFormatsPhysical(SDL_AudioDevice *device)
                 // SDL_SetAudioStreamFormat does a ton of validation just to memcpy an audiospec.
                 SDL_LockMutex(stream->lock);
                 SDL_copyp(&stream->dst_spec, &spec);
+                SetAudioStreamChannelMap(stream, &stream->dst_spec, &stream->dst_chmap, device->chmap, spec.channels, -1);  // this should be fast for normal cases, though!
                 SDL_UnlockMutex(stream->lock);
             }
         }
     }
 }
 
-SDL_bool SDL_AudioSpecsEqual(const SDL_AudioSpec *a, const SDL_AudioSpec *b)
+SDL_bool SDL_AudioSpecsEqual(const SDL_AudioSpec *a, const SDL_AudioSpec *b, const int *channel_map_a, const int *channel_map_b)
 {
-    if ((a->format != b->format) || (a->channels != b->channels) || (a->freq != b->freq) || (a->use_channel_map != b->use_channel_map)) {
+    if ((a->format != b->format) || (a->channels != b->channels) || (a->freq != b->freq) || ((channel_map_a != NULL) != (channel_map_b != NULL))) {
         return SDL_FALSE;
-    } else if (a->use_channel_map && (SDL_memcmp(a->channel_map, b->channel_map, sizeof (a->channel_map[0]) * a->channels) != 0)) {
+    } else if (channel_map_a && (SDL_memcmp(channel_map_a, channel_map_b, sizeof (*channel_map_a) * a->channels) != 0)) {
         return SDL_FALSE;
     }
     return SDL_TRUE;
@@ -536,7 +553,8 @@ static void DestroyPhysicalAudioDevice(SDL_AudioDevice *device)
     SDL_DestroyMutex(device->lock);
     SDL_DestroyCondition(device->close_cond);
     SDL_free(device->work_buffer);
-    SDL_FreeLater(device->name);  // this pointer is handed to the app during SDL_GetAudioDeviceName
+    SDL_free(device->chmap);
+    SDL_free(device->name);
     SDL_free(device);
 }
 
@@ -651,7 +669,6 @@ SDL_AudioDevice *SDL_AddAudioDevice(SDL_bool recording, const char *name, const 
         spec.channels = default_channels;
         spec.freq = default_freq;
     } else {
-        SDL_assert(!inspec->use_channel_map);  // backends shouldn't set a channel map here! Set it when opening the device!
         spec.format = (inspec->format != 0) ? inspec->format : default_format;
         spec.channels = (inspec->channels != 0) ? inspec->channels : default_channels;
         spec.freq = (inspec->freq != 0) ? inspec->freq : default_freq;
@@ -1104,7 +1121,7 @@ SDL_bool SDL_PlaybackAudioThreadIterate(SDL_AudioDevice *device)
             SDL_AudioStream *stream = logdev->bound_streams;
 
             // We should have updated this elsewhere if the format changed!
-            SDL_assert(SDL_AudioSpecsEqual(&stream->dst_spec, &device->spec));
+            SDL_assert(SDL_AudioSpecsEqual(&stream->dst_spec, &device->spec, stream->dst_chmap, device->chmap));
 
             const int br = SDL_AtomicGet(&logdev->paused) ? 0 : SDL_GetAudioStreamDataAdjustGain(stream, device_buffer, buffer_size, logdev->gain);
             if (br < 0) {  // Probably OOM. Kill the audio device; the whole thing is likely dying soon anyhow.
@@ -1140,7 +1157,7 @@ SDL_bool SDL_PlaybackAudioThreadIterate(SDL_AudioDevice *device)
 
                 for (SDL_AudioStream *stream = logdev->bound_streams; stream; stream = stream->next_binding) {
                     // We should have updated this elsewhere if the format changed!
-                    SDL_assert(SDL_AudioSpecsEqual(&stream->dst_spec, &outspec));
+                    SDL_assert(SDL_AudioSpecsEqual(&stream->dst_spec, &outspec, stream->dst_chmap, device->chmap));
 
                     /* this will hold a lock on `stream` while getting. We don't explicitly lock the streams
                        for iterating here because the binding linked list can only change while the device lock is held.
@@ -1322,7 +1339,7 @@ static int SDLCALL RecordingAudioThread(void *devicep)  // thread entry point
 }
 
 
-static SDL_AudioDeviceID *GetAudioDevices(int *count, SDL_bool recording)
+static const SDL_AudioDeviceID *GetAudioDevices(int *count, SDL_bool recording)
 {
     SDL_AudioDeviceID *retval = NULL;
     int num_devices = 0;
@@ -1365,15 +1382,15 @@ static SDL_AudioDeviceID *GetAudioDevices(int *count, SDL_bool recording)
             *count = 0;
         }
     }
-    return retval;
+    return SDL_FreeLater(retval);
 }
 
-SDL_AudioDeviceID *SDL_GetAudioPlaybackDevices(int *count)
+const SDL_AudioDeviceID *SDL_GetAudioPlaybackDevices(int *count)
 {
     return GetAudioDevices(count, SDL_FALSE);
 }
 
-SDL_AudioDeviceID *SDL_GetAudioRecordingDevices(int *count)
+const SDL_AudioDeviceID *SDL_GetAudioRecordingDevices(int *count)
 {
     return GetAudioDevices(count, SDL_TRUE);
 }
@@ -1424,7 +1441,7 @@ const char *SDL_GetAudioDeviceName(SDL_AudioDeviceID devid)
     const char *retval = NULL;
     SDL_AudioDevice *device = ObtainPhysicalAudioDevice(devid);
     if (device) {
-        retval = device->name;
+        retval = SDL_CreateTemporaryString(device->name);
     }
     ReleaseAudioDevice(device);
 
@@ -1450,6 +1467,25 @@ int SDL_GetAudioDeviceFormat(SDL_AudioDeviceID devid, SDL_AudioSpec *spec, int *
 
     return retval;
 }
+
+const int *SDL_GetAudioDeviceChannelMap(SDL_AudioDeviceID devid, int *count)
+{
+    const int *retval = NULL;
+    int channels = 0;
+    SDL_AudioDevice *device = ObtainPhysicalAudioDeviceDefaultAllowed(devid);
+    if (device) {
+        channels = device->spec.channels;
+        retval = SDL_FreeLater(SDL_ChannelMapDup(device->chmap, channels));
+    }
+    ReleaseAudioDevice(device);
+
+    if (count) {
+        *count = channels;
+    }
+
+    return retval;
+}
+
 
 // this is awkward, but this makes sure we can release the device lock
 //  so the device thread can terminate but also not have two things
@@ -1621,7 +1657,6 @@ static int OpenPhysicalAudioDevice(SDL_AudioDevice *device, const SDL_AudioSpec 
     device->spec.format = (SDL_AUDIO_BITSIZE(device->default_spec.format) >= SDL_AUDIO_BITSIZE(spec.format)) ? device->default_spec.format : spec.format;
     device->spec.freq = SDL_max(device->default_spec.freq, spec.freq);
     device->spec.channels = SDL_max(device->default_spec.channels, spec.channels);
-    device->spec.use_channel_map = SDL_FALSE;  // all initial channel map requests are denied, since we might have to change channel counts.
     device->sample_frames = GetDefaultSampleFramesFromFreq(device->spec.freq);
     SDL_UpdatedAudioDeviceFormat(device);  // start this off sane.
 
@@ -1909,6 +1944,7 @@ int SDL_BindAudioStreams(SDL_AudioDeviceID devid, SDL_AudioStream **streams, int
                     if (logdev->postmix) {
                         stream->src_spec.format = SDL_AUDIO_F32;
                     }
+                    SDL_SetAudioStreamInputChannelMap(stream, device->chmap, device->spec.channels);  // this should be fast for normal cases, though!
                 }
 
                 SDL_UnlockMutex(stream->lock);
@@ -2211,7 +2247,8 @@ void SDL_DefaultAudioDeviceChanged(SDL_AudioDevice *new_default_device)
         }
 
         if (needs_migration) {
-            const SDL_bool spec_changed = !SDL_AudioSpecsEqual(&current_default_device->spec, &new_default_device->spec);
+            // we don't currently report channel map changes, so we'll leave them as NULL for now.
+            const SDL_bool spec_changed = !SDL_AudioSpecsEqual(&current_default_device->spec, &new_default_device->spec, NULL, NULL);
             SDL_LogicalAudioDevice *next = NULL;
             for (SDL_LogicalAudioDevice *logdev = current_default_device->logical_devices; logdev; logdev = next) {
                 next = logdev->next;
@@ -2291,7 +2328,8 @@ int SDL_AudioDeviceFormatChangedAlreadyLocked(SDL_AudioDevice *device, const SDL
 {
     const int orig_work_buffer_size = device->work_buffer_size;
 
-    if (SDL_AudioSpecsEqual(&device->spec, newspec) && (new_sample_frames == device->sample_frames)) {
+    // we don't currently have any place where channel maps change from under you, but we can check that if necessary later.
+    if (SDL_AudioSpecsEqual(&device->spec, newspec, NULL, NULL) && (new_sample_frames == device->sample_frames)) {
         return 0;  // we're already in that format.
     }
 

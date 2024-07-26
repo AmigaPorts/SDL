@@ -103,21 +103,6 @@ extern "C" {
 #define SDL_HINT_ANDROID_BLOCK_ON_PAUSE "SDL_ANDROID_BLOCK_ON_PAUSE"
 
 /**
- * A variable to control whether SDL will pause audio in background.
- *
- * The variable can be set to the following values:
- *
- * - "0": Not paused, requires that SDL_HINT_ANDROID_BLOCK_ON_PAUSE be set to
- *   "0"
- * - "1": Paused. (default)
- *
- * This hint should be set before SDL is initialized.
- *
- * \since This hint is available since SDL 3.0.0.
- */
-#define SDL_HINT_ANDROID_BLOCK_ON_PAUSE_PAUSEAUDIO "SDL_ANDROID_BLOCK_ON_PAUSE_PAUSEAUDIO"
-
-/**
  * A variable to control whether we trap the Android back button to handle it
  * manually.
  *
@@ -2206,6 +2191,38 @@ extern "C" {
 #define SDL_HINT_MOUSE_DOUBLE_CLICK_TIME    "SDL_MOUSE_DOUBLE_CLICK_TIME"
 
 /**
+ * A variable controlling whether warping a hidden mouse cursor will activate
+ * relative mouse mode.
+ *
+ * When this hint is set and the mouse cursor is hidden, SDL will emulate
+ * mouse warps using relative mouse mode. This can provide smoother and more
+ * reliable mouse motion for some older games, which continuously calculate
+ * the distance travelled by the mouse pointer and warp it back to the center
+ * of the window, rather than using relative mouse motion.
+ *
+ * Note that relative mouse mode may have different mouse acceleration
+ * behavior than pointer warps.
+ *
+ * If your game or application needs to warp the mouse cursor while hidden for
+ * other purposes, such as drawing a software cursor, it should disable this
+ * hint.
+ *
+ * The variable can be set to the following values:
+ *
+ * - "0": Attempts to warp the mouse will always be made.
+ * - "1": Some mouse warps will be emulated by forcing relative mouse mode.
+ *   (default)
+ *
+ * If not set, this is automatically enabled unless an application uses
+ * relative mouse mode directly.
+ *
+ * This hint can be set anytime.
+ *
+ * \since This hint is available since SDL 3.0.0.
+ */
+#define SDL_HINT_MOUSE_EMULATE_WARP_WITH_RELATIVE "SDL_MOUSE_EMULATE_WARP_WITH_RELATIVE"
+
+/**
  * Allow mouse click events when clicking to focus an SDL window.
  *
  * The variable can be set to the following values:
@@ -2948,6 +2965,7 @@ extern "C" {
  * This hint is currently supported on the following drivers:
  *
  * - Raspberry Pi (raspberrypi)
+ * - Wayland (wayland)
  *
  * This hint should be set before SDL is initialized.
  *
@@ -3076,34 +3094,6 @@ extern "C" {
  * \since This hint is available since SDL 3.0.0.
  */
 #define SDL_HINT_VIDEO_WAYLAND_ALLOW_LIBDECOR "SDL_VIDEO_WAYLAND_ALLOW_LIBDECOR"
-
-/**
- * Enable or disable hidden mouse pointer warp emulation, needed by some older
- * games.
- *
- * Wayland requires the pointer confinement protocol to warp the mouse, but
- * that is just a hint that the compositor is free to ignore, and warping the
- * the pointer to or from regions outside of the focused window is prohibited.
- * When this hint is set and the pointer is hidden, SDL will emulate mouse
- * warps using relative mouse mode. This is required for some older games
- * (such as Source engine games), which warp the mouse to the centre of the
- * screen rather than using relative mouse motion. Note that relative mouse
- * mode may have different mouse acceleration behaviour than pointer warps.
- *
- * The variable can be set to the following values:
- *
- * - "0": Attempts to warp the mouse will be made, if the appropriate protocol
- *   is available.
- * - "1": Some mouse warps will be emulated by forcing relative mouse mode.
- *
- * If not set, this is automatically enabled unless an application uses
- * relative mouse mode directly.
- *
- * This hint can be set anytime.
- *
- * \since This hint is available since SDL 3.0.0.
- */
-#define SDL_HINT_VIDEO_WAYLAND_EMULATE_MOUSE_WARP "SDL_VIDEO_WAYLAND_EMULATE_MOUSE_WARP"
 
 /**
  * A variable controlling whether video mode emulation is enabled under
@@ -3882,7 +3872,8 @@ extern SDL_DECLSPEC void SDLCALL SDL_ResetHints(void);
 /**
  * Get the value of a hint.
  *
- * The returned string follows the SDL_GetStringRule.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param name the hint to query.
  * \returns the string value of a hint or NULL if the hint isn't set.

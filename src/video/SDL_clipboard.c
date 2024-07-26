@@ -162,7 +162,7 @@ void *SDL_GetInternalClipboardData(SDL_VideoDevice *_this, const char *mime_type
     return data;
 }
 
-void *SDL_GetClipboardData(const char *mime_type, size_t *size)
+const void *SDL_GetClipboardData(const char *mime_type, size_t *size)
 {
     SDL_VideoDevice *_this = SDL_GetVideoDevice();
 
@@ -184,16 +184,16 @@ void *SDL_GetClipboardData(const char *mime_type, size_t *size)
     *size = 0;
 
     if (_this->GetClipboardData) {
-        return _this->GetClipboardData(_this, mime_type, size);
+        return SDL_FreeLater(_this->GetClipboardData(_this, mime_type, size));
     } else if (_this->GetClipboardText && SDL_IsTextMimeType(mime_type)) {
-        void *data = _this->GetClipboardText(_this);
-        if (data && *(char *)data == '\0') {
-            SDL_free(data);
-            data = NULL;
+        char *text = _this->GetClipboardText(_this);
+        if (text && *text == '\0') {
+            SDL_free(text);
+            text = NULL;
         }
-        return data;
+        return SDL_FreeLater(text);
     } else {
-        return SDL_GetInternalClipboardData(_this, mime_type, size);
+        return SDL_FreeLater(SDL_GetInternalClipboardData(_this, mime_type, size));
     }
 }
 
@@ -282,29 +282,30 @@ int SDL_SetClipboardText(const char *text)
     return SDL_ClearClipboardData();
 }
 
-char *SDL_GetClipboardText(void)
+const char *SDL_GetClipboardText(void)
 {
     SDL_VideoDevice *_this = SDL_GetVideoDevice();
     size_t i, num_mime_types;
     const char **text_mime_types;
     size_t length;
-    char *text = NULL;
+    const char *text = NULL;
 
     if (!_this) {
         SDL_SetError("Video subsystem must be initialized to get clipboard text");
-        return SDL_strdup("");
+        return "";
     }
 
     text_mime_types = SDL_GetTextMimeTypes(_this, &num_mime_types);
     for (i = 0; i < num_mime_types; ++i) {
-        text = (char *)SDL_GetClipboardData(text_mime_types[i], &length);
-        if (text) {
+        const void *clipdata = SDL_GetClipboardData(text_mime_types[i], &length);
+        if (clipdata) {
+            text = (const char *)clipdata;
             break;
         }
     }
 
     if (!text) {
-        text = SDL_strdup("");
+        text = SDL_CreateTemporaryString("");
     }
     return text;
 }
@@ -355,7 +356,7 @@ int SDL_SetPrimarySelectionText(const char *text)
     return 0;
 }
 
-char *SDL_GetPrimarySelectionText(void)
+const char *SDL_GetPrimarySelectionText(void)
 {
     SDL_VideoDevice *_this = SDL_GetVideoDevice();
 
@@ -365,13 +366,13 @@ char *SDL_GetPrimarySelectionText(void)
     }
 
     if (_this->GetPrimarySelectionText) {
-        return _this->GetPrimarySelectionText(_this);
+        return SDL_FreeLater(_this->GetPrimarySelectionText(_this));
     } else {
         const char *text = _this->primary_selection_text;
         if (!text) {
             text = "";
         }
-        return SDL_strdup(text);
+        return SDL_CreateTemporaryString(text);
     }
 }
 

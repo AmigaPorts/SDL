@@ -137,7 +137,7 @@ static void OS4_ShowDialog(OS4_DialogArgs *args)
 
     if (args->window) {
         SDL_PropertiesID props = SDL_GetWindowProperties(args->window);
-        syswin = SDL_GetProperty(props, "SDL.window.amigaos4.window", NULL);
+        syswin = SDL_GetPointerProperty(props, "SDL.window.amigaos4.window", NULL);
         dprintf("Syswin %p\n", syswin);
     }
 

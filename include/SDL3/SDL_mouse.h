@@ -135,24 +135,28 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_HasMouse(void);
  * You should wait for input from a device before you consider it actively in
  * use.
  *
- * \param count a pointer filled in with the number of mice returned.
- * \returns a 0 terminated array of mouse instance IDs which should be freed
- *          with SDL_free(), or NULL on error; call SDL_GetError() for more
- *          details.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
+ *
+ * \param count a pointer filled in with the number of mice returned, may be
+ *              NULL.
+ * \returns a 0 terminated array of mouse instance IDs or NULL on failure;
+ *          call SDL_GetError() for more information.
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_GetMouseInstanceName
+ * \sa SDL_GetMouseNameForID
  * \sa SDL_HasMouse
  */
-extern SDL_DECLSPEC SDL_MouseID *SDLCALL SDL_GetMice(int *count);
+extern SDL_DECLSPEC const SDL_MouseID * SDLCALL SDL_GetMice(int *count);
 
 /**
  * Get the name of a mouse.
  *
  * This function returns "" if the mouse doesn't have a name.
  *
- * The returned string follows the SDL_GetStringRule.
+ * This returns temporary memory which will be automatically freed later, and
+ * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param instance_id the mouse instance ID.
  * \returns the name of the selected mouse, or NULL on failure; call
@@ -162,7 +166,7 @@ extern SDL_DECLSPEC SDL_MouseID *SDLCALL SDL_GetMice(int *count);
  *
  * \sa SDL_GetMice
  */
-extern SDL_DECLSPEC const char *SDLCALL SDL_GetMouseInstanceName(SDL_MouseID instance_id);
+extern SDL_DECLSPEC const char * SDLCALL SDL_GetMouseNameForID(SDL_MouseID instance_id);
 
 /**
  * Get the window which currently has mouse focus.
@@ -406,7 +410,7 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_GetRelativeMouseMode(void);
  * \sa SDL_DestroyCursor
  * \sa SDL_SetCursor
  */
-extern SDL_DECLSPEC SDL_Cursor *SDLCALL SDL_CreateCursor(const Uint8 * data,
+extern SDL_DECLSPEC SDL_Cursor * SDLCALL SDL_CreateCursor(const Uint8 * data,
                                                      const Uint8 * mask,
                                                      int w, int h, int hot_x,
                                                      int hot_y);
@@ -427,7 +431,7 @@ extern SDL_DECLSPEC SDL_Cursor *SDLCALL SDL_CreateCursor(const Uint8 * data,
  * \sa SDL_DestroyCursor
  * \sa SDL_SetCursor
  */
-extern SDL_DECLSPEC SDL_Cursor *SDLCALL SDL_CreateColorCursor(SDL_Surface *surface,
+extern SDL_DECLSPEC SDL_Cursor * SDLCALL SDL_CreateColorCursor(SDL_Surface *surface,
                                                           int hot_x,
                                                           int hot_y);
 
@@ -442,7 +446,7 @@ extern SDL_DECLSPEC SDL_Cursor *SDLCALL SDL_CreateColorCursor(SDL_Surface *surfa
  *
  * \sa SDL_DestroyCursor
  */
-extern SDL_DECLSPEC SDL_Cursor *SDLCALL SDL_CreateSystemCursor(SDL_SystemCursor id);
+extern SDL_DECLSPEC SDL_Cursor * SDLCALL SDL_CreateSystemCursor(SDL_SystemCursor id);
 
 /**
  * Set the active cursor.
@@ -460,7 +464,7 @@ extern SDL_DECLSPEC SDL_Cursor *SDLCALL SDL_CreateSystemCursor(SDL_SystemCursor 
  *
  * \sa SDL_GetCursor
  */
-extern SDL_DECLSPEC int SDLCALL SDL_SetCursor(SDL_Cursor * cursor);
+extern SDL_DECLSPEC int SDLCALL SDL_SetCursor(SDL_Cursor *cursor);
 
 /**
  * Get the active cursor.
@@ -474,7 +478,7 @@ extern SDL_DECLSPEC int SDLCALL SDL_SetCursor(SDL_Cursor * cursor);
  *
  * \sa SDL_SetCursor
  */
-extern SDL_DECLSPEC SDL_Cursor *SDLCALL SDL_GetCursor(void);
+extern SDL_DECLSPEC SDL_Cursor * SDLCALL SDL_GetCursor(void);
 
 /**
  * Get the default cursor.
@@ -482,11 +486,12 @@ extern SDL_DECLSPEC SDL_Cursor *SDLCALL SDL_GetCursor(void);
  * You do not have to call SDL_DestroyCursor() on the return value, but it is
  * safe to do so.
  *
- * \returns the default cursor on success or NULL on failure.
+ * \returns the default cursor on success or NULL on failuree; call
+ *          SDL_GetError() for more information.
  *
  * \since This function is available since SDL 3.0.0.
  */
-extern SDL_DECLSPEC SDL_Cursor *SDLCALL SDL_GetDefaultCursor(void);
+extern SDL_DECLSPEC SDL_Cursor * SDLCALL SDL_GetDefaultCursor(void);
 
 /**
  * Free a previously-created cursor.
@@ -502,7 +507,7 @@ extern SDL_DECLSPEC SDL_Cursor *SDLCALL SDL_GetDefaultCursor(void);
  * \sa SDL_CreateCursor
  * \sa SDL_CreateSystemCursor
  */
-extern SDL_DECLSPEC void SDLCALL SDL_DestroyCursor(SDL_Cursor * cursor);
+extern SDL_DECLSPEC void SDLCALL SDL_DestroyCursor(SDL_Cursor *cursor);
 
 /**
  * Show the cursor.

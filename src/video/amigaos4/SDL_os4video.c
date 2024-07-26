@@ -56,7 +56,7 @@ void (*OS4_UpdateGlWindowPointer)(SDL_VideoDevice *_this, SDL_Window * window) =
 static void
 OS4_FindApplicationName(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
     size_t size;
     const size_t maxPathLen = 255;
@@ -85,7 +85,7 @@ OS4_FindApplicationName(SDL_VideoDevice *_this)
 static int
 OS4_SuspendScreenSaver(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
     if (data->appId) {
         const BOOL state = (_this->suspend_screensaver == SDL_FALSE);
@@ -107,7 +107,7 @@ OS4_SuspendScreenSaver(SDL_VideoDevice *_this)
 static void
 OS4_RegisterApplication(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
     data->appId = IApplication->RegisterApplication(data->appName,
                                                     REGAPP_Description, "SDL3 application",
@@ -123,7 +123,7 @@ OS4_RegisterApplication(SDL_VideoDevice *_this)
 static void
 OS4_UnregisterApplication(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
     BOOL result = IApplication->UnregisterApplication(data->appId,
                                                       TAG_DONE);
@@ -138,7 +138,7 @@ OS4_UnregisterApplication(SDL_VideoDevice *_this)
 static SDL_bool
 OS4_AllocSystemResources(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
     dprintf("Called\n");
 
@@ -206,7 +206,7 @@ OS4_AllocSystemResources(SDL_VideoDevice *_this)
 static void
 OS4_FreeSystemResources(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
     dprintf("Called\n");
 
@@ -267,7 +267,7 @@ OS4_DeleteDevice(SDL_VideoDevice * device)
 
     OS4_FreeSystemResources(device);
 
-    SDL_free(device->driverdata);
+    SDL_free(device->internal);
     SDL_free(device);
 }
 
@@ -466,7 +466,7 @@ OS4_CreateDevice(void)
         return NULL;
     }
 
-    device->driverdata = data;
+    device->internal = data;
 
     if (!OS4_AllocSystemResources(device)) {
         /* If we return with NULL, SDL_VideoQuit() can't clean up OS4 stuff. So let's do it now. */
@@ -537,7 +537,7 @@ OS4_VideoQuit(SDL_VideoDevice *_this)
 void *
 OS4_SaveAllocPooled(SDL_VideoDevice *_this, uint32 size)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
     return IExec->AllocPooled(data->pool, size);
 }
@@ -545,7 +545,7 @@ OS4_SaveAllocPooled(SDL_VideoDevice *_this, uint32 size)
 void *
 OS4_SaveAllocVecPooled(SDL_VideoDevice *_this, uint32 size)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
     return IExec->AllocVecPooled(data->pool, size);
 }
@@ -553,7 +553,7 @@ OS4_SaveAllocVecPooled(SDL_VideoDevice *_this, uint32 size)
 void
 OS4_SaveFreePooled(SDL_VideoDevice *_this, void * mem, uint32 size)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
     IExec->FreePooled(data->pool, mem, size);
 }
@@ -561,7 +561,7 @@ OS4_SaveFreePooled(SDL_VideoDevice *_this, void * mem, uint32 size)
 void
 OS4_SaveFreeVecPooled(SDL_VideoDevice *_this, void * mem)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
     IExec->FreeVecPooled(data->pool, mem);
 }
@@ -573,7 +573,7 @@ OS4_GetSharedMessagePort()
     SDL_VideoDevice *vd = SDL_GetVideoDevice();
 
     if (vd) {
-        SDL_VideoData *data = (SDL_VideoData *) vd->driverdata;
+        SDL_VideoData *data = (SDL_VideoData *) vd->internal;
         if (data) {
             return data->userPort;
         }

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -51,7 +51,7 @@ struct SDL_VideoData
     BOOL                    vsyncEnabled;
 };
 
-#define IInput ((SDL_VideoData *) _this->driverdata)->iInput
+#define IInput ((SDL_VideoData *) _this->internal)->iInput
 
 extern void * OS4_SaveAllocPooled(SDL_VideoDevice *this, uint32 size);
 extern void * OS4_SaveAllocVecPooled(SDL_VideoDevice *this, uint32 size);

@@ -145,7 +145,7 @@ void SDL_WasapiDeviceEventHandler::OnDeviceAdded(DeviceWatcher ^ sender, DeviceI
        available and switch automatically. (!!! FIXME...?) */
 
     SDL_assert(sender == this->watcher);
-    char *utf8dev = WIN_StringToUTF8(info->Name->Data());
+    char *utf8dev = WIN_StringToUTF8W(info->Name->Data());
     if (utf8dev) {
         SDL_AudioSpec spec;
         SDL_zero(spec);
@@ -186,7 +186,7 @@ void SDL_WasapiDeviceEventHandler::OnEnumerationCompleted(DeviceWatcher ^ sender
 {
     SDL_assert(sender == this->watcher);
     if (this->completed_semaphore) {
-        SDL_PostSemaphore(this->completed_semaphore);
+        SDL_SignalSemaphore(this->completed_semaphore);
     }
 }
 
@@ -283,7 +283,7 @@ HRESULT
 SDL_WasapiActivationHandler::ActivateCompleted(IActivateAudioInterfaceAsyncOperation *async)
 {
     // Just set a flag, since we're probably in a different thread. We'll pick it up and init everything on our own thread to prevent races.
-    SDL_PostSemaphore(completion_semaphore);
+    SDL_SignalSemaphore(completion_semaphore);
     return S_OK;
 }
 

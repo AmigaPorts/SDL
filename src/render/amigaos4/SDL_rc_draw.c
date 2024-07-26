@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -154,7 +154,7 @@ int
 OS4_RenderDrawPoints(SDL_Renderer * renderer, const SDL_Point * points,
                     int count, SDL_BlendMode mode, Uint8 a, Uint8 r, Uint8 g, Uint8 b)
 {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
+    OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
     struct BitMap *bitmap = OS4_ActivateRenderer(renderer);
     int i, status;
 
@@ -489,7 +489,7 @@ int
 OS4_RenderDrawLines(SDL_Renderer * renderer, const SDL_Point * points,
                     int count, SDL_BlendMode mode, Uint8 a, Uint8 r, Uint8 g, Uint8 b)
 {
-    OS4_RenderData *data = (OS4_RenderData *) renderer->driverdata;
+    OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
     struct BitMap *bitmap = OS4_ActivateRenderer(renderer);
 
     int i, status;

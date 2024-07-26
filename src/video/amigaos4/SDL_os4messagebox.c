@@ -64,7 +64,7 @@ OS4_GetWindow(const SDL_MessageBoxData * messageboxdata)
     struct Window * syswin = NULL;
 
     if (messageboxdata->window) {
-        SDL_WindowData *data = messageboxdata->window->driverdata;
+        SDL_WindowData *data = messageboxdata->window->internal;
         syswin = data->syswin;
     }
 

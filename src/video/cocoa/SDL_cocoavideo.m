@@ -52,7 +52,7 @@ static void Cocoa_DeleteDevice(SDL_VideoDevice *device)
         if (device->wakeup_lock) {
             SDL_DestroyMutex(device->wakeup_lock);
         }
-        CFBridgingRelease(device->driverdata);
+        CFBridgingRelease(device->internal);
         SDL_free(device);
     }
 }
@@ -76,7 +76,7 @@ static SDL_VideoDevice *Cocoa_CreateDevice(void)
             SDL_free(device);
             return NULL;
         }
-        device->driverdata = (SDL_VideoData *)CFBridgingRetain(data);
+        device->internal = (SDL_VideoData *)CFBridgingRetain(data);
         device->wakeup_lock = SDL_CreateMutex();
         device->system_theme = Cocoa_GetSystemTheme();
 
@@ -195,7 +195,7 @@ VideoBootStrap COCOA_bootstrap = {
 int Cocoa_VideoInit(SDL_VideoDevice *_this)
 {
     @autoreleasepool {
-        SDL_CocoaVideoData *data = (__bridge SDL_CocoaVideoData *)_this->driverdata;
+        SDL_CocoaVideoData *data = (__bridge SDL_CocoaVideoData *)_this->internal;
 
         Cocoa_InitModes(_this);
         Cocoa_InitKeyboard(_this);
@@ -223,7 +223,7 @@ int Cocoa_VideoInit(SDL_VideoDevice *_this)
 void Cocoa_VideoQuit(SDL_VideoDevice *_this)
 {
     @autoreleasepool {
-        SDL_CocoaVideoData *data = (__bridge SDL_CocoaVideoData *)_this->driverdata;
+        SDL_CocoaVideoData *data = (__bridge SDL_CocoaVideoData *)_this->internal;
         Cocoa_QuitModes(_this);
         Cocoa_QuitKeyboard(_this);
         Cocoa_QuitMouse(_this);
@@ -256,7 +256,7 @@ NSImage *Cocoa_CreateImage(SDL_Surface *surface)
     int i;
     NSImage *img;
 
-    converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32);
+    converted = SDL_ConvertSurface(surface, SDL_PIXELFORMAT_RGBA32);
     if (!converted) {
         return nil;
     }
@@ -270,7 +270,7 @@ NSImage *Cocoa_CreateImage(SDL_Surface *surface)
                                                        isPlanar:NO
                                                  colorSpaceName:NSDeviceRGBColorSpace
                                                     bytesPerRow:converted->pitch
-                                                   bitsPerPixel:converted->format->bits_per_pixel];
+                                                   bitsPerPixel:SDL_BITSPERPIXEL(converted->format)];
     if (imgrep == nil) {
         SDL_DestroySurface(converted);
         return nil;

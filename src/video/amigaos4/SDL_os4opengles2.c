@@ -118,7 +118,7 @@ OS4_GLES_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
 
         ULONG errCode = 0;
 
-        SDL_WindowData *data = window->driverdata;
+        SDL_WindowData *data = window->internal;
 
         if (data->glContext) {
             dprintf("Old context %p found, deleting\n", data->glContext);
@@ -201,10 +201,10 @@ OS4_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 
     if (IOGLES2) {
 
-        SDL_WindowData *data = window->driverdata;
+        SDL_WindowData *data = window->internal;
 
         if (data->glContext) {
-            SDL_VideoData *videodata = _this->driverdata;
+            SDL_VideoData *videodata = _this->internal;
 
 #if MANAGE_BITMAP
             struct BitMap *temp;
@@ -277,7 +277,7 @@ OS4_GLES_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context)
             Uint32 deletions = 0;
 
             for (sdlwin = _this->windows; sdlwin; sdlwin = sdlwin->next) {
-                SDL_WindowData *data = sdlwin->driverdata;
+                SDL_WindowData *data = sdlwin->internal;
 
                 if ((SDL_GLContext)data->glContext == context) {
                     dprintf("Found OpenGL ES 2 context, clearing window binding\n");
@@ -311,7 +311,7 @@ OS4_GLES_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
 {
     if (IOGLES2) {
 #if MANAGE_BITMAP
-        SDL_WindowData *data = window->driverdata;
+        SDL_WindowData *data = window->internal;
 
         uint32 depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
 
@@ -339,7 +339,7 @@ void
 OS4_GLES_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window)
 {
     if (IOGLES2) {
-        SDL_WindowData *data = window->driverdata;
+        SDL_WindowData *data = window->internal;
 
         dprintf("Updating GLES2 window pointer %p\n", data->syswin);
         aglSetParamsTags2(OGLES2_CCT_WINDOW, (ULONG)data->syswin, TAG_DONE);

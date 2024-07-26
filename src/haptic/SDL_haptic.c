@@ -63,7 +63,7 @@ static SDL_bool SDL_GetHapticIndex(SDL_HapticID instance_id, int *driver_index)
     return SDL_FALSE;
 }
 
-SDL_HapticID *SDL_GetHaptics(int *count)
+const SDL_HapticID *SDL_GetHaptics(int *count)
 {
     int device_index;
     int haptic_index = 0, num_haptics = 0;
@@ -89,10 +89,10 @@ SDL_HapticID *SDL_GetHaptics(int *count)
         }
     }
 
-    return haptics;
+    return SDL_FreeLater(haptics);
 }
 
-const char *SDL_GetHapticInstanceName(SDL_HapticID instance_id)
+const char *SDL_GetHapticNameForID(SDL_HapticID instance_id)
 {
     int device_index;
     const char *name = NULL;
@@ -100,7 +100,7 @@ const char *SDL_GetHapticInstanceName(SDL_HapticID instance_id)
     if (SDL_GetHapticIndex(instance_id, &device_index)) {
         name = SDL_SYS_HapticName(device_index);
     }
-    return name ? SDL_FreeLater(SDL_strdup(name)) : NULL;
+    return SDL_CreateTemporaryString(name);
 }
 
 SDL_Haptic *SDL_OpenHaptic(SDL_HapticID instance_id)
@@ -166,7 +166,7 @@ SDL_Haptic *SDL_OpenHaptic(SDL_HapticID instance_id)
     return haptic;
 }
 
-SDL_Haptic *SDL_GetHapticFromInstanceID(SDL_HapticID instance_id)
+SDL_Haptic *SDL_GetHapticFromID(SDL_HapticID instance_id)
 {
     SDL_Haptic *haptic;
 
@@ -178,7 +178,7 @@ SDL_Haptic *SDL_GetHapticFromInstanceID(SDL_HapticID instance_id)
     return haptic;
 }
 
-SDL_HapticID SDL_GetHapticInstanceID(SDL_Haptic *haptic)
+SDL_HapticID SDL_GetHapticID(SDL_Haptic *haptic)
 {
     CHECK_HAPTIC_MAGIC(haptic, 0);
 
@@ -187,9 +187,9 @@ SDL_HapticID SDL_GetHapticInstanceID(SDL_Haptic *haptic)
 
 const char *SDL_GetHapticName(SDL_Haptic *haptic)
 {
-    CHECK_HAPTIC_MAGIC(haptic, 0);
+    CHECK_HAPTIC_MAGIC(haptic, NULL);
 
-    return haptic->name;
+    return SDL_CreateTemporaryString(haptic->name);
 }
 
 SDL_bool SDL_IsMouseHaptic(void)
@@ -222,7 +222,7 @@ SDL_bool SDL_IsJoystickHaptic(SDL_Joystick *joystick)
     {
         /* Must be a valid joystick */
         if (SDL_IsJoystickValid(joystick) &&
-            !SDL_IsGamepad(SDL_GetJoystickInstanceID(joystick))) {
+            !SDL_IsGamepad(SDL_GetJoystickID(joystick))) {
             result = SDL_SYS_JoystickIsHaptic(joystick);
         }
     }
@@ -246,7 +246,7 @@ SDL_Haptic *SDL_OpenHapticFromJoystick(SDL_Joystick *joystick)
         }
 
         /* Joystick must be haptic */
-        if (SDL_IsGamepad(SDL_GetJoystickInstanceID(joystick)) ||
+        if (SDL_IsGamepad(SDL_GetJoystickID(joystick)) ||
             SDL_SYS_JoystickIsHaptic(joystick) <= 0) {
             SDL_SetError("Haptic: Joystick isn't a haptic device.");
             SDL_UnlockJoysticks();
@@ -336,7 +336,7 @@ void SDL_CloseHaptic(SDL_Haptic *haptic)
     }
 
     /* Free the data associated with this device */
-    SDL_FreeLater(haptic->name);  // this pointer is handed to the app in SDL_GetHapticName()
+    SDL_free(haptic->name);
     SDL_free(haptic);
 }
 

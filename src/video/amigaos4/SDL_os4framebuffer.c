@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -40,7 +40,7 @@ OS4_CreateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, Uint32 
     uint32 depth;
     PIX_FMT pixf;
 
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     if (data->bitmap) {
         dprintf("Freeing old bitmap %p\n", data->bitmap);
@@ -124,7 +124,7 @@ min(int a, int b)
 int
 OS4_UpdateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, const SDL_Rect * rects, int numrects)
 {
-    SDL_WindowData * data = window->driverdata;
+    SDL_WindowData * data = window->internal;
     int32 ret = -1;
 
     //dprintf("Called\n");
@@ -178,7 +178,7 @@ OS4_UpdateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, const S
 void
 OS4_DestroyWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    SDL_WindowData *data = window->driverdata;
+    SDL_WindowData *data = window->internal;
 
     if (data->bitmap) {
         dprintf("Freeing bitmap %p\n", data->bitmap);

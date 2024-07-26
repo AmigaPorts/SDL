@@ -53,7 +53,7 @@ static const SDL_DisplayMode *highlighted_mode = NULL;
 static void
 draw_modes_menu(SDL_Window *window, SDL_Renderer *renderer, SDL_FRect viewport)
 {
-    const SDL_DisplayMode **modes;
+    const SDL_DisplayMode * const *modes;
     char text[1024];
     const int lineHeight = 10;
     int i, j;
@@ -62,7 +62,7 @@ draw_modes_menu(SDL_Window *window, SDL_Renderer *renderer, SDL_FRect viewport)
     float x, y;
     float table_top;
     SDL_FPoint mouse_pos = { -1.0f, -1.0f };
-    SDL_DisplayID *display_ids;
+    const SDL_DisplayID *displays;
 
     /* Get mouse position */
     if (SDL_GetMouseFocus() == window) {
@@ -98,18 +98,18 @@ draw_modes_menu(SDL_Window *window, SDL_Renderer *renderer, SDL_FRect viewport)
         highlighted_mode = NULL;
     }
 
-    display_ids = SDL_GetDisplays(NULL);
+    displays = SDL_GetDisplays(NULL);
 
-    if (display_ids) {
-        for (i = 0; display_ids[i]; ++i) {
-            const SDL_DisplayID display_id = display_ids[i];
-            modes = SDL_GetFullscreenDisplayModes(display_id, NULL);
+    if (displays) {
+        for (i = 0; displays[i]; ++i) {
+            SDL_DisplayID display = displays[i];
+            modes = SDL_GetFullscreenDisplayModes(display, NULL);
             for (j = 0; modes[j]; ++j) {
                 SDL_FRect cell_rect;
                 const SDL_DisplayMode *mode = modes[j];
 
                 (void)SDL_snprintf(text, sizeof(text), "%s mode %d: %dx%d@%gx %gHz",
-                                   SDL_GetDisplayName(display_id),
+                                   SDL_GetDisplayName(display),
                                    j, mode->w, mode->h, mode->pixel_density, mode->refresh_rate);
 
                 /* Update column width */
@@ -143,9 +143,7 @@ draw_modes_menu(SDL_Window *window, SDL_Renderer *renderer, SDL_FRect viewport)
                     column_chars = 0;
                 }
             }
-            SDL_free((void *)modes);
         }
-        SDL_free(display_ids);
     }
 }
 
@@ -228,7 +226,9 @@ static void loop(void)
             SDL_Rect viewport;
             SDL_FRect menurect;
 
-            SDL_GetRenderViewport(renderer, &viewport);
+            SDL_SetRenderViewport(renderer, NULL);
+            SDL_GetRenderSafeArea(renderer, &viewport);
+            SDL_SetRenderViewport(renderer, &viewport);
 
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_RenderClear(renderer);

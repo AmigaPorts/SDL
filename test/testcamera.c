@@ -23,8 +23,22 @@ static SDL_CameraSpec spec;
 static SDL_Texture *texture = NULL;
 static SDL_bool texture_updated = SDL_FALSE;
 static SDL_Surface *frame_current = NULL;
-static SDL_CameraDeviceID front_camera = 0;
-static SDL_CameraDeviceID back_camera = 0;
+static SDL_CameraID front_camera = 0;
+static SDL_CameraID back_camera = 0;
+
+static void PrintCameraSpecs(SDL_CameraID camera_id)
+{
+    const SDL_CameraSpec *const *specs = SDL_GetCameraSupportedFormats(camera_id, NULL);
+    if (specs) {
+        int i;
+
+        SDL_Log("Available formats:\n");
+        for (i = 0; specs[i]; ++i) {
+            const SDL_CameraSpec *s = specs[i];
+            SDL_Log("    %dx%d %.2f FPS %s\n", s->width, s->height, (float)s->framerate_numerator / s->framerate_denominator, SDL_GetPixelFormatName(s->format));
+        }
+    }
+}
 
 int SDL_AppInit(void **appstate, int argc, char *argv[])
 {
@@ -87,19 +101,19 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
         return SDL_APP_FAILURE;
     }
 
-    SDL_CameraDeviceID *devices = SDL_GetCameraDevices(&devcount);
+    const SDL_CameraID *devices = SDL_GetCameras(&devcount);
     if (!devices) {
-        SDL_Log("SDL_GetCameraDevices failed: %s", SDL_GetError());
+        SDL_Log("SDL_GetCameras failed: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
-    SDL_CameraDeviceID camera_id = 0;
+    SDL_CameraID camera_id = 0;
 
     SDL_Log("Saw %d camera devices.", devcount);
     for (i = 0; i < devcount; i++) {
-        const SDL_CameraDeviceID device = devices[i];
-        const char *name = SDL_GetCameraDeviceName(device);
-        const SDL_CameraPosition position = SDL_GetCameraDevicePosition(device);
+        const SDL_CameraID device = devices[i];
+        const char *name = SDL_GetCameraName(device);
+        const SDL_CameraPosition position = SDL_GetCameraPosition(device);
         const char *posstr = "";
         if (position == SDL_CAMERA_POSITION_FRONT_FACING) {
             front_camera = device;
@@ -126,24 +140,24 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
         }
     }
 
-    SDL_free(devices);
-
     if (!camera_id) {
         SDL_Log("No cameras available?");
         return SDL_APP_FAILURE;
     }
 
+    PrintCameraSpecs(camera_id);
+
     SDL_CameraSpec *pspec = &spec;
     spec.framerate_numerator = 1000;
     spec.framerate_denominator = 1;
 
-    camera = SDL_OpenCameraDevice(camera_id, pspec);
+    camera = SDL_OpenCamera(camera_id, pspec);
     if (!camera) {
         SDL_Log("Failed to open camera device: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
-    SDL_snprintf(window_title, sizeof (window_title), "testcamera: %s (%s)", SDL_GetCameraDeviceName(camera_id), SDL_GetCurrentCameraDriver());
+    SDL_snprintf(window_title, sizeof (window_title), "testcamera: %s (%s)", SDL_GetCameraName(camera_id), SDL_GetCurrentCameraDriver());
     SDL_SetWindowTitle(window, window_title);
 
     return SDL_APP_CONTINUE;
@@ -158,8 +172,8 @@ static int FlipCamera(void)
     }
 
     if (camera) {
-        const SDL_CameraDeviceID current = SDL_GetCameraInstanceID(camera);
-        SDL_CameraDeviceID nextcam = 0;
+        const SDL_CameraID current = SDL_GetCameraID(camera);
+        SDL_CameraID nextcam = 0;
         if (current == front_camera) {
             nextcam = back_camera;
         } else if (current == back_camera) {
@@ -181,7 +195,7 @@ static int FlipCamera(void)
                 texture = NULL;  /* will rebuild when new camera is approved. */
             }
 
-            camera = SDL_OpenCameraDevice(nextcam, NULL);
+            camera = SDL_OpenCamera(nextcam, NULL);
             if (!camera) {
                 SDL_Log("Failed to open camera device: %s", SDL_GetError());
                 return SDL_APP_FAILURE;
@@ -274,12 +288,11 @@ int SDL_AppIterate(void *appstate)
                 SDL_DestroyTexture(texture);
             }
 
-            SDL_Colorspace colorspace = SDL_COLORSPACE_UNKNOWN;
-            SDL_GetSurfaceColorspace(frame_current, &colorspace);
+            SDL_Colorspace colorspace = SDL_GetSurfaceColorspace(frame_current);
 
             /* Create texture with appropriate format */
             SDL_PropertiesID props = SDL_CreateProperties();
-            SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_FORMAT_NUMBER, frame_current->format->format);
+            SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_FORMAT_NUMBER, frame_current->format);
             SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, colorspace);
             SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_ACCESS_NUMBER, SDL_TEXTUREACCESS_STREAMING);
             SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_WIDTH_NUMBER, frame_current->w);

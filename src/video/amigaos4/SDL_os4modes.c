@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -91,7 +91,7 @@ OS4_GetDisplayMode(ULONG id, SDL_DisplayMode * mode)
         }
     }
 
-    mode->driverdata = data;
+    mode->internal = data;
 
     return SDL_TRUE;
 }
@@ -99,7 +99,7 @@ OS4_GetDisplayMode(ULONG id, SDL_DisplayMode * mode)
 static SDL_bool
 OS4_LockPubScreen(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
     dprintf("Locking public screen\n");
 
@@ -117,7 +117,7 @@ OS4_LockPubScreen(SDL_VideoDevice *_this)
 static void
 OS4_UnlockPubScreen(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
     if (data->publicScreen) {
         dprintf("Unlocking public screen %p\n", data->publicScreen);
@@ -130,7 +130,7 @@ OS4_UnlockPubScreen(SDL_VideoDevice *_this)
 int
 OS4_InitModes(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
     SDL_VideoDisplay display;
     static SDL_DisplayMode current_mode; // TODO: test me
     SDL_DisplayData *displaydata;
@@ -159,7 +159,7 @@ OS4_InitModes(SDL_VideoDevice *_this)
     SDL_zero(display);
     display.desktop_mode = current_mode;
     display.current_mode = &current_mode; // TODO: test me
-    display.driverdata = displaydata;
+    display.internal = displaydata;
     displaydata->screen = NULL;
 
     SDL_AddVideoDisplay(&display, SDL_FALSE);
@@ -170,7 +170,7 @@ OS4_InitModes(SDL_VideoDevice *_this)
 int
 OS4_GetDisplayBounds(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_Rect * rect)
 {
-    SDL_DisplayModeData *data = (SDL_DisplayModeData *) display->current_mode->driverdata;
+    SDL_DisplayModeData *data = (SDL_DisplayModeData *) display->current_mode->internal;
 
     rect->x = data->x;
     rect->y = data->y;
@@ -194,10 +194,10 @@ OS4_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay * display)
         if (OS4_GetDisplayMode(id, &mode)) {
             if (mode.format != SDL_PIXELFORMAT_UNKNOWN) {
                 if (!SDL_AddFullscreenDisplayMode(display, &mode)) {
-                    SDL_free(mode.driverdata);
+                    SDL_free(mode.internal);
                 }
             } else {
-                SDL_free(mode.driverdata);
+                SDL_free(mode.internal);
             }
         } else {
             dprintf("Failed to get display mode for %d\n", id);
@@ -211,7 +211,7 @@ void
 OS4_CloseScreen(SDL_VideoDevice *_this, struct Screen * screen)
 {
     if (screen) {
-        SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+        SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
         if (screen != data->publicScreen) {
             dprintf("Closing screen %p\n", screen);
@@ -233,9 +233,9 @@ OS4_CloseScreen(SDL_VideoDevice *_this, struct Screen * screen)
 int
 OS4_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
 {
-    SDL_VideoData *driverdata = (SDL_VideoData *) _this->driverdata;
-    SDL_DisplayData *displaydata = (SDL_DisplayData *) display->driverdata;
-    SDL_DisplayModeData *data = (SDL_DisplayModeData *) mode->driverdata;
+    SDL_VideoData *driverdata = (SDL_VideoData *) _this->internal;
+    SDL_DisplayData *displaydata = (SDL_DisplayData *) display->internal;
+    SDL_DisplayModeData *data = (SDL_DisplayModeData *) mode->internal;
     ULONG openError = 0;
     int bpp = SDL_BITSPERPIXEL(mode->format);
 

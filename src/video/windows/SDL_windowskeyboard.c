@@ -58,7 +58,7 @@ static void IME_SetTextInputArea(SDL_VideoData *videodata, HWND hwnd, const SDL_
 void WIN_InitKeyboard(SDL_VideoDevice *_this)
 {
 #ifndef SDL_DISABLE_WINDOWS_IME
-    SDL_VideoData *data = _this->driverdata;
+    SDL_VideoData *data = _this->internal;
 
     data->ime_candlistindexbase = 1;
     data->ime_composition_length = 32 * sizeof(WCHAR);
@@ -106,7 +106,8 @@ void WIN_UpdateKeymap(SDL_bool send_event)
             /* Make sure this scancode is a valid character scancode */
             scancode = windows_scancode_table[i];
             if (scancode == SDL_SCANCODE_UNKNOWN ||
-                scancode >= SDL_SCANCODE_CAPSLOCK) {
+                scancode == SDL_SCANCODE_DELETE ||
+                (SDL_GetDefaultKeyFromScancode(scancode, SDL_KMOD_NONE) & SDLK_SCANCODE_MASK)) {
                 continue;
             }
 
@@ -153,7 +154,7 @@ void WIN_UpdateKeymap(SDL_bool send_event)
 void WIN_QuitKeyboard(SDL_VideoDevice *_this)
 {
 #ifndef SDL_DISABLE_WINDOWS_IME
-    SDL_VideoData *data = _this->driverdata;
+    SDL_VideoData *data = _this->internal;
 
     IME_Quit(data);
 
@@ -164,7 +165,7 @@ void WIN_QuitKeyboard(SDL_VideoDevice *_this)
 #endif /* !SDL_DISABLE_WINDOWS_IME */
 }
 
-void WIN_ResetDeadKeys()
+void WIN_ResetDeadKeys(void)
 {
     /*
     if a deadkey has been typed, but not the next character (which the deadkey might modify),
@@ -200,8 +201,8 @@ int WIN_StartTextInput(SDL_VideoDevice *_this, SDL_Window *window)
     WIN_ResetDeadKeys();
 
 #ifndef SDL_DISABLE_WINDOWS_IME
-    HWND hwnd = window->driverdata->hwnd;
-    SDL_VideoData *videodata = _this->driverdata;
+    HWND hwnd = window->internal->hwnd;
+    SDL_VideoData *videodata = _this->internal;
     IME_Init(videodata, window);
     IME_Enable(videodata, hwnd);
 
@@ -216,8 +217,8 @@ int WIN_StopTextInput(SDL_VideoDevice *_this, SDL_Window *window)
     WIN_ResetDeadKeys();
 
 #ifndef SDL_DISABLE_WINDOWS_IME
-    HWND hwnd = window->driverdata->hwnd;
-    SDL_VideoData *videodata = _this->driverdata;
+    HWND hwnd = window->internal->hwnd;
+    SDL_VideoData *videodata = _this->internal;
     IME_Init(videodata, window);
     IME_Disable(videodata, hwnd);
 #endif /* !SDL_DISABLE_WINDOWS_IME */
@@ -227,8 +228,8 @@ int WIN_StopTextInput(SDL_VideoDevice *_this, SDL_Window *window)
 
 int WIN_UpdateTextInputArea(SDL_VideoDevice *_this, SDL_Window *window)
 {
-    SDL_VideoData *videodata = _this->driverdata;
-    SDL_WindowData *data = window->driverdata;
+    SDL_VideoData *videodata = _this->internal;
+    SDL_WindowData *data = window->internal;
 
     IME_SetTextInputArea(videodata, data->hwnd, &window->text_input_rect, window->text_input_cursor);
     return 0;
@@ -237,7 +238,7 @@ int WIN_UpdateTextInputArea(SDL_VideoDevice *_this, SDL_Window *window)
 int WIN_ClearComposition(SDL_VideoDevice *_this, SDL_Window *window)
 {
 #ifndef SDL_DISABLE_WINDOWS_IME
-    SDL_VideoData *videodata = _this->driverdata;
+    SDL_VideoData *videodata = _this->internal;
 
     IME_ClearComposition(videodata);
 #endif
@@ -302,7 +303,7 @@ static void IME_SendClearComposition(SDL_VideoData *videodata);
 
 static int IME_Init(SDL_VideoData *videodata, SDL_Window *window)
 {
-    HWND hwnd = window->driverdata->hwnd;
+    HWND hwnd = window->internal->hwnd;
 
     if (videodata->ime_initialized) {
         return 0;
@@ -626,7 +627,7 @@ static void IME_SetupAPI(SDL_VideoData *videodata)
 
 static void IME_SetWindow(SDL_VideoData *videodata, SDL_Window *window)
 {
-    HWND hwnd = window->driverdata->hwnd;
+    HWND hwnd = window->internal->hwnd;
 
     if (hwnd != videodata->ime_hwnd_current) {
         videodata->ime_hwnd_current = hwnd;
@@ -1119,7 +1120,7 @@ SDL_bool WIN_HandleIMEMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM *lParam
 
 void WIN_UpdateIMECandidates(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *videodata = _this->driverdata;
+    SDL_VideoData *videodata = _this->internal;
 
     if (videodata->ime_update_candidates) {
         IME_GetCandidateList(videodata, videodata->ime_hwnd_current);

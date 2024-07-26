@@ -167,7 +167,7 @@ OS4_FindWindow(SDL_VideoDevice *_this, struct Window * syswin)
     SDL_Window *sdlwin;
 
     for (sdlwin = _this->windows; sdlwin; sdlwin = sdlwin->next) {
-        SDL_WindowData *data = sdlwin->driverdata;
+        SDL_WindowData *data = sdlwin->internal;
 
         if (data->syswin == syswin) {
 
@@ -259,7 +259,7 @@ OS4_HandleKeyboard(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
 static void
 OS4_HandleHitTestMotion(SDL_VideoDevice *_this, SDL_Window * sdlwin, struct MyIntuiMessage * imsg)
 {
-    HitTestInfo *hti = &((SDL_WindowData *)sdlwin->driverdata)->hti;
+    HitTestInfo *hti = &((SDL_WindowData *)sdlwin->internal)->hti;
 
     int16 newx = imsg->ScreenMouseX;
     int16 newy = imsg->ScreenMouseY;
@@ -393,7 +393,7 @@ OS4_HandleMouseMotion(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
     if (sdlwin) {
-        HitTestInfo *hti = &((SDL_WindowData *)sdlwin->driverdata)->hti;
+        HitTestInfo *hti = &((SDL_WindowData *)sdlwin->internal)->hti;
 
         dprintf("X:%d Y:%d, ScreenX: %d ScreenY: %d\n",
             imsg->WindowMouseX, imsg->WindowMouseY, imsg->ScreenMouseX, imsg->ScreenMouseY);
@@ -426,7 +426,7 @@ OS4_HandleHitTest(SDL_VideoDevice *_this, SDL_Window * sdlwin, struct MyIntuiMes
         const SDL_Point point = { imsg->WindowMouseX, imsg->WindowMouseY };
         const SDL_HitTestResult rc = sdlwin->hit_test(sdlwin, &point, sdlwin->hit_test_data);
 
-        HitTestInfo *hti = &((SDL_WindowData *)sdlwin->driverdata)->hti;
+        HitTestInfo *hti = &((SDL_WindowData *)sdlwin->internal)->hti;
 
         switch (rc) {
             case SDL_HITTEST_DRAGGABLE:
@@ -493,7 +493,7 @@ OS4_HandleMouseButtons(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
                     return;
                 }
             } else {
-                HitTestInfo *hti = &((SDL_WindowData *)sdlwin->driverdata)->hti;
+                HitTestInfo *hti = &((SDL_WindowData *)sdlwin->internal)->hti;
 
                 hti->htr = SDL_HITTEST_NORMAL;
                 // TODO: OpenGL resize?
@@ -535,7 +535,7 @@ OS4_HandleResize(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
     if (sdlwin) {
-        HitTestInfo *hti = &((SDL_WindowData *)sdlwin->driverdata)->hti;
+        HitTestInfo *hti = &((SDL_WindowData *)sdlwin->internal)->hti;
 
         if (OS4_IsHitTestResize(hti)) {
             // Intuition notifies about resize during hit test action,
@@ -546,7 +546,7 @@ OS4_HandleResize(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
             dprintf("Window resized to %d*%d\n", imsg->InnerWidth, imsg->InnerHeight);
 
             if (imsg->InnerWidth != sdlwin->w || imsg->InnerHeight != sdlwin->h) {
-                SDL_WindowData *data = (SDL_WindowData *)sdlwin->driverdata;
+                SDL_WindowData *data = (SDL_WindowData *)sdlwin->internal;
 
                 SDL_SendWindowEvent(sdlwin, SDL_EVENT_WINDOW_RESIZED,
                     imsg->InnerWidth,
@@ -617,7 +617,7 @@ OS4_HandleTicks(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
     if (sdlwin) {
         if ((sdlwin->flags & SDL_WINDOW_MOUSE_GRABBED) && !(sdlwin->flags & SDL_WINDOW_FULLSCREEN) &&
             (SDL_GetKeyboardFocus() == sdlwin)) {
-            SDL_WindowData *data = sdlwin->driverdata;
+            SDL_WindowData *data = sdlwin->internal;
 
             dprintf("Window %p ticks %d\n", imsg->IDCMPWindow, data->pointerGrabTicks);
 
@@ -884,7 +884,7 @@ OS4_HandleAppMessages(SDL_VideoDevice *_this, struct MsgPort * msgPort)
 void
 OS4_PumpEvents(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
     OS4_HandleIdcmpMessages(_this, data->userPort);
     OS4_HandleAppMessages(_this, data->appMsgPort);

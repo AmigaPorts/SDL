@@ -25,6 +25,8 @@
 #include "SDL_x11video.h"
 #include "SDL_x11shape.h"
 
+#include "../SDL_blit.h"
+
 
 #ifdef SDL_VIDEO_DRIVER_X11_XSHAPE
 static Uint8 *GenerateShapeMask(SDL_Surface *shape)
@@ -58,7 +60,7 @@ int X11_UpdateWindowShape(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surfac
     int result = -1;
 
 #ifdef SDL_VIDEO_DRIVER_X11_XSHAPE
-    SDL_WindowData *windowdata = window->driverdata;
+    SDL_WindowData *windowdata = window->internal;
 
     /* Generate a set of spans for the region */
     if (shape) {

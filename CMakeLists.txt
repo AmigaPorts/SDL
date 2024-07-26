@@ -4,9 +4,6 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_CURRENT_BINARY_DIR)
   message(FATAL_ERROR "Prevented in-tree build. Please create a build directory outside of the SDL source code and run \"cmake -S ${CMAKE_SOURCE_DIR} -B .\" from there")
 endif()
 
-# MSVC runtime library flags are selected by an abstraction.
-set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)
-
 # See docs/release_checklist.md
 project(SDL3 LANGUAGES C VERSION "3.1.2")
 
@@ -55,10 +52,10 @@ include("${SDL3_SOURCE_DIR}/cmake/sdltargets.cmake")
 include("${SDL3_SOURCE_DIR}/cmake/GetGitRevisionDescription.cmake")
 include("${SDL3_SOURCE_DIR}/cmake/3rdparty.cmake")
 include("${SDL3_SOURCE_DIR}/cmake/PreseedMSVCCache.cmake")
+include("${SDL3_SOURCE_DIR}/cmake/PreseedEmscriptenCache.cmake")
 
 SDL_DetectCompiler()
 SDL_DetectTargetCPUArchitectures(SDL_CPUS)
-SDL_Preseed_CMakeCache()
 
 # Increment this if there is an incompatible change - but if that happens,
 # we should rename the library from SDL3 to SDL4, at which point this would
@@ -159,20 +156,6 @@ if(WINDOWS OR MACOS OR IOS OR TVOS OR VISIONOS OR WATCHOS)
 endif()
 
 if(MSVC)
-  dep_option(SDL_STATIC_VCRT "Use /MT for static VC runtimes" ON "NOT WINDOWS_STORE" OFF)
-  if(SDL_STATIC_VCRT)
-    if(NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
-      set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    endif()
-    foreach(flag_var
-        CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
-        CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
-      if(${flag_var} MATCHES "/MD")
-        string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
-      endif()
-    endforeach()
-  endif()
-
   if(NOT SDL_LIBC)
     # Make sure /RTC1 is disabled, otherwise it will use functions from the CRT
     foreach(flag_var
@@ -270,11 +253,17 @@ else()
   set(SDL_RPATH_DEFAULT OFF)
 endif()
 
+set(SDL_PRESEED_AVAILABLE OFF)
+if(COMMAND SDL_Preseed_CMakeCache)
+  set(SDL_PRESEED_AVAILABLE ON)
+endif()
+
 # Allow some projects to be built conditionally.
 set_option(SDL_DISABLE_INSTALL    "Disable installation of SDL3" ${SDL3_SUBPROJECT})
 cmake_dependent_option(SDL_DISABLE_INSTALL_CPACK "Create binary SDL3 archive using CPack" ${SDL3_SUBPROJECT} "NOT SDL_DISABLE_INSTALL" ON)
 cmake_dependent_option(SDL_DISABLE_INSTALL_DOCS "Install docs for SDL3" ON "NOT SDL_DISABLE_INSTALL;NOT SDL_FRAMEWORK" ON)
 set_option(SDL_DISABLE_UNINSTALL  "Disable uninstallation of SDL3" OFF)
+cmake_dependent_option(SDL_PRESEED "Preseed CMake cache to speed up configuration" ON "${SDL_PRESEED_AVAILABLE}" OFF)
 
 cmake_dependent_option(SDL_DISABLE_ANDROID_JAR  "Disable creation of SDL3.jar" ${SDL3_SUBPROJECT} "ANDROID" ON)
 
@@ -305,7 +294,7 @@ dep_option(SDL_DUMMYAUDIO          "Support the dummy audio driver" ON "SDL_AUDI
 dep_option(SDL_DUMMYVIDEO          "Use dummy video driver" ON "SDL_VIDEO" OFF)
 dep_option(SDL_IBUS                "Enable IBus support" ON "${UNIX_SYS}" OFF)
 dep_option(SDL_OPENGL              "Include OpenGL support" ON "SDL_VIDEO;NOT IOS;NOT VISIONOS;NOT TVOS;NOT WATCHOS" OFF)
-dep_option(SDL_OPENGLES            "Include OpenGL ES support" ON "SDL_VIDEO;NOT IOS;NOT VISIONOS;NOT TVOS;NOT WATCHOS" OFF)
+dep_option(SDL_OPENGLES            "Include OpenGL ES support" ON "SDL_VIDEO;NOT VISIONOS;NOT TVOS;NOT WATCHOS" OFF)
 set_option(SDL_PTHREADS            "Use POSIX threads for multi-threading" ${SDL_PTHREADS_DEFAULT})
 dep_option(SDL_PTHREADS_SEM        "Use pthread semaphores" ON "SDL_PTHREADS" OFF)
 dep_option(SDL_OSS                 "Support the OSS audio API" ${SDL_OSS_DEFAULT} "UNIX_SYS OR RISCOS;SDL_AUDIO" OFF)
@@ -341,8 +330,8 @@ dep_option(SDL_WASAPI              "Use the Windows WASAPI audio driver" ON "WIN
 dep_option(SDL_RENDER_D3D          "Enable the Direct3D render driver" ON "SDL_RENDER" OFF)
 dep_option(SDL_RENDER_METAL        "Enable the Metal render driver" ON "SDL_RENDER;${APPLE}" OFF)
 dep_option(SDL_VIVANTE             "Use Vivante EGL video driver" ON "${UNIX_SYS};SDL_CPU_ARM32" OFF)
-dep_option(SDL_VULKAN              "Enable Vulkan support" ON "SDL_VIDEO;ANDROID OR APPLE OR LINUX OR WINDOWS" OFF)
-dep_option(SDL_RENDER_VULKAN       "Enable the Vulkan render driver" ON "SDL_RENDER;SDL_VULKAN;ANDROID OR APPLE OR LINUX OR WINDOWS" OFF)
+dep_option(SDL_VULKAN              "Enable Vulkan support" ON "SDL_VIDEO;ANDROID OR APPLE OR LINUX OR FREEBSD OR WINDOWS" OFF)
+dep_option(SDL_RENDER_VULKAN       "Enable the Vulkan render driver" ON "SDL_RENDER;SDL_VULKAN" OFF)
 dep_option(SDL_METAL               "Enable Metal support" ON "APPLE" OFF)
 dep_option(SDL_KMSDRM              "Use KMS DRM video driver" ${UNIX_SYS} "SDL_VIDEO" OFF)
 dep_option(SDL_KMSDRM_SHARED       "Dynamically load KMS DRM support" ON "SDL_KMSDRM" OFF)
@@ -371,6 +360,9 @@ dep_option(SDL_INSTALL_TESTS   "Install test-cases" OFF "NOT SDL_DISABLE_INSTALL
 dep_option(SDL_TESTS_LINK_SHARED "link tests to shared SDL library" "${SDL_SHARED}" "SDL_SHARED;SDL_STATIC" "${SDL_SHARED}")
 set(SDL_TESTS_TIMEOUT_MULTIPLIER "1" CACHE STRING "Timeout multiplier to account for really slow machines")
 
+set_option(SDL_EXAMPLES           "Build the examples directory")
+dep_option(SDL_EXAMPLES_LINK_SHARED "link examples to shared SDL library" "${SDL_SHARED}" "SDL_SHARED;SDL_STATIC" "${SDL_SHARED}")
+
 if(VITA)
   set_option(VIDEO_VITA_PIB  "Build with PSVita piglet gles2 support" OFF)
   set_option(VIDEO_VITA_PVR  "Build with PSVita PVR gles/gles2 support" OFF)
@@ -378,6 +370,10 @@ endif()
 
 if(NOT (SDL_SHARED OR SDL_STATIC))
   message(FATAL_ERROR "SDL_SHARED and SDL_STATIC cannot both be disabled")
+endif()
+
+if(SDL_PRESEED)
+  SDL_Preseed_CMakeCache()
 endif()
 
 if(SDL_SHARED)
@@ -428,8 +424,8 @@ if (LIBC_IS_GLIBC AND CMAKE_SIZEOF_VOID_P EQUAL 4)
 endif()
 
 if(WINDOWS_STORE)
-  sdl_compile_definitions(PRIVATE "SDL_BUILDING_WINRT=1")
-  sdl_compile_options(PRIVATE "-ZW")
+  sdl_compile_definitions(PRIVATE "SDL_BUILDING_WINRT=1" "WINAPI_FAMILY=WINAPI_FAMILY_APP")
+  sdl_compile_options(PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:/ZW>" "$<$<COMPILE_LANGUAGE:CXX>:-EHsc>")
 endif()
 
 check_linker_supports_version_file(HAVE_WL_VERSION_SCRIPT)
@@ -1356,6 +1352,10 @@ if(ANDROID)
       if(VULKAN_PASSED_ANDROID_CHECKS)
         set(SDL_VIDEO_VULKAN 1)
         set(HAVE_VULKAN TRUE)
+        if(SDL_RENDER_VULKAN)
+          set(SDL_VIDEO_RENDER_VULKAN 1)
+          set(HAVE_RENDER_VULKAN TRUE)
+        endif()
       endif()
     endif()
   endif()
@@ -1950,16 +1950,27 @@ elseif(WINDOWS)
   set(SDL_THREAD_GENERIC_COND_SUFFIX 1)
   set(SDL_THREAD_GENERIC_RWLOCK_SUFFIX 1)
   set(SDL_THREAD_WINDOWS 1)
-  sdl_sources(
-    "${SDL3_SOURCE_DIR}/src/thread/generic/SDL_syscond.c"
-    "${SDL3_SOURCE_DIR}/src/thread/generic/SDL_sysrwlock.c"
-    "${SDL3_SOURCE_DIR}/src/thread/windows/SDL_syscond_cv.c"
-    "${SDL3_SOURCE_DIR}/src/thread/windows/SDL_sysmutex.c"
-    "${SDL3_SOURCE_DIR}/src/thread/windows/SDL_sysrwlock_srw.c"
-    "${SDL3_SOURCE_DIR}/src/thread/windows/SDL_syssem.c"
-    "${SDL3_SOURCE_DIR}/src/thread/windows/SDL_systhread.c"
-    "${SDL3_SOURCE_DIR}/src/thread/windows/SDL_systls.c"
-  )
+  if(WINDOWS_STORE)
+    sdl_sources(
+      "${SDL3_SOURCE_DIR}/src/thread/stdcpp/SDL_syscond.cpp"
+      "${SDL3_SOURCE_DIR}/src/thread/stdcpp/SDL_sysmutex.cpp"
+      "${SDL3_SOURCE_DIR}/src/thread/stdcpp/SDL_sysrwlock.cpp"
+      "${SDL3_SOURCE_DIR}/src/thread/stdcpp/SDL_systhread.cpp"
+      "${SDL3_SOURCE_DIR}/src/thread/generic/SDL_syssem.c"
+    )
+  else()
+    sdl_sources(
+      "${SDL3_SOURCE_DIR}/src/thread/generic/SDL_syscond.c"
+      "${SDL3_SOURCE_DIR}/src/thread/generic/SDL_sysrwlock.c"
+      "${SDL3_SOURCE_DIR}/src/thread/windows/SDL_syscond_cv.c"
+      "${SDL3_SOURCE_DIR}/src/thread/windows/SDL_sysmutex.c"
+      "${SDL3_SOURCE_DIR}/src/thread/windows/SDL_sysrwlock_srw.c"
+      "${SDL3_SOURCE_DIR}/src/thread/windows/SDL_syssem.c"
+      "${SDL3_SOURCE_DIR}/src/thread/windows/SDL_systhread.c"
+      "${SDL3_SOURCE_DIR}/src/thread/windows/SDL_systls.c"
+    )
+  endif()
+
   set(HAVE_SDL_THREADS TRUE)
 
   if(SDL_SENSOR AND HAVE_SENSORSAPI_H AND NOT WINDOWS_STORE)
@@ -2103,6 +2114,7 @@ elseif(WINDOWS)
     endif()
   endif()
 
+  enable_language(RC)
   sdl_glob_sources(SHARED "${SDL3_SOURCE_DIR}/src/core/windows/*.rc")
   if(MINGW OR CYGWIN)
     sdl_pc_link_options("-mwindows")
@@ -3621,6 +3633,13 @@ if(SDL_TESTS)
   set(HAVE_TESTS ON)
   enable_testing()
   add_subdirectory(test)
+endif()
+
+##### Examples subproject (must appear after the install/uninstall targets) #####
+
+if(SDL_EXAMPLES)
+  set(HAVE_EXAMPLES ON)
+  add_subdirectory(examples)
 endif()
 
 ##### Fix Objective C builds #####

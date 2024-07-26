@@ -1353,12 +1353,7 @@ typedef SDL_GameControllerButton, SDL_GamepadButton;
 @@
 @@
 - SDL_JoystickGetGUIDFromString
-+ SDL_GetJoystickGUIDFromString
-  (...)
-@@
-@@
-- SDL_JoystickGetGUIDString
-+ SDL_GetJoystickGUIDString
++ SDL_StringToGUID
   (...)
 @@
 @@
@@ -1566,17 +1561,12 @@ typedef SDL_GameControllerButton, SDL_GamepadButton;
 @@
 @@
 - SDL_AllocFormat
-+ SDL_CreatePixelFormat
++ SDL_GetPixelFormatDetails
   (...)
 @@
 @@
 - SDL_AllocPalette
 + SDL_CreatePalette
-  (...)
-@@
-@@
-- SDL_FreeFormat
-+ SDL_DestroyPixelFormat
   (...)
 @@
 @@
@@ -1586,12 +1576,12 @@ typedef SDL_GameControllerButton, SDL_GamepadButton;
 @@
 @@
 - SDL_MasksToPixelFormatEnum
-+ SDL_GetPixelFormatEnumForMasks
++ SDL_GetPixelFormatForMasks
   (...)
 @@
 @@
 - SDL_PixelFormatEnumToMasks
-+ SDL_GetMasksForPixelFormatEnum
++ SDL_GetMasksForPixelFormat
   (...)
 @@
 @@
@@ -2521,7 +2511,7 @@ typedef SDL_atomic_t, SDL_AtomicInt;
 @@
 @@
 - SDL_SemPost
-+ SDL_PostSemaphore
++ SDL_SignalSemaphore
   (...)
 @@
 @@
@@ -2633,11 +2623,6 @@ typedef SDL_cond, SDL_Condition;
 @@
 - SDL_WINDOW_ALLOW_HIGHDPI
 + SDL_WINDOW_HIGH_PIXEL_DENSITY
-@@
-@@
-- SDL_TLSCreate
-+ SDL_CreateTLS
-  (...)
 @@
 @@
 - SDL_TLSGet
@@ -3139,17 +3124,17 @@ typedef SDL_Colour, SDL_Color;
 @@
 @@
 - SDL_WinRTGetFSPathUTF8
-+ SDL_WinRTGetFSPath
++ SDL_GetWinRTFSPath
   (...)
 @@
 @@
 - SDL_iPhoneSetAnimationCallback
-+ SDL_iOSSetAnimationCallback
++ SDL_SetiOSAnimationCallback
   (...)
 @@
 @@
 - SDL_iPhoneSetEventPump
-+ SDL_iOSSetEventPump
++ SDL_SetiOSEventPump
   (...)
 @@
 @@
@@ -3488,3 +3473,130 @@ typedef SDL_Colour, SDL_Color;
 @@
 - SDLK_z
 + SDLK_Z
+@@
+@@
+- SDL_ConvertSurfaceFormat
++ SDL_ConvertSurface
+  (...)
+@@
+@@
+- SDL_PREALLOC
++ SDL_SURFACE_PREALLOCATED
+@@
+@@
+- SDL_SIMD_ALIGNED
++ SDL_SURFACE_SIMD_ALIGNED
+@@
+@@
+- SDL_GL_DeleteContext
++ SDL_GL_DestroyContext
+  (...)
+@@
+@@
+- SDL_AndroidGetActivity
++ SDL_GetAndroidActivity
+  (...)
+@@
+@@
+- SDL_AndroidGetExternalStoragePath
++ SDL_GetAndroidExternalStoragePath
+  (...)
+@@
+@@
+- SDL_AndroidGetExternalStorageState
++ SDL_GetAndroidExternalStorageState
+  (...)
+@@
+@@
+- SDL_AndroidGetInternalStoragePath
++ SDL_GetAndroidInternalStoragePath
+  (...)
+@@
+@@
+- SDL_AndroidGetJNIEnv
++ SDL_GetAndroidJNIEnv
+  (...)
+@@
+@@
+- SDL_Direct3D9GetAdapterIndex
++ SDL_GetDirect3D9AdapterIndex
+  (...)
+@@
+@@
+- SDL_GDKGetDefaultUser
++ SDL_GetGDKDefaultUser
+  (...)
+@@
+@@
+- SDL_GDKGetTaskQueue
++ SDL_GetGDKTaskQueue
+  (...)
+@@
+@@
+- SDL_WinRTGetDeviceFamily
++ SDL_GetWinRTDeviceFamily
+  (...)
+@@
+@@
+- SDL_LinuxSetThreadPriority
++ SDL_SetLinuxThreadPriority
+  (...)
+@@
+@@
+- SDL_LinuxSetThreadPriorityAndPolicy
++ SDL_SetLinuxThreadPriorityAndPolicy
+  (...)
+@@
+@@
+- SDL_DXGIGetOutputInfo
++ SDL_GetDXGIOutputInfo
+  (...)
+@@
+@@
+- SDL_AndroidBackButton
++ SDL_TriggerAndroidBackButton
+  (...)
+@@
+@@
+- SDL_AndroidRequestPermission
++ SDL_RequestAndroidPermission
+  (...)
+@@
+@@
+- SDL_AndroidRequestPermissionCallback
++ SDL_RequestAndroidPermissionCallback
+  (...)
+@@
+@@
+- SDL_AndroidShowToast
++ SDL_ShowAndroidToast
+  (...)
+@@
+@@
+- SDL_AndroidSendMessage
++ SDL_SendAndroidMessage
+  (...)
+@@
+typedef SDL_JoystickGUID, SDL_GUID;
+@@
+- SDL_JoystickGUID
++ SDL_GUID
+@@
+@@
+- SDL_GUIDFromString
++ SDL_StringToGUID
+  (...)
+@@
+@@
+- SDL_OnApplicationWillResignActive
++ SDL_OnApplicationWillEnterBackground
+  (...)
+@@
+@@
+- SDL_OnApplicationDidBecomeActive
++ SDL_OnApplicationDidEnterForeground
+  (...)
+@@
+@@
+- SDL_HINT_VIDEO_WAYLAND_EMULATE_MOUSE_WARP
++ SDL_HINT_MOUSE_EMULATE_WARP_WITH_RELATIVE
