@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -78,7 +78,8 @@ int
 SDL_LockMutex(SDL_mutex * mutex)
 {
     if (mutex == NULL) {
-        return SDL_SetError("Passed a NULL mutex");
+        dprintf("Passed a NULL mutex\n");
+        return 0;
     }
 
     //dprintf("Called\n");
@@ -93,17 +94,17 @@ SDL_LockMutex(SDL_mutex * mutex)
 int
 SDL_TryLockMutex(SDL_mutex * mutex)
 {
-    int retval = 0;
     if (mutex == NULL) {
-        return SDL_SetError("Passed a NULL mutex");
+        dprintf("Passed a NULL mutex\n");
+        return 0;
     }
 
     //dprintf("Called\n");
 
     if (!IExec->MutexAttempt(mutex->mtx)) {
-        retval = SDL_MUTEX_TIMEDOUT;
+        return SDL_MUTEX_TIMEDOUT;
     }
-    return retval;
+    return 0;
 }
 
 /* Unlock the mutex */
@@ -111,7 +112,8 @@ int
 SDL_UnlockMutex(SDL_mutex * mutex)
 {
     if (mutex == NULL) {
-        return SDL_SetError("Passed a NULL mutex");
+        dprintf("Passed a NULL mutex\n");
+        return 0;
     }
 
     //dprintf("Unlocking mutex %p\n", mutex);
