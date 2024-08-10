@@ -274,18 +274,6 @@ static SDL_XInput2DeviceInfo *xinput2_get_device_info(SDL_VideoData *videodata, 
 
     return devinfo;
 }
-
-static void xinput2_pen_ensure_window(SDL_VideoDevice *_this, const SDL_Pen *pen, Window window)
-{
-    /* When "flipping" a Wacom eraser pen, we get an XI_DeviceChanged event
-     * with the newly-activated pen, but this event is global for the display.
-     * We won't get a window until the pen starts triggering motion or
-     * button events, so we instead hook the pen to its window at that point. */
-    const SDL_WindowData *windowdata = X11_FindWindow(_this, window);
-    if (windowdata) {
-        SDL_SendPenWindowEvent(0, pen->header.id, windowdata->window);
-    }
-}
 #endif
 
 void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
@@ -303,6 +291,14 @@ void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
         const XIHierarchyEvent *hierev = (const XIHierarchyEvent *)cookie->data;
         int i;
         for (i = 0; i < hierev->num_info; i++) {
+            // pen stuff...
+            if ((hierev->info[i].flags & (XISlaveRemoved | XIDeviceDisabled)) != 0) {
+                X11_RemovePenByDeviceID(hierev->info[i].deviceid);  // it's okay if this thing isn't actually a pen, it'll handle it.
+            } else if ((hierev->info[i].flags & (XISlaveAdded | XIDeviceEnabled)) != 0) {
+                X11_MaybeAddPenByDeviceID(_this, hierev->info[i].deviceid);  // this will do more checks to make sure this is valid.
+            }
+
+            // not pen stuff...
             if (hierev->info[i].flags & XISlaveRemoved) {
                 xinput2_remove_device_info(videodata, hierev->info[i].deviceid);
             }
@@ -310,29 +306,14 @@ void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
         videodata->xinput_hierarchy_changed = SDL_TRUE;
     } break;
 
-    case XI_PropertyEvent:
-    case XI_DeviceChanged:
-    {
-        // FIXME: We shouldn't rescan all devices for pen changes every time a property or active slave changes
-        X11_InitPen(_this);
-    } break;
-
-    case XI_Enter:
-    case XI_Leave:
-    {
-        const XIEnterEvent *enterev = (const XIEnterEvent *)cookie->data;
-        const SDL_WindowData *windowdata = X11_FindWindow(_this, enterev->event);
-        const SDL_Pen *pen = SDL_GetPenPtr(X11_PenIDFromDeviceID(enterev->sourceid));
-        SDL_Window *window = (windowdata && (cookie->evtype == XI_Enter)) ? windowdata->window : NULL;
-        if (pen) {
-            SDL_SendPenWindowEvent(0, pen->header.id, window);
-        }
-    } break;
+    // !!! FIXME: the pen code used to rescan all devices here, but we can do this device-by-device with XI_HierarchyChanged. When do these events fire and why?
+    //case XI_PropertyEvent:
+    //case XI_DeviceChanged:
 
     case XI_RawMotion:
     {
         const XIRawEvent *rawev = (const XIRawEvent *)cookie->data;
-        const SDL_bool is_pen = X11_PenIDFromDeviceID(rawev->sourceid) != SDL_PEN_INVALID;
+        const SDL_bool is_pen = X11_FindPenByDeviceID(rawev->sourceid) != NULL;
         SDL_Mouse *mouse = SDL_GetMouse();
         SDL_XInput2DeviceInfo *devinfo;
         double coords[2];
@@ -341,10 +322,8 @@ void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
 
         videodata->global_mouse_changed = SDL_TRUE;
         if (is_pen) {
-            break; /* Pens check for XI_Motion instead */
+            break; // Pens check for XI_Motion instead
         }
-
-        /* Non-pen: */
 
         if (!mouse->relative_mode || mouse->relative_mode_warp) {
             break;
@@ -426,31 +405,17 @@ void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
     case XI_ButtonRelease:
     {
         const XIDeviceEvent *xev = (const XIDeviceEvent *)cookie->data;
-        const SDL_Pen *pen = SDL_GetPenPtr(X11_PenIDFromDeviceID(xev->deviceid));
+        X11_PenHandle *pen = X11_FindPenByDeviceID(xev->deviceid);
         const int button = xev->detail;
         const SDL_bool pressed = (cookie->evtype == XI_ButtonPress) ? SDL_TRUE : SDL_FALSE;
 
         if (pen) {
-            xinput2_pen_ensure_window(_this, pen, xev->event);
-
-            /* Only report button event; if there was also pen movement / pressure changes, we expect
-               an XI_Motion event first anyway */
-            if (button == 1) {
-                /* button 1 is the pen tip */
-                if (pressed && SDL_PenPerformHitTest()) {
-                    /* Check whether we should handle window resize / move events */
-                    SDL_WindowData *windowdata = X11_FindWindow(_this, xev->event);
-                    if (windowdata && X11_TriggerHitTestAction(_this, windowdata, pen->last.x, pen->last.y)) {
-                        SDL_SendWindowEvent(windowdata->window, SDL_EVENT_WINDOW_HIT_TEST, 0, 0);
-                        break; /* Don't pass on this event */
-                    }
-                }
-                SDL_SendPenTipEvent(0, pen->header.id,
-                                    pressed ? SDL_PRESSED : SDL_RELEASED);
+            // Only report button event; if there was also pen movement / pressure changes, we expect an XI_Motion event first anyway.
+            SDL_Window *window = xinput2_get_sdlwindow(videodata, xev->event);
+            if (button == 1) { // button 1 is the pen tip
+                SDL_SendPenTouch(0, pen->pen, window, pressed ? SDL_PRESSED : SDL_RELEASED, pen->is_eraser);
             } else {
-                SDL_SendPenButton(0, pen->header.id,
-                                  pressed ? SDL_PRESSED : SDL_RELEASED,
-                                  button - 1);
+                SDL_SendPenButton(0, pen->pen, window, pressed ? SDL_PRESSED : SDL_RELEASED, button - 1);
             }
         } else {
             /* Otherwise assume a regular mouse */
@@ -475,7 +440,6 @@ void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
     case XI_Motion:
     {
         const XIDeviceEvent *xev = (const XIDeviceEvent *)cookie->data;
-        const SDL_Pen *pen = SDL_GetPenPtr(X11_PenIDFromDeviceID(xev->deviceid));
 #if SDL_VIDEO_DRIVER_X11_XINPUT2_SUPPORTS_MULTITOUCH
         SDL_bool pointer_emulated = ((xev->flags & XIPointerEmulated) != 0);
 #else
@@ -489,25 +453,20 @@ void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
             break;
         }
 
+        X11_PenHandle *pen = X11_FindPenByDeviceID(xev->deviceid);
         if (pen) {
-            SDL_PenStatusInfo pen_status;
+            SDL_Window *window = xinput2_get_sdlwindow(videodata, xev->event);
+            SDL_SendPenMotion(0, pen->pen, window, (float) xev->event_x, (float) xev->event_y);
 
-            pen_status.x = (float)xev->event_x;
-            pen_status.y = (float)xev->event_y;
+            float axes[SDL_PEN_NUM_AXES];
+            X11_PenAxesFromValuators(pen, xev->valuators.values, xev->valuators.mask, xev->valuators.mask_len, axes);
 
-            X11_PenAxesFromValuators(pen,
-                                     xev->valuators.values, xev->valuators.mask, xev->valuators.mask_len,
-                                     &pen_status.axes[0]);
-
-            xinput2_pen_ensure_window(_this, pen, xev->event);
-
-            SDL_SendPenMotion(0, pen->header.id,
-                              SDL_TRUE,
-                              &pen_status);
-            break;
-        }
-
-        if (!pointer_emulated) {
+            for (int i = 0; i < SDL_arraysize(axes); i++) {
+                if (pen->valuator_for_axis[i] != SDL_X11_PEN_AXIS_VALUATOR_MISSING) {
+                    SDL_SendPenAxis(0, pen->pen, window, (SDL_PenAxis) i, axes[i]);
+                }
+            }
+        } else if (!pointer_emulated) {
             SDL_Mouse *mouse = SDL_GetMouse();
             if (!mouse->relative_mode || mouse->relative_mode_warp) {
                 SDL_Window *window = xinput2_get_sdlwindow(videodata, xev->event);
@@ -725,6 +684,30 @@ static SDL_bool HasDeviceID(Uint32 deviceID, const Uint32 *list, int count)
     return SDL_FALSE;
 }
 
+static void AddDeviceID64(Uint64 deviceID, Uint64 **list, int *count)
+{
+    int new_count = (*count + 1);
+    Uint64 *new_list = (Uint64 *)SDL_realloc(*list, new_count * sizeof(*new_list));
+    if (!new_list) {
+        /* Oh well, we'll drop this one */
+        return;
+    }
+    new_list[new_count - 1] = deviceID;
+
+    *count = new_count;
+    *list = new_list;
+}
+
+static SDL_bool HasDeviceID64(Uint64 deviceID, const Uint64 *list, int count)
+{
+    for (int i = 0; i < count; ++i) {
+        if (deviceID == list[i]) {
+            return SDL_TRUE;
+        }
+    }
+    return SDL_FALSE;
+}
+
 #endif // SDL_VIDEO_DRIVER_X11_XINPUT2
 
 void X11_Xinput2UpdateDevices(SDL_VideoDevice *_this, SDL_bool initial_check)
@@ -734,18 +717,17 @@ void X11_Xinput2UpdateDevices(SDL_VideoDevice *_this, SDL_bool initial_check)
     XIDeviceInfo *info;
     int ndevices;
     int old_keyboard_count = 0;
-    const SDL_KeyboardID *old_keyboards = NULL;
+    SDL_KeyboardID *old_keyboards = NULL;
     int new_keyboard_count = 0;
     SDL_KeyboardID *new_keyboards = NULL;
     int old_mouse_count = 0;
-    const SDL_MouseID *old_mice = NULL;
+    SDL_MouseID *old_mice = NULL;
     int new_mouse_count = 0;
     SDL_MouseID *new_mice = NULL;
     int old_touch_count = 0;
-    const SDL_TouchID *old_touch_devices64 = NULL;
-    Uint32 *old_touch_devices = NULL;
+    Uint64 *old_touch_devices = NULL;
     int new_touch_count = 0;
-    Uint32 *new_touch_devices = NULL;
+    Uint64 *new_touch_devices = NULL;
     SDL_bool send_event = !initial_check;
 
     SDL_assert(X11_Xinput2IsInitialized());
@@ -754,17 +736,7 @@ void X11_Xinput2UpdateDevices(SDL_VideoDevice *_this, SDL_bool initial_check)
 
     old_keyboards = SDL_GetKeyboards(&old_keyboard_count);
     old_mice = SDL_GetMice(&old_mouse_count);
-
-    /* SDL_TouchID is 64-bit, but our helper functions take Uint32 */
-    old_touch_devices64 = SDL_GetTouchDevices(&old_touch_count);
-    if (old_touch_count > 0) {
-        old_touch_devices = (Uint32 *)SDL_malloc(old_touch_count * sizeof(*old_touch_devices));
-        if (old_touch_devices) {
-            for (int i = 0; i < old_touch_count; ++i) {
-                old_touch_devices[i] = (Uint32)old_touch_devices64[i];
-            }
-        }
-    }
+    old_touch_devices = SDL_GetTouchDevices(&old_touch_count);
 
     for (int i = 0; i < ndevices; i++) {
         XIDeviceInfo *dev = &info[i];
@@ -796,7 +768,7 @@ void X11_Xinput2UpdateDevices(SDL_VideoDevice *_this, SDL_bool initial_check)
 
 #ifdef SDL_VIDEO_DRIVER_X11_XINPUT2_SUPPORTS_MULTITOUCH
         for (int j = 0; j < dev->num_classes; j++) {
-            Uint32 touchID;
+            Uint64 touchID;
             SDL_TouchDeviceType touchType;
             XIAnyClassInfo *class = dev->classes[j];
             XITouchClassInfo *t = (XITouchClassInfo *)class;
@@ -806,9 +778,9 @@ void X11_Xinput2UpdateDevices(SDL_VideoDevice *_this, SDL_bool initial_check)
                 continue;
             }
 
-            touchID = (Uint32)t->sourceid;
-            AddDeviceID(touchID, &new_touch_devices, &new_touch_count);
-            if (!HasDeviceID(touchID, old_touch_devices, old_touch_count)) {
+            touchID = (Uint64)t->sourceid;
+            AddDeviceID64(touchID, &new_touch_devices, &new_touch_count);
+            if (!HasDeviceID64(touchID, old_touch_devices, old_touch_count)) {
                 if (t->mode == XIDependentTouch) {
                     touchType = SDL_TOUCH_DEVICE_INDIRECT_RELATIVE;
                 } else { /* XIDirectTouch */
@@ -833,12 +805,14 @@ void X11_Xinput2UpdateDevices(SDL_VideoDevice *_this, SDL_bool initial_check)
     }
 
     for (int i = old_touch_count; i--;) {
-        if (!HasDeviceID(old_touch_devices[i], new_touch_devices, new_touch_count)) {
+        if (!HasDeviceID64(old_touch_devices[i], new_touch_devices, new_touch_count)) {
             SDL_DelTouch(old_touch_devices[i]);
         }
     }
 
+    SDL_free(old_keyboards);
     SDL_free(new_keyboards);
+    SDL_free(old_mice);
     SDL_free(new_mice);
     SDL_free(old_touch_devices);
     SDL_free(new_touch_devices);

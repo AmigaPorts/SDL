@@ -63,7 +63,7 @@ extern void Android_JNI_MinizeWindow(void);
 extern SDL_bool Android_JNI_ShouldMinimizeOnFocusLoss(void);
 
 extern SDL_bool Android_JNI_GetAccelerometerValues(float values[3]);
-extern void Android_JNI_ShowScreenKeyboard(SDL_Rect *inputRect);
+extern void Android_JNI_ShowScreenKeyboard(int input_type, SDL_Rect *inputRect);
 extern void Android_JNI_HideScreenKeyboard(void);
 extern SDL_bool Android_JNI_IsScreenKeyboardShown(void);
 extern ANativeWindow *Android_JNI_GetNativeWindow(void);
@@ -75,12 +75,6 @@ extern SDL_DisplayOrientation Android_JNI_GetDisplayCurrentOrientation(void);
 void Android_StartAudioHotplug(SDL_AudioDevice **default_playback, SDL_AudioDevice **default_recording);
 void Android_StopAudioHotplug(void);
 extern void Android_AudioThreadInit(SDL_AudioDevice *device);
-extern int Android_JNI_OpenAudioDevice(SDL_AudioDevice *device);
-extern void *Android_JNI_GetAudioBuffer(void);
-extern void Android_JNI_WriteAudioBuffer(void);
-extern int Android_JNI_RecordAudioBuffer(void *buffer, int buflen);
-extern void Android_JNI_FlushRecordedAudio(void);
-extern void Android_JNI_CloseAudioDevice(const int recording);
 
 /* Detecting device type */
 extern SDL_bool Android_IsDeXMode(void);

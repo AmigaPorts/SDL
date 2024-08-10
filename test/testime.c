@@ -15,6 +15,7 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3/SDL_test_font.h>
 #ifdef HAVE_SDL_TTF
 #include "SDL_ttf.h"
 #endif
@@ -40,23 +41,70 @@
 #endif
 #define MAX_TEXT_LENGTH 256
 
+#define WINDOW_WIDTH    640
+#define WINDOW_HEIGHT   480
+
+#define MARGIN 32.0f
+#define LINE_HEIGHT (FONT_CHARACTER_SIZE + 4.0f)
 #define CURSOR_BLINK_INTERVAL_MS    500
 
+typedef struct
+{
+    SDL_Window *window;
+    SDL_Renderer *renderer;
+    int rendererID;
+    SDL_bool settings_visible;
+    SDL_Texture *settings_icon;
+    SDL_FRect settings_rect;
+    SDL_PropertiesID text_settings;
+    SDL_FRect textRect;
+    SDL_FRect markedRect;
+    char text[MAX_TEXT_LENGTH];
+    char markedText[MAX_TEXT_LENGTH];
+    int cursor;
+    int cursor_length;
+    SDL_bool cursor_visible;
+    Uint64 last_cursor_change;
+    char **candidates;
+    int num_candidates;
+    int selected_candidate;
+    SDL_bool horizontal_candidates;
+} WindowState;
+
 static SDLTest_CommonState *state;
-static SDL_FRect textRect, markedRect;
-static SDL_Color lineColor = { 0, 0, 0, 255 };
-static SDL_Color backColor = { 255, 255, 255, 255 };
-static SDL_Color textColor = { 0, 0, 0, 255 };
-static char text[MAX_TEXT_LENGTH], markedText[MAX_TEXT_LENGTH];
-static int cursor = 0;
-static int cursor_length = 0;
-static SDL_bool cursor_visible;
-static Uint64 last_cursor_change;
+static WindowState *windowstate;
+static const SDL_Color lineColor = { 0, 0, 0, 255 };
+static const SDL_Color backColor = { 255, 255, 255, 255 };
+static const SDL_Color textColor = { 0, 0, 0, 255 };
 static SDL_BlendMode highlight_mode;
-static const char **candidates;
-static int num_candidates;
-static int selected_candidate;
-static SDL_bool horizontal_candidates;
+
+static const struct
+{
+    const char *label;
+    const char *setting;
+    int value;
+} settings[] = {
+    { "Text",                   SDL_PROP_TEXTINPUT_TYPE_NUMBER, SDL_TEXTINPUT_TYPE_TEXT },
+    { "Name",                   SDL_PROP_TEXTINPUT_TYPE_NUMBER, SDL_TEXTINPUT_TYPE_TEXT_NAME },
+    { "E-mail",                 SDL_PROP_TEXTINPUT_TYPE_NUMBER, SDL_TEXTINPUT_TYPE_TEXT_EMAIL },
+    { "Username",               SDL_PROP_TEXTINPUT_TYPE_NUMBER, SDL_TEXTINPUT_TYPE_TEXT_USERNAME },
+    { "Password (hidden)",      SDL_PROP_TEXTINPUT_TYPE_NUMBER, SDL_TEXTINPUT_TYPE_TEXT_PASSWORD_HIDDEN },
+    { "Password (visible)",     SDL_PROP_TEXTINPUT_TYPE_NUMBER, SDL_TEXTINPUT_TYPE_TEXT_PASSWORD_VISIBLE },
+    { "Number",                 SDL_PROP_TEXTINPUT_TYPE_NUMBER, SDL_TEXTINPUT_TYPE_NUMBER },
+    { "Numeric PIN (hidden)",   SDL_PROP_TEXTINPUT_TYPE_NUMBER, SDL_TEXTINPUT_TYPE_NUMBER_PASSWORD_HIDDEN },
+    { "Numeric PIN (visible)",  SDL_PROP_TEXTINPUT_TYPE_NUMBER, SDL_TEXTINPUT_TYPE_NUMBER_PASSWORD_VISIBLE },
+    { "",                       NULL },
+    { "No capitalization",      SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, SDL_CAPITALIZE_NONE },
+    { "Capitalize sentences",   SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, SDL_CAPITALIZE_SENTENCES },
+    { "Capitalize words",       SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, SDL_CAPITALIZE_WORDS },
+    { "All caps",               SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, SDL_CAPITALIZE_LETTERS },
+    { "",                       NULL },
+    { "Auto-correct OFF",       SDL_PROP_TEXTINPUT_AUTOCORRECT_BOOLEAN, SDL_FALSE },
+    { "Auto-correct ON",        SDL_PROP_TEXTINPUT_AUTOCORRECT_BOOLEAN, SDL_TRUE },
+    { "Multiline OFF",          SDL_PROP_TEXTINPUT_MULTILINE_BOOLEAN, SDL_FALSE },
+    { "Multiline ON",           SDL_PROP_TEXTINPUT_MULTILINE_BOOLEAN, SDL_TRUE }
+};
+
 #ifdef HAVE_SDL_TTF
 static TTF_Font *font;
 #else
@@ -455,68 +503,90 @@ static Uint32 utf8_decode(const char *p, size_t len)
     return codepoint;
 }
 
-static void InitInput(void)
+static WindowState *GetWindowStateForWindowID(SDL_WindowID windowID)
+{
+    int i;
+    SDL_Window *window = SDL_GetWindowFromID(windowID);
+
+    for (i = 0; i < state->num_windows; ++i) {
+        if (windowstate[i].window == window) {
+            return &windowstate[i];
+        }
+    }
+    return NULL;
+}
+
+static void InitInput(WindowState *ctx)
+{
+    /* Prepare a rect for text input */
+    ctx->textRect.x = ctx->textRect.y = 100.0f;
+    ctx->textRect.w = DEFAULT_WINDOW_WIDTH - 2 * ctx->textRect.x;
+    ctx->textRect.h = 50.0f;
+    ctx->markedRect = ctx->textRect;
+
+    ctx->text_settings = SDL_CreateProperties();
+
+    SDL_StartTextInputWithProperties(ctx->window, ctx->text_settings);
+}
+
+
+static void ClearCandidates(WindowState *ctx)
 {
     int i;
 
-    /* Prepare a rect for text input */
-    textRect.x = textRect.y = 100.0f;
-    textRect.w = DEFAULT_WINDOW_WIDTH - 2 * textRect.x;
-    textRect.h = 50.0f;
+    for (i = 0; i < ctx->num_candidates; ++i) {
+        SDL_free(ctx->candidates[i]);
+    }
+    SDL_free(ctx->candidates);
+    ctx->candidates = NULL;
+    ctx->num_candidates = 0;
+}
 
-    text[0] = 0;
-    markedRect = textRect;
-    markedText[0] = 0;
+static void SaveCandidates(WindowState *ctx, SDL_Event *event)
+{
+    int i;
 
-    for (i = 0; i < state->num_windows; ++i) {
-        SDL_StartTextInput(state->windows[i]);
+    ClearCandidates(ctx);
+
+    ctx->num_candidates = event->edit_candidates.num_candidates;
+    if (ctx->num_candidates > 0) {
+        ctx->candidates = (char **)SDL_malloc(ctx->num_candidates * sizeof(*ctx->candidates));
+        if (!ctx->candidates) {
+            ctx->num_candidates = 0;
+            return;
+        }
+        for (i = 0; i < ctx->num_candidates; ++i) {
+            ctx->candidates[i] = SDL_strdup(event->edit_candidates.candidates[i]);
+        }
+        ctx->selected_candidate = event->edit_candidates.selected_candidate;
+        ctx->horizontal_candidates = event->edit_candidates.horizontal;
     }
 }
 
-
-static void ClearCandidates(void)
+static void DrawCandidates(WindowState *ctx, SDL_FRect *cursorRect)
 {
-    SDL_free(candidates);
-    candidates = NULL;
-    num_candidates = 0;
-}
-
-static void SaveCandidates(SDL_Event *event)
-{
-    ClearCandidates();
-
-    num_candidates = event->edit_candidates.num_candidates;
-    if (num_candidates > 0) {
-        candidates = (const char **)SDL_ClaimTemporaryMemory(event->edit_candidates.candidates);
-        SDL_assert(candidates);
-        selected_candidate = event->edit_candidates.selected_candidate;
-        horizontal_candidates = event->edit_candidates.horizontal;
-    }
-}
-
-static void DrawCandidates(int rendererID, SDL_FRect *cursorRect)
-{
-    SDL_Renderer *renderer = state->renderers[rendererID];
+    SDL_Renderer *renderer = ctx->renderer;
+    int rendererID = ctx->rendererID;
     int i;
     int output_w = 0, output_h = 0;
     float w = 0.0f, h = 0.0f;
     SDL_FRect candidatesRect, dstRect, underlineRect;
 
-    if (num_candidates == 0) {
+    if (ctx->num_candidates == 0) {
         return;
     }
 
     /* Calculate the size of the candidate list */
-    for (i = 0; i < num_candidates; ++i) {
-        if (!candidates[i]) {
+    for (i = 0; i < ctx->num_candidates; ++i) {
+        if (!ctx->candidates[i]) {
             continue;
         }
 
 #ifdef HAVE_SDL_TTF
         /* FIXME */
 #else
-        if (horizontal_candidates) {
-            const char *utext = candidates[i];
+        if (ctx->horizontal_candidates) {
+            const char *utext = ctx->candidates[i];
             Uint32 codepoint;
             size_t len;
             float advance = 0.0f;
@@ -531,7 +601,7 @@ static void DrawCandidates(int rendererID, SDL_FRect *cursorRect)
             w += advance;
             h = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
         } else {
-            const char *utext = candidates[i];
+            const char *utext = ctx->candidates[i];
             Uint32 codepoint;
             size_t len;
             float advance = 0.0f;
@@ -571,8 +641,8 @@ static void DrawCandidates(int rendererID, SDL_FRect *cursorRect)
     /* Draw the candidates */
     dstRect.x = candidatesRect.x + 3.0f;
     dstRect.y = candidatesRect.y + 3.0f;
-    for (i = 0; i < num_candidates; ++i) {
-        if (!candidates[i]) {
+    for (i = 0; i < ctx->num_candidates; ++i) {
+        if (!ctx->candidates[i]) {
             continue;
         }
 
@@ -582,8 +652,8 @@ static void DrawCandidates(int rendererID, SDL_FRect *cursorRect)
         dstRect.w = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
         dstRect.h = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
 
-        if (horizontal_candidates) {
-            const char *utext = candidates[i];
+        if (ctx->horizontal_candidates) {
+            const char *utext = ctx->candidates[i];
             Uint32 codepoint;
             size_t len;
             float start;
@@ -598,7 +668,7 @@ static void DrawCandidates(int rendererID, SDL_FRect *cursorRect)
                 utext += len;
             }
 
-            if (i == selected_candidate) {
+            if (i == ctx->selected_candidate) {
                 underlineRect.x = start;
                 underlineRect.y = dstRect.y + dstRect.h - 2;
                 underlineRect.h = 2;
@@ -608,7 +678,7 @@ static void DrawCandidates(int rendererID, SDL_FRect *cursorRect)
                 SDL_RenderFillRect(renderer, &underlineRect);
             }
         } else {
-            const char *utext = candidates[i];
+            const char *utext = ctx->candidates[i];
             Uint32 codepoint;
             size_t len;
             float start;
@@ -621,7 +691,7 @@ static void DrawCandidates(int rendererID, SDL_FRect *cursorRect)
                 utext += len;
             }
 
-            if (i == selected_candidate) {
+            if (i == ctx->selected_candidate) {
                 underlineRect.x = start;
                 underlineRect.y = dstRect.y + dstRect.h - 2;
                 underlineRect.h = 2;
@@ -640,22 +710,29 @@ static void DrawCandidates(int rendererID, SDL_FRect *cursorRect)
     }
 }
 
-static void UpdateTextInputArea(SDL_Window *window, const SDL_FRect *cursorRect)
+static void UpdateTextInputArea(WindowState *ctx, const SDL_FRect *cursorRect)
 {
     SDL_Rect rect;
-    int cursor_offset = (int)(cursorRect->x - textRect.x);
+    int cursor_offset = (int)(cursorRect->x - ctx->textRect.x);
 
-    rect.x = (int)textRect.x;
-    rect.y = (int)textRect.y;
-    rect.w = (int)textRect.w;
-    rect.h = (int)textRect.h;
-    SDL_SetTextInputArea(window, &rect, cursor_offset);
+    rect.x = (int)ctx->textRect.x;
+    rect.y = (int)ctx->textRect.y;
+    rect.w = (int)ctx->textRect.w;
+    rect.h = (int)ctx->textRect.h;
+    SDL_SetTextInputArea(ctx->window, &rect, cursor_offset);
 }
 
 static void CleanupVideo(void)
 {
-    SDL_StopTextInput(state->windows[0]);
-    ClearCandidates();
+    int i;
+
+    for (i = 0; i < state->num_windows; ++i) {
+        WindowState *ctx = &windowstate[i];
+
+        SDL_StopTextInput(ctx->window);
+        ClearCandidates(ctx);
+        SDL_DestroyProperties(ctx->text_settings);
+    }
 #ifdef HAVE_SDL_TTF
     TTF_CloseFont(font);
     TTF_Quit();
@@ -664,27 +741,131 @@ static void CleanupVideo(void)
 #endif
 }
 
-static void RedrawWindow(int rendererID)
+static void DrawSettingsButton(WindowState *ctx)
 {
-    SDL_Renderer *renderer = state->renderers[rendererID];
+    SDL_Renderer *renderer = ctx->renderer;
+
+    SDL_RenderTexture(renderer, ctx->settings_icon, NULL, &ctx->settings_rect);
+}
+
+static void ToggleSettings(WindowState *ctx)
+{
+    if (ctx->settings_visible) {
+        ctx->settings_visible = SDL_FALSE;
+        SDL_StartTextInputWithProperties(ctx->window, ctx->text_settings);
+    } else {
+        SDL_StopTextInput(ctx->window);
+        ctx->settings_visible = SDL_TRUE;
+    }
+}
+
+static int GetDefaultSetting(SDL_PropertiesID props, const char *setting)
+{
+    if (SDL_strcmp(setting, SDL_PROP_TEXTINPUT_TYPE_NUMBER) == 0) {
+        return SDL_TEXTINPUT_TYPE_TEXT;
+    }
+
+    if (SDL_strcmp(setting, SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER) == 0) {
+        switch (SDL_GetNumberProperty(props, SDL_PROP_TEXTINPUT_TYPE_NUMBER, SDL_TEXTINPUT_TYPE_TEXT)) {
+        case SDL_TEXTINPUT_TYPE_TEXT:
+            return SDL_CAPITALIZE_SENTENCES;
+        case SDL_TEXTINPUT_TYPE_TEXT_NAME:
+            return SDL_CAPITALIZE_WORDS;
+        default:
+            return SDL_CAPITALIZE_NONE;
+        }
+    }
+
+    if (SDL_strcmp(setting, SDL_PROP_TEXTINPUT_AUTOCORRECT_BOOLEAN) == 0) {
+        return SDL_TRUE;
+    }
+
+    if (SDL_strcmp(setting, SDL_PROP_TEXTINPUT_MULTILINE_BOOLEAN) == 0) {
+        return SDL_TRUE;
+    }
+
+    SDL_assert(!"Unknown setting");
+    return 0;
+}
+
+static void DrawSettings(WindowState *ctx)
+{
+    SDL_Renderer *renderer = ctx->renderer;
+    SDL_FRect checkbox;
+    int i;
+
+    checkbox.x = MARGIN;
+    checkbox.y = MARGIN;
+    checkbox.w = (float)FONT_CHARACTER_SIZE;
+    checkbox.h = (float)FONT_CHARACTER_SIZE;
+
+    for (i = 0; i < SDL_arraysize(settings); ++i) {
+        if (settings[i].setting) {
+            int value = (int)SDL_GetNumberProperty(ctx->text_settings, settings[i].setting, GetDefaultSetting(ctx->text_settings, settings[i].setting));
+            if (value == settings[i].value) {
+                SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+                SDL_RenderFillRect(renderer, &checkbox);
+            }
+            SDL_SetRenderDrawColor(renderer, backColor.r, backColor.g, backColor.b, backColor.a);
+            SDL_RenderRect(renderer, &checkbox);
+            SDLTest_DrawString(renderer, checkbox.x + checkbox.w + 8.0f, checkbox.y, settings[i].label);
+        }
+        checkbox.y += LINE_HEIGHT;
+    }
+}
+
+static void ClickSettings(WindowState *ctx, float x, float y)
+{
+    int setting = (int)SDL_floorf((y - MARGIN) / LINE_HEIGHT);
+    if (setting >= 0 && setting < SDL_arraysize(settings)) {
+        SDL_SetNumberProperty(ctx->text_settings, settings[setting].setting, settings[setting].value);
+    }
+}
+
+static void RedrawWindow(WindowState *ctx)
+{
+    SDL_Renderer *renderer = ctx->renderer;
+    int rendererID = ctx->rendererID;
     SDL_FRect drawnTextRect, cursorRect, underlineRect;
+    char text[MAX_TEXT_LENGTH];
+
+    DrawSettingsButton(ctx);
+
+    if (ctx->settings_visible) {
+        DrawSettings(ctx);
+        return;
+    }
+
+    /* Hide the text if it's a password */
+    switch ((SDL_TextInputType)SDL_GetNumberProperty(ctx->text_settings, SDL_PROP_TEXTINPUT_TYPE_NUMBER, SDL_TEXTINPUT_TYPE_TEXT)) {
+    case SDL_TEXTINPUT_TYPE_TEXT_PASSWORD_HIDDEN:
+    case SDL_TEXTINPUT_TYPE_NUMBER_PASSWORD_HIDDEN: {
+        size_t len = SDL_utf8strlen(ctx->text);
+        SDL_memset(text, '*', len);
+        text[len] = '\0';
+        break;
+    }
+    default:
+        SDL_strlcpy(text, ctx->text, sizeof(text));
+        break;
+    }
 
     SDL_SetRenderDrawColor(renderer, backColor.r, backColor.g, backColor.b, backColor.a);
-    SDL_RenderFillRect(renderer, &textRect);
+    SDL_RenderFillRect(renderer, &ctx->textRect);
 
     /* Initialize the drawn text rectangle for the cursor */
-    drawnTextRect.x = textRect.x;
-    drawnTextRect.y = textRect.y + (textRect.h - UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE) / 2;
+    drawnTextRect.x = ctx->textRect.x;
+    drawnTextRect.y = ctx->textRect.y + (ctx->textRect.h - UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE) / 2;
     drawnTextRect.w = 0.0f;
     drawnTextRect.h = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
 
-    if (*text) {
+    if (text[0]) {
 #ifdef HAVE_SDL_TTF
         SDL_Surface *textSur = TTF_RenderUTF8_Blended(font, text, textColor);
         SDL_Texture *texture;
 
         /* Vertically center text */
-        drawnTextRect.y = textRect.y + (textRect.h - textSur->h) / 2;
+        drawnTextRect.y = ctx->textRect.y + (ctx->textRect.h - textSur->h) / 2;
         drawnTextRect.w = textSur->w;
         drawnTextRect.h = textSur->h;
 
@@ -699,8 +880,8 @@ static void RedrawWindow(int rendererID)
         size_t len;
         SDL_FRect dstrect;
 
-        dstrect.x = textRect.x;
-        dstrect.y = textRect.y + (textRect.h - UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE) / 2;
+        dstrect.x = ctx->textRect.x;
+        dstrect.y = ctx->textRect.y + (ctx->textRect.h - UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE) / 2;
         dstrect.w = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
         dstrect.h = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
         drawnTextRect.y = dstrect.y;
@@ -716,15 +897,8 @@ static void RedrawWindow(int rendererID)
     }
 
     /* The marked text rectangle is the text area that hasn't been filled by committed text */
-    markedRect.x = textRect.x + drawnTextRect.w;
-    markedRect.w = textRect.w - drawnTextRect.w;
-    if (markedRect.w < 0) {
-        /* Stop text input because we cannot hold any more characters */
-        SDL_StopTextInput(state->windows[0]);
-        return;
-    } else {
-        SDL_StartTextInput(state->windows[0]);
-    }
+    ctx->markedRect.x = ctx->textRect.x + drawnTextRect.w;
+    ctx->markedRect.w = ctx->textRect.w - drawnTextRect.w;
 
     /* Update the drawn text rectangle for composition text, after the committed text */
     drawnTextRect.x += drawnTextRect.w;
@@ -735,26 +909,26 @@ static void RedrawWindow(int rendererID)
     cursorRect.w = 2;
     cursorRect.h = drawnTextRect.h;
 
-    if (markedText[0]) {
+    if (ctx->markedText[0]) {
 #ifdef HAVE_SDL_TTF
         SDL_Surface *textSur;
         SDL_Texture *texture;
-        if (cursor) {
-            char *p = utf8_advance(markedText, cursor);
+        if (ctx->cursor) {
+            char *p = utf8_advance(ctx->markedText, ctx->cursor);
             char c = 0;
             if (!p) {
-                p = &markedText[SDL_strlen(markedText)];
+                p = &ctx->markedText[SDL_strlen(ctx->markedText)];
             }
 
             c = *p;
             *p = 0;
-            TTF_SizeUTF8(font, markedText, &drawnTextRect.w, NULL);
+            TTF_SizeUTF8(font, ctx->markedText, &drawnTextRect.w, NULL);
             cursorRect.x += drawnTextRect.w;
             *p = c;
         }
-        textSur = TTF_RenderUTF8_Blended(font, markedText, textColor);
+        textSur = TTF_RenderUTF8_Blended(font, ctx->markedText, textColor);
         /* Vertically center text */
-        drawnTextRect.y = textRect.y + (textRect.h - textSur->h) / 2;
+        drawnTextRect.y = ctx->textRect.y + (ctx->textRect.h - textSur->h) / 2;
         drawnTextRect.w = textSur->w;
         drawnTextRect.h = textSur->h;
 
@@ -764,19 +938,19 @@ static void RedrawWindow(int rendererID)
         SDL_RenderTexture(renderer, texture, NULL, &drawnTextRect);
         SDL_DestroyTexture(texture);
 
-        if (cursor_length > 0) {
+        if (ctx->cursor_length > 0) {
             /* FIXME: Need to measure text extents */
-            cursorRect.w = cursor_length * UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
+            cursorRect.w = ctx->cursor_length * UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
         }
 #else
         int i = 0;
-        char *utext = markedText;
+        char *utext = ctx->markedText;
         Uint32 codepoint;
         size_t len;
         SDL_FRect dstrect;
 
         dstrect.x = drawnTextRect.x;
-        dstrect.y = textRect.y + (textRect.h - UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE) / 2;
+        dstrect.y = ctx->textRect.y + (ctx->textRect.h - UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE) / 2;
         dstrect.w = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
         dstrect.h = UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
         drawnTextRect.y = dstrect.y;
@@ -786,22 +960,22 @@ static void RedrawWindow(int rendererID)
             float advance = unifont_draw_glyph(codepoint, rendererID, &dstrect) * UNIFONT_DRAW_SCALE;
             dstrect.x += advance;
             drawnTextRect.w += advance;
-            if (i < cursor) {
+            if (i < ctx->cursor) {
                 cursorRect.x += advance;
             }
             i++;
             utext += len;
         }
 
-        if (cursor_length > 0) {
-            cursorRect.w = cursor_length * UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
+        if (ctx->cursor_length > 0) {
+            cursorRect.w = ctx->cursor_length * UNIFONT_GLYPH_SIZE * UNIFONT_DRAW_SCALE;
         }
 #endif
 
         cursorRect.y = drawnTextRect.y;
         cursorRect.h = drawnTextRect.h;
 
-        underlineRect = markedRect;
+        underlineRect = ctx->markedRect;
         underlineRect.y = drawnTextRect.y + drawnTextRect.h - 2;
         underlineRect.h = 2;
         underlineRect.w = drawnTextRect.w;
@@ -812,26 +986,26 @@ static void RedrawWindow(int rendererID)
 
     /* Draw the cursor */
     Uint64 now = SDL_GetTicks();
-    if ((now - last_cursor_change) >= CURSOR_BLINK_INTERVAL_MS) {
-        cursor_visible = !cursor_visible;
-        last_cursor_change = now;
+    if ((now - ctx->last_cursor_change) >= CURSOR_BLINK_INTERVAL_MS) {
+        ctx->cursor_visible = !ctx->cursor_visible;
+        ctx->last_cursor_change = now;
     }
-    if (cursor_length > 0) {
+    if (ctx->cursor_length > 0) {
         /* We'll show a highlight */
         SDL_SetRenderDrawBlendMode(renderer, highlight_mode);
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_RenderFillRect(renderer, &cursorRect);
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-    } else if (cursor_visible) {
+    } else if (ctx->cursor_visible) {
         SDL_SetRenderDrawColor(renderer, lineColor.r, lineColor.g, lineColor.b, lineColor.a);
         SDL_RenderFillRect(renderer, &cursorRect);
     }
 
     /* Draw the candidates */
-    DrawCandidates(rendererID, &cursorRect);
+    DrawCandidates(ctx, &cursorRect);
 
     /* Update the area used to draw composition UI */
-    UpdateTextInputArea(state->windows[0], &cursorRect);
+    UpdateTextInputArea(ctx, &cursorRect);
 }
 
 static void Redraw(void)
@@ -845,8 +1019,7 @@ static void Redraw(void)
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
         SDL_RenderClear(renderer);
 
-        /* Sending in the window id to let the font renderers know which one we're working with. */
-        RedrawWindow(i);
+        RedrawWindow(&windowstate[i]);
 
         SDL_RenderPresent(renderer);
     }
@@ -907,6 +1080,12 @@ int main(int argc, char *argv[])
         return 2;
     }
 
+    windowstate = (WindowState *)SDL_calloc(state->num_windows, sizeof(*windowstate));
+    if (!windowstate) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't allocate window state: %s\n", SDL_GetError());
+        return -1;
+    }
+
     fontname = GetResourceFilename(fontname, DEFAULT_FONT);
 
 #ifdef HAVE_SDL_TTF
@@ -926,10 +1105,26 @@ int main(int argc, char *argv[])
 
     SDL_Log("Using font: %s\n", fontname);
 
-    InitInput();
-    /* Create the windows and initialize the renderers */
+    /* Initialize window state */
     for (i = 0; i < state->num_windows; ++i) {
+        WindowState *ctx = &windowstate[i];
+        SDL_Window *window = state->windows[i];
         SDL_Renderer *renderer = state->renderers[i];
+        int icon_w = 0, icon_h = 0;
+
+        SDL_SetRenderLogicalPresentation(renderer, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_LOGICAL_PRESENTATION_LETTERBOX, SDL_SCALEMODE_LINEAR);
+
+        ctx->window = window;
+        ctx->renderer = renderer;
+        ctx->rendererID = i;
+        ctx->settings_icon = LoadTexture(renderer, "icon.bmp", SDL_TRUE, &icon_w, &icon_h);
+        ctx->settings_rect.x = (float)WINDOW_WIDTH - icon_w - MARGIN;
+        ctx->settings_rect.y = MARGIN;
+        ctx->settings_rect.w = (float)icon_w;
+        ctx->settings_rect.h = (float)icon_h;
+
+        InitInput(ctx);
+
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
         SDL_SetRenderDrawColor(renderer, 0xA0, 0xA0, 0xA0, 0xFF);
         SDL_RenderClear(renderer);
@@ -948,33 +1143,55 @@ int main(int argc, char *argv[])
         while (SDL_PollEvent(&event)) {
             SDLTest_CommonEvent(state, &event, &done);
             switch (event.type) {
-            case SDL_EVENT_KEY_DOWN:
+            case SDL_EVENT_MOUSE_BUTTON_UP: {
+                SDL_FPoint point;
+                WindowState *ctx = GetWindowStateForWindowID(event.button.windowID);
+                if (!ctx) {
+                    break;
+                }
+
+                SDL_ConvertEventToRenderCoordinates(ctx->renderer, &event);
+                point.x = event.button.x;
+                point.y = event.button.y;
+                if (SDL_PointInRectFloat(&point, &ctx->settings_rect)) {
+                    ToggleSettings(ctx);
+                } else if (ctx->settings_visible) {
+                    ClickSettings(ctx, point.x, point.y);
+                }
+                break;
+            }
+            case SDL_EVENT_KEY_DOWN: {
+                WindowState *ctx = GetWindowStateForWindowID(event.key.windowID);
+                if (!ctx) {
+                    break;
+                }
+
                 switch (event.key.key) {
                 case SDLK_RETURN:
-                    text[0] = 0x00;
+                    ctx->text[0] = 0x00;
                     break;
                 case SDLK_BACKSPACE:
                     /* Only delete text if not in editing mode. */
-                    if (!markedText[0]) {
-                        size_t textlen = SDL_strlen(text);
+                    if (!ctx->markedText[0]) {
+                        size_t textlen = SDL_strlen(ctx->text);
 
                         do {
                             if (textlen == 0) {
                                 break;
                             }
-                            if (!(text[textlen - 1] & 0x80)) {
+                            if (!(ctx->text[textlen - 1] & 0x80)) {
                                 /* One byte */
-                                text[textlen - 1] = 0x00;
+                                ctx->text[textlen - 1] = 0x00;
                                 break;
                             }
-                            if ((text[textlen - 1] & 0xC0) == 0x80) {
+                            if ((ctx->text[textlen - 1] & 0xC0) == 0x80) {
                                 /* Byte from the multibyte sequence */
-                                text[textlen - 1] = 0x00;
+                                ctx->text[textlen - 1] = 0x00;
                                 textlen--;
                             }
-                            if ((text[textlen - 1] & 0xC0) == 0xC0) {
+                            if ((ctx->text[textlen - 1] & 0xC0) == 0xC0) {
                                 /* First byte of multibyte sequence */
-                                text[textlen - 1] = 0x00;
+                                ctx->text[textlen - 1] = 0x00;
                                 break;
                             }
                         } while (1);
@@ -994,44 +1211,59 @@ int main(int argc, char *argv[])
                         SDL_static_cast(Uint32, event.key.key),
                         SDL_GetKeyName(event.key.key));
                 break;
+            }
+            case SDL_EVENT_TEXT_INPUT: {
+                WindowState *ctx = GetWindowStateForWindowID(event.text.windowID);
+                if (!ctx) {
+                    break;
+                }
 
-            case SDL_EVENT_TEXT_INPUT:
-                if (event.text.text[0] == '\0' || event.text.text[0] == '\n' || markedRect.w < 0) {
+                if (event.text.text[0] == '\0' || event.text.text[0] == '\n' || ctx->markedRect.w < 0) {
                     break;
                 }
 
                 SDL_Log("Keyboard: text input \"%s\"\n", event.text.text);
 
-                if (SDL_strlen(text) + SDL_strlen(event.text.text) < sizeof(text)) {
-                    SDL_strlcat(text, event.text.text, sizeof(text));
+                if (SDL_strlen(ctx->text) + SDL_strlen(event.text.text) < sizeof(ctx->text)) {
+                    SDL_strlcat(ctx->text, event.text.text, sizeof(ctx->text));
                 }
 
-                SDL_Log("text inputted: %s\n", text);
+                SDL_Log("text inputted: %s\n", ctx->text);
 
                 /* After text inputted, we can clear up markedText because it */
                 /* is committed */
-                markedText[0] = 0;
+                ctx->markedText[0] = 0;
                 break;
+            }
+            case SDL_EVENT_TEXT_EDITING: {
+                WindowState *ctx = GetWindowStateForWindowID(event.edit.windowID);
+                if (!ctx) {
+                    break;
+                }
 
-            case SDL_EVENT_TEXT_EDITING:
                 SDL_Log("text editing \"%s\", selected range (%" SDL_PRIs32 ", %" SDL_PRIs32 ")\n",
                         event.edit.text, event.edit.start, event.edit.length);
 
-                SDL_strlcpy(markedText, event.edit.text, sizeof(markedText));
-                cursor = event.edit.start;
-                cursor_length = event.edit.length;
+                SDL_strlcpy(ctx->markedText, event.edit.text, sizeof(ctx->markedText));
+                ctx->cursor = event.edit.start;
+                ctx->cursor_length = event.edit.length;
                 break;
+            }
+            case SDL_EVENT_TEXT_EDITING_CANDIDATES: {
+                WindowState *ctx = GetWindowStateForWindowID(event.edit.windowID);
+                if (!ctx) {
+                    break;
+                }
 
-            case SDL_EVENT_TEXT_EDITING_CANDIDATES:
                 SDL_Log("text candidates:\n");
                 for (i = 0; i < event.edit_candidates.num_candidates; ++i) {
                     SDL_Log("%c%s\n", i == event.edit_candidates.selected_candidate ? '>' : ' ', event.edit_candidates.candidates[i]);
                 }
 
-                ClearCandidates();
-                SaveCandidates(&event);
+                ClearCandidates(ctx);
+                SaveCandidates(ctx, &event);
                 break;
-
+            }
             default:
                 break;
             }

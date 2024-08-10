@@ -63,7 +63,7 @@ static SDL_bool SDL_GetHapticIndex(SDL_HapticID instance_id, int *driver_index)
     return SDL_FALSE;
 }
 
-const SDL_HapticID *SDL_GetHaptics(int *count)
+SDL_HapticID *SDL_GetHaptics(int *count)
 {
     int device_index;
     int haptic_index = 0, num_haptics = 0;
@@ -89,7 +89,7 @@ const SDL_HapticID *SDL_GetHaptics(int *count)
         }
     }
 
-    return SDL_FreeLater(haptics);
+    return haptics;
 }
 
 const char *SDL_GetHapticNameForID(SDL_HapticID instance_id)
@@ -98,9 +98,9 @@ const char *SDL_GetHapticNameForID(SDL_HapticID instance_id)
     const char *name = NULL;
 
     if (SDL_GetHapticIndex(instance_id, &device_index)) {
-        name = SDL_SYS_HapticName(device_index);
+        name = SDL_GetPersistentString(SDL_SYS_HapticName(device_index));
     }
-    return SDL_CreateTemporaryString(name);
+    return name;
 }
 
 SDL_Haptic *SDL_OpenHaptic(SDL_HapticID instance_id)
@@ -189,7 +189,7 @@ const char *SDL_GetHapticName(SDL_Haptic *haptic)
 {
     CHECK_HAPTIC_MAGIC(haptic, NULL);
 
-    return SDL_CreateTemporaryString(haptic->name);
+    return SDL_GetPersistentString(haptic->name);
 }
 
 SDL_bool SDL_IsMouseHaptic(void)
@@ -539,7 +539,7 @@ int SDL_SetHapticGain(SDL_Haptic *haptic, int gain)
         return SDL_SetError("Haptic: Gain must be between 0 and 100.");
     }
 
-    /* We use the envvar to get the maximum gain. */
+    /* The user can use an environment variable to override the max gain. */
     env = SDL_getenv("SDL_HAPTIC_GAIN_MAX");
     if (env) {
         max_gain = SDL_atoi(env);

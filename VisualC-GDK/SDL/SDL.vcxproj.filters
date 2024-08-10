@@ -43,6 +43,7 @@
     <ClCompile Include="..\..\src\core\windows\SDL_xinput.c" />
     <ClCompile Include="..\..\src\cpuinfo\SDL_cpuinfo.c" />
     <ClCompile Include="..\..\src\dynapi\SDL_dynapi.c" />
+    <ClCompile Include="..\..\src\events\SDL_categories.c" />
     <ClCompile Include="..\..\src\events\SDL_clipboardevents.c" />
     <ClCompile Include="..\..\src\events\SDL_displayevents.c" />
     <ClCompile Include="..\..\src\events\SDL_dropevents.c" />
@@ -216,6 +217,7 @@
     <ClCompile Include="..\..\src\video\windows\SDL_windowsevents.c" />
     <ClCompile Include="..\..\src\video\windows\SDL_windowsframebuffer.c" />
     <ClCompile Include="..\..\src\video\windows\SDL_windowskeyboard.c" />
+    <ClCompile Include="..\..\src\video\windows\SDL_windowsgameinput.c" />
     <ClCompile Include="..\..\src\video\windows\SDL_windowsmessagebox.c" />
     <ClCompile Include="..\..\src\video\windows\SDL_windowsmodes.c" />
     <ClCompile Include="..\..\src\video\windows\SDL_windowsmouse.c" />
@@ -326,6 +328,7 @@
     <ClInclude Include="..\..\src\events\blank_cursor.h" />
     <ClInclude Include="..\..\src\events\default_cursor.h" />
     <ClInclude Include="..\..\src\events\scancodes_windows.h" />
+    <ClInclude Include="..\..\src\events\SDL_categories_c.h" />
     <ClInclude Include="..\..\src\events\SDL_clipboardevents_c.h" />
     <ClInclude Include="..\..\src\events\SDL_displayevents_c.h" />
     <ClInclude Include="..\..\src\events\SDL_dropevents_c.h" />
@@ -445,6 +448,7 @@
     <ClInclude Include="..\..\src\video\windows\SDL_windowsevents.h" />
     <ClInclude Include="..\..\src\video\windows\SDL_windowsframebuffer.h" />
     <ClInclude Include="..\..\src\video\windows\SDL_windowskeyboard.h" />
+    <ClInclude Include="..\..\src\video\windows\SDL_windowsgameinput.h" />
     <ClInclude Include="..\..\src\video\windows\SDL_windowsmessagebox.h" />
     <ClInclude Include="..\..\src\video\windows\SDL_windowsmodes.h" />
     <ClInclude Include="..\..\src\video\windows\SDL_windowsmouse.h" />

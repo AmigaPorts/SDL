@@ -26,12 +26,13 @@
 #include "../video/SDL_sysvideo.h"
 #include "SDL_events_c.h"
 #include "SDL_mouse_c.h"
-#include "SDL_pen_c.h"
 #if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK)
 #include "../core/windows/SDL_windows.h" // For GetDoubleClickTime()
 #endif
 
 /* #define DEBUG_MOUSE */
+
+#define WARP_EMULATION_THRESHOLD_NS SDL_MS_TO_NS(30)
 
 typedef struct SDL_MouseInstance
 {
@@ -252,6 +253,7 @@ int SDL_PreInitMouse(void)
     mouse->was_touch_mouse_events = SDL_FALSE; /* no touch to mouse movement event pending */
 
     mouse->cursor_shown = SDL_TRUE;
+
     return 0;
 }
 
@@ -270,8 +272,6 @@ void SDL_PostInitMouse(void)
             SDL_DestroySurface(surface);
         }
     }
-
-    SDL_PenInit();
 }
 
 SDL_bool SDL_IsMouse(Uint16 vendor, Uint16 product)
@@ -361,7 +361,7 @@ SDL_bool SDL_HasMouse(void)
     return (SDL_mouse_count > 0);
 }
 
-const SDL_MouseID *SDL_GetMice(int *count)
+SDL_MouseID *SDL_GetMice(int *count)
 {
     int i;
     SDL_MouseID *mice;
@@ -382,7 +382,7 @@ const SDL_MouseID *SDL_GetMice(int *count)
         }
     }
 
-    return SDL_FreeLater(mice);
+    return mice;
 }
 
 const char *SDL_GetMouseNameForID(SDL_MouseID instance_id)
@@ -391,7 +391,7 @@ const char *SDL_GetMouseNameForID(SDL_MouseID instance_id)
     if (mouse_index < 0) {
         return NULL;
     }
-    return SDL_CreateTemporaryString(SDL_mice[mouse_index].name);
+    return SDL_GetPersistentString(SDL_mice[mouse_index].name);
 }
 
 void SDL_SetDefaultCursor(SDL_Cursor *cursor)
@@ -739,7 +739,7 @@ static int SDL_PrivateSendMouseMotion(Uint64 timestamp, SDL_Window *window, SDL_
     float xrel = 0.0f;
     float yrel = 0.0f;
 
-    if ((!mouse->relative_mode || mouse->warp_emulation_active) && mouseID != SDL_TOUCH_MOUSEID && mouseID != SDL_PEN_MOUSEID) {
+    if ((!mouse->relative_mode || mouse->warp_emulation_active) && mouseID != SDL_TOUCH_MOUSEID) {
         /* We're not in relative mode, so all mouse events are global mouse events */
         mouseID = SDL_GLOBAL_MOUSE_ID;
     }
@@ -933,7 +933,7 @@ static int SDL_PrivateSendMouseButton(Uint64 timestamp, SDL_Window *window, SDL_
     Uint32 buttonstate;
     SDL_MouseInputSource *source;
 
-    if (!mouse->relative_mode && mouseID != SDL_TOUCH_MOUSEID && mouseID != SDL_PEN_MOUSEID) {
+    if (!mouse->relative_mode && mouseID != SDL_TOUCH_MOUSEID) {
         /* We're not in relative mode, so all mouse events are global mouse events */
         mouseID = SDL_GLOBAL_MOUSE_ID;
     }
@@ -1099,7 +1099,6 @@ void SDL_QuitMouse(void)
     }
     SDL_SetRelativeMouseMode(SDL_FALSE);
     SDL_ShowCursor();
-    SDL_PenQuit();
 
     if (mouse->def_cursor) {
         SDL_SetDefaultCursor(NULL);
@@ -1271,22 +1270,53 @@ void SDL_PerformWarpMouseInWindow(SDL_Window *window, float x, float y, SDL_bool
     }
 }
 
-static void SDL_EnableWarpEmulation(SDL_Mouse *mouse)
+void SDL_DisableMouseWarpEmulation()
 {
-    if (!mouse->cursor_shown && mouse->warp_emulation_hint && !mouse->warp_emulation_prohibited) {
-        if (SDL_SetRelativeMouseMode(SDL_TRUE) == 0) {
-            mouse->warp_emulation_active = SDL_TRUE;
+    SDL_Mouse *mouse = SDL_GetMouse();
+
+    if (mouse->warp_emulation_active) {
+        SDL_SetRelativeMouseMode(SDL_FALSE);
+    }
+
+    mouse->warp_emulation_prohibited = SDL_TRUE;
+}
+
+static void SDL_MaybeEnableWarpEmulation(SDL_Window *window, float x, float y)
+{
+    SDL_Mouse *mouse = SDL_GetMouse();
+
+    if (!mouse->warp_emulation_prohibited && mouse->warp_emulation_hint && !mouse->cursor_shown && !mouse->warp_emulation_active) {
+        if (!window) {
+            window = mouse->focus;
         }
 
-        /* Disable attempts at enabling warp emulation until further notice. */
-        mouse->warp_emulation_prohibited = SDL_TRUE;
+        if (window) {
+            const float cx = window->w / 2.f;
+            const float cy = window->h / 2.f;
+            if (x >= SDL_floorf(cx) && x <= SDL_ceilf(cx) &&
+                y >= SDL_floorf(cy) && y <= SDL_ceilf(cy)) {
+
+                /* Require two consecutive warps to the center within a certain timespan to enter warp emulation mode. */
+                const Uint64 now = SDL_GetTicksNS();
+                if (now - mouse->last_center_warp_time_ns < WARP_EMULATION_THRESHOLD_NS) {
+                    if (SDL_SetRelativeMouseMode(SDL_TRUE) == 0) {
+                        mouse->warp_emulation_active = SDL_TRUE;
+                    }
+                }
+
+                mouse->last_center_warp_time_ns = now;
+                return;
+            }
+        }
+
+        mouse->last_center_warp_time_ns = 0;
     }
 }
 
 void SDL_WarpMouseInWindow(SDL_Window *window, float x, float y)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
-    SDL_EnableWarpEmulation(mouse);
+    SDL_MaybeEnableWarpEmulation(window, x, y);
 
     SDL_PerformWarpMouseInWindow(window, x, y, mouse->warp_emulation_active);
 }
@@ -1317,16 +1347,9 @@ int SDL_SetRelativeMouseMode(SDL_bool enabled)
     SDL_Mouse *mouse = SDL_GetMouse();
     SDL_Window *focusWindow = SDL_GetKeyboardFocus();
 
-    if (enabled) {
-        if (mouse->warp_emulation_active) {
-            mouse->warp_emulation_active = SDL_FALSE;
-        }
-
-        /* If the app has used relative mode before, it probably shouldn't
-         * also be emulating it using repeated mouse warps, so disable
-         * mouse warp emulation by default.
-         */
-        mouse->warp_emulation_prohibited = SDL_TRUE;
+    if (!enabled) {
+        /* If warps were being emulated, reset the flag. */
+        mouse->warp_emulation_active = SDL_FALSE;
     }
 
     if (enabled == mouse->relative_mode) {
@@ -1391,6 +1414,17 @@ SDL_bool SDL_GetRelativeMouseMode(void)
     SDL_Mouse *mouse = SDL_GetMouse();
 
     return mouse->relative_mode;
+}
+
+void SDL_UpdateRelativeMouseMode(void)
+{
+    SDL_Mouse *mouse = SDL_GetMouse();
+    SDL_Window *focus = SDL_GetKeyboardFocus();
+    SDL_bool relative_mode = (focus && (focus->flags & SDL_WINDOW_MOUSE_RELATIVE_MODE));
+
+    if (relative_mode != mouse->relative_mode) {
+        SDL_SetRelativeMouseMode(relative_mode);
+    }
 }
 
 int SDL_UpdateMouseCapture(SDL_bool force_release)
@@ -1690,7 +1724,6 @@ int SDL_ShowCursor(void)
     if (mouse->warp_emulation_active) {
         SDL_SetRelativeMouseMode(SDL_FALSE);
         mouse->warp_emulation_active = SDL_FALSE;
-        mouse->warp_emulation_prohibited = SDL_FALSE;
     }
 
     if (!mouse->cursor_shown) {

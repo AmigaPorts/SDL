@@ -372,7 +372,54 @@ static void Wayland_DeleteDevice(SDL_VideoDevice *device)
     SDL_WAYLAND_UnloadSymbols();
 }
 
-static SDL_VideoDevice *Wayland_CreateDevice(void)
+typedef struct
+{
+    SDL_bool has_fifo_v1;
+    SDL_bool has_commit_timing_v1;
+} SDL_WaylandPreferredData;
+
+static void wayland_preferred_check_handle_global(void *data, struct wl_registry *registry, uint32_t id,
+                                                  const char *interface, uint32_t version)
+{
+    SDL_WaylandPreferredData *d = data;
+
+    if (SDL_strcmp(interface, "wp_fifo_manager_v1") == 0) {
+        d->has_fifo_v1 = SDL_TRUE;
+    } else if (SDL_strcmp(interface, "wp_commit_timing_manager_v1") == 0) {
+        d->has_commit_timing_v1 = SDL_TRUE;
+    }
+}
+
+static void wayland_preferred_check_remove_global(void *data, struct wl_registry *registry, uint32_t id)
+{
+    /* No need to do anything here. */
+}
+
+static const struct wl_registry_listener preferred_registry_listener = {
+    wayland_preferred_check_handle_global,
+    wayland_preferred_check_remove_global
+};
+
+static SDL_bool Wayland_IsPreferred(struct wl_display *display)
+{
+    struct wl_registry *registry = wl_display_get_registry(display);
+    SDL_WaylandPreferredData preferred_data = { 0 };
+
+    if (!registry) {
+        SDL_SetError("Failed to get the Wayland registry");
+        return SDL_FALSE;
+    }
+
+    wl_registry_add_listener(registry, &preferred_registry_listener, &preferred_data);
+
+    WAYLAND_wl_display_roundtrip(display);
+
+    wl_registry_destroy(registry);
+
+    return preferred_data.has_fifo_v1 && preferred_data.has_commit_timing_v1;
+}
+
+static SDL_VideoDevice *Wayland_CreateDevice(SDL_bool require_preferred_protocols)
 {
     SDL_VideoDevice *device;
     SDL_VideoData *data;
@@ -399,6 +446,18 @@ static SDL_VideoDevice *Wayland_CreateDevice(void)
             SDL_WAYLAND_UnloadSymbols();
             return NULL;
         }
+    }
+
+    /*
+     * If we are checking for preferred Wayland, then let's query for
+     * fifo-v1 and commit-timing-v1's existence, so we don't regress
+     * GPU-bound performance and frame-pacing by default due to
+     * swapchain starvation.
+     */
+    if (require_preferred_protocols && !Wayland_IsPreferred(display)) {
+        WAYLAND_wl_display_disconnect(display);
+        SDL_WAYLAND_UnloadSymbols();
+        return NULL;
     }
 
     data = SDL_calloc(1, sizeof(*data));
@@ -534,9 +593,25 @@ static SDL_VideoDevice *Wayland_CreateDevice(void)
     return device;
 }
 
+static SDL_VideoDevice *Wayland_Preferred_CreateDevice(void)
+{
+    return Wayland_CreateDevice(SDL_TRUE);
+}
+
+static SDL_VideoDevice *Wayland_Fallback_CreateDevice(void)
+{
+    return Wayland_CreateDevice(SDL_FALSE);
+}
+
+VideoBootStrap Wayland_preferred_bootstrap = {
+    WAYLANDVID_DRIVER_NAME, "SDL Wayland video driver",
+    Wayland_Preferred_CreateDevice,
+    Wayland_ShowMessageBox
+};
+
 VideoBootStrap Wayland_bootstrap = {
     WAYLANDVID_DRIVER_NAME, "SDL Wayland video driver",
-    Wayland_CreateDevice,
+    Wayland_Fallback_CreateDevice,
     Wayland_ShowMessageBox
 };
 
@@ -1092,7 +1167,7 @@ static void display_handle_global(void *data, struct wl_registry *registry, uint
         d->decoration_manager = wl_registry_bind(d->registry, id, &zxdg_decoration_manager_v1_interface, 1);
     } else if (SDL_strcmp(interface, "zwp_tablet_manager_v2") == 0) {
         d->tablet_manager = wl_registry_bind(d->registry, id, &zwp_tablet_manager_v2_interface, 1);
-        Wayland_input_add_tablet(d->input, d->tablet_manager);
+        Wayland_input_init_tablet_support(d->input, d->tablet_manager);
     } else if (SDL_strcmp(interface, "zxdg_output_manager_v1") == 0) {
         version = SDL_min(version, 3); /* Versions 1 through 3 are supported. */
         d->xdg_output_manager = wl_registry_bind(d->registry, id, &zxdg_output_manager_v1_interface, version);

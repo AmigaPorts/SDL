@@ -467,12 +467,33 @@ static void WIN_InitDPIAwareness(SDL_VideoDevice *_this)
 int WIN_VideoInit(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = _this->internal;
+    HRESULT hr;
+
+    hr = WIN_CoInitialize();
+    if (SUCCEEDED(hr)) {
+        data->coinitialized = SDL_TRUE;
+
+#if !(defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES))
+        hr = OleInitialize(NULL);
+        if (SUCCEEDED(hr)) {
+            data->oleinitialized = SDL_TRUE;
+        } else {
+            SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "OleInitialize() failed: 0x%.8x, using fallback drag-n-drop functionality\n", (unsigned int)hr);
+        }
+#endif /* !(defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)) */
+    } else {
+        SDL_LogInfo(SDL_LOG_CATEGORY_VIDEO, "CoInitialize() failed: 0x%.8x, using fallback drag-n-drop functionality\n", (unsigned int)hr);
+    }
 
     WIN_InitDPIAwareness(_this);
 
 #ifdef HIGHDPI_DEBUG
     SDL_Log("DPI awareness: %s", WIN_GetDPIAwareness(_this));
 #endif
+
+    if (SDL_GetHintBoolean(SDL_HINT_WINDOWS_GAMEINPUT, SDL_TRUE)) {
+        WIN_InitGameInput(_this);
+    }
 
 #if defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)
     /* For Xbox, we just need to create the single display */
@@ -494,7 +515,9 @@ int WIN_VideoInit(SDL_VideoDevice *_this)
     WIN_InitKeyboard(_this);
     WIN_InitMouse(_this);
     WIN_InitDeviceNotification();
-    WIN_CheckKeyboardAndMouseHotplug(_this, SDL_TRUE);
+    if (!_this->internal->gameinput_context) {
+        WIN_CheckKeyboardAndMouseHotplug(_this, SDL_TRUE);
+    }
 #endif
 
     SDL_AddHintCallback(SDL_HINT_WINDOWS_RAW_KEYBOARD, UpdateWindowsRawKeyboard, _this);
@@ -511,12 +534,7 @@ int WIN_VideoInit(SDL_VideoDevice *_this)
 
 void WIN_VideoQuit(SDL_VideoDevice *_this)
 {
-#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
-    WIN_QuitModes(_this);
-    WIN_QuitDeviceNotification();
-    WIN_QuitKeyboard(_this);
-    WIN_QuitMouse(_this);
-#endif
+    SDL_VideoData *data = _this->internal;
 
     SDL_DelHintCallback(SDL_HINT_WINDOWS_RAW_KEYBOARD, UpdateWindowsRawKeyboard, _this);
     SDL_DelHintCallback(SDL_HINT_WINDOWS_ENABLE_MESSAGELOOP, UpdateWindowsEnableMessageLoop, NULL);
@@ -525,6 +543,24 @@ void WIN_VideoQuit(SDL_VideoDevice *_this)
 
     WIN_SetRawMouseEnabled(_this, SDL_FALSE);
     WIN_SetRawKeyboardEnabled(_this, SDL_FALSE);
+    WIN_QuitGameInput(_this);
+
+#if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
+    WIN_QuitModes(_this);
+    WIN_QuitDeviceNotification();
+    WIN_QuitKeyboard(_this);
+    WIN_QuitMouse(_this);
+
+    if (data->oleinitialized) {
+        OleUninitialize();
+        data->oleinitialized = SDL_FALSE;
+    }
+#endif /* !(defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)) */
+
+    if (data->coinitialized) {
+        WIN_CoUninitialize();
+        data->coinitialized = SDL_FALSE;
+    }
 }
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)

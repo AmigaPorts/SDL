@@ -456,9 +456,7 @@ int X11_VideoInit(SDL_VideoDevice *_this)
 
     X11_InitTouch(_this);
 
-#ifdef SDL_VIDEO_DRIVER_X11_XINPUT2
     X11_InitPen(_this);
-#endif
 
     return 0;
 }
@@ -485,13 +483,17 @@ void X11_VideoQuit(SDL_VideoDevice *_this)
     X11_QuitKeyboard(_this);
     X11_QuitMouse(_this);
     X11_QuitTouch(_this);
+    X11_QuitPen(_this);
     X11_QuitClipboard(_this);
     X11_QuitXsettings(_this);
 }
 
 SDL_bool X11_UseDirectColorVisuals(void)
 {
-    return (SDL_getenv("SDL_VIDEO_X11_NODIRECTCOLOR") == NULL);
+    if (SDL_GetHintBoolean(SDL_HINT_VIDEO_X11_NODIRECTCOLOR, SDL_FALSE)) {
+        return SDL_FALSE;
+    }
+    return SDL_TRUE;
 }
 
 #endif /* SDL_VIDEO_DRIVER_X11 */

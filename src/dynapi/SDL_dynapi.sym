@@ -8,10 +8,10 @@ SDL3_0.0.0 {
     SDL_AddGamepadMappingsFromFile;
     SDL_AddGamepadMappingsFromIO;
     SDL_AddHintCallback;
+    SDL_AddSurfaceAlternateImage;
     SDL_AddTimer;
     SDL_AddTimerNS;
     SDL_AddVulkanRenderSemaphores;
-    SDL_AllocateTemporaryMemory;
     SDL_AtomicAdd;
     SDL_AtomicCompareAndSwap;
     SDL_AtomicCompareAndSwapPointer;
@@ -32,7 +32,6 @@ SDL3_0.0.0 {
     SDL_BlitSurfaceUncheckedScaled;
     SDL_BroadcastCondition;
     SDL_CaptureMouse;
-    SDL_ClaimTemporaryMemory;
     SDL_CleanupTLS;
     SDL_ClearAudioStream;
     SDL_ClearClipboardData;
@@ -160,6 +159,7 @@ SDL3_0.0.0 {
     SDL_GetAndroidInternalStoragePath;
     SDL_GetAndroidJNIEnv;
     SDL_GetAndroidSDKVersion;
+    SDL_GetAppMetadataProperty;
     SDL_GetAssertionHandler;
     SDL_GetAssertionReport;
     SDL_GetAudioDeviceChannelMap;
@@ -167,6 +167,7 @@ SDL3_0.0.0 {
     SDL_GetAudioDeviceGain;
     SDL_GetAudioDeviceName;
     SDL_GetAudioDriver;
+    SDL_GetAudioFormatName;
     SDL_GetAudioPlaybackDevices;
     SDL_GetAudioRecordingDevices;
     SDL_GetAudioStreamAvailable;
@@ -211,8 +212,6 @@ SDL3_0.0.0 {
     SDL_GetDaysInMonth;
     SDL_GetDefaultAssertionHandler;
     SDL_GetDefaultCursor;
-    SDL_GetDefaultKeyFromScancode;
-    SDL_GetDefaultScancodeFromKey;
     SDL_GetDesktopDisplayMode;
     SDL_GetDirect3D9AdapterIndex;
     SDL_GetDisplayBounds;
@@ -356,13 +355,6 @@ SDL3_0.0.0 {
     SDL_GetNumberProperty;
     SDL_GetOriginalMemoryFunctions;
     SDL_GetPathInfo;
-    SDL_GetPenCapabilities;
-    SDL_GetPenFromGUID;
-    SDL_GetPenGUID;
-    SDL_GetPenName;
-    SDL_GetPenStatus;
-    SDL_GetPenType;
-    SDL_GetPens;
     SDL_GetPerformanceCounter;
     SDL_GetPerformanceFrequency;
     SDL_GetPixelFormatDetails;
@@ -388,7 +380,6 @@ SDL3_0.0.0 {
     SDL_GetRectIntersectionFloat;
     SDL_GetRectUnion;
     SDL_GetRectUnionFloat;
-    SDL_GetRelativeMouseMode;
     SDL_GetRelativeMouseState;
     SDL_GetRenderClipRect;
     SDL_GetRenderColorScale;
@@ -439,6 +430,7 @@ SDL3_0.0.0 {
     SDL_GetSurfaceColorKey;
     SDL_GetSurfaceColorMod;
     SDL_GetSurfaceColorspace;
+    SDL_GetSurfaceImages;
     SDL_GetSurfacePalette;
     SDL_GetSurfaceProperties;
     SDL_GetSystemRAM;
@@ -470,6 +462,7 @@ SDL3_0.0.0 {
     SDL_GetWindowBordersSize;
     SDL_GetWindowDisplayScale;
     SDL_GetWindowFlags;
+    SDL_GetWindowFromEvent;
     SDL_GetWindowFromID;
     SDL_GetWindowFullscreenMode;
     SDL_GetWindowICCProfile;
@@ -485,6 +478,7 @@ SDL3_0.0.0 {
     SDL_GetWindowPixelFormat;
     SDL_GetWindowPosition;
     SDL_GetWindowProperties;
+    SDL_GetWindowRelativeMouseMode;
     SDL_GetWindowSafeArea;
     SDL_GetWindowSize;
     SDL_GetWindowSizeInPixels;
@@ -610,7 +604,6 @@ SDL3_0.0.0 {
     SDL_PauseAudioStreamDevice;
     SDL_PauseHaptic;
     SDL_PeepEvents;
-    SDL_PenConnected;
     SDL_PlayHapticRumble;
     SDL_PollEvent;
     SDL_PremultiplyAlpha;
@@ -645,6 +638,7 @@ SDL3_0.0.0 {
     SDL_ReloadGamepadMappings;
     SDL_RemovePath;
     SDL_RemoveStoragePath;
+    SDL_RemoveSurfaceAlternateImages;
     SDL_RemoveTimer;
     SDL_RenamePath;
     SDL_RenameStoragePath;
@@ -688,6 +682,7 @@ SDL3_0.0.0 {
     SDL_RunHapticEffect;
     SDL_SaveBMP;
     SDL_SaveBMP_IO;
+    SDL_ScaleSurface;
     SDL_ScreenKeyboardShown;
     SDL_ScreenSaverEnabled;
     SDL_SeekIO;
@@ -696,6 +691,8 @@ SDL3_0.0.0 {
     SDL_SendGamepadEffect;
     SDL_SendJoystickEffect;
     SDL_SendJoystickVirtualSensorData;
+    SDL_SetAppMetadata;
+    SDL_SetAppMetadataProperty;
     SDL_SetAssertionHandler;
     SDL_SetAudioDeviceGain;
     SDL_SetAudioPostmixCallback;
@@ -736,6 +733,7 @@ SDL3_0.0.0 {
     SDL_SetLogOutputFunction;
     SDL_SetLogPriorities;
     SDL_SetLogPriority;
+    SDL_SetLogPriorityPrefix;
     SDL_SetMainReady;
     SDL_SetMemoryFunctions;
     SDL_SetModState;
@@ -744,7 +742,6 @@ SDL3_0.0.0 {
     SDL_SetPointerProperty;
     SDL_SetPointerPropertyWithCleanup;
     SDL_SetPrimarySelectionText;
-    SDL_SetRelativeMouseMode;
     SDL_SetRenderClipRect;
     SDL_SetRenderColorScale;
     SDL_SetRenderDrawBlendMode;
@@ -790,6 +787,7 @@ SDL3_0.0.0 {
     SDL_SetWindowMouseRect;
     SDL_SetWindowOpacity;
     SDL_SetWindowPosition;
+    SDL_SetWindowRelativeMouseMode;
     SDL_SetWindowResizable;
     SDL_SetWindowShape;
     SDL_SetWindowSize;
@@ -811,6 +809,7 @@ SDL3_0.0.0 {
     SDL_SignalCondition;
     SDL_SignalSemaphore;
     SDL_StartTextInput;
+    SDL_StartTextInputWithProperties;
     SDL_StepUTF8;
     SDL_StopHapticEffect;
     SDL_StopHapticEffects;
@@ -818,6 +817,7 @@ SDL3_0.0.0 {
     SDL_StopTextInput;
     SDL_StorageReady;
     SDL_StringToGUID;
+    SDL_SurfaceHasAlternateImages;
     SDL_SurfaceHasColorKey;
     SDL_SurfaceHasRLE;
     SDL_SyncWindow;
@@ -1040,6 +1040,7 @@ SDL3_0.0.0 {
     SDL_uitoa;
     SDL_ulltoa;
     SDL_ultoa;
+    SDL_unsetenv;
     SDL_utf8strlcpy;
     SDL_utf8strlen;
     SDL_utf8strnlen;

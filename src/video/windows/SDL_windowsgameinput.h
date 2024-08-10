@@ -20,19 +20,10 @@
 */
 #include "SDL_internal.h"
 
-#ifndef SDL_androidaudio_h_
-#define SDL_androidaudio_h_
+typedef struct WIN_GameInputData WIN_GameInputData;
 
-#ifdef SDL_AUDIO_DRIVER_ANDROID
+extern int WIN_InitGameInput(SDL_VideoDevice *_this);
+extern int WIN_UpdateGameInputEnabled(SDL_VideoDevice *_this);
+extern void WIN_UpdateGameInput(SDL_VideoDevice *_this);
+extern void WIN_QuitGameInput(SDL_VideoDevice *_this);
 
-void ANDROIDAUDIO_ResumeDevices(void);
-void ANDROIDAUDIO_PauseDevices(void);
-
-#else
-
-static void ANDROIDAUDIO_ResumeDevices(void) {}
-static void ANDROIDAUDIO_PauseDevices(void) {}
-
-#endif
-
-#endif // SDL_androidaudio_h_

@@ -33,10 +33,10 @@
 #define SDL_AddGamepadMappingsFromFile SDL_AddGamepadMappingsFromFile_REAL
 #define SDL_AddGamepadMappingsFromIO SDL_AddGamepadMappingsFromIO_REAL
 #define SDL_AddHintCallback SDL_AddHintCallback_REAL
+#define SDL_AddSurfaceAlternateImage SDL_AddSurfaceAlternateImage_REAL
 #define SDL_AddTimer SDL_AddTimer_REAL
 #define SDL_AddTimerNS SDL_AddTimerNS_REAL
 #define SDL_AddVulkanRenderSemaphores SDL_AddVulkanRenderSemaphores_REAL
-#define SDL_AllocateTemporaryMemory SDL_AllocateTemporaryMemory_REAL
 #define SDL_AtomicAdd SDL_AtomicAdd_REAL
 #define SDL_AtomicCompareAndSwap SDL_AtomicCompareAndSwap_REAL
 #define SDL_AtomicCompareAndSwapPointer SDL_AtomicCompareAndSwapPointer_REAL
@@ -57,7 +57,6 @@
 #define SDL_BlitSurfaceUncheckedScaled SDL_BlitSurfaceUncheckedScaled_REAL
 #define SDL_BroadcastCondition SDL_BroadcastCondition_REAL
 #define SDL_CaptureMouse SDL_CaptureMouse_REAL
-#define SDL_ClaimTemporaryMemory SDL_ClaimTemporaryMemory_REAL
 #define SDL_CleanupTLS SDL_CleanupTLS_REAL
 #define SDL_ClearAudioStream SDL_ClearAudioStream_REAL
 #define SDL_ClearClipboardData SDL_ClearClipboardData_REAL
@@ -185,6 +184,7 @@
 #define SDL_GetAndroidInternalStoragePath SDL_GetAndroidInternalStoragePath_REAL
 #define SDL_GetAndroidJNIEnv SDL_GetAndroidJNIEnv_REAL
 #define SDL_GetAndroidSDKVersion SDL_GetAndroidSDKVersion_REAL
+#define SDL_GetAppMetadataProperty SDL_GetAppMetadataProperty_REAL
 #define SDL_GetAssertionHandler SDL_GetAssertionHandler_REAL
 #define SDL_GetAssertionReport SDL_GetAssertionReport_REAL
 #define SDL_GetAudioDeviceChannelMap SDL_GetAudioDeviceChannelMap_REAL
@@ -192,6 +192,7 @@
 #define SDL_GetAudioDeviceGain SDL_GetAudioDeviceGain_REAL
 #define SDL_GetAudioDeviceName SDL_GetAudioDeviceName_REAL
 #define SDL_GetAudioDriver SDL_GetAudioDriver_REAL
+#define SDL_GetAudioFormatName SDL_GetAudioFormatName_REAL
 #define SDL_GetAudioPlaybackDevices SDL_GetAudioPlaybackDevices_REAL
 #define SDL_GetAudioRecordingDevices SDL_GetAudioRecordingDevices_REAL
 #define SDL_GetAudioStreamAvailable SDL_GetAudioStreamAvailable_REAL
@@ -236,8 +237,6 @@
 #define SDL_GetDaysInMonth SDL_GetDaysInMonth_REAL
 #define SDL_GetDefaultAssertionHandler SDL_GetDefaultAssertionHandler_REAL
 #define SDL_GetDefaultCursor SDL_GetDefaultCursor_REAL
-#define SDL_GetDefaultKeyFromScancode SDL_GetDefaultKeyFromScancode_REAL
-#define SDL_GetDefaultScancodeFromKey SDL_GetDefaultScancodeFromKey_REAL
 #define SDL_GetDesktopDisplayMode SDL_GetDesktopDisplayMode_REAL
 #define SDL_GetDirect3D9AdapterIndex SDL_GetDirect3D9AdapterIndex_REAL
 #define SDL_GetDisplayBounds SDL_GetDisplayBounds_REAL
@@ -381,13 +380,6 @@
 #define SDL_GetNumberProperty SDL_GetNumberProperty_REAL
 #define SDL_GetOriginalMemoryFunctions SDL_GetOriginalMemoryFunctions_REAL
 #define SDL_GetPathInfo SDL_GetPathInfo_REAL
-#define SDL_GetPenCapabilities SDL_GetPenCapabilities_REAL
-#define SDL_GetPenFromGUID SDL_GetPenFromGUID_REAL
-#define SDL_GetPenGUID SDL_GetPenGUID_REAL
-#define SDL_GetPenName SDL_GetPenName_REAL
-#define SDL_GetPenStatus SDL_GetPenStatus_REAL
-#define SDL_GetPenType SDL_GetPenType_REAL
-#define SDL_GetPens SDL_GetPens_REAL
 #define SDL_GetPerformanceCounter SDL_GetPerformanceCounter_REAL
 #define SDL_GetPerformanceFrequency SDL_GetPerformanceFrequency_REAL
 #define SDL_GetPixelFormatDetails SDL_GetPixelFormatDetails_REAL
@@ -413,7 +405,6 @@
 #define SDL_GetRectIntersectionFloat SDL_GetRectIntersectionFloat_REAL
 #define SDL_GetRectUnion SDL_GetRectUnion_REAL
 #define SDL_GetRectUnionFloat SDL_GetRectUnionFloat_REAL
-#define SDL_GetRelativeMouseMode SDL_GetRelativeMouseMode_REAL
 #define SDL_GetRelativeMouseState SDL_GetRelativeMouseState_REAL
 #define SDL_GetRenderClipRect SDL_GetRenderClipRect_REAL
 #define SDL_GetRenderColorScale SDL_GetRenderColorScale_REAL
@@ -464,6 +455,7 @@
 #define SDL_GetSurfaceColorKey SDL_GetSurfaceColorKey_REAL
 #define SDL_GetSurfaceColorMod SDL_GetSurfaceColorMod_REAL
 #define SDL_GetSurfaceColorspace SDL_GetSurfaceColorspace_REAL
+#define SDL_GetSurfaceImages SDL_GetSurfaceImages_REAL
 #define SDL_GetSurfacePalette SDL_GetSurfacePalette_REAL
 #define SDL_GetSurfaceProperties SDL_GetSurfaceProperties_REAL
 #define SDL_GetSystemRAM SDL_GetSystemRAM_REAL
@@ -495,6 +487,7 @@
 #define SDL_GetWindowBordersSize SDL_GetWindowBordersSize_REAL
 #define SDL_GetWindowDisplayScale SDL_GetWindowDisplayScale_REAL
 #define SDL_GetWindowFlags SDL_GetWindowFlags_REAL
+#define SDL_GetWindowFromEvent SDL_GetWindowFromEvent_REAL
 #define SDL_GetWindowFromID SDL_GetWindowFromID_REAL
 #define SDL_GetWindowFullscreenMode SDL_GetWindowFullscreenMode_REAL
 #define SDL_GetWindowICCProfile SDL_GetWindowICCProfile_REAL
@@ -510,6 +503,7 @@
 #define SDL_GetWindowPixelFormat SDL_GetWindowPixelFormat_REAL
 #define SDL_GetWindowPosition SDL_GetWindowPosition_REAL
 #define SDL_GetWindowProperties SDL_GetWindowProperties_REAL
+#define SDL_GetWindowRelativeMouseMode SDL_GetWindowRelativeMouseMode_REAL
 #define SDL_GetWindowSafeArea SDL_GetWindowSafeArea_REAL
 #define SDL_GetWindowSize SDL_GetWindowSize_REAL
 #define SDL_GetWindowSizeInPixels SDL_GetWindowSizeInPixels_REAL
@@ -635,7 +629,6 @@
 #define SDL_PauseAudioStreamDevice SDL_PauseAudioStreamDevice_REAL
 #define SDL_PauseHaptic SDL_PauseHaptic_REAL
 #define SDL_PeepEvents SDL_PeepEvents_REAL
-#define SDL_PenConnected SDL_PenConnected_REAL
 #define SDL_PlayHapticRumble SDL_PlayHapticRumble_REAL
 #define SDL_PollEvent SDL_PollEvent_REAL
 #define SDL_PremultiplyAlpha SDL_PremultiplyAlpha_REAL
@@ -670,6 +663,7 @@
 #define SDL_ReloadGamepadMappings SDL_ReloadGamepadMappings_REAL
 #define SDL_RemovePath SDL_RemovePath_REAL
 #define SDL_RemoveStoragePath SDL_RemoveStoragePath_REAL
+#define SDL_RemoveSurfaceAlternateImages SDL_RemoveSurfaceAlternateImages_REAL
 #define SDL_RemoveTimer SDL_RemoveTimer_REAL
 #define SDL_RenamePath SDL_RenamePath_REAL
 #define SDL_RenameStoragePath SDL_RenameStoragePath_REAL
@@ -713,6 +707,7 @@
 #define SDL_RunHapticEffect SDL_RunHapticEffect_REAL
 #define SDL_SaveBMP SDL_SaveBMP_REAL
 #define SDL_SaveBMP_IO SDL_SaveBMP_IO_REAL
+#define SDL_ScaleSurface SDL_ScaleSurface_REAL
 #define SDL_ScreenKeyboardShown SDL_ScreenKeyboardShown_REAL
 #define SDL_ScreenSaverEnabled SDL_ScreenSaverEnabled_REAL
 #define SDL_SeekIO SDL_SeekIO_REAL
@@ -721,6 +716,8 @@
 #define SDL_SendGamepadEffect SDL_SendGamepadEffect_REAL
 #define SDL_SendJoystickEffect SDL_SendJoystickEffect_REAL
 #define SDL_SendJoystickVirtualSensorData SDL_SendJoystickVirtualSensorData_REAL
+#define SDL_SetAppMetadata SDL_SetAppMetadata_REAL
+#define SDL_SetAppMetadataProperty SDL_SetAppMetadataProperty_REAL
 #define SDL_SetAssertionHandler SDL_SetAssertionHandler_REAL
 #define SDL_SetAudioDeviceGain SDL_SetAudioDeviceGain_REAL
 #define SDL_SetAudioPostmixCallback SDL_SetAudioPostmixCallback_REAL
@@ -761,6 +758,7 @@
 #define SDL_SetLogOutputFunction SDL_SetLogOutputFunction_REAL
 #define SDL_SetLogPriorities SDL_SetLogPriorities_REAL
 #define SDL_SetLogPriority SDL_SetLogPriority_REAL
+#define SDL_SetLogPriorityPrefix SDL_SetLogPriorityPrefix_REAL
 #define SDL_SetMainReady SDL_SetMainReady_REAL
 #define SDL_SetMemoryFunctions SDL_SetMemoryFunctions_REAL
 #define SDL_SetModState SDL_SetModState_REAL
@@ -769,7 +767,6 @@
 #define SDL_SetPointerProperty SDL_SetPointerProperty_REAL
 #define SDL_SetPointerPropertyWithCleanup SDL_SetPointerPropertyWithCleanup_REAL
 #define SDL_SetPrimarySelectionText SDL_SetPrimarySelectionText_REAL
-#define SDL_SetRelativeMouseMode SDL_SetRelativeMouseMode_REAL
 #define SDL_SetRenderClipRect SDL_SetRenderClipRect_REAL
 #define SDL_SetRenderColorScale SDL_SetRenderColorScale_REAL
 #define SDL_SetRenderDrawBlendMode SDL_SetRenderDrawBlendMode_REAL
@@ -815,6 +812,7 @@
 #define SDL_SetWindowMouseRect SDL_SetWindowMouseRect_REAL
 #define SDL_SetWindowOpacity SDL_SetWindowOpacity_REAL
 #define SDL_SetWindowPosition SDL_SetWindowPosition_REAL
+#define SDL_SetWindowRelativeMouseMode SDL_SetWindowRelativeMouseMode_REAL
 #define SDL_SetWindowResizable SDL_SetWindowResizable_REAL
 #define SDL_SetWindowShape SDL_SetWindowShape_REAL
 #define SDL_SetWindowSize SDL_SetWindowSize_REAL
@@ -836,6 +834,7 @@
 #define SDL_SignalCondition SDL_SignalCondition_REAL
 #define SDL_SignalSemaphore SDL_SignalSemaphore_REAL
 #define SDL_StartTextInput SDL_StartTextInput_REAL
+#define SDL_StartTextInputWithProperties SDL_StartTextInputWithProperties_REAL
 #define SDL_StepUTF8 SDL_StepUTF8_REAL
 #define SDL_StopHapticEffect SDL_StopHapticEffect_REAL
 #define SDL_StopHapticEffects SDL_StopHapticEffects_REAL
@@ -843,6 +842,7 @@
 #define SDL_StopTextInput SDL_StopTextInput_REAL
 #define SDL_StorageReady SDL_StorageReady_REAL
 #define SDL_StringToGUID SDL_StringToGUID_REAL
+#define SDL_SurfaceHasAlternateImages SDL_SurfaceHasAlternateImages_REAL
 #define SDL_SurfaceHasColorKey SDL_SurfaceHasColorKey_REAL
 #define SDL_SurfaceHasRLE SDL_SurfaceHasRLE_REAL
 #define SDL_SyncWindow SDL_SyncWindow_REAL
@@ -1065,6 +1065,7 @@
 #define SDL_uitoa SDL_uitoa_REAL
 #define SDL_ulltoa SDL_ulltoa_REAL
 #define SDL_ultoa SDL_ultoa_REAL
+#define SDL_unsetenv SDL_unsetenv_REAL
 #define SDL_utf8strlcpy SDL_utf8strlcpy_REAL
 #define SDL_utf8strlen SDL_utf8strlen_REAL
 #define SDL_utf8strnlen SDL_utf8strnlen_REAL

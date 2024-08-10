@@ -62,9 +62,6 @@ static const AudioBootStrap *const bootstrap[] = {
 #ifdef SDL_AUDIO_DRIVER_OPENSLES
     &OPENSLES_bootstrap,
 #endif
-#ifdef SDL_AUDIO_DRIVER_ANDROID
-    &ANDROIDAUDIO_bootstrap,
-#endif
 #ifdef SDL_AUDIO_DRIVER_PS2
     &PS2AUDIO_bootstrap,
 #endif
@@ -137,14 +134,14 @@ int SDL_GetNumAudioDrivers(void)
 const char *SDL_GetAudioDriver(int index)
 {
     if (index >= 0 && index < SDL_GetNumAudioDrivers()) {
-        return SDL_CreateTemporaryString(deduped_bootstrap[index]->name);
+        return deduped_bootstrap[index]->name;
     }
     return NULL;
 }
 
 const char *SDL_GetCurrentAudioDriver(void)
 {
-    return SDL_CreateTemporaryString(current_audio.name);
+    return current_audio.name;
 }
 
 static int GetDefaultSampleFramesFromFreq(const int freq)
@@ -1339,7 +1336,7 @@ static int SDLCALL RecordingAudioThread(void *devicep)  // thread entry point
 }
 
 
-static const SDL_AudioDeviceID *GetAudioDevices(int *count, SDL_bool recording)
+static SDL_AudioDeviceID *GetAudioDevices(int *count, SDL_bool recording)
 {
     SDL_AudioDeviceID *retval = NULL;
     int num_devices = 0;
@@ -1382,15 +1379,15 @@ static const SDL_AudioDeviceID *GetAudioDevices(int *count, SDL_bool recording)
             *count = 0;
         }
     }
-    return SDL_FreeLater(retval);
+    return retval;
 }
 
-const SDL_AudioDeviceID *SDL_GetAudioPlaybackDevices(int *count)
+SDL_AudioDeviceID *SDL_GetAudioPlaybackDevices(int *count)
 {
     return GetAudioDevices(count, SDL_FALSE);
 }
 
-const SDL_AudioDeviceID *SDL_GetAudioRecordingDevices(int *count)
+SDL_AudioDeviceID *SDL_GetAudioRecordingDevices(int *count)
 {
     return GetAudioDevices(count, SDL_TRUE);
 }
@@ -1441,7 +1438,7 @@ const char *SDL_GetAudioDeviceName(SDL_AudioDeviceID devid)
     const char *retval = NULL;
     SDL_AudioDevice *device = ObtainPhysicalAudioDevice(devid);
     if (device) {
-        retval = SDL_CreateTemporaryString(device->name);
+        retval = SDL_GetPersistentString(device->name);
     }
     ReleaseAudioDevice(device);
 
@@ -1468,14 +1465,14 @@ int SDL_GetAudioDeviceFormat(SDL_AudioDeviceID devid, SDL_AudioSpec *spec, int *
     return retval;
 }
 
-const int *SDL_GetAudioDeviceChannelMap(SDL_AudioDeviceID devid, int *count)
+int *SDL_GetAudioDeviceChannelMap(SDL_AudioDeviceID devid, int *count)
 {
-    const int *retval = NULL;
+    int *retval = NULL;
     int channels = 0;
     SDL_AudioDevice *device = ObtainPhysicalAudioDeviceDefaultAllowed(devid);
     if (device) {
         channels = device->spec.channels;
-        retval = SDL_FreeLater(SDL_ChannelMapDup(device->chmap, channels));
+        retval = SDL_ChannelMapDup(device->chmap, channels);
     }
     ReleaseAudioDevice(device);
 
@@ -1583,9 +1580,9 @@ static void PrepareAudioFormat(SDL_bool recording, SDL_AudioSpec *spec)
     if (spec->freq == 0) {
         spec->freq = recording ? DEFAULT_AUDIO_RECORDING_FREQUENCY : DEFAULT_AUDIO_PLAYBACK_FREQUENCY;
 
-        const char *env = SDL_getenv("SDL_AUDIO_FREQUENCY");  // !!! FIXME: should be a hint?
-        if (env) {
-            const int val = SDL_atoi(env);
+        const char *hint = SDL_GetHint(SDL_HINT_AUDIO_FREQUENCY);
+        if (hint) {
+            const int val = SDL_atoi(hint);
             if (val > 0) {
                 spec->freq = val;
             }
@@ -1594,9 +1591,10 @@ static void PrepareAudioFormat(SDL_bool recording, SDL_AudioSpec *spec)
 
     if (spec->channels == 0) {
         spec->channels = recording ? DEFAULT_AUDIO_RECORDING_CHANNELS : DEFAULT_AUDIO_PLAYBACK_CHANNELS;;
-        const char *env = SDL_getenv("SDL_AUDIO_CHANNELS");
-        if (env) {
-            const int val = SDL_atoi(env);
+
+        const char *hint = SDL_GetHint(SDL_HINT_AUDIO_CHANNELS);
+        if (hint) {
+            const int val = SDL_atoi(hint);
             if (val > 0) {
                 spec->channels = val;
             }
@@ -1604,7 +1602,7 @@ static void PrepareAudioFormat(SDL_bool recording, SDL_AudioSpec *spec)
     }
 
     if (spec->format == 0) {
-        const SDL_AudioFormat val = ParseAudioFormatString(SDL_getenv("SDL_AUDIO_FORMAT"));
+        const SDL_AudioFormat val = ParseAudioFormatString(SDL_GetHint(SDL_HINT_AUDIO_FORMAT));
         spec->format = (val != 0) ? val : (recording ? DEFAULT_AUDIO_RECORDING_FORMAT : DEFAULT_AUDIO_PLAYBACK_FORMAT);
     }
 }
@@ -2144,17 +2142,29 @@ int SDL_ResumeAudioStreamDevice(SDL_AudioStream *stream)
     return SDL_ResumeAudioDevice(devid);
 }
 
+#if SDL_BYTEORDER == SDL_LIL_ENDIAN
+#define NATIVE(type) SDL_AUDIO_##type##LE
+#define SWAPPED(type) SDL_AUDIO_##type##BE
+#else
+#define NATIVE(type) SDL_AUDIO_##type##BE
+#define SWAPPED(type) SDL_AUDIO_##type##LE
+#endif
+
 #define NUM_FORMATS 8
+// always favor Float32 in native byte order, since we're probably going to convert to that for processing anyhow.
 static const SDL_AudioFormat format_list[NUM_FORMATS][NUM_FORMATS + 1] = {
-    { SDL_AUDIO_U8, SDL_AUDIO_S8, SDL_AUDIO_S16LE, SDL_AUDIO_S16BE, SDL_AUDIO_S32LE, SDL_AUDIO_S32BE, SDL_AUDIO_F32LE, SDL_AUDIO_F32BE, 0 },
-    { SDL_AUDIO_S8, SDL_AUDIO_U8, SDL_AUDIO_S16LE, SDL_AUDIO_S16BE, SDL_AUDIO_S32LE, SDL_AUDIO_S32BE, SDL_AUDIO_F32LE, SDL_AUDIO_F32BE, 0 },
-    { SDL_AUDIO_S16LE, SDL_AUDIO_S16BE, SDL_AUDIO_S32LE, SDL_AUDIO_S32BE, SDL_AUDIO_F32LE, SDL_AUDIO_F32BE, SDL_AUDIO_U8, SDL_AUDIO_S8, 0 },
-    { SDL_AUDIO_S16BE, SDL_AUDIO_S16LE, SDL_AUDIO_S32BE, SDL_AUDIO_S32LE, SDL_AUDIO_F32BE, SDL_AUDIO_F32LE, SDL_AUDIO_U8, SDL_AUDIO_S8, 0 },
-    { SDL_AUDIO_S32LE, SDL_AUDIO_S32BE, SDL_AUDIO_F32LE, SDL_AUDIO_F32BE, SDL_AUDIO_S16LE, SDL_AUDIO_S16BE, SDL_AUDIO_U8, SDL_AUDIO_S8, 0 },
-    { SDL_AUDIO_S32BE, SDL_AUDIO_S32LE, SDL_AUDIO_F32BE, SDL_AUDIO_F32LE, SDL_AUDIO_S16BE, SDL_AUDIO_S16LE, SDL_AUDIO_U8, SDL_AUDIO_S8, 0 },
-    { SDL_AUDIO_F32LE, SDL_AUDIO_F32BE, SDL_AUDIO_S32LE, SDL_AUDIO_S32BE, SDL_AUDIO_S16LE, SDL_AUDIO_S16BE, SDL_AUDIO_U8, SDL_AUDIO_S8, 0 },
-    { SDL_AUDIO_F32BE, SDL_AUDIO_F32LE, SDL_AUDIO_S32BE, SDL_AUDIO_S32LE, SDL_AUDIO_S16BE, SDL_AUDIO_S16LE, SDL_AUDIO_U8, SDL_AUDIO_S8, 0 },
+    { SDL_AUDIO_U8, NATIVE(F32),  SWAPPED(F32), SDL_AUDIO_S8, NATIVE(S16),  SWAPPED(S16), NATIVE(S32),  SWAPPED(S32), 0 },
+    { SDL_AUDIO_S8, NATIVE(F32),  SWAPPED(F32), SDL_AUDIO_U8, NATIVE(S16),  SWAPPED(S16), NATIVE(S32),  SWAPPED(S32), 0 },
+    { NATIVE(S16),  NATIVE(F32),  SWAPPED(F32), SWAPPED(S16), NATIVE(S32),  SWAPPED(S32), SDL_AUDIO_U8, SDL_AUDIO_S8, 0 },
+    { SWAPPED(S16), NATIVE(F32),  SWAPPED(F32), NATIVE(S16),  SWAPPED(S32), NATIVE(S32),  SDL_AUDIO_U8, SDL_AUDIO_S8, 0 },
+    { NATIVE(S32),  NATIVE(F32),  SWAPPED(F32), SWAPPED(S32), NATIVE(S16),  SWAPPED(S16), SDL_AUDIO_U8, SDL_AUDIO_S8, 0 },
+    { SWAPPED(S32), NATIVE(F32),  SWAPPED(F32), NATIVE(S32),  SWAPPED(S16), NATIVE(S16),  SDL_AUDIO_U8, SDL_AUDIO_S8, 0 },
+    { NATIVE(F32),  SWAPPED(F32), NATIVE(S32),  SWAPPED(S32), NATIVE(S16),  SWAPPED(S16), SDL_AUDIO_U8, SDL_AUDIO_S8, 0 },
+    { SWAPPED(F32), NATIVE(F32),  SWAPPED(S32), NATIVE(S32),  SWAPPED(S16), NATIVE(S16),  SDL_AUDIO_U8, SDL_AUDIO_S8, 0 },
 };
+
+#undef NATIVE
+#undef SWAPPED
 
 const SDL_AudioFormat *SDL_ClosestAudioFormats(SDL_AudioFormat format)
 {
@@ -2164,6 +2174,25 @@ const SDL_AudioFormat *SDL_ClosestAudioFormats(SDL_AudioFormat format)
         }
     }
     return &format_list[0][NUM_FORMATS]; // not found; return what looks like a list with only a zero in it.
+}
+
+const char *SDL_GetAudioFormatName(SDL_AudioFormat format)
+{
+    switch (format) {
+#define CASE(X) \
+    case X: return #X;
+    CASE(SDL_AUDIO_U8)
+    CASE(SDL_AUDIO_S8)
+    CASE(SDL_AUDIO_S16LE)
+    CASE(SDL_AUDIO_S16BE)
+    CASE(SDL_AUDIO_S32LE)
+    CASE(SDL_AUDIO_S32BE)
+    CASE(SDL_AUDIO_F32LE)
+    CASE(SDL_AUDIO_F32BE)
+#undef CASE
+    default:
+        return "SDL_AUDIO_UNKNOWN";
+    }
 }
 
 int SDL_GetSilenceValueForFormat(SDL_AudioFormat format)

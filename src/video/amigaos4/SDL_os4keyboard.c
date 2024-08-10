@@ -100,7 +100,7 @@ OS4_UpdateKeymap(SDL_VideoDevice *_this)
         /* Make sure this scancode is a valid character scancode */
         const SDL_Scancode scancode = amiga_scancode_table[i];
         if (scancode == SDL_SCANCODE_UNKNOWN ||
-            (SDL_GetDefaultKeyFromScancode(scancode, SDL_KMOD_NONE) & SDLK_SCANCODE_MASK)) {
+            (SDL_GetKeyFromScancode(scancode, SDL_KMOD_NONE, SDL_FALSE) & SDLK_SCANCODE_MASK)) {
             continue;
         }
 
