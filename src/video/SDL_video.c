@@ -74,11 +74,14 @@ static VideoBootStrap *bootstrap[] = {
 #ifdef SDL_VIDEO_DRIVER_COCOA
     &COCOA_bootstrap,
 #endif
+#ifdef SDL_VIDEO_DRIVER_X11
+#ifdef SDL_VIDEO_DRIVER_WAYLAND
+    &Wayland_preferred_bootstrap,
+#endif
+    &X11_bootstrap,
+#endif
 #ifdef SDL_VIDEO_DRIVER_WAYLAND
     &Wayland_bootstrap,
-#endif
-#ifdef SDL_VIDEO_DRIVER_X11
-    &X11_bootstrap,
 #endif
 #ifdef SDL_VIDEO_DRIVER_VIVANTE
     &VIVANTE_bootstrap,
@@ -518,15 +521,41 @@ static int SDL_UninitializedVideo(void)
     return SDL_SetError("Video subsystem has not been initialized");
 }
 
+/* Deduplicated list of video bootstrap drivers. */
+static const VideoBootStrap *deduped_bootstrap[SDL_arraysize(bootstrap) - 1];
+
 int SDL_GetNumVideoDrivers(void)
 {
-    return SDL_arraysize(bootstrap) - 1;
+    static int num_drivers = -1;
+
+    if (num_drivers >= 0) {
+        return num_drivers;
+    }
+
+    num_drivers = 0;
+
+    /* Build a list of unique video drivers. */
+    for (int i = 0; bootstrap[i] != NULL; ++i) {
+        SDL_bool duplicate = SDL_FALSE;
+        for (int j = 0; j < i; ++j) {
+            if (SDL_strcmp(bootstrap[i]->name, bootstrap[j]->name) == 0) {
+                duplicate = SDL_TRUE;
+                break;
+            }
+        }
+
+        if (!duplicate) {
+            deduped_bootstrap[num_drivers++] = bootstrap[i];
+        }
+    }
+
+    return num_drivers;
 }
 
 const char *SDL_GetVideoDriver(int index)
 {
     if (index >= 0 && index < SDL_GetNumVideoDrivers()) {
-        return SDL_CreateTemporaryString(bootstrap[index]->name);
+        return deduped_bootstrap[index]->name;
     }
     return NULL;
 }
@@ -541,6 +570,7 @@ int SDL_VideoInit(const char *driver_name)
     SDL_bool init_keyboard = SDL_FALSE;
     SDL_bool init_mouse = SDL_FALSE;
     SDL_bool init_touch = SDL_FALSE;
+    SDL_bool init_pen = SDL_FALSE;
     int i = 0;
 
     /* Check to make sure we don't overwrite '_this' */
@@ -567,6 +597,10 @@ int SDL_VideoInit(const char *driver_name)
         goto pre_driver_error;
     }
     init_touch = SDL_TRUE;
+    if (SDL_InitPen() < 0) {
+        goto pre_driver_error;
+    }
+    init_pen = SDL_TRUE;
 
     /* Select the proper video driver */
     video = NULL;
@@ -584,7 +618,9 @@ int SDL_VideoInit(const char *driver_name)
                 if ((driver_attempt_len == SDL_strlen(bootstrap[i]->name)) &&
                     (SDL_strncasecmp(bootstrap[i]->name, driver_attempt, driver_attempt_len) == 0)) {
                     video = bootstrap[i]->create();
-                    break;
+                    if (video) {
+                        break;
+                    }
                 }
             }
 
@@ -649,6 +685,9 @@ int SDL_VideoInit(const char *driver_name)
 
 pre_driver_error:
     SDL_assert(_this == NULL);
+    if (init_pen) {
+        SDL_QuitPen();
+    }
     if (init_touch) {
         SDL_QuitTouch();
     }
@@ -670,7 +709,7 @@ const char *SDL_GetCurrentVideoDriver(void)
         SDL_UninitializedVideo();
         return NULL;
     }
-    return SDL_CreateTemporaryString(_this->name);
+    return _this->name;
 }
 
 SDL_VideoDevice *SDL_GetVideoDevice(void)
@@ -705,7 +744,7 @@ static void SDL_UpdateDesktopBounds(void)
     SDL_Rect rect;
     SDL_zero(rect);
 
-    const SDL_DisplayID *displays = SDL_GetDisplays(NULL);
+    SDL_DisplayID *displays = SDL_GetDisplays(NULL);
     if (displays) {
         for (int i = 0; displays[i]; ++i) {
             SDL_Rect bounds;
@@ -717,6 +756,7 @@ static void SDL_UpdateDesktopBounds(void)
                 }
             }
         }
+        SDL_free(displays);
     }
     SDL_copyp(&_this->desktop_bounds, &rect);
 }
@@ -855,7 +895,7 @@ void SDL_DelVideoDisplay(SDL_DisplayID displayID, SDL_bool send_event)
     SDL_UpdateDesktopBounds();
 }
 
-const SDL_DisplayID *SDL_GetDisplays(int *count)
+SDL_DisplayID *SDL_GetDisplays(int *count)
 {
     int i;
     SDL_DisplayID *displays;
@@ -884,7 +924,7 @@ const SDL_DisplayID *SDL_GetDisplays(int *count)
             *count = 0;
         }
     }
-    return SDL_FreeLater(displays);
+    return displays;
 }
 
 SDL_VideoDisplay *SDL_GetVideoDisplay(SDL_DisplayID displayID)
@@ -1122,19 +1162,6 @@ static void SDL_UpdateFullscreenDisplayModes(SDL_VideoDisplay *display)
     }
 }
 
-static const SDL_DisplayMode *SDL_CreateTemporaryDisplayMode(const SDL_DisplayMode *mode)
-{
-    SDL_DisplayMode *retval = NULL;
-
-    if (mode) {
-        retval = (SDL_DisplayMode *)SDL_malloc(sizeof(*retval));
-        if (retval) {
-            SDL_copyp(retval, mode);
-        }
-    }
-    return SDL_FreeLater(retval);
-}
-
 // Return the matching mode as a pointer into our current mode list
 static const SDL_DisplayMode *SDL_GetFullscreenModeMatch(const SDL_DisplayMode *mode)
 {
@@ -1160,7 +1187,7 @@ static const SDL_DisplayMode *SDL_GetFullscreenModeMatch(const SDL_DisplayMode *
 
         /* Search for an exact match */
         if (!mode) {
-            for (int i = 0; display->num_fullscreen_modes; ++i) {
+            for (int i = 0; i < display->num_fullscreen_modes; ++i) {
                 if (SDL_memcmp(&fullscreen_mode, &display->fullscreen_modes[i], sizeof(fullscreen_mode)) == 0) {
                     mode = &display->fullscreen_modes[i];
                     break;
@@ -1170,7 +1197,7 @@ static const SDL_DisplayMode *SDL_GetFullscreenModeMatch(const SDL_DisplayMode *
 
         /* Search for a mode with the same characteristics */
         if (!mode) {
-            for (int i = 0; display->num_fullscreen_modes; ++i) {
+            for (int i = 0; i < display->num_fullscreen_modes; ++i) {
                 if (cmpmodes(&fullscreen_mode, &display->fullscreen_modes[i]) == 0) {
                     mode = &display->fullscreen_modes[i];
                     break;
@@ -1179,16 +1206,6 @@ static const SDL_DisplayMode *SDL_GetFullscreenModeMatch(const SDL_DisplayMode *
         }
     }
     return mode;
-}
-
-// Return the window's fullscreen mode as a pointer into our current mode list
-static const SDL_DisplayMode *SDL_GetWindowFullscreenModeInternal(SDL_Window *window)
-{
-    if (window->flags & SDL_WINDOW_FULLSCREEN) {
-        return SDL_GetFullscreenModeMatch(&window->current_fullscreen_mode);
-    } else {
-        return SDL_GetFullscreenModeMatch(&window->requested_fullscreen_mode);
-    }
 }
 
 SDL_bool SDL_AddFullscreenDisplayMode(SDL_VideoDisplay *display, const SDL_DisplayMode *mode)
@@ -1257,7 +1274,7 @@ void SDL_ResetFullscreenDisplayModes(SDL_VideoDisplay *display)
     display->current_mode = &display->desktop_mode;
 }
 
-const SDL_DisplayMode * const *SDL_GetFullscreenDisplayModes(SDL_DisplayID displayID, int *count)
+SDL_DisplayMode **SDL_GetFullscreenDisplayModes(SDL_DisplayID displayID, int *count)
 {
     int i;
     int num_modes;
@@ -1290,17 +1307,21 @@ const SDL_DisplayMode * const *SDL_GetFullscreenDisplayModes(SDL_DisplayID displ
             *count = 0;
         }
     }
-    return SDL_FreeLater(retval);
+    return retval;
 }
 
-const SDL_DisplayMode *SDL_GetClosestFullscreenDisplayMode(SDL_DisplayID displayID, int w, int h, float refresh_rate, SDL_bool include_high_density_modes)
+int SDL_GetClosestFullscreenDisplayMode(SDL_DisplayID displayID, int w, int h, float refresh_rate, SDL_bool include_high_density_modes, SDL_DisplayMode *result)
 {
     const SDL_DisplayMode *mode, *closest = NULL;
     float aspect_ratio;
     int i;
     SDL_VideoDisplay *display = SDL_GetVideoDisplay(displayID);
 
-    CHECK_DISPLAY_MAGIC(display, NULL);
+    if (result) {
+        SDL_zerop(result);
+    }
+
+    CHECK_DISPLAY_MAGIC(display, -1);
 
     if (h > 0) {
         aspect_ratio = (float)w / h;
@@ -1347,7 +1368,13 @@ const SDL_DisplayMode *SDL_GetClosestFullscreenDisplayMode(SDL_DisplayID display
 
         closest = mode;
     }
-    return SDL_CreateTemporaryDisplayMode(closest);
+    if (!closest) {
+        return SDL_SetError("Couldn't find any matching video modes");
+    }
+    if (result) {
+        SDL_copyp(result, closest);
+    }
+    return 0;
 }
 
 static SDL_bool DisplayModeChanged(const SDL_DisplayMode *old, const SDL_DisplayMode *new)
@@ -1386,7 +1413,7 @@ const SDL_DisplayMode *SDL_GetDesktopDisplayMode(SDL_DisplayID displayID)
 
     CHECK_DISPLAY_MAGIC(display, NULL);
 
-    return SDL_CreateTemporaryDisplayMode(&display->desktop_mode);
+    return &display->desktop_mode;
 }
 
 void SDL_SetCurrentDisplayMode(SDL_VideoDisplay *display, const SDL_DisplayMode *mode)
@@ -1415,7 +1442,7 @@ const SDL_DisplayMode *SDL_GetCurrentDisplayMode(SDL_DisplayID displayID)
     /* Make sure our mode list is updated */
     SDL_UpdateFullscreenDisplayModes(display);
 
-    return SDL_CreateTemporaryDisplayMode(display->current_mode);
+    return display->current_mode;
 }
 
 int SDL_SetDisplayModeForDisplay(SDL_VideoDisplay *display, SDL_DisplayMode *mode)
@@ -1735,10 +1762,16 @@ extern SDL_WindowFlags WINRT_DetectWindowFlags(SDL_Window *window);
 static void SDL_RestoreMousePosition(SDL_Window *window)
 {
     float x, y;
+    SDL_Mouse *mouse = SDL_GetMouse();
 
     if (window == SDL_GetMouseFocus()) {
+        const SDL_bool prev_warp_val = mouse->warp_emulation_prohibited;
         SDL_GetMouseState(&x, &y);
+
+        /* Disable the warp emulation so it isn't accidentally activated on a fullscreen transitions. */
+        mouse->warp_emulation_prohibited = SDL_TRUE;
         SDL_WarpMouseInWindow(window, x, y);
+        mouse->warp_emulation_prohibited = prev_warp_val;
     }
 }
 
@@ -1778,7 +1811,7 @@ int SDL_UpdateFullscreenMode(SDL_Window *window, SDL_FullscreenOp fullscreen, SD
     }
 
     if (fullscreen) {
-        mode = (SDL_DisplayMode *)SDL_GetWindowFullscreenModeInternal(window);
+        mode = (SDL_DisplayMode *)SDL_GetWindowFullscreenMode(window);
 
 #if defined(SDL_PLATFORM_AMIGAOS4)
         /* HACK: in order to open an exclusive fullscreen before window,
@@ -1805,7 +1838,7 @@ int SDL_UpdateFullscreenMode(SDL_Window *window, SDL_FullscreenOp fullscreen, SD
                     dprintf("Display bounds %d * %d\n", bounds.w, bounds.h);
                     /* This makes testautomation video_setWindowCenteredOnDisplay case pass. Otherwise window
                        opens on the Workbench screen */
-                    mode = (SDL_DisplayMode *)SDL_GetClosestFullscreenDisplayMode(1, bounds.w, bounds.h, 0.0f, SDL_FALSE);
+                    mode = (SDL_DisplayMode *)SDL_GetClosestFullscreenDisplayMode(1, bounds.w, bounds.h, 0.0f, SDL_FALSE, NULL /* TODO */);
                 } else {
                     dprintf("Failed to get display bounds: %s\n", SDL_GetError());
                 }
@@ -2055,23 +2088,23 @@ int SDL_SetWindowFullscreenMode(SDL_Window *window, const SDL_DisplayMode *mode)
 
 const SDL_DisplayMode *SDL_GetWindowFullscreenMode(SDL_Window *window)
 {
-    const SDL_DisplayMode *retval;
-
     CHECK_WINDOW_MAGIC(window, NULL);
     CHECK_WINDOW_NOT_POPUP(window, NULL);
 
-    retval = SDL_GetWindowFullscreenModeInternal(window);
-
-    return SDL_CreateTemporaryDisplayMode(retval);
+    if (window->flags & SDL_WINDOW_FULLSCREEN) {
+        return SDL_GetFullscreenModeMatch(&window->current_fullscreen_mode);
+    } else {
+        return SDL_GetFullscreenModeMatch(&window->requested_fullscreen_mode);
+    }
 }
 
-const void *SDL_GetWindowICCProfile(SDL_Window *window, size_t *size)
+void *SDL_GetWindowICCProfile(SDL_Window *window, size_t *size)
 {
     if (!_this->GetWindowICCProfile) {
         SDL_Unsupported();
         return NULL;
     }
-    return SDL_FreeLater(_this->GetWindowICCProfile(_this, window, size));
+    return _this->GetWindowICCProfile(_this, window, size);
 }
 
 SDL_PixelFormat SDL_GetWindowPixelFormat(SDL_Window *window)
@@ -2128,7 +2161,7 @@ void SDL_ToggleDragAndDropSupport(void)
     }
 }
 
-SDL_Window * const *SDLCALL SDL_GetWindows(int *count)
+SDL_Window **SDLCALL SDL_GetWindows(int *count)
 {
     if (count) {
         *count = 0;
@@ -2163,7 +2196,7 @@ SDL_Window * const *SDLCALL SDL_GetWindows(int *count)
     if (count) {
         *count = num_added;
     }
-    return SDL_FreeLater(windows);
+    return windows;
 }
 
 static void ApplyWindowFlags(SDL_Window *window, SDL_WindowFlags flags)
@@ -2194,9 +2227,14 @@ static void ApplyWindowFlags(SDL_Window *window, SDL_WindowFlags flags)
 static void SDL_FinishWindowCreation(SDL_Window *window, SDL_WindowFlags flags)
 {
     PrepareDragAndDropSupport(window);
-    ApplyWindowFlags(window, flags);
-    if (!(flags & SDL_WINDOW_HIDDEN)) {
-        SDL_ShowWindow(window);
+
+    if (window->flags & SDL_WINDOW_EXTERNAL) {
+        // Whoever has created the window has already applied whatever flags are needed
+    } else {
+        ApplyWindowFlags(window, flags);
+        if (!(flags & SDL_WINDOW_HIDDEN)) {
+            SDL_ShowWindow(window);
+        }
     }
 }
 
@@ -2482,6 +2520,8 @@ SDL_Window *SDL_CreateWindowWithProperties(SDL_PropertiesID props)
     /* Make sure window pixel size is up to date */
     SDL_CheckWindowPixelSizeChanged(window);
 
+    SDL_ClearError();
+
     return window;
 }
 
@@ -2707,13 +2747,17 @@ SDL_Window *SDL_GetWindowFromID(SDL_WindowID id)
     SDL_Window *window;
 
     if (!_this) {
+        SDL_UninitializedVideo();
         return NULL;
     }
-    for (window = _this->windows; window; window = window->next) {
-        if (window->id == id) {
-            return window;
+    if (id) {
+        for (window = _this->windows; window; window = window->next) {
+            if (window->id == id) {
+                return window;
+            }
         }
     }
+    SDL_SetError("Invalid window ID");                                 \
     return NULL;
 }
 
@@ -3085,7 +3129,7 @@ int SDL_GetWindowSizeInPixels(SDL_Window *window, int *w, int *h)
 
         SDL_GetWindowSize(window, w, h);
 
-        if ((window->flags & SDL_WINDOW_FULLSCREEN) && SDL_GetWindowFullscreenModeInternal(window)) {
+        if ((window->flags & SDL_WINDOW_FULLSCREEN) && SDL_GetWindowFullscreenMode(window)) {
             mode = SDL_GetCurrentDisplayMode(displayID);
         } else {
             mode = SDL_GetDesktopDisplayMode(displayID);
@@ -3803,6 +3847,41 @@ const SDL_Rect *SDL_GetWindowMouseRect(SDL_Window *window)
     }
 }
 
+int SDL_SetWindowRelativeMouseMode(SDL_Window *window, SDL_bool enabled)
+{
+    CHECK_WINDOW_MAGIC(window, -1);
+
+    /* If the app toggles relative mode directly, it probably shouldn't
+     * also be emulating it using repeated mouse warps, so disable
+     * mouse warp emulation by default.
+     */
+    SDL_DisableMouseWarpEmulation();
+
+    if (enabled == SDL_GetWindowRelativeMouseMode(window)) {
+        return 0;
+    }
+
+    if (enabled) {
+        window->flags |= SDL_WINDOW_MOUSE_RELATIVE_MODE;
+    } else {
+        window->flags &= ~SDL_WINDOW_MOUSE_RELATIVE_MODE;
+    }
+    SDL_UpdateRelativeMouseMode();
+
+    return 0;
+}
+
+SDL_bool SDL_GetWindowRelativeMouseMode(SDL_Window *window)
+{
+    CHECK_WINDOW_MAGIC(window, SDL_FALSE);
+
+    if (window->flags & SDL_WINDOW_MOUSE_RELATIVE_MODE) {
+        return SDL_TRUE;
+    } else {
+        return SDL_FALSE;
+    }
+}
+
 int SDL_FlashWindow(SDL_Window *window, SDL_FlashOperation operation)
 {
     CHECK_WINDOW_MAGIC(window, -1);
@@ -3838,7 +3917,6 @@ void SDL_OnWindowDisplayChanged(SDL_Window *window)
 {
     if (window->flags & SDL_WINDOW_FULLSCREEN) {
         SDL_DisplayID displayID = SDL_GetDisplayForWindowPosition(window);
-        const SDL_DisplayMode *new_mode = NULL;
 
         if (window->requested_fullscreen_mode.w != 0 || window->requested_fullscreen_mode.h != 0) {
             SDL_bool include_high_density_modes = SDL_FALSE;
@@ -3846,11 +3924,7 @@ void SDL_OnWindowDisplayChanged(SDL_Window *window)
             if (window->requested_fullscreen_mode.pixel_density > 1.0f) {
                 include_high_density_modes = SDL_TRUE;
             }
-            new_mode = SDL_GetClosestFullscreenDisplayMode(displayID, window->requested_fullscreen_mode.w, window->requested_fullscreen_mode.h, window->requested_fullscreen_mode.refresh_rate, include_high_density_modes);
-        }
-
-        if (new_mode) {
-            SDL_copyp(&window->current_fullscreen_mode, new_mode);
+            SDL_GetClosestFullscreenDisplayMode(displayID, window->requested_fullscreen_mode.w, window->requested_fullscreen_mode.h, window->requested_fullscreen_mode.refresh_rate, include_high_density_modes, &window->current_fullscreen_mode);
         } else {
             SDL_zero(window->current_fullscreen_mode);
         }
@@ -3929,7 +4003,12 @@ int SDL_GetWindowSafeArea(SDL_Window *window, SDL_Rect *rect)
     CHECK_WINDOW_MAGIC(window, -1);
 
     if (rect) {
-        SDL_copyp(rect, &window->safe_rect);
+        if (SDL_RectEmpty(&window->safe_rect)) {
+            rect->w = window->w;
+            rect->h = window->h;
+        } else {
+            SDL_copyp(rect, &window->safe_rect);
+        }
     }
     return 0;
 }
@@ -4069,6 +4148,7 @@ void SDL_DestroyWindow(SDL_Window *window)
         SDL_HideWindow(window);
     }
 
+    SDL_DestroyProperties(window->text_input_props);
     SDL_DestroyProperties(window->props);
 
     /* Clear the modal status, but don't unset the parent, as it may be
@@ -4089,6 +4169,9 @@ void SDL_DestroyWindow(SDL_Window *window)
     /* Make sure this window no longer has focus */
     if (SDL_GetKeyboardFocus() == window) {
         SDL_SetKeyboardFocus(NULL);
+    }
+    if ((window->flags & SDL_WINDOW_MOUSE_CAPTURE)) {
+        SDL_UpdateMouseCapture(SDL_TRUE);
     }
     if (SDL_GetMouseFocus() == window) {
         SDL_SetMouseFocus(NULL);
@@ -4199,6 +4282,7 @@ void SDL_VideoQuit(void)
     }
 
     /* Halt event processing before doing anything else */
+    SDL_QuitPen();
     SDL_QuitTouch();
     SDL_QuitMouse();
     SDL_QuitKeyboard();
@@ -4345,8 +4429,8 @@ SDL_bool SDL_GL_ExtensionSupported(const char *extension)
     if (where || *extension == '\0') {
         return SDL_FALSE;
     }
-    /* See if there's an environment variable override */
-    start = SDL_getenv(extension);
+    /* See if there's a hint or environment variable override */
+    start = SDL_GetHint(extension);
     if (start && *start == '0') {
         return SDL_FALSE;
     }
@@ -5192,23 +5276,91 @@ void SDL_WM_SetIcon(SDL_Surface *icon, Uint8 *mask)
 }
 #endif
 
-int SDL_StartTextInput(SDL_Window *window)
+SDL_TextInputType SDL_GetTextInputType(SDL_PropertiesID props)
 {
-    CHECK_WINDOW_MAGIC(window, -1);
+    return (SDL_TextInputType)SDL_GetNumberProperty(props, SDL_PROP_TEXTINPUT_TYPE_NUMBER, SDL_TEXTINPUT_TYPE_TEXT);
+}
 
-    /* Show the on-screen keyboard, if desired */
+SDL_Capitalization SDL_GetTextInputCapitalization(SDL_PropertiesID props)
+{
+    if (SDL_HasProperty(props, SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER)) {
+        return (SDL_Capitalization)SDL_GetNumberProperty(props, SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, SDL_CAPITALIZE_NONE);
+    }
+
+    switch (SDL_GetTextInputType(props)) {
+    case SDL_TEXTINPUT_TYPE_TEXT:
+        return SDL_CAPITALIZE_SENTENCES;
+    case SDL_TEXTINPUT_TYPE_TEXT_NAME:
+        return SDL_CAPITALIZE_WORDS;
+    default:
+        return SDL_CAPITALIZE_NONE;
+    }
+}
+
+SDL_bool SDL_GetTextInputAutocorrect(SDL_PropertiesID props)
+{
+    return SDL_GetBooleanProperty(props, SDL_PROP_TEXTINPUT_AUTOCORRECT_BOOLEAN, SDL_TRUE);
+}
+
+SDL_bool SDL_GetTextInputMultiline(SDL_PropertiesID props)
+{
+    if (SDL_HasProperty(props, SDL_PROP_TEXTINPUT_MULTILINE_BOOLEAN)) {
+        return SDL_GetBooleanProperty(props, SDL_PROP_TEXTINPUT_MULTILINE_BOOLEAN, SDL_FALSE);
+    }
+
+    if (SDL_GetHintBoolean(SDL_HINT_RETURN_KEY_HIDES_IME, SDL_FALSE)) {
+        return SDL_FALSE;
+    } else {
+        return SDL_TRUE;
+    }
+}
+
+static SDL_bool AutoShowingScreenKeyboard(void)
+{
     const char *hint = SDL_GetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD);
     if (((!hint || SDL_strcasecmp(hint, "auto") == 0) && !SDL_HasKeyboard()) ||
         SDL_GetStringBoolean(hint, SDL_FALSE)) {
+        return SDL_TRUE;
+    } else {
+        return SDL_FALSE;
+    }
+}
+
+int SDL_StartTextInput(SDL_Window *window)
+{
+    return SDL_StartTextInputWithProperties(window, 0);
+}
+
+int SDL_StartTextInputWithProperties(SDL_Window *window, SDL_PropertiesID props)
+{
+    CHECK_WINDOW_MAGIC(window, -1);
+
+    if (window->text_input_props) {
+        SDL_DestroyProperties(window->text_input_props);
+        window->text_input_props = 0;
+    }
+
+    if (props) {
+        window->text_input_props = SDL_CreateProperties();
+        if (!window->text_input_props) {
+            return -1;
+        }
+        if (SDL_CopyProperties(props, window->text_input_props) < 0) {
+            return -1;
+        }
+    }
+
+    /* Show the on-screen keyboard, if desired */
+    if (AutoShowingScreenKeyboard() && !SDL_ScreenKeyboardShown(window)) {
         if (_this->ShowScreenKeyboard) {
-            _this->ShowScreenKeyboard(_this, window);
+            _this->ShowScreenKeyboard(_this, window, props);
         }
     }
 
     if (!window->text_input_active) {
         /* Finally start the text input system */
         if (_this->StartTextInput) {
-            if (_this->StartTextInput(_this, window) < 0) {
+            if (_this->StartTextInput(_this, window, props) < 0) {
                 return -1;
             }
         }
@@ -5237,9 +5389,7 @@ int SDL_StopTextInput(SDL_Window *window)
     }
 
     /* Hide the on-screen keyboard, if desired */
-    const char *hint = SDL_GetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD);
-    if (((!hint || SDL_strcasecmp(hint, "auto") == 0) && !SDL_HasKeyboard()) ||
-        SDL_GetStringBoolean(hint, SDL_FALSE)) {
+    if (AutoShowingScreenKeyboard() && SDL_ScreenKeyboardShown(window)) {
         if (_this->HideScreenKeyboard) {
             _this->HideScreenKeyboard(_this, window);
         }
@@ -5302,7 +5452,9 @@ SDL_bool SDL_HasScreenKeyboardSupport(void)
 
 SDL_bool SDL_ScreenKeyboardShown(SDL_Window *window)
 {
-    if (window && _this && _this->IsScreenKeyboardShown) {
+    CHECK_WINDOW_MAGIC(window, SDL_FALSE);
+
+    if (_this->IsScreenKeyboardShown) {
         return _this->IsScreenKeyboardShown(_this, window);
     }
     return SDL_FALSE;
@@ -5351,7 +5503,6 @@ int SDL_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
 {
     int dummybutton;
     int retval = -1;
-    SDL_bool relative_mode;
     SDL_bool show_cursor_prev;
     SDL_Window *current_window;
     SDL_MessageBoxData mbdata;
@@ -5365,7 +5516,6 @@ int SDL_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
     (void)SDL_AtomicIncRef(&SDL_messagebox_count);
 
     current_window = SDL_GetKeyboardFocus();
-    relative_mode = SDL_GetRelativeMouseMode();
     SDL_UpdateMouseCapture(SDL_FALSE);
     SDL_SetRelativeMouseMode(SDL_FALSE);
     show_cursor_prev = SDL_CursorVisible();
@@ -5439,7 +5589,7 @@ int SDL_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
     if (!show_cursor_prev) {
         SDL_HideCursor();
     }
-    SDL_SetRelativeMouseMode(relative_mode);
+    SDL_UpdateRelativeMouseMode();
     SDL_UpdateMouseCapture(SDL_FALSE);
 
     return retval;

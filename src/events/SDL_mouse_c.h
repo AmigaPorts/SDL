@@ -29,10 +29,12 @@
 /* The default mouse input device, for platforms that don't have multiple mice */
 #define SDL_DEFAULT_MOUSE_ID    1
 
+typedef struct SDL_CursorData SDL_CursorData;
+
 struct SDL_Cursor
 {
     struct SDL_Cursor *next;
-    void *internal;
+    SDL_CursorData *internal;
 };
 
 typedef struct
@@ -95,6 +97,7 @@ typedef struct
     SDL_bool warp_emulation_hint;
     SDL_bool warp_emulation_active;
     SDL_bool warp_emulation_prohibited;
+    Uint64 last_center_warp_time_ns;
     int relative_mode_clip_interval;
     SDL_bool enable_normal_speed_scale;
     float normal_speed_scale;
@@ -176,6 +179,12 @@ extern int SDL_SendMouseWheel(Uint64 timestamp, SDL_Window *window, SDL_MouseID 
 
 /* Warp the mouse within the window, potentially overriding relative mode */
 extern void SDL_PerformWarpMouseInWindow(SDL_Window *window, float x, float y, SDL_bool ignore_relative_mode);
+
+/* Relative mouse mode */
+extern int SDL_SetRelativeMouseMode(SDL_bool enabled);
+extern SDL_bool SDL_GetRelativeMouseMode(void);
+extern void SDL_UpdateRelativeMouseMode(void);
+extern void SDL_DisableMouseWarpEmulation(void);
 
 /* TODO RECONNECT: Set mouse state to "zero" */
 #if 0

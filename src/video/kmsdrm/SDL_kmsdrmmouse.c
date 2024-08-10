@@ -134,7 +134,7 @@ static int KMSDRM_RemoveCursorFromBO(SDL_VideoDisplay *display)
 static int KMSDRM_DumpCursorToBO(SDL_VideoDisplay *display, SDL_Cursor *cursor)
 {
     SDL_DisplayData *dispdata = display->internal;
-    KMSDRM_CursorData *curdata = (KMSDRM_CursorData *)cursor->internal;
+    SDL_CursorData *curdata = cursor->internal;
     SDL_VideoDevice *video_device = SDL_GetVideoDevice();
     SDL_VideoData *viddata = video_device->internal;
 
@@ -206,11 +206,11 @@ cleanup:
 /* This is only for freeing the SDL_cursor.*/
 static void KMSDRM_FreeCursor(SDL_Cursor *cursor)
 {
-    KMSDRM_CursorData *curdata;
+    SDL_CursorData *curdata;
 
     /* Even if the cursor is not ours, free it. */
     if (cursor) {
-        curdata = (KMSDRM_CursorData *)cursor->internal;
+        curdata = cursor->internal;
         /* Free cursor buffer */
         if (curdata->buffer) {
             SDL_free(curdata->buffer);
@@ -229,7 +229,7 @@ static void KMSDRM_FreeCursor(SDL_Cursor *cursor)
    in dispata) is destroyed and recreated when we recreate windows, etc. */
 static SDL_Cursor *KMSDRM_CreateCursor(SDL_Surface *surface, int hot_x, int hot_y)
 {
-    KMSDRM_CursorData *curdata;
+    SDL_CursorData *curdata;
     SDL_Cursor *cursor, *ret;
 
     curdata = NULL;
@@ -239,7 +239,7 @@ static SDL_Cursor *KMSDRM_CreateCursor(SDL_Surface *surface, int hot_x, int hot_
     if (!cursor) {
         goto cleanup;
     }
-    curdata = (KMSDRM_CursorData *)SDL_calloc(1, sizeof(*curdata));
+    curdata = (SDL_CursorData *)SDL_calloc(1, sizeof(*curdata));
     if (!curdata) {
         goto cleanup;
     }
@@ -315,13 +315,14 @@ static int KMSDRM_ShowCursor(SDL_Cursor *cursor)
            This happens on video quit, where we get here after
            the mouse focus has been unset, yet SDL wants to
            restore the system default cursor (makes no sense here). */
-        const SDL_DisplayID *displays = SDL_GetDisplays(NULL);
+        SDL_DisplayID *displays = SDL_GetDisplays(NULL);
         if (displays) {
             /* Iterate on the displays, hiding the cursor. */
             for (i = 0; i < displays[i]; i++) {
                 display = SDL_GetVideoDisplay(displays[i]);
                 ret = KMSDRM_RemoveCursorFromBO(display);
             }
+            SDL_free(displays);
         }
     } else {
         display = SDL_GetVideoDisplayForWindow(window);

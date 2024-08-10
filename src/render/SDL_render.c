@@ -814,14 +814,14 @@ const char *SDL_GetRenderDriver(int index)
                             SDL_GetNumRenderDrivers() - 1);
         return NULL;
     }
-    return SDL_CreateTemporaryString(render_drivers[index]->name);
+    return render_drivers[index]->name;
 #else
     SDL_SetError("SDL not built with rendering support");
     return NULL;
 #endif
 }
 
-static int SDLCALL SDL_RendererEventWatch(void *userdata, SDL_Event *event)
+static SDL_bool SDLCALL SDL_RendererEventWatch(void *userdata, SDL_Event *event)
 {
     SDL_Renderer *renderer = (SDL_Renderer *)userdata;
 
@@ -858,7 +858,7 @@ static int SDLCALL SDL_RendererEventWatch(void *userdata, SDL_Event *event)
         UpdateHDRProperties(renderer);
     }
 
-    return 0;
+    return SDL_TRUE;
 }
 
 int SDL_CreateWindowAndRenderer(const char *title, int width, int height, SDL_WindowFlags window_flags, SDL_Window **window, SDL_Renderer **renderer)
@@ -1032,6 +1032,7 @@ SDL_Renderer *SDL_CreateRendererWithProperties(SDL_PropertiesID props)
                 if (rc == 0) {
                     break;  // Yay, we got one!
                 }
+                SDL_DestroyRendererWithoutFreeing(renderer);
                 SDL_zerop(renderer);  // make sure we don't leave function pointers from a previous CreateRenderer() in this struct.
             }
         }
@@ -1147,10 +1148,7 @@ error:
 #endif
 
     if (renderer) {
-        SDL_SetObjectValid(renderer, SDL_OBJECT_TYPE_RENDERER, SDL_FALSE);
-
-        SDL_free(renderer->texture_formats);
-        SDL_free(renderer);
+        SDL_DestroyRenderer(renderer);
     }
     return NULL;
 
@@ -1207,7 +1205,7 @@ const char *SDL_GetRendererName(SDL_Renderer *renderer)
 {
     CHECK_RENDERER_MAGIC(renderer, NULL);
 
-    return renderer->name;
+    return SDL_GetPersistentString(renderer->name);
 }
 
 SDL_PropertiesID SDL_GetRendererProperties(SDL_Renderer *renderer)
@@ -1500,10 +1498,111 @@ SDL_Texture *SDL_CreateTexture(SDL_Renderer *renderer, SDL_PixelFormat format, S
     return texture;
 }
 
+static int SDL_UpdateTextureFromSurface(SDL_Texture *texture, SDL_Rect *rect, SDL_Surface *surface)
+{
+    int access;
+    SDL_bool direct_update;
+    SDL_PixelFormat tex_format;
+    SDL_PropertiesID surface_props;
+    SDL_PropertiesID tex_props;
+    SDL_Colorspace surface_colorspace = SDL_COLORSPACE_UNKNOWN;
+    SDL_Colorspace texture_colorspace = SDL_COLORSPACE_UNKNOWN;
+
+    if (texture == NULL || surface == NULL) {
+        return -1;
+    }
+
+    tex_props = SDL_GetTextureProperties(texture);
+    if (!tex_props) {
+        return -1;
+    }
+
+    surface_props = SDL_GetSurfaceProperties(surface);
+    if (!surface_props) {
+        return -1;
+    }
+
+    tex_format = SDL_GetNumberProperty(tex_props, SDL_PROP_TEXTURE_FORMAT_NUMBER, 0);
+    access = SDL_GetNumberProperty(tex_props, SDL_PROP_TEXTURE_ACCESS_NUMBER, 0);
+
+    if (access != SDL_TEXTUREACCESS_STATIC && access != SDL_TEXTUREACCESS_STREAMING) {
+        return -1;
+    }
+
+    surface_colorspace = SDL_GetSurfaceColorspace(surface);
+    texture_colorspace = surface_colorspace;
+
+    if (surface_colorspace == SDL_COLORSPACE_SRGB_LINEAR ||
+        SDL_COLORSPACETRANSFER(surface_colorspace) == SDL_TRANSFER_CHARACTERISTICS_PQ) {
+        if (SDL_ISPIXELFORMAT_FLOAT(tex_format)) {
+            texture_colorspace = SDL_COLORSPACE_SRGB_LINEAR;
+        } else if (SDL_ISPIXELFORMAT_10BIT(tex_format)) {
+            texture_colorspace = SDL_COLORSPACE_HDR10;
+        } else {
+            texture_colorspace = SDL_COLORSPACE_SRGB;
+        }
+    }
+
+    if (tex_format == surface->format && texture_colorspace == surface_colorspace) {
+        if (SDL_ISPIXELFORMAT_ALPHA(surface->format) && SDL_SurfaceHasColorKey(surface)) {
+            /* Surface and Renderer formats are identical.
+             * Intermediate conversion is needed to convert color key to alpha (SDL_ConvertColorkeyToAlpha()). */
+            direct_update = SDL_FALSE;
+        } else {
+            /* Update Texture directly */
+            direct_update = SDL_TRUE;
+        }
+    } else {
+        /* Surface and Renderer formats are different, it needs an intermediate conversion. */
+        direct_update = SDL_FALSE;
+    }
+
+    if (direct_update) {
+        if (SDL_MUSTLOCK(surface)) {
+            SDL_LockSurface(surface);
+            SDL_UpdateTexture(texture, rect, surface->pixels, surface->pitch);
+            SDL_UnlockSurface(surface);
+        } else {
+            SDL_UpdateTexture(texture, rect, surface->pixels, surface->pitch);
+        }
+    } else {
+        SDL_Surface *temp = NULL;
+
+        /* Set up a destination surface for the texture update */
+        temp = SDL_ConvertSurfaceAndColorspace(surface, tex_format, NULL, texture_colorspace, surface_props);
+        if (temp) {
+            SDL_UpdateTexture(texture, NULL, temp->pixels, temp->pitch);
+            SDL_DestroySurface(temp);
+        } else {
+            return -1;
+        }
+    }
+
+    {
+        Uint8 r, g, b, a;
+        SDL_BlendMode blendMode;
+
+        SDL_GetSurfaceColorMod(surface, &r, &g, &b);
+        SDL_SetTextureColorMod(texture, r, g, b);
+
+        SDL_GetSurfaceAlphaMod(surface, &a);
+        SDL_SetTextureAlphaMod(texture, a);
+
+        if (SDL_SurfaceHasColorKey(surface)) {
+            /* We converted to a texture with alpha format */
+            SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+        } else {
+            SDL_GetSurfaceBlendMode(surface, &blendMode);
+            SDL_SetTextureBlendMode(texture, blendMode);
+        }
+    }
+
+    return 0;
+}
+
 SDL_Texture *SDL_CreateTextureFromSurface(SDL_Renderer *renderer, SDL_Surface *surface)
 {
     SDL_bool needAlpha;
-    SDL_bool direct_update;
     int i;
     SDL_PixelFormat format = SDL_PIXELFORMAT_UNKNOWN;
     SDL_Palette *palette;
@@ -1610,20 +1709,6 @@ SDL_Texture *SDL_CreateTextureFromSurface(SDL_Renderer *renderer, SDL_Surface *s
         }
     }
 
-    if (format == surface->format && texture_colorspace == surface_colorspace) {
-        if (SDL_ISPIXELFORMAT_ALPHA(surface->format) && SDL_SurfaceHasColorKey(surface)) {
-            /* Surface and Renderer formats are identical.
-             * Intermediate conversion is needed to convert color key to alpha (SDL_ConvertColorkeyToAlpha()). */
-            direct_update = SDL_FALSE;
-        } else {
-            /* Update Texture directly */
-            direct_update = SDL_TRUE;
-        }
-    } else {
-        /* Surface and Renderer formats are different, it needs an intermediate conversion. */
-        direct_update = SDL_FALSE;
-    }
-
     props = SDL_CreateProperties();
     SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, texture_colorspace);
     if (surface_colorspace == texture_colorspace) {
@@ -1642,46 +1727,11 @@ SDL_Texture *SDL_CreateTextureFromSurface(SDL_Renderer *renderer, SDL_Surface *s
         return NULL;
     }
 
-    if (direct_update) {
-        if (SDL_MUSTLOCK(surface)) {
-            SDL_LockSurface(surface);
-            SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);
-            SDL_UnlockSurface(surface);
-        } else {
-            SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);
-        }
-    } else {
-        SDL_Surface *temp = NULL;
-
-        /* Set up a destination surface for the texture update */
-        temp = SDL_ConvertSurfaceAndColorspace(surface, format, NULL, texture_colorspace, surface->internal->props);
-        if (temp) {
-            SDL_UpdateTexture(texture, NULL, temp->pixels, temp->pitch);
-            SDL_DestroySurface(temp);
-        } else {
-            SDL_DestroyTexture(texture);
-            return NULL;
-        }
+    if (SDL_UpdateTextureFromSurface(texture, NULL, surface) < 0) {
+        SDL_DestroyTexture(texture);
+        return NULL;
     }
 
-    {
-        Uint8 r, g, b, a;
-        SDL_BlendMode blendMode;
-
-        SDL_GetSurfaceColorMod(surface, &r, &g, &b);
-        SDL_SetTextureColorMod(texture, r, g, b);
-
-        SDL_GetSurfaceAlphaMod(surface, &a);
-        SDL_SetTextureAlphaMod(texture, a);
-
-        if (SDL_SurfaceHasColorKey(surface)) {
-            /* We converted to a texture with alpha format */
-            SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
-        } else {
-            SDL_GetSurfaceBlendMode(surface, &blendMode);
-            SDL_SetTextureBlendMode(texture, blendMode);
-        }
-    }
     return texture;
 }
 
@@ -4218,11 +4268,14 @@ int SDL_RenderTextureTiled(SDL_Renderer *renderer, SDL_Texture *texture, const S
     }
 }
 
-int SDL_RenderTexture9Grid(SDL_Renderer *renderer, SDL_Texture *texture, const SDL_FRect *srcrect, float corner_size, float scale, const SDL_FRect *dstrect)
+int SDL_RenderTexture9Grid(SDL_Renderer *renderer, SDL_Texture *texture, const SDL_FRect *srcrect, float left_width, float right_width, float top_height, float bottom_height, float scale, const SDL_FRect *dstrect)
 {
     SDL_FRect full_src, full_dst;
     SDL_FRect curr_src, curr_dst;
-    float dst_corner_size;
+    float dst_left_width;
+    float dst_right_width;
+    float dst_top_height;
+    float dst_bottom_height;
 
     CHECK_RENDERER_MAGIC(renderer, -1);
     CHECK_TEXTURE_MAGIC(texture, -1);
@@ -4245,96 +4298,111 @@ int SDL_RenderTexture9Grid(SDL_Renderer *renderer, SDL_Texture *texture, const S
     }
 
     if (scale <= 0.0f || scale == 1.0f) {
-        dst_corner_size = corner_size;
+        dst_left_width = left_width;
+        dst_right_width = right_width;
+        dst_top_height = top_height;
+        dst_bottom_height = bottom_height;
     } else {
-        dst_corner_size = (corner_size * scale);
+        dst_left_width = (left_width * scale);
+        dst_right_width = (right_width * scale);
+        dst_top_height = (top_height * scale);
+        dst_bottom_height = (bottom_height * scale);
     }
 
     // Upper-left corner
     curr_src.x = srcrect->x;
     curr_src.y = srcrect->y;
-    curr_src.w = corner_size;
-    curr_src.h = corner_size;
+    curr_src.w = left_width;
+    curr_src.h = top_height;
     curr_dst.x = dstrect->x;
     curr_dst.y = dstrect->y;
-    curr_dst.w = dst_corner_size;
-    curr_dst.h = dst_corner_size;
+    curr_dst.w = dst_left_width;
+    curr_dst.h = dst_top_height;
     if (SDL_RenderTexture(renderer, texture, &curr_src, &curr_dst) < 0) {
         return -1;
     }
 
     // Upper-right corner
-    curr_src.x = srcrect->x + srcrect->w - corner_size;
-    curr_dst.x = dstrect->x + dstrect->w - dst_corner_size;
+    curr_src.x = srcrect->x + srcrect->w - right_width;
+    curr_src.w = right_width;
+    curr_dst.x = dstrect->x + dstrect->w - dst_right_width;
+    curr_dst.w = dst_right_width;
     if (SDL_RenderTexture(renderer, texture, &curr_src, &curr_dst) < 0) {
         return -1;
     }
 
     // Lower-right corner
-    curr_src.y = srcrect->y + srcrect->h - corner_size;
-    curr_dst.y = dstrect->y + dstrect->h - dst_corner_size;
+    curr_src.y = srcrect->y + srcrect->h - bottom_height;
+    curr_dst.y = dstrect->y + dstrect->h - dst_bottom_height;
+    curr_dst.h = dst_bottom_height;
     if (SDL_RenderTexture(renderer, texture, &curr_src, &curr_dst) < 0) {
         return -1;
     }
 
     // Lower-left corner
     curr_src.x = srcrect->x;
+    curr_src.w = left_width;
     curr_dst.x = dstrect->x;
+    curr_dst.w = dst_left_width;
     if (SDL_RenderTexture(renderer, texture, &curr_src, &curr_dst) < 0) {
         return -1;
     }
 
     // Left
-    curr_src.y = srcrect->y + corner_size;
-    curr_src.h = srcrect->h - 2 * corner_size;
-    curr_dst.y = dstrect->y + dst_corner_size;
-    curr_dst.h = dstrect->h - 2 * dst_corner_size;
+    curr_src.y = srcrect->y + top_height;
+    curr_src.h = srcrect->h - top_height - bottom_height;
+    curr_dst.y = dstrect->y + dst_top_height;
+    curr_dst.h = dstrect->h - dst_top_height - dst_bottom_height;
     if (SDL_RenderTexture(renderer, texture, &curr_src, &curr_dst) < 0) {
         return -1;
     }
 
     // Right
-    curr_src.x = srcrect->x + srcrect->w - corner_size;
-    curr_dst.x = dstrect->x + dstrect->w - dst_corner_size;
+    curr_src.x = srcrect->x + srcrect->w - right_width;
+    curr_src.w = right_width;
+    curr_dst.x = dstrect->x + dstrect->w - dst_right_width;
+    curr_dst.w = dst_right_width;
     if (SDL_RenderTexture(renderer, texture, &curr_src, &curr_dst) < 0) {
         return -1;
     }
 
     // Top
-    curr_src.x = srcrect->x + corner_size;
+    curr_src.x = srcrect->x + left_width;
     curr_src.y = srcrect->y;
-    curr_src.w = srcrect->w - 2 * corner_size;
-    curr_src.h = corner_size;
-    curr_dst.x = dstrect->x + dst_corner_size;
+    curr_src.w = srcrect->w - left_width - right_width;
+    curr_src.h = top_height;
+    curr_dst.x = dstrect->x + dst_left_width;
     curr_dst.y = dstrect->y;
-    curr_dst.w = dstrect->w - 2 * dst_corner_size;
-    curr_dst.h = dst_corner_size;
+    curr_dst.w = dstrect->w - dst_left_width - dst_right_width;
+    curr_dst.h = dst_top_height;
     if (SDL_RenderTexture(renderer, texture, &curr_src, &curr_dst) < 0) {
         return -1;
     }
 
     // Bottom
-    curr_src.y = srcrect->y + srcrect->h - corner_size;
-    curr_dst.y = dstrect->y + dstrect->h - dst_corner_size;
+    curr_src.y = srcrect->y + srcrect->h - bottom_height;
+    curr_dst.y = dstrect->y + dstrect->h - dst_bottom_height;
+    curr_dst.h = dst_bottom_height;
     if (SDL_RenderTexture(renderer, texture, &curr_src, &curr_dst) < 0) {
         return -1;
     }
 
     // Center
-    curr_src.x = srcrect->x + corner_size;
-    curr_src.y = srcrect->y + corner_size;
-    curr_src.w = srcrect->w - 2 * corner_size;
-    curr_src.h = srcrect->h - 2 * corner_size;
-    curr_dst.x = dstrect->x + dst_corner_size;
-    curr_dst.y = dstrect->y + dst_corner_size;
-    curr_dst.w = dstrect->w - 2 * dst_corner_size;
-    curr_dst.h = dstrect->h - 2 * dst_corner_size;
+    curr_src.x = srcrect->x + left_width;
+    curr_src.y = srcrect->y + top_height;
+    curr_src.w = srcrect->w - left_width - right_width;
+    curr_src.h = srcrect->h - top_height - bottom_height;
+    curr_dst.x = dstrect->x + dst_left_width;
+    curr_dst.y = dstrect->y + dst_top_height;
+    curr_dst.w = dstrect->w - dst_left_width - dst_right_width;
+    curr_dst.h = dstrect->h - dst_top_height - dst_bottom_height;
     if (SDL_RenderTexture(renderer, texture, &curr_src, &curr_dst) < 0) {
         return -1;
     }
 
     return 0;
 }
+
 int SDL_RenderGeometry(SDL_Renderer *renderer,
                        SDL_Texture *texture,
                        const SDL_Vertex *vertices, int num_vertices,
@@ -5062,9 +5130,14 @@ void SDL_DestroyRendererWithoutFreeing(SDL_Renderer *renderer)
 
     renderer->destroyed = SDL_TRUE;
 
-    SDL_DestroyProperties(renderer->props);
-
     SDL_DelEventWatch(SDL_RendererEventWatch, renderer);
+
+    if (renderer->window) {
+        SDL_PropertiesID props = SDL_GetWindowProperties(renderer->window);
+        if (SDL_GetPointerProperty(props, SDL_PROP_WINDOW_RENDERER_POINTER, NULL) == renderer) {
+            SDL_ClearProperty(props, SDL_PROP_WINDOW_RENDERER_POINTER);
+        }
+    }
 
     SDL_DiscardAllCommands(renderer);
 
@@ -5075,18 +5148,27 @@ void SDL_DestroyRendererWithoutFreeing(SDL_Renderer *renderer)
         SDL_assert(tex != renderer->textures); /* satisfy static analysis. */
     }
 
-    SDL_free(renderer->vertex_data);
-
-    if (renderer->window) {
-        SDL_ClearProperty(SDL_GetWindowProperties(renderer->window), SDL_PROP_WINDOW_RENDERER_POINTER);
+    /* Clean up renderer-specific resources */
+    if (renderer->DestroyRenderer) {
+        renderer->DestroyRenderer(renderer);
     }
 
-    /* Free the target mutex */
-    SDL_DestroyMutex(renderer->target_mutex);
-    renderer->target_mutex = NULL;
-
-    /* Clean up renderer-specific resources */
-    renderer->DestroyRenderer(renderer);
+    if (renderer->target_mutex) {
+        SDL_DestroyMutex(renderer->target_mutex);
+        renderer->target_mutex = NULL;
+    }
+    if (renderer->vertex_data) {
+        SDL_free(renderer->vertex_data);
+        renderer->vertex_data = NULL;
+    }
+    if (renderer->texture_formats) {
+        SDL_free(renderer->texture_formats);
+        renderer->texture_formats = NULL;
+    }
+    if (renderer->props) {
+        SDL_DestroyProperties(renderer->props);
+        renderer->props = 0;
+    }
 }
 
 void SDL_DestroyRenderer(SDL_Renderer *renderer)
@@ -5117,7 +5199,6 @@ void SDL_DestroyRenderer(SDL_Renderer *renderer)
 
     SDL_SetObjectValid(renderer, SDL_OBJECT_TYPE_RENDERER, SDL_FALSE);  // It's no longer magical...
 
-    SDL_free(renderer->texture_formats);
     SDL_free(renderer);
 }
 

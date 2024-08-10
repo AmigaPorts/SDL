@@ -61,9 +61,6 @@ int SDL_AppInit(void **appstate, int argc, char *argv[])
     /* SDL_OpenAudioDeviceStream starts the device paused. You have to tell it to start! */
     SDL_ResumeAudioStreamDevice(stream);
 
-    /* (this is a web browser requirement, not an SDL thing.) */
-    SDL_Log("If you're running this in a web browser, you need to click the window before you'll hear anything.");
-
     return SDL_APP_CONTINUE;  /* carry on with the program! */
 }
 
@@ -83,7 +80,7 @@ int SDL_AppIterate(void *appstate)
        We're being lazy here, but if there's less than the entire wav file left to play,
        just shove a whole copy of it into the queue, so we always have _tons_ of
        data queued for playback. */
-    if (SDL_GetAudioStreamAvailable(stream) < wav_data_len) {
+    if (SDL_GetAudioStreamAvailable(stream) < (int)wav_data_len) {
         /* feed more data to the stream. It will queue at the end, and trickle out as the hardware needs more data. */
         SDL_PutAudioStreamData(stream, wav_data, wav_data_len);
     }

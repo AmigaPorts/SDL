@@ -411,9 +411,6 @@ extern SDL_DECLSPEC void SDLCALL SDL_SendAndroidBackButton(void);
  *
  * https://developer.android.com/reference/android/content/Context#getFilesDir()
  *
- * This returns temporary memory which will be automatically freed later, and
- * can be claimed with SDL_ClaimTemporaryMemory().
- *
  * \returns the path used for internal storage or NULL on failure; call
  *          SDL_GetError() for more information.
  *
@@ -453,9 +450,6 @@ extern SDL_DECLSPEC Uint32 SDLCALL SDL_GetAndroidExternalStorageState(void);
  *
  * https://developer.android.com/reference/android/content/Context#getExternalFilesDir()
  *
- * This returns temporary memory which will be automatically freed later, and
- * can be claimed with SDL_ClaimTemporaryMemory().
- *
  * \returns the path used for external storage for this application on success
  *          or NULL on failure; call SDL_GetError() for more information.
  *
@@ -476,9 +470,6 @@ extern SDL_DECLSPEC const char * SDLCALL SDL_GetAndroidExternalStoragePath(void)
  * This is a C wrapper over `android.content.Context.getCacheDir()`:
  *
  * https://developer.android.com/reference/android/content/Context#getCacheDir()
- *
- * This returns temporary memory which will be automatically freed later, and
- * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \returns the path used for caches for this application on success or NULL
  *          on failure; call SDL_GetError() for more information.
@@ -631,9 +622,6 @@ typedef enum SDL_WinRT_DeviceFamily
  * MSDN, at the URL:
  *
  * https://msdn.microsoft.com/en-us/library/windows/apps/hh464917.aspx
- *
- * This returns temporary memory which will be automatically freed later, and
- * can be claimed with SDL_ClaimTemporaryMemory().
  *
  * \param pathType the type of path to retrieve, one of SDL_WinRT_Path.
  * \returns a UTF-8 string (8-bit, multi-byte) containing the path, or NULL if

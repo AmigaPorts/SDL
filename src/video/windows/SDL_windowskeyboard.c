@@ -107,7 +107,19 @@ void WIN_UpdateKeymap(SDL_bool send_event)
             scancode = windows_scancode_table[i];
             if (scancode == SDL_SCANCODE_UNKNOWN ||
                 scancode == SDL_SCANCODE_DELETE ||
-                (SDL_GetDefaultKeyFromScancode(scancode, SDL_KMOD_NONE) & SDLK_SCANCODE_MASK)) {
+                (SDL_GetKeymapKeycode(NULL, scancode, SDL_KMOD_NONE) & SDLK_SCANCODE_MASK)) {
+
+                /* The Colemak mapping swaps Backspace and CapsLock */
+                if (mods[m] == SDL_KMOD_NONE &&
+                    (scancode == SDL_SCANCODE_CAPSLOCK ||
+                     scancode == SDL_SCANCODE_BACKSPACE)) {
+                    vk = LOBYTE(MapVirtualKey(i, MAPVK_VSC_TO_VK));
+                    if (vk == VK_CAPITAL) {
+                        SDL_SetKeymapEntry(keymap, scancode, mods[m], SDLK_CAPSLOCK);
+                    } else if (vk == VK_BACK) {
+                        SDL_SetKeymapEntry(keymap, scancode, mods[m], SDLK_BACKSPACE);
+                    }
+                }
                 continue;
             }
 
@@ -196,7 +208,7 @@ void WIN_ResetDeadKeys(void)
     }
 }
 
-int WIN_StartTextInput(SDL_VideoDevice *_this, SDL_Window *window)
+int WIN_StartTextInput(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID props)
 {
     WIN_ResetDeadKeys();
 

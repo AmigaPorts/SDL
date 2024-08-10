@@ -125,7 +125,7 @@ static SDL_VideoDevice *VITA_Create(void)
 
 #if defined(SDL_VIDEO_VITA_PIB) || defined(SDL_VIDEO_VITA_PVR)
 #ifdef SDL_VIDEO_VITA_PVR_OGL
-    if (SDL_getenv("VITA_PVR_OGL") != NULL) {
+    if (SDL_GetHintBoolean(SDL_HINT_VITA_PVR_OPENGL, SDL_FALSE)) {
         device->GL_LoadLibrary = VITA_GL_LoadLibrary;
         device->GL_CreateContext = VITA_GL_CreateContext;
         device->GL_GetProcAddress = VITA_GL_GetProcAddress;
@@ -170,19 +170,19 @@ int VITA_VideoInit(SDL_VideoDevice *_this)
 {
     SDL_DisplayMode mode;
 #ifdef SDL_VIDEO_VITA_PVR
-    const char *res = SDL_getenv("VITA_RESOLUTION");
+    const char *res = SDL_GetHint(SDL_HINT_VITA_RESOLUTION);
 #endif
     SDL_zero(mode);
 
 #ifdef SDL_VIDEO_VITA_PVR
     if (res) {
         /* 1088i for PSTV (Or Sharpscale) */
-        if (!SDL_strncmp(res, "1080", 4)) {
+        if (SDL_strncmp(res, "1080", 4) == 0) {
             mode.w = 1920;
             mode.h = 1088;
         }
         /* 725p for PSTV (Or Sharpscale) */
-        else if (!SDL_strncmp(res, "720", 3)) {
+        else if (SDL_strncmp(res, "720", 3) == 0) {
             mode.w = 1280;
             mode.h = 725;
         }
@@ -261,7 +261,8 @@ int VITA_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Properties
         win.windowSize = PSP2_WINDOW_960X544;
     }
     if (window->flags & SDL_WINDOW_OPENGL) {
-        if (SDL_getenv("VITA_PVR_OGL") != NULL) {
+        SDL_bool use_opengl = SDL_GetHintBoolean(SDL_HINT_VITA_PVR_OPENGL, SDL_FALSE);
+        if (use_opengl) {
             /* Set version to 2.1 and PROFILE to ES */
             temp_major = _this->gl_config.major_version;
             temp_minor = _this->gl_config.minor_version;
@@ -275,7 +276,7 @@ int VITA_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Properties
         if (wdata->egl_surface == EGL_NO_SURFACE) {
             return SDL_SetError("Could not create GLES window surface");
         }
-        if (SDL_getenv("VITA_PVR_OGL") != NULL) {
+        if (use_opengl) {
             /* Revert */
             _this->gl_config.major_version = temp_major;
             _this->gl_config.minor_version = temp_minor;
@@ -411,7 +412,7 @@ void VITA_ImeEventHandler(void *arg, const SceImeEventData *e)
 }
 #endif
 
-void VITA_ShowScreenKeyboard(SDL_VideoDevice *_this, SDL_Window *window)
+void VITA_ShowScreenKeyboard(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID props)
 {
     SDL_VideoData *videodata = _this->internal;
     SceInt32 res;
@@ -427,8 +428,46 @@ void VITA_ShowScreenKeyboard(SDL_VideoDevice *_this, SDL_Window *window)
 
     param.supportedLanguages = SCE_IME_LANGUAGE_ENGLISH_US;
     param.languagesForced = SCE_FALSE;
-    param.type = SCE_IME_TYPE_DEFAULT;
-    param.option = SCE_IME_OPTION_NO_ASSISTANCE;
+    switch (SDL_GetTextInputType(props)) {
+    default:
+    case SDL_TEXTINPUT_TYPE_TEXT:
+        param.type = SCE_IME_TYPE_DEFAULT;
+        break;
+    case SDL_TEXTINPUT_TYPE_TEXT_NAME:
+        param.type = SCE_IME_TYPE_DEFAULT;
+        break;
+    case SDL_TEXTINPUT_TYPE_TEXT_EMAIL:
+        param.type = SCE_IME_TYPE_MAIL;
+        break;
+    case SDL_TEXTINPUT_TYPE_TEXT_USERNAME:
+        param.type = SCE_IME_TYPE_DEFAULT;
+        break;
+    case SDL_TEXTINPUT_TYPE_TEXT_PASSWORD_HIDDEN:
+        param.type = SCE_IME_TYPE_DEFAULT;
+        break;
+    case SDL_TEXTINPUT_TYPE_TEXT_PASSWORD_VISIBLE:
+        param.type = SCE_IME_TYPE_DEFAULT;
+        break;
+    case SDL_TEXTINPUT_TYPE_NUMBER:
+        param.type = SCE_IME_TYPE_NUMBER;
+        break;
+    case SDL_TEXTINPUT_TYPE_NUMBER_PASSWORD_HIDDEN:
+        param.type = SCE_IME_TYPE_NUMBER;
+        break;
+    case SDL_TEXTINPUT_TYPE_NUMBER_PASSWORD_VISIBLE:
+        param.type = SCE_IME_TYPE_NUMBER;
+        break;
+    }
+    param.option = 0;
+    if (SDL_GetTextInputCapitalization(props) != SDL_CAPITALIZE_SENTENCES) {
+        param.option |= SCE_IME_OPTION_NO_AUTO_CAPITALIZATION;
+    }
+    if (!SDL_GetTextInputAutocorrect(props)) {
+        param.option |= SCE_IME_OPTION_NO_ASSISTANCE;
+    }
+    if (SDL_GetTextInputMultiline(props)) {
+        param.option |= SCE_IME_OPTION_MULTILINE;
+    }
     param.inputTextBuffer = libime_out;
     param.maxTextLength = SCE_IME_MAX_TEXT_LENGTH;
     param.handler = VITA_ImeEventHandler;

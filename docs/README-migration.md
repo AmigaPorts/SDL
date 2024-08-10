@@ -158,9 +158,9 @@ Rather than iterating over audio devices using a device index, there are new fun
         if (devices) {
             for (i = 0; i < num_devices; ++i) {
                 SDL_AudioDeviceID instance_id = devices[i];
-                const char *name = SDL_GetAudioDeviceName(instance_id);
-                SDL_Log("AudioDevice %" SDL_PRIu32 ": %s\n", instance_id, name);
+                SDL_Log("AudioDevice %" SDL_PRIu32 ": %s\n", instance_id, SDL_GetAudioDeviceName(instance_id));
             }
+            SDL_free(devices);
         }
         SDL_QuitSubSystem(SDL_INIT_AUDIO);
     }
@@ -298,10 +298,6 @@ The following symbols have been renamed:
 The following symbols have been removed:
 * SDL_MIX_MAXVOLUME - mixer volume is now a float between 0.0 and 1.0
 
-## SDL_clipboard.h
-
-SDL_GetClipboardText() and SDL_GetPrimarySelectionText() return a const pointer to temporary memory, which does not need to be freed. You can use SDL_ClaimTemporaryMemory() to convert it to a non-const pointer that should be freed when you're done with it.
-
 ## SDL_cpuinfo.h
 
 The intrinsics headers (mmintrin.h, etc.) have been moved to `<SDL3/SDL_intrin.h>` and are no longer automatically included in SDL.h.
@@ -383,6 +379,8 @@ SDL_AddEventWatch() now returns -1 if it fails because it ran out of memory and 
 
 SDL_RegisterEvents() now returns 0 if it couldn't allocate any user events.
 
+SDL_EventFilter functions now return SDL_bool.
+
 The following symbols have been renamed:
 * SDL_APP_DIDENTERBACKGROUND => SDL_EVENT_DID_ENTER_BACKGROUND
 * SDL_APP_DIDENTERFOREGROUND => SDL_EVENT_DID_ENTER_FOREGROUND
@@ -457,10 +455,6 @@ The following functions have been removed:
 
 The following enums have been renamed:
 * SDL_eventaction => SDL_EventAction
-
-## SDL_filesystem.h
-
-SDL_GetBasePath() and SDL_GetPrefPath() return a const pointer to temporary memory, which does not need to be freed. You can use SDL_ClaimTemporaryMemory() to convert it to a non-const pointer that should be freed when you're done with it.
 
 ## SDL_gamecontroller.h
 
@@ -710,15 +704,13 @@ Rather than iterating over haptic devices using device index, there is a new fun
 {
     if (SDL_InitSubSystem(SDL_INIT_HAPTIC) == 0) {
         int i, num_haptics;
-        const SDL_HapticID *haptics = SDL_GetHaptics(&num_haptics);
+        SDL_HapticID *haptics = SDL_GetHaptics(&num_haptics);
         if (haptics) {
             for (i = 0; i < num_haptics; ++i) {
                 SDL_HapticID instance_id = haptics[i];
-                const char *name = SDL_GetHapticNameForID(instance_id);
-
-                SDL_Log("Haptic %" SDL_PRIu32 ": %s\n",
-                        instance_id, name ? name : "Unknown");
+                SDL_Log("Haptic %" SDL_PRIu32 ": %s\n", instance_id, SDL_GetHapticNameForID(instance_id));
             }
+            SDL_free(haptics);
         }
         SDL_QuitSubSystem(SDL_INIT_HAPTIC);
     }
@@ -765,6 +757,27 @@ SDL_AddHintCallback() now returns a standard int result instead of void, returni
 
 Calling SDL_GetHint() with the name of the hint being changed from within a hint callback will now return the new value rather than the old value. The old value is still passed as a parameter to the hint callback.
 
+SDL_SetHint, SDL_SetHintWithPriority, and SDL_ResetHint now return int (-1 on error, 0 on success) instead of SDL_bool (SDL_FALSE on error, SDL_TRUE on success).
+
+The environment variables SDL_VIDEODRIVER and SDL_AUDIODRIVER have been renamed to SDL_VIDEO_DRIVER and SDL_AUDIO_DRIVER.
+
+The environment variables SDL_VIDEO_X11_WMCLASS and SDL_VIDEO_WAYLAND_WMCLASS have been removed and replaced by either using the appindentifier param to SDL_SetAppMetadata() or setting SDL_PROP_APP_METADATA_IDENTIFIER_STRING with SDL_SetAppMetadataProperty()
+
+The environment variable AUDIODEV is used exclusively to specify the audio device for the OSS and NetBSD audio drivers. Its use in the ALSA driver has been replaced with the hint SDL_HINT_AUDIO_ALSA_DEFAULT_DEVICE and in the sndio driver with the environment variable AUDIODEVICE.
+
+The following hints have been renamed:
+* SDL_HINT_VIDEODRIVER => SDL_HINT_VIDEO_DRIVER
+* SDL_HINT_AUDIODRIVER => SDL_HINT_AUDIO_DRIVER
+* SDL_HINT_ALLOW_TOPMOST => SDL_HINT_WINDOW_ALLOW_TOPMOST
+* SDL_HINT_DIRECTINPUT_ENABLED => SDL_HINT_JOYSTICK_DIRECTINPUT
+* SDL_HINT_GDK_TEXTINPUT_DEFAULT => SDL_HINT_GDK_TEXTINPUT_DEFAULT_TEXT
+* SDL_HINT_JOYSTICK_GAMECUBE_RUMBLE_BRAKE => SDL_HINT_JOYSTICK_HIDAPI_GAMECUBE_RUMBLE_BRAKE
+* SDL_HINT_LINUX_DIGITAL_HATS => SDL_HINT_JOYSTICK_LINUX_DIGITAL_HATS
+* SDL_HINT_LINUX_HAT_DEADZONES => SDL_HINT_JOYSTICK_LINUX_HAT_DEADZONES
+* SDL_HINT_LINUX_JOYSTICK_CLASSIC => SDL_HINT_JOYSTICK_LINUX_CLASSIC
+* SDL_HINT_LINUX_JOYSTICK_DEADZONES => SDL_HINT_JOYSTICK_LINUX_DEADZONES
+* SDL_HINT_VIDEO_WAYLAND_EMULATE_MOUSE_WARP => SDL_HINT_MOUSE_EMULATE_WARP_WITH_RELATIVE
+
 The following hints have been removed:
 * SDL_HINT_ACCELEROMETER_AS_JOYSTICK
 * SDL_HINT_ANDROID_BLOCK_ON_PAUSE_PAUSEAUDIO - the audio will be paused when the application is paused, and SDL_HINT_ANDROID_BLOCK_ON_PAUSE can be used to control that
@@ -790,23 +803,33 @@ The following hints have been removed:
 * SDL_HINT_VIDEO_X11_XINERAMA - Xinerama no longer supported by the X11 backend
 * SDL_HINT_VIDEO_X11_XVIDMODE - Xvidmode no longer supported by the X11 backend
 * SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING - SDL now properly handles the 0x406D1388 Exception if no debugger intercepts it, preventing its propagation.
+* SDL_HINT_WINDOWS_FORCE_MUTEX_CRITICAL_SECTIONS - Slim Reader/Writer Locks are always used if available
 * SDL_HINT_WINDOWS_NO_CLOSE_ON_ALT_F4 - replaced with SDL_HINT_WINDOWS_CLOSE_ON_ALT_F4, defaulting to SDL_TRUE
 * SDL_HINT_XINPUT_USE_OLD_JOYSTICK_MAPPING
+* SDL_HINT_AUDIO_DEVICE_APP_NAME - replaced by either using the appname param to SDL_SetAppMetadata() or setting SDL_PROP_APP_METADATA_NAME_STRING with SDL_SetAppMetadataProperty()
 
-* Renamed hints SDL_HINT_VIDEODRIVER and SDL_HINT_AUDIODRIVER to SDL_HINT_VIDEO_DRIVER and SDL_HINT_AUDIO_DRIVER
-* Renamed environment variables SDL_VIDEODRIVER and SDL_AUDIODRIVER to SDL_VIDEO_DRIVER and SDL_AUDIO_DRIVER
-* The environment variables SDL_VIDEO_X11_WMCLASS and SDL_VIDEO_WAYLAND_WMCLASS have been removed and replaced with the unified hint SDL_HINT_APP_ID
+The following environment variables have been renamed:
+* SDL_AUDIODRIVER => SDL_AUDIO_DRIVER
+* SDL_PATH_DSP => AUDIODEV
+* SDL_VIDEODRIVER => SDL_VIDEO_DRIVER
 
-The following hints have been renamed:
-* SDL_HINT_ALLOW_TOPMOST => SDL_HINT_WINDOW_ALLOW_TOPMOST
-* SDL_HINT_DIRECTINPUT_ENABLED => SDL_HINT_JOYSTICK_DIRECTINPUT
-* SDL_HINT_GDK_TEXTINPUT_DEFAULT => SDL_HINT_GDK_TEXTINPUT_DEFAULT_TEXT
-* SDL_HINT_JOYSTICK_GAMECUBE_RUMBLE_BRAKE => SDL_HINT_JOYSTICK_HIDAPI_GAMECUBE_RUMBLE_BRAKE
-* SDL_HINT_LINUX_DIGITAL_HATS => SDL_HINT_JOYSTICK_LINUX_DIGITAL_HATS
-* SDL_HINT_LINUX_HAT_DEADZONES => SDL_HINT_JOYSTICK_LINUX_HAT_DEADZONES
-* SDL_HINT_LINUX_JOYSTICK_CLASSIC => SDL_HINT_JOYSTICK_LINUX_CLASSIC
-* SDL_HINT_LINUX_JOYSTICK_DEADZONES => SDL_HINT_JOYSTICK_LINUX_DEADZONES
-* SDL_HINT_VIDEO_WAYLAND_EMULATE_MOUSE_WARP => SDL_HINT_MOUSE_EMULATE_WARP_WITH_RELATIVE
+The following environment variables have been removed:
+* SDL_AUDIO_ALSA_DEBUG - replaced by setting the hint SDL_HINT_LOGGING to "audio=debug"
+* SDL_DISKAUDIODELAY - replaced with the hint SDL_HINT_AUDIO_DISK_TIMESCALE which allows scaling the audio time rather than specifying an absolute delay.
+* SDL_DISKAUDIOFILE - replaced with the hint SDL_HINT_AUDIO_DISK_OUTPUT_FILE
+* SDL_DISKAUDIOFILEIN - replaced with the hint SDL_HINT_AUDIO_DISK_INPUT_FILE
+* SDL_DUMMYAUDIODELAY - replaced with the hint SDL_HINT_AUDIO_DUMMY_TIMESCALE which allows scaling the audio time rather than specifying an absolute delay.
+* SDL_HAPTIC_GAIN_MAX
+* SDL_HIDAPI_DISABLE_LIBUSB - replaced with the hint SDL_HINT_HIDAPI_LIBUSB
+* SDL_HIDAPI_JOYSTICK_DISABLE_UDEV - replaced with the hint SDL_HINT_HIDAPI_UDEV
+* SDL_INPUT_FREEBSD_KEEP_KBD - replaced with the hint SDL_HINT_MUTE_CONSOLE_KEYBOARD
+* SDL_INPUT_LINUX_KEEP_KBD - replaced with the hint SDL_HINT_MUTE_CONSOLE_KEYBOARD
+* VITA_DISABLE_TOUCH_BACK - replaced with the hint SDL_HINT_VITA_ENABLE_BACK_TOUCH
+* VITA_DISABLE_TOUCH_FRONT - replaced with the hint SDL_HINT_VITA_ENABLE_FRONT_TOUCH
+* VITA_MODULE_PATH - replaced with the hint SDL_HINT_VITA_MODULE_PATH
+* VITA_PVR_OGL - replaced with the hint SDL_HINT_VITA_PVR_OPENGL
+* VITA_PVR_SKIP_INIT - replaced with the hint SDL_HINT_VITA_PVR_INIT
+* VITA_RESOLUTION - replaced with the hint SDL_HINT_VITA_RESOLUTION
 
 The following functions have been removed:
 * SDL_ClearHints() - replaced with SDL_ResetHints()
@@ -840,7 +863,7 @@ Rather than iterating over joysticks using device index, there is a new function
 {
     if (SDL_InitSubSystem(SDL_INIT_JOYSTICK) == 0) {
         int i, num_joysticks;
-        const SDL_JoystickID *joysticks = SDL_GetJoysticks(&num_joysticks);
+        SDL_JoystickID *joysticks = SDL_GetJoysticks(&num_joysticks);
         if (joysticks) {
             for (i = 0; i < num_joysticks; ++i) {
                 SDL_JoystickID instance_id = joysticks[i];
@@ -850,6 +873,7 @@ Rather than iterating over joysticks using device index, there is a new function
                 SDL_Log("Joystick %" SDL_PRIu32 ": %s%s%s VID 0x%.4x, PID 0x%.4x\n",
                         instance_id, name ? name : "Unknown", path ? ", " : "", path ? path : "", SDL_GetJoystickVendorForID(instance_id), SDL_GetJoystickProductForID(instance_id));
             }
+            SDL_free(joysticks);
         }
         SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
     }
@@ -1034,11 +1058,9 @@ The following symbols have been renamed:
 
 SDL_LoadFunction() now returns `SDL_FunctionPointer` instead of `void *`, and should be cast to the appropriate function type. You can define SDL_FUNCTION_POINTER_IS_VOID_POINTER in your project to restore the previous behavior.
 
-## SDL_locale.h
-
-SDL_GetPreferredLocales() returns a const array of locale pointers, which does not need to be freed. You can use SDL_ClaimTemporaryMemory() to convert it to a non-const pointer that should be freed when you're done with it.
-
 ## SDL_log.h
+
+SDL_Log() no longer prints a log prefix by default for SDL_LOG_PRIORITY_INFO and below. The log prefixes can be customized with SDL_SetLogPriorityPrefix().
 
 The following macros have been removed:
 * SDL_MAX_LOG_MESSAGE - there's no message length limit anymore. If you need an artificial limit, this used to be 4096 in SDL versions before 2.0.24.
@@ -1085,6 +1107,10 @@ SDL_SystemCursor's items from SDL2 have been renamed to match CSS cursor names.
 
 The following functions have been renamed:
 * SDL_FreeCursor() => SDL_DestroyCursor()
+
+The following functions have been removed:
+* SDL_SetRelativeMouseMode() - replaced with SDL_SetWindowRelativeMouseMode()
+* SDL_GetRelativeMouseMode() - replaced with SDL_GetWindowRelativeMouseMode()
 
 The following symbols have been renamed:
 * SDL_SYSTEM_CURSOR_ARROW => SDL_SYSTEM_CURSOR_DEFAULT
@@ -1522,6 +1548,8 @@ SDL_IOStream *SDL_RWFromFP(FILE *fp, SDL_bool autoclose)
 
 The internal `FILE *` is available through a standard SDL_IOStream property, for streams made through SDL_IOFromFile() that use stdio behind the scenes; apps use this pointer at their own risk and should make sure that SDL and the app are using the same C runtime.
 
+On Apple platforms, SDL_RWFromFile (now called SDL_IOFromFile) no longer tries to read from inside the app bundle's resource directory, instead now using the specified path unchanged. One can use SDL_GetBasePath() to find the resource directory on these platforms.
+
 
 The functions SDL_ReadU8(), SDL_ReadU16LE(), SDL_ReadU16BE(), SDL_ReadU32LE(), SDL_ReadU32BE(), SDL_ReadU64LE(), and SDL_ReadU64BE() now return SDL_TRUE if the read succeeded and SDL_FALSE if it didn't, and store the data in a pointer passed in as a parameter.
 
@@ -1588,7 +1616,7 @@ Rather than iterating over sensors using device index, there is a new function S
 {
     if (SDL_InitSubSystem(SDL_INIT_SENSOR) == 0) {
         int i, num_sensors;
-        const SDL_SensorID *sensors = SDL_GetSensors(&num_sensors);
+        SDL_SensorID *sensors = SDL_GetSensors(&num_sensors);
         if (sensors) {
             for (i = 0; i < num_sensors; ++i) {
                 SDL_Log("Sensor %" SDL_PRIu32 ": %s, type %d, platform type %d\n",
@@ -1597,6 +1625,7 @@ Rather than iterating over sensors using device index, there is a new function S
                         SDL_GetSensorTypeForID(sensors[i]),
                         SDL_GetSensorNonPortableTypeForID(sensors[i]));
             }
+            SDL_free(sensors);
         }
         SDL_QuitSubSystem(SDL_INIT_SENSOR);
     }
@@ -1989,14 +2018,14 @@ The following symbols have been renamed:
 
 Several video backends have had their names lower-cased ("kmsdrm", "rpi", "android", "psp", "ps2", "vita"). SDL already does a case-insensitive compare for SDL_HINT_VIDEO_DRIVER tests, but if your app is calling SDL_GetVideoDriver() or SDL_GetCurrentVideoDriver() and doing case-sensitive compares on those strings, please update your code.
 
-SDL_VideoInit() and SDL_VideoQuit() have been removed. Instead you can call SDL_InitSubSystem() and SDL_QuitSubSystem() with SDL_INIT_VIDEO, which will properly refcount the subsystems. You can choose a specific video driver using SDL_VIDEO_DRIVER hint.
+SDL_VideoInit() and SDL_VideoQuit() have been removed. Instead you can call SDL_InitSubSystem() and SDL_QuitSubSystem() with SDL_INIT_VIDEO, which will properly refcount the subsystems. You can choose a specific video driver using SDL_HINT_VIDEO_DRIVER.
 
 Rather than iterating over displays using display index, there is a new function SDL_GetDisplays() to get the current list of displays, and functions which used to take a display index now take SDL_DisplayID, with an invalid ID being 0.
 ```c
 {
     if (SDL_InitSubSystem(SDL_INIT_VIDEO) == 0) {
         int i, num_displays = 0;
-        const SDL_DisplayID *displays = SDL_GetDisplays(&num_displays);
+        SDL_DisplayID *displays = SDL_GetDisplays(&num_displays);
         if (displays) {
             for (i = 0; i < num_displays; ++i) {
                 SDL_DisplayID instance_id = displays[i];
@@ -2004,6 +2033,7 @@ Rather than iterating over displays using display index, there is a new function
 
                 SDL_Log("Display %" SDL_PRIu32 ": %s\n", instance_id, name ? name : "Unknown");
             }
+            SDL_free(displays);
         }
         SDL_QuitSubSystem(SDL_INIT_VIDEO);
     }
@@ -2041,13 +2071,14 @@ Rather than iterating over display modes using an index, there is a new function
 {
     SDL_DisplayID display = SDL_GetPrimaryDisplay();
     int num_modes = 0;
-    const SDL_DisplayMode * const *modes = SDL_GetFullscreenDisplayModes(display, &num_modes);
+    SDL_DisplayMode **modes = SDL_GetFullscreenDisplayModes(display, &num_modes);
     if (modes) {
         for (i = 0; i < num_modes; ++i) {
             SDL_DisplayMode *mode = modes[i];
             SDL_Log("Display %" SDL_PRIu32 " mode %d: %dx%d@%gx %gHz\n",
                     display, i, mode->w, mode->h, mode->pixel_density, mode->refresh_rate);
         }
+        SDL_free(modes);
     }
 }
 ```
@@ -2079,8 +2110,6 @@ The SDL_WINDOW_TOOLTIP and SDL_WINDOW_POPUP_MENU window flags are now supported 
 SDL_WindowFlags is used instead of Uint32 for API functions that refer to window flags, and has been extended to 64 bits.
 
 SDL_GetWindowOpacity() directly returns the opacity instead of using an out parameter.
-
-SDL_GetWindowICCProfile() returns a const pointer to temporary memory, which does not need to be freed. You can use SDL_ClaimTemporaryMemory() to convert it to a non-const pointer that should be freed when you're done with it.
 
 The following functions have been renamed:
 * SDL_GL_DeleteContext() => SDL_GL_DestroyContext()

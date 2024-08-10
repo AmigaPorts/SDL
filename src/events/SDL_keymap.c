@@ -21,6 +21,7 @@
 #include "SDL_internal.h"
 
 #include "SDL_keymap_c.h"
+#include "SDL_keyboard_c.h"
 #include "../SDL_hashtable.h"
 
 struct SDL_Keymap
@@ -28,6 +29,9 @@ struct SDL_Keymap
     SDL_HashTable *scancode_to_keycode;
     SDL_HashTable *keycode_to_scancode;
 };
+
+static SDL_Keycode SDL_GetDefaultKeyFromScancode(SDL_Scancode scancode, SDL_Keymod modstate);
+static SDL_Scancode SDL_GetDefaultScancodeFromKey(SDL_Keycode key, SDL_Keymod *modstate);
 
 SDL_Keymap *SDL_CreateKeymap(void)
 {
@@ -115,21 +119,15 @@ SDL_Scancode SDL_GetKeymapScancode(SDL_Keymap *keymap, SDL_Keycode keycode, SDL_
     return scancode;
 }
 
-void SDL_ResetKeymap(SDL_Keymap *keymap)
-{
-    if (keymap) {
-        SDL_EmptyHashTable(keymap->scancode_to_keycode);
-        SDL_EmptyHashTable(keymap->keycode_to_scancode);
-    }
-}
-
 void SDL_DestroyKeymap(SDL_Keymap *keymap)
 {
-    if (keymap) {
-        SDL_DestroyHashTable(keymap->scancode_to_keycode);
-        SDL_DestroyHashTable(keymap->keycode_to_scancode);
-        SDL_free(keymap);
+    if (!keymap) {
+        return;
     }
+
+    SDL_DestroyHashTable(keymap->scancode_to_keycode);
+    SDL_DestroyHashTable(keymap->keycode_to_scancode);
+    SDL_free(keymap);
 }
 
 static const SDL_Keycode normal_default_symbols[] = {
@@ -192,7 +190,7 @@ static const SDL_Keycode shifted_default_symbols[] = {
     SDLK_QUESTION
 };
 
-SDL_Keycode SDL_GetDefaultKeyFromScancode(SDL_Scancode scancode, SDL_Keymod modstate)
+static SDL_Keycode SDL_GetDefaultKeyFromScancode(SDL_Scancode scancode, SDL_Keymod modstate)
 {
     if (((int)scancode) < SDL_SCANCODE_UNKNOWN || scancode >= SDL_NUM_SCANCODES) {
         SDL_InvalidParamError("scancode");
@@ -593,7 +591,7 @@ SDL_Keycode SDL_GetDefaultKeyFromScancode(SDL_Scancode scancode, SDL_Keymod mods
     }
 }
 
-SDL_Scancode SDL_GetDefaultScancodeFromKey(SDL_Keycode key, SDL_Keymod *modstate)
+static SDL_Scancode SDL_GetDefaultScancodeFromKey(SDL_Keycode key, SDL_Keymod *modstate)
 {
     if (modstate) {
         *modstate = SDL_KMOD_NONE;
@@ -615,7 +613,7 @@ SDL_Scancode SDL_GetDefaultScancodeFromKey(SDL_Keycode key, SDL_Keymod *modstate
         if (modstate) {
             *modstate = SDL_KMOD_SHIFT;
         }
-        return (SDL_Scancode)(SDL_SCANCODE_A + key - 'Z');
+        return (SDL_Scancode)(SDL_SCANCODE_A + key - 'A');
     }
 
     for (int i = 0; i < SDL_arraysize(normal_default_symbols); ++i) {
@@ -957,7 +955,8 @@ const char *SDL_GetScancodeName(SDL_Scancode scancode)
     if (!name) {
         name = "";
     }
-    return SDL_CreateTemporaryString(name);
+    // This is pointing to static memory or application managed memory
+    return name;
 }
 
 SDL_Scancode SDL_GetScancodeFromName(const char *name)
@@ -984,6 +983,7 @@ SDL_Scancode SDL_GetScancodeFromName(const char *name)
 
 const char *SDL_GetKeyName(SDL_Keycode key)
 {
+    const SDL_bool uppercase = SDL_TRUE;
     char name[8];
     char *end;
 
@@ -1005,22 +1005,32 @@ const char *SDL_GetKeyName(SDL_Keycode key)
     case SDLK_DELETE:
         return SDL_GetScancodeName(SDL_SCANCODE_DELETE);
     default:
-        /* Unaccented letter keys on latin keyboards are normally
-           labeled in upper case (and probably on others like Greek or
-           Cyrillic too, so if you happen to know for sure, please
-           adapt this). */
-        if (key >= 'a' && key <= 'z') {
-            key -= 32;
+        if (uppercase) {
+            // SDL_Keycode is defined as the unshifted key on the keyboard,
+            // but the key name is defined as the letter printed on that key,
+            // which is usually the shifted capital letter.
+            if (key > 0x7F || (key >= 'a' && key <= 'z')) {
+                SDL_Keymap *keymap = SDL_GetCurrentKeymap();
+                SDL_Keymod modstate;
+                SDL_Scancode scancode = SDL_GetKeymapScancode(keymap, key, &modstate);
+                if (scancode != SDL_SCANCODE_UNKNOWN && !(modstate & SDL_KMOD_SHIFT)) {
+                    SDL_Keycode capital = SDL_GetKeymapKeycode(keymap, scancode, SDL_KMOD_SHIFT);
+                    if (capital > 0x7F || (capital >= 'A' && capital <= 'Z')) {
+                        key = capital;
+                    }
+                }
+            }
         }
 
         end = SDL_UCS4ToUTF8(key, name);
         *end = '\0';
-        return SDL_CreateTemporaryString(name);
+        return SDL_GetPersistentString(name);
     }
 }
 
 SDL_Keycode SDL_GetKeyFromName(const char *name)
 {
+    const SDL_bool uppercase = SDL_TRUE;
     SDL_Keycode key;
 
     /* Check input */
@@ -1037,35 +1047,47 @@ SDL_Keycode SDL_GetKeyFromName(const char *name)
             key |= (Uint16)(name[++i] & 0x3F) << 12;
             key |= (Uint16)(name[++i] & 0x3F) << 6;
             key |= (Uint16)(name[++i] & 0x3F);
-            return key;
+        } else {
+            key = SDLK_UNKNOWN;
         }
-        return SDLK_UNKNOWN;
     } else if (key >= 0xE0) {
         if (SDL_strlen(name) == 3) {
             int i = 0;
             key = (Uint16)(name[i] & 0x0F) << 12;
             key |= (Uint16)(name[++i] & 0x3F) << 6;
             key |= (Uint16)(name[++i] & 0x3F);
-            return key;
+        } else {
+            key = SDLK_UNKNOWN;
         }
-        return SDLK_UNKNOWN;
     } else if (key >= 0xC0) {
         if (SDL_strlen(name) == 2) {
             int i = 0;
             key = (Uint16)(name[i] & 0x1F) << 6;
             key |= (Uint16)(name[++i] & 0x3F);
-            return key;
+        } else {
+            key = SDLK_UNKNOWN;
         }
         return SDLK_UNKNOWN;
     } else {
-        if (SDL_strlen(name) == 1) {
-            if (key >= 'A' && key <= 'Z') {
-                key += 32;
-            }
-            return key;
+        if (SDL_strlen(name) != 1) {
+            key = SDLK_UNKNOWN;
         }
-
-        /* Get the scancode for this name, and the associated keycode */
-        return SDL_GetKeyFromScancode(SDL_GetScancodeFromName(name), SDL_KMOD_NONE);
     }
+
+    if (key != SDLK_UNKNOWN) {
+        if (uppercase) {
+            // SDL_Keycode is defined as the unshifted key on the keyboard,
+            // but the key name is defined as the letter printed on that key,
+            // which is usually the shifted capital letter.
+            SDL_Keymap *keymap = SDL_GetCurrentKeymap();
+            SDL_Keymod modstate;
+            SDL_Scancode scancode = SDL_GetKeymapScancode(keymap, key, &modstate);
+            if (scancode != SDL_SCANCODE_UNKNOWN && (modstate & SDL_KMOD_SHIFT)) {
+                key = SDL_GetKeymapKeycode(keymap, scancode, SDL_KMOD_NONE);
+            }
+        }
+        return key;
+    }
+
+    return SDL_GetKeyFromScancode(SDL_GetScancodeFromName(name), SDL_KMOD_NONE, SDL_FALSE);
 }

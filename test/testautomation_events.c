@@ -22,8 +22,10 @@ static int g_eventFilterCalled = 0;
 static int g_userdataValue1 = 1;
 static int g_userdataValue2 = 2;
 
+#define MAX_ITERATIONS 100
+
 /* Event filter that sets some flags and optionally checks userdata */
-static int SDLCALL events_sampleNullEventFilter(void *userdata, SDL_Event *event)
+static SDL_bool SDLCALL events_sampleNullEventFilter(void *userdata, SDL_Event *event)
 {
     g_eventFilterCalled = 1;
 
@@ -34,7 +36,7 @@ static int SDLCALL events_sampleNullEventFilter(void *userdata, SDL_Event *event
         }
     }
 
-    return 0;
+    return SDL_TRUE;
 }
 
 /**
@@ -45,31 +47,57 @@ static int SDLCALL events_sampleNullEventFilter(void *userdata, SDL_Event *event
  */
 static int events_pushPumpAndPollUserevent(void *arg)
 {
-    SDL_Event event1;
-    SDL_Event event2;
+    SDL_Event event_in;
+    SDL_Event event_out;
     int result;
+    int i;
+    Sint32 ref_code = SDLTest_RandomSint32();
+    SDL_Window *event_window;
+
+    /* Flush all events */
+    SDL_FlushEvents(SDL_EVENT_FIRST, SDL_EVENT_LAST);
+    SDLTest_AssertCheck(!SDL_HasEvents(SDL_EVENT_USER, SDL_EVENT_USER), "Check SDL_HasEvents returns false");
 
     /* Create user event */
-    event1.type = SDL_EVENT_USER;
-    event1.common.timestamp = 0;
-    event1.user.code = SDLTest_RandomSint32();
-    event1.user.data1 = (void *)&g_userdataValue1;
-    event1.user.data2 = (void *)&g_userdataValue2;
+    event_in.type = SDL_EVENT_USER;
+    event_in.user.windowID = 0;
+    event_in.common.timestamp = 0;
+    event_in.user.code = ref_code;
+    event_in.user.data1 = (void *)&g_userdataValue1;
+    event_in.user.data2 = (void *)&g_userdataValue2;
 
     /* Push a user event onto the queue and force queue update */
-    SDL_PushEvent(&event1);
+    SDL_PushEvent(&event_in);
     SDLTest_AssertPass("Call to SDL_PushEvent()");
     SDL_PumpEvents();
     SDLTest_AssertPass("Call to SDL_PumpEvents()");
 
-    /* Poll for user event */
-    result = SDL_PollEvent(&event2);
-    SDLTest_AssertPass("Call to SDL_PollEvent()");
-    SDLTest_AssertCheck(result == 1, "Check result from SDL_PollEvent, expected: 1, got: %d", result);
+    SDLTest_AssertCheck(SDL_HasEvents(SDL_EVENT_USER, SDL_EVENT_USER), "Check SDL_HasEvents returns true");
+
+    /* Poll until we get a user event. */
+    for (i = 0; i < MAX_ITERATIONS; i++) {
+        result = SDL_PollEvent(&event_out);
+        SDLTest_AssertPass("Call to SDL_PollEvent()");
+        SDLTest_AssertCheck(result == 1, "Check result from SDL_PollEvent, expected: 1, got: %d", result);
+        if (!result) {
+            break;
+        }
+        if (event_out.type == SDL_EVENT_USER) {
+            break;
+        }
+    }
+    SDLTest_AssertCheck(i < MAX_ITERATIONS, "Check the user event is seen in less then %d polls, got %d poll", MAX_ITERATIONS, i + 1);
+
+    SDLTest_AssertCheck(SDL_EVENT_USER == event_out.type, "Check event type is SDL_EVENT_USER, expected: 0x%x, got: 0x%" SDL_PRIx32, SDL_EVENT_USER, event_out.type);
+    SDLTest_AssertCheck(ref_code == event_out.user.code, "Check SDL_Event.user.code, expected: 0x%" SDL_PRIx32 ", got: 0x%" SDL_PRIx32 , ref_code, event_out.user.code);
+    SDLTest_AssertCheck(0 == event_out.user.windowID, "Check SDL_Event.user.windowID, expected: NULL , got: %" SDL_PRIu32, event_out.user.windowID);
+    SDLTest_AssertCheck((void *)&g_userdataValue1 == event_out.user.data1, "Check SDL_Event.user.data1, expected: %p, got: %p", (void *)&g_userdataValue1, event_out.user.data1);
+    SDLTest_AssertCheck((void *)&g_userdataValue2 == event_out.user.data2, "Check SDL_Event.user.data2, expected: %p, got: %p", (void *)&g_userdataValue2, event_out.user.data2);
+    event_window = SDL_GetWindowFromEvent(&event_out);
+    SDLTest_AssertCheck(NULL == SDL_GetWindowFromEvent(&event_out), "Check SDL_GetWindowFromEvent returns the window id from a user event, expected: NULL, got: %p", event_window);
 
     /* Need to finish getting all events and sentinel, otherwise other tests that rely on event are in bad state */
-    while (SDL_PollEvent(&event2)) {
-    }
+    SDL_FlushEvents(SDL_EVENT_FIRST, SDL_EVENT_LAST);
 
     return TEST_COMPLETED;
 }
@@ -175,115 +203,27 @@ static int events_addDelEventWatchWithUserdata(void *arg)
     return TEST_COMPLETED;
 }
 
-/**
- * Creates and validates temporary event memory
- */
-static int events_temporaryMemory(void *arg)
-{
-    SDL_Event event;
-    void *mem, *claimed, *tmp;
-    SDL_bool found;
-
-    {
-        /* Create and claim event memory */
-        mem = SDL_AllocateTemporaryMemory(1);
-        SDLTest_AssertCheck(mem != NULL, "SDL_AllocateTemporaryMemory()");
-        *(char *)mem = '1';
-
-        claimed = SDL_ClaimTemporaryMemory(mem);
-        SDLTest_AssertCheck(claimed != NULL, "SDL_ClaimTemporaryMemory() returned a valid pointer");
-
-        /* Verify that we can't claim it again */
-        tmp = SDL_ClaimTemporaryMemory(mem);
-        SDLTest_AssertCheck(tmp == NULL, "SDL_ClaimTemporaryMemory() can't claim memory twice");
-
-        /* Clean up */
-        SDL_free(claimed);
-    }
-
-    {
-        /* Create event memory and queue it */
-        mem = SDL_AllocateTemporaryMemory(1);
-        SDLTest_AssertCheck(mem != NULL, "SDL_AllocateTemporaryMemory()");
-        *(char *)mem = '2';
-
-        SDL_zero(event);
-        event.type = SDL_EVENT_USER;
-        event.user.data1 = mem;
-        SDL_PushEvent(&event);
-
-        /* Verify that we can't claim the memory once it's on the queue */
-        claimed = SDL_ClaimTemporaryMemory(mem);
-        SDLTest_AssertCheck(claimed == NULL, "SDL_ClaimTemporaryMemory() can't claim memory on the event queue");
-
-        /* Get the event and verify the memory is valid */
-        found = SDL_FALSE;
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_EVENT_USER && event.user.data1 == mem) {
-                found = SDL_TRUE;
-            }
-        }
-        SDLTest_AssertCheck(found, "SDL_PollEvent() returned queued event");
-
-        /* Verify that we can claim the memory now that we've dequeued it */
-        claimed = SDL_ClaimTemporaryMemory(mem);
-        SDLTest_AssertCheck(claimed != NULL, "SDL_ClaimTemporaryMemory() can claim memory after dequeuing event");
-
-        /* Clean up */
-        SDL_free(claimed);
-    }
-
-    {
-        /* Create event memory and queue it */
-        mem = SDL_AllocateTemporaryMemory(1);
-        SDLTest_AssertCheck(mem != NULL, "SDL_AllocateTemporaryMemory()");
-        *(char *)mem = '3';
-
-        SDL_zero(event);
-        event.type = SDL_EVENT_USER;
-        event.user.data1 = mem;
-        SDL_PushEvent(&event);
-
-        /* Get the event and verify the memory is valid */
-        found = SDL_FALSE;
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_EVENT_USER && event.user.data1 == mem) {
-                found = SDL_TRUE;
-            }
-        }
-        SDLTest_AssertCheck(found, "SDL_PollEvent() returned queued event");
-
-        /* Verify that pumping the event loop frees event memory */
-        SDL_PumpEvents();
-        claimed = SDL_ClaimTemporaryMemory(mem);
-        SDLTest_AssertCheck(claimed == NULL, "SDL_ClaimTemporaryMemory() can't claim memory after pumping the event loop");
-    }
-
-    return TEST_COMPLETED;
-}
-
 /* ================= Test References ================== */
 
 /* Events test cases */
-static const SDLTest_TestCaseReference eventsTest1 = {
-    (SDLTest_TestCaseFp)events_pushPumpAndPollUserevent, "events_pushPumpAndPollUserevent", "Pushes, pumps and polls a user event", TEST_ENABLED
+static const SDLTest_TestCaseReference eventsTest_pushPumpAndPollUserevent = {
+    events_pushPumpAndPollUserevent, "events_pushPumpAndPollUserevent", "Pushes, pumps and polls a user event", TEST_ENABLED
 };
 
-static const SDLTest_TestCaseReference eventsTest2 = {
-    (SDLTest_TestCaseFp)events_addDelEventWatch, "events_addDelEventWatch", "Adds and deletes an event watch function with NULL userdata", TEST_ENABLED
+static const SDLTest_TestCaseReference eventsTest_addDelEventWatch = {
+    events_addDelEventWatch, "events_addDelEventWatch", "Adds and deletes an event watch function with NULL userdata", TEST_ENABLED
 };
 
-static const SDLTest_TestCaseReference eventsTest3 = {
-    (SDLTest_TestCaseFp)events_addDelEventWatchWithUserdata, "events_addDelEventWatchWithUserdata", "Adds and deletes an event watch function with userdata", TEST_ENABLED
-};
-
-static const SDLTest_TestCaseReference eventsTestTemporaryMemory = {
-    (SDLTest_TestCaseFp)events_temporaryMemory, "events_temporaryMemory", "Creates and validates temporary event memory", TEST_ENABLED
+static const SDLTest_TestCaseReference eventsTest_addDelEventWatchWithUserdata = {
+    events_addDelEventWatchWithUserdata, "events_addDelEventWatchWithUserdata", "Adds and deletes an event watch function with userdata", TEST_ENABLED
 };
 
 /* Sequence of Events test cases */
 static const SDLTest_TestCaseReference *eventsTests[] = {
-    &eventsTest1, &eventsTest2, &eventsTest3, &eventsTestTemporaryMemory, NULL
+    &eventsTest_pushPumpAndPollUserevent,
+    &eventsTest_addDelEventWatch,
+    &eventsTest_addDelEventWatchWithUserdata,
+    NULL
 };
 
 /* Events test suite (global) */

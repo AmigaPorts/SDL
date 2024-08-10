@@ -201,6 +201,8 @@ int Cocoa_VideoInit(SDL_VideoDevice *_this)
         Cocoa_InitKeyboard(_this);
         if (Cocoa_InitMouse(_this) < 0) {
             return -1;
+        } else if (Cocoa_InitPen(_this) < 0) {
+            return -1;
         }
 
         // Assume we have a mouse and keyboard
@@ -227,6 +229,7 @@ void Cocoa_VideoQuit(SDL_VideoDevice *_this)
         Cocoa_QuitModes(_this);
         Cocoa_QuitKeyboard(_this);
         Cocoa_QuitMouse(_this);
+        Cocoa_QuitPen(_this);
         SDL_DestroyMutex(data.swaplock);
         data.swaplock = NULL;
     }
@@ -250,50 +253,54 @@ SDL_SystemTheme Cocoa_GetSystemTheme(void)
 /* This function assumes that it's called from within an autorelease pool */
 NSImage *Cocoa_CreateImage(SDL_Surface *surface)
 {
-    SDL_Surface *converted;
-    NSBitmapImageRep *imgrep;
-    Uint8 *pixels;
-    int i;
     NSImage *img;
 
-    converted = SDL_ConvertSurface(surface, SDL_PIXELFORMAT_RGBA32);
-    if (!converted) {
-        return nil;
-    }
-
-    imgrep = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL
-                                                     pixelsWide:converted->w
-                                                     pixelsHigh:converted->h
-                                                  bitsPerSample:8
-                                                samplesPerPixel:4
-                                                       hasAlpha:YES
-                                                       isPlanar:NO
-                                                 colorSpaceName:NSDeviceRGBColorSpace
-                                                    bytesPerRow:converted->pitch
-                                                   bitsPerPixel:SDL_BITSPERPIXEL(converted->format)];
-    if (imgrep == nil) {
-        SDL_DestroySurface(converted);
-        return nil;
-    }
-
-    /* Copy the pixels */
-    pixels = [imgrep bitmapData];
-    SDL_memcpy(pixels, converted->pixels, (size_t)converted->h * converted->pitch);
-    SDL_DestroySurface(converted);
-
-    /* Premultiply the alpha channel */
-    for (i = (surface->h * surface->w); i--;) {
-        Uint8 alpha = pixels[3];
-        pixels[0] = (Uint8)(((Uint16)pixels[0] * alpha) / 255);
-        pixels[1] = (Uint8)(((Uint16)pixels[1] * alpha) / 255);
-        pixels[2] = (Uint8)(((Uint16)pixels[2] * alpha) / 255);
-        pixels += 4;
-    }
-
     img = [[NSImage alloc] initWithSize:NSMakeSize(surface->w, surface->h)];
-    if (img != nil) {
+    if (img == nil) {
+        return nil;
+    }
+
+    SDL_Surface **images = SDL_GetSurfaceImages(surface, NULL);
+    if (!images) {
+        return nil;
+    }
+
+    for (int i = 0; images[i]; ++i) {
+        SDL_Surface *converted = SDL_ConvertSurface(images[i], SDL_PIXELFORMAT_RGBA32);
+        if (!converted) {
+            SDL_free(images);
+            return nil;
+        }
+
+        /* Premultiply the alpha channel */
+        SDL_PremultiplySurfaceAlpha(converted, SDL_FALSE);
+
+        NSBitmapImageRep *imgrep = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL
+                                                                           pixelsWide:converted->w
+                                                                           pixelsHigh:converted->h
+                                                                        bitsPerSample:8
+                                                                      samplesPerPixel:4
+                                                                             hasAlpha:YES
+                                                                             isPlanar:NO
+                                                                       colorSpaceName:NSDeviceRGBColorSpace
+                                                                          bytesPerRow:converted->pitch
+                                                                         bitsPerPixel:SDL_BITSPERPIXEL(converted->format)];
+        if (imgrep == nil) {
+            SDL_free(images);
+            SDL_DestroySurface(converted);
+            return nil;
+        }
+
+        /* Copy the pixels */
+        Uint8 *pixels = [imgrep bitmapData];
+        SDL_memcpy(pixels, converted->pixels, (size_t)converted->h * converted->pitch);
+        SDL_DestroySurface(converted);
+
+        /* Add the image representation */
         [img addRepresentation:imgrep];
     }
+    SDL_free(images);
+
     return img;
 }
 
@@ -311,9 +318,9 @@ void SDL_NSLog(const char *prefix, const char *text)
 {
     @autoreleasepool {
         NSString *nsText = [NSString stringWithUTF8String:text];
-        if (prefix) {
+        if (prefix && *prefix) {
             NSString *nsPrefix = [NSString stringWithUTF8String:prefix];
-            NSLog(@"%@: %@", nsPrefix, nsText);
+            NSLog(@"%@%@", nsPrefix, nsText);
         } else {
             NSLog(@"%@", nsText);
         }

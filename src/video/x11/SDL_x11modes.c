@@ -265,11 +265,11 @@ static float GetGlobalContentScale(SDL_VideoDevice *_this)
 
 static int get_visualinfo(Display *display, int screen, XVisualInfo *vinfo)
 {
-    const char *visual_id = SDL_getenv("SDL_VIDEO_X11_VISUALID");
+    const char *visual_id = SDL_GetHint(SDL_HINT_VIDEO_X11_VISUALID);
     int depth;
 
     /* Look for an exact visual, if requested */
-    if (visual_id) {
+    if (visual_id && *visual_id) {
         XVisualInfo *vi, template;
         int nvis;
 
@@ -686,7 +686,7 @@ static int X11_UpdateXRandRDisplay(SDL_VideoDevice *_this, Display *dpy, int scr
 
 static void X11_HandleXRandROutputChange(SDL_VideoDevice *_this, const XRROutputChangeNotifyEvent *ev)
 {
-    const SDL_DisplayID *displays;
+    SDL_DisplayID *displays;
     SDL_VideoDisplay *display = NULL;
     int i;
 
@@ -704,6 +704,7 @@ static void X11_HandleXRandROutputChange(SDL_VideoDevice *_this, const XRROutput
                 break;
             }
         }
+        SDL_free(displays);
     }
 
     if (ev->connection == RR_Disconnected) { /* output is going away */

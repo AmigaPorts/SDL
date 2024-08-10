@@ -30,6 +30,7 @@
 
 #ifdef HAVE_STDIO_H
 #include <stdio.h>
+#include <errno.h>
 #include <sys/stat.h>
 #endif
 #ifdef HAVE_LIMITS_H
@@ -47,11 +48,6 @@ struct SDL_IOStream
     SDL_IOStatus status;
     SDL_PropertiesID props;
 };
-
-
-#ifdef SDL_PLATFORM_APPLE
-#include "cocoa/SDL_iostreambundlesupport.h"
-#endif /* SDL_PLATFORM_APPLE */
 
 #ifdef SDL_PLATFORM_3DS
 #include "n3ds/SDL_iostreamromfs.h"
@@ -574,7 +570,7 @@ SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
         FILE *fp = fdopen(fd, mode);
         if (!fp) {
             close(fd);
-            SDL_SetError("Unable to open file descriptor (%d) from URI %s", fd, file);
+            SDL_SetError("Unable to open file descriptor (%d) from URI %s: %s", fd, file, strerror(errno));
             return NULL;
         }
 
@@ -654,9 +650,7 @@ SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
 
 #elif defined(HAVE_STDIO_H)
     {
-        #if defined(SDL_PLATFORM_APPLE)
-        FILE *fp = SDL_OpenFPFromBundleOrFallback(file, mode);
-        #elif defined(SDL_PLATFORM_WINRT)
+        #if defined(SDL_PLATFORM_WINRT)
         FILE *fp = NULL;
         fopen_s(&fp, file, mode);
         #elif defined(SDL_PLATFORM_3DS)
@@ -666,7 +660,7 @@ SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
         #endif
 
         if (!fp) {
-            SDL_SetError("Couldn't open %s", file);
+            SDL_SetError("Couldn't open %s: %s", file, strerror(errno));
         } else if (!IsRegularFileOrPipe(fp)) {
             fclose(fp);
             fp = NULL;

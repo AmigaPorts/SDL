@@ -96,7 +96,7 @@ static int get_driindex(void)
 
     SDL_strlcpy(device + kmsdrm_dri_pathsize, kmsdrm_dri_devname,
                 sizeof(device) - kmsdrm_dri_devnamesize);
-    while((res = readdir(folder)) != NULL) {
+    while((res = readdir(folder)) != NULL && available < 0) {
         if (SDL_memcmp(res->d_name, kmsdrm_dri_devname,
                        kmsdrm_dri_devnamesize) == 0) {
             SDL_strlcpy(device + kmsdrm_dri_pathsize + kmsdrm_dri_devnamesize,
@@ -122,7 +122,7 @@ static int get_driindex(void)
                             resources->count_encoders > 0 &&
                             resources->count_crtcs > 0) {
                             available = -ENOENT;
-                            for (i = 0; i < resources->count_connectors; i++) {
+                            for (i = 0; i < resources->count_connectors && available < 0; i++) {
                                 drmModeConnector *conn =
                                     KMSDRM_drmModeGetConnector(
                                         drm_fd, resources->connectors[i]);
@@ -133,20 +133,21 @@ static int get_driindex(void)
 
                                 if (conn->connection == DRM_MODE_CONNECTED &&
                                     conn->count_modes) {
+                                    SDL_bool access_denied = SDL_FALSE;
                                     if (SDL_GetHintBoolean(
                                             SDL_HINT_KMSDRM_REQUIRE_DRM_MASTER,
                                             SDL_TRUE)) {
                                         /* Skip this device if we can't obtain
                                          * DRM master */
                                         KMSDRM_drmSetMaster(drm_fd);
-                                        if (KMSDRM_drmAuthMagic(drm_fd, 0) ==
-                                            -EACCES) {
-                                            continue;
+                                        if (KMSDRM_drmAuthMagic(drm_fd, 0) == -EACCES) {
+                                            access_denied = SDL_TRUE;
                                         }
                                     }
 
-                                    available = devindex;
-                                    break;
+                                    if (!access_denied) {
+                                        available = devindex;
+                                    }
                                 }
 
                                 KMSDRM_drmModeFreeConnector(conn);
@@ -157,11 +158,10 @@ static int get_driindex(void)
                     SDL_KMSDRM_UnloadSymbols();
                 }
                 close(drm_fd);
+            } else {
+                SDL_LogDebug(SDL_LOG_CATEGORY_VIDEO,
+                             "Failed to open KMSDRM device %s, errno: %d\n", device, errno);
             }
-
-            SDL_LogDebug(SDL_LOG_CATEGORY_VIDEO,
-                         "Failed to open KMSDRM device %s, errno: %d\n", device,
-                         errno);
         }
     }
 
@@ -514,12 +514,11 @@ static drmModeModeInfo *KMSDRM_GetClosestDisplayMode(SDL_VideoDisplay *display, 
     SDL_DisplayData *dispdata = display->internal;
     drmModeConnector *connector = dispdata->connector;
 
-    const SDL_DisplayMode *closest;
+    SDL_DisplayMode closest;
     drmModeModeInfo *drm_mode;
 
-    closest = SDL_GetClosestFullscreenDisplayMode(display->id, width, height, 0.0f, SDL_FALSE);
-    if (closest) {
-        const SDL_DisplayModeData *modedata = closest->internal;
+    if (SDL_GetClosestFullscreenDisplayMode(display->id, width, height, 0.0f, SDL_FALSE, &closest) == 0) {
+        const SDL_DisplayModeData *modedata = closest.internal;
         drm_mode = &connector->modes[modedata->mode_index];
         return drm_mode;
     } else {
@@ -535,7 +534,7 @@ static drmModeModeInfo *KMSDRM_GetClosestDisplayMode(SDL_VideoDisplay *display, 
 /* Deinitializes the internal of the SDL Displays in the SDL display list. */
 static void KMSDRM_DeinitDisplays(SDL_VideoDevice *_this)
 {
-    const SDL_DisplayID *displays;
+    SDL_DisplayID *displays;
     SDL_DisplayData *dispdata;
     int i;
 
@@ -559,6 +558,7 @@ static void KMSDRM_DeinitDisplays(SDL_VideoDevice *_this)
                 dispdata->crtc = NULL;
             }
         }
+        SDL_free(displays);
     }
 }
 

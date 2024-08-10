@@ -495,6 +495,9 @@
     <ClInclude Include="..\..\src\dynapi\SDL_dynapi_unsupported.h">
       <Filter>dynapi</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\events\SDL_categories.h">
+      <Filter>events</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\events\SDL_clipboardevents_c.h">
       <Filter>events</Filter>
     </ClInclude>
@@ -679,6 +682,9 @@
       <Filter>video\windows</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\video\windows\SDL_windowskeyboard.h">
+      <Filter>video\windows</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\video\windows\SDL_windowsgameinput.h">
       <Filter>video\windows</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\video\windows\SDL_windowsmessagebox.h">
@@ -997,6 +1003,9 @@
     </ClCompile>
     <ClCompile Include="..\..\src\dynapi\SDL_dynapi.c">
       <Filter>dynapi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\events\SDL_categories.c">
+      <Filter>events</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\events\SDL_clipboardevents.c">
       <Filter>events</Filter>
@@ -1332,6 +1341,9 @@
       <Filter>video\windows</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\video\windows\SDL_windowskeyboard.c">
+      <Filter>video\windows</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\video\windows\SDL_windowsgameinput.c">
       <Filter>video\windows</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\video\windows\SDL_windowsmessagebox.c">
