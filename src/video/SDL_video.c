@@ -1838,7 +1838,9 @@ int SDL_UpdateFullscreenMode(SDL_Window *window, SDL_FullscreenOp fullscreen, SD
                     dprintf("Display bounds %d * %d\n", bounds.w, bounds.h);
                     /* This makes testautomation video_setWindowCenteredOnDisplay case pass. Otherwise window
                        opens on the Workbench screen */
-                    mode = (SDL_DisplayMode *)SDL_GetClosestFullscreenDisplayMode(1, bounds.w, bounds.h, 0.0f, SDL_FALSE, NULL /* TODO */);
+                    if (SDL_GetClosestFullscreenDisplayMode(1, bounds.w, bounds.h, 0.0f, SDL_FALSE, mode) < 0) {
+                        dprintf("Failed to get closest fullscreen display mode: %s\n", SDL_GetError());
+                    }
                 } else {
                     dprintf("Failed to get display bounds: %s\n", SDL_GetError());
                 }
