@@ -116,7 +116,6 @@ testautomation: testautomation.o \
 		      testautomation_main.o \
 		      testautomation_math.o \
 		      testautomation_mouse.o \
-		      testautomation_pen.o \
 		      testautomation_pixels.o \
 		      testautomation_platform.o \
 		      testautomation_properties.o \
