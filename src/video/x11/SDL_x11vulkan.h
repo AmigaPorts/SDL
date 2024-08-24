@@ -43,11 +43,11 @@ void X11_Vulkan_DestroySurface(SDL_VideoDevice *_this,
                                VkInstance instance,
                                VkSurfaceKHR surface,
                                const struct VkAllocationCallbacks *allocator);
-SDL_bool X11_Vulkan_GetPresentationSupport(SDL_VideoDevice *_this,
+bool X11_Vulkan_GetPresentationSupport(SDL_VideoDevice *_this,
                                            VkInstance instance,
                                            VkPhysicalDevice physicalDevice,
                                            Uint32 queueFamilyIndex);
 
 #endif
 
-#endif /* SDL_x11vulkan_h_ */
+#endif // SDL_x11vulkan_h_

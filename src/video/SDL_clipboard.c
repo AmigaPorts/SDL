@@ -31,7 +31,7 @@ void SDL_CancelClipboardData(Uint32 sequence)
     size_t i;
 
     if (sequence != _this->clipboard_sequence) {
-        /* This clipboard data was already canceled */
+        // This clipboard data was already canceled
         return;
     }
 
@@ -62,14 +62,14 @@ int SDL_SetClipboardData(SDL_ClipboardDataCallback callback, SDL_ClipboardCleanu
         return SDL_SetError("Video subsystem must be initialized to set clipboard text");
     }
 
-    /* Parameter validation */
+    // Parameter validation
     if (!((callback && mime_types && num_mime_types > 0) ||
           (!callback && !mime_types && num_mime_types == 0))) {
         return SDL_SetError("Invalid parameters");
     }
 
     if (!callback && !_this->clipboard_callback) {
-        /* Nothing to do, don't modify the system clipboard */
+        // Nothing to do, don't modify the system clipboard
         return 0;
     }
 
@@ -151,7 +151,7 @@ void *SDL_GetInternalClipboardData(SDL_VideoDevice *_this, const char *mime_type
     if (_this->clipboard_callback) {
         const void *provided_data = _this->clipboard_callback(_this->clipboard_userdata, mime_type, size);
         if (provided_data) {
-            /* Make a copy of it for the caller and guarantee null termination */
+            // Make a copy of it for the caller and guarantee null termination
             data = SDL_malloc(*size + sizeof(Uint32));
             if (data) {
                 SDL_memcpy(data, provided_data, *size);
@@ -180,7 +180,7 @@ void *SDL_GetClipboardData(const char *mime_type, size_t *size)
         return NULL;
     }
 
-    /* Initialize size to empty, so implementations don't have to worry about it */
+    // Initialize size to empty, so implementations don't have to worry about it
     *size = 0;
 
     if (_this->GetClipboardData) {
@@ -197,16 +197,16 @@ void *SDL_GetClipboardData(const char *mime_type, size_t *size)
     }
 }
 
-SDL_bool SDL_HasInternalClipboardData(SDL_VideoDevice *_this, const char *mime_type)
+bool SDL_HasInternalClipboardData(SDL_VideoDevice *_this, const char *mime_type)
 {
     size_t i;
 
     for (i = 0; i < _this->num_clipboard_mime_types; ++i) {
         if (SDL_strcmp(mime_type, _this->clipboard_mime_types[i]) == 0) {
-            return SDL_TRUE;
+            return true;
         }
     }
-    return SDL_FALSE;
+    return false;
 }
 
 SDL_bool SDL_HasClipboardData(const char *mime_type)
@@ -215,12 +215,12 @@ SDL_bool SDL_HasClipboardData(const char *mime_type)
 
     if (!_this) {
         SDL_SetError("Video subsystem must be initialized to check clipboard data");
-        return SDL_FALSE;
+        return false;
     }
 
     if (!mime_type) {
         SDL_InvalidParamError("mime_type");
-        return SDL_FALSE;
+        return false;
     }
 
     if (_this->HasClipboardData) {
@@ -232,9 +232,9 @@ SDL_bool SDL_HasClipboardData(const char *mime_type)
     }
 }
 
-/* Clipboard text */
+// Clipboard text
 
-SDL_bool SDL_IsTextMimeType(const char *mime_type)
+bool SDL_IsTextMimeType(const char *mime_type)
 {
     return (SDL_strncmp(mime_type, "text", 4) == 0);
 }
@@ -318,19 +318,19 @@ SDL_bool SDL_HasClipboardText(void)
 
     if (!_this) {
         SDL_SetError("Video subsystem must be initialized to check clipboard text");
-        return SDL_FALSE;
+        return false;
     }
 
     text_mime_types = SDL_GetTextMimeTypes(_this, &num_mime_types);
     for (i = 0; i < num_mime_types; ++i) {
         if (SDL_HasClipboardData(text_mime_types[i])) {
-            return SDL_TRUE;
+            return true;
         }
     }
-    return SDL_FALSE;
+    return false;
 }
 
-/* Primary selection text */
+// Primary selection text
 
 int SDL_SetPrimarySelectionText(const char *text)
 {
@@ -382,16 +382,16 @@ SDL_bool SDL_HasPrimarySelectionText(void)
 
     if (!_this) {
         SDL_SetError("Video subsystem must be initialized to check primary selection text");
-        return SDL_FALSE;
+        return false;
     }
 
     if (_this->HasPrimarySelectionText) {
         return _this->HasPrimarySelectionText(_this);
     } else {
         if (_this->primary_selection_text && _this->primary_selection_text[0] != '\0') {
-            return SDL_TRUE;
+            return true;
         } else {
-            return SDL_FALSE;
+            return false;
         }
     }
 }

@@ -22,11 +22,11 @@
 
 #ifdef SDL_VIDEO_DRIVER_WINRT
 
-/* Windows-specific includes */
+// Windows-specific includes
 #include <Windows.h>
 #include <agile.h>
 
-/* SDL-specific includes */
+// SDL-specific includes
 #include "SDL_winrtevents_c.h"
 
 extern "C" {
@@ -49,7 +49,7 @@ static SDL_Scancode WINRT_TranslateKeycode(Windows::System::VirtualKey virtualKe
         scanCode = 0xe046;
     }
 
-    /* Pack scan code into one byte to make the index. */
+    // Pack scan code into one byte to make the index.
     index = LOBYTE(scanCode) | (HIBYTE(scanCode) ? 0x80 : 0x00);
     code = windows_scancode_table[index];
     *rawcode = scanCode;
@@ -143,9 +143,9 @@ void WINTRT_InitialiseInputPaneEvents(SDL_VideoDevice *_this)
     }
 }
 
-SDL_bool WINRT_HasScreenKeyboardSupport(SDL_VideoDevice *_this)
+bool WINRT_HasScreenKeyboardSupport(SDL_VideoDevice *_this)
 {
-    return SDL_TRUE;
+    return true;
 }
 
 void WINRT_ShowScreenKeyboard(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID props)
@@ -166,7 +166,7 @@ void WINRT_HideScreenKeyboard(SDL_VideoDevice *_this, SDL_Window *window)
     }
 }
 
-SDL_bool WINRT_IsScreenKeyboardShown(SDL_VideoDevice *_this, SDL_Window *window)
+bool WINRT_IsScreenKeyboardShown(SDL_VideoDevice *_this, SDL_Window *window)
 {
     using namespace Windows::UI::ViewManagement;
     InputPane ^ inputPane = InputPane::GetForCurrentView();
@@ -178,7 +178,7 @@ SDL_bool WINRT_IsScreenKeyboardShown(SDL_VideoDevice *_this, SDL_Window *window)
             // This does not seem to work on latest UWP/Xbox.
             // Workaround: Listen to Showing/Hiding events
             if (WINRT_InputPaneVisible) {
-                return SDL_TRUE;
+                return true;
             }
             break;
         default:
@@ -186,12 +186,12 @@ SDL_bool WINRT_IsScreenKeyboardShown(SDL_VideoDevice *_this, SDL_Window *window)
             // https://learn.microsoft.com/en-us/uwp/api/windows.ui.viewmanagement.inputpane.visible?view=winrt-22621
             Windows::Foundation::Rect rect = inputPane->OccludedRect;
             if (rect.Width > 0 && rect.Height > 0) {
-                return SDL_TRUE;
+                return true;
             }
             break;
         }
     }
-    return SDL_FALSE;
+    return false;
 }
 
 #endif // NTDDI_VERSION >= ...

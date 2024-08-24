@@ -31,7 +31,7 @@ extern void UIKit_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window);
 extern void UIKit_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window);
 extern void UIKit_HideWindow(SDL_VideoDevice *_this, SDL_Window *window);
 extern void UIKit_RaiseWindow(SDL_VideoDevice *_this, SDL_Window *window);
-extern void UIKit_SetWindowBordered(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool bordered);
+extern void UIKit_SetWindowBordered(SDL_VideoDevice *_this, SDL_Window *window, bool bordered);
 extern int UIKit_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_VideoDisplay *display, SDL_FullscreenOp fullscreen);
 extern void UIKit_UpdatePointerLock(SDL_VideoDevice *_this, SDL_Window *window);
 extern void UIKit_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window);
@@ -48,9 +48,9 @@ extern NSUInteger UIKit_GetSupportedOrientations(SDL_Window *window);
 @property(nonatomic, strong) UIWindow *uiwindow;
 @property(nonatomic, strong) SDL_uikitviewcontroller *viewcontroller;
 
-/* Array of SDL_uikitviews owned by this window. */
+// Array of SDL_uikitviews owned by this window.
 @property(nonatomic, copy) NSMutableArray *views;
 
 @end
 
-#endif /* SDL_uikitwindow_h_ */
+#endif // SDL_uikitwindow_h_

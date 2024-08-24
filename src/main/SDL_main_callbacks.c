@@ -29,7 +29,7 @@ static SDL_AtomicInt apprc;  // use an atomic, since events might land from any 
 static void *SDL_main_appstate = NULL;
 
 // Return true if this event needs to be processed before returning from the event watcher
-static SDL_bool ShouldDispatchImmediately(SDL_Event *event)
+static bool ShouldDispatchImmediately(SDL_Event *event)
 {
     switch (event->type) {
     case SDL_EVENT_TERMINATING:
@@ -38,16 +38,16 @@ static SDL_bool ShouldDispatchImmediately(SDL_Event *event)
     case SDL_EVENT_DID_ENTER_BACKGROUND:
     case SDL_EVENT_WILL_ENTER_FOREGROUND:
     case SDL_EVENT_DID_ENTER_FOREGROUND:
-        return SDL_TRUE;
+        return true;
     default:
-        return SDL_FALSE;
+        return false;
     }
 }
 
 static void SDL_DispatchMainCallbackEvent(SDL_Event *event)
 {
-    if (SDL_AtomicGet(&apprc) == 0) { // if already quitting, don't send the event to the app.
-        SDL_AtomicCompareAndSwap(&apprc, 0, SDL_main_event_callback(SDL_main_appstate, event));
+    if (SDL_AtomicGet(&apprc) == SDL_APP_CONTINUE) { // if already quitting, don't send the event to the app.
+        SDL_AtomicCompareAndSwap(&apprc, SDL_APP_CONTINUE, SDL_main_event_callback(SDL_main_appstate, event));
     }
 }
 
@@ -78,34 +78,34 @@ static SDL_bool SDLCALL SDL_MainCallbackEventWatcher(void *userdata, SDL_Event *
     } else {
         // We'll process this event later from the main event queue
     }
-    return SDL_TRUE;
+    return true;
 }
 
-SDL_bool SDL_HasMainCallbacks(void)
+bool SDL_HasMainCallbacks(void)
 {
     if (SDL_main_iteration_callback) {
-        return SDL_TRUE;
+        return true;
     }
-    return SDL_FALSE;
+    return false;
 }
 
-int SDL_InitMainCallbacks(int argc, char* argv[], SDL_AppInit_func appinit, SDL_AppIterate_func appiter, SDL_AppEvent_func appevent, SDL_AppQuit_func appquit)
+SDL_AppResult SDL_InitMainCallbacks(int argc, char* argv[], SDL_AppInit_func appinit, SDL_AppIterate_func appiter, SDL_AppEvent_func appevent, SDL_AppQuit_func appquit)
 {
     SDL_main_iteration_callback = appiter;
     SDL_main_event_callback = appevent;
     SDL_main_quit_callback = appquit;
-    SDL_AtomicSet(&apprc, 0);
+    SDL_AtomicSet(&apprc, SDL_APP_CONTINUE);
 
-    const int rc = appinit(&SDL_main_appstate, argc, argv);
-    if (SDL_AtomicCompareAndSwap(&apprc, 0, rc) && (rc == 0)) {  // bounce if SDL_AppInit already said abort, otherwise...
+    const SDL_AppResult rc = appinit(&SDL_main_appstate, argc, argv);
+    if (SDL_AtomicCompareAndSwap(&apprc, SDL_APP_CONTINUE, rc) && (rc == SDL_APP_CONTINUE)) { // bounce if SDL_AppInit already said abort, otherwise...
         // make sure we definitely have events initialized, even if the app didn't do it.
-        if (SDL_InitSubSystem(SDL_INIT_EVENTS) == -1) {
-            SDL_AtomicSet(&apprc, -1);
+        if (SDL_InitSubSystem(SDL_INIT_EVENTS) < 0) {
+            SDL_AtomicSet(&apprc, SDL_APP_FAILURE);
             return -1;
         }
 
         if (SDL_AddEventWatch(SDL_MainCallbackEventWatcher, NULL) < 0) {
-            SDL_AtomicSet(&apprc, -1);
+            SDL_AtomicSet(&apprc, SDL_APP_FAILURE);
             return -1;
         }
     }
@@ -113,17 +113,17 @@ int SDL_InitMainCallbacks(int argc, char* argv[], SDL_AppInit_func appinit, SDL_
     return SDL_AtomicGet(&apprc);
 }
 
-int SDL_IterateMainCallbacks(SDL_bool pump_events)
+SDL_AppResult SDL_IterateMainCallbacks(bool pump_events)
 {
     if (pump_events) {
         SDL_PumpEvents();
     }
     SDL_DispatchMainCallbackEvents();
 
-    int rc = SDL_AtomicGet(&apprc);
-    if (rc == 0) {
+    SDL_AppResult rc = SDL_AtomicGet(&apprc);
+    if (rc == SDL_APP_CONTINUE) {
         rc = SDL_main_iteration_callback(SDL_main_appstate);
-        if (!SDL_AtomicCompareAndSwap(&apprc, 0, rc)) {
+        if (!SDL_AtomicCompareAndSwap(&apprc, SDL_APP_CONTINUE, rc)) {
             rc = SDL_AtomicGet(&apprc); // something else already set a quit result, keep that.
         }
     }

@@ -35,19 +35,19 @@
 #include "SDL_windowsvideo.h"
 #include "SDL_windowswindow.h"
 
-/* Dropfile support */
+// Dropfile support
 #include <shellapi.h>
 
-/* DWM setting support */
+// DWM setting support
 typedef HRESULT (WINAPI *DwmSetWindowAttribute_t)(HWND hwnd, DWORD dwAttribute, LPCVOID pvAttribute, DWORD cbAttribute);
 typedef HRESULT (WINAPI *DwmGetWindowAttribute_t)(HWND hwnd, DWORD dwAttribute, PVOID pvAttribute, DWORD cbAttribute);
 
-/* Dark mode support*/
+// Dark mode support
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
 #endif
 
-/* Corner rounding support  (Win 11+) */
+// Corner rounding support  (Win 11+)
 #ifndef DWMWA_WINDOW_CORNER_PREFERENCE
 #define DWMWA_WINDOW_CORNER_PREFERENCE 33
 #endif
@@ -58,7 +58,7 @@ typedef enum {
     DWMWCP_ROUNDSMALL = 3
 } DWM_WINDOW_CORNER_PREFERENCE;
 
-/* Border Color support (Win 11+) */
+// Border Color support (Win 11+)
 #ifndef DWMWA_BORDER_COLOR
 #define DWMWA_BORDER_COLOR 34
 #endif
@@ -71,7 +71,7 @@ typedef enum {
 #define DWMWA_COLOR_NONE 0xFFFFFFFE
 #endif
 
-/* Transparent window support */
+// Transparent window support
 #ifndef DWM_BB_ENABLE
 #define DWM_BB_ENABLE 0x00000001
 #endif
@@ -87,7 +87,7 @@ typedef struct
 } DWM_BLURBEHIND;
 typedef HRESULT(WINAPI *DwmEnableBlurBehindWindow_t)(HWND hwnd, const DWM_BLURBEHIND *pBlurBehind);
 
-/* Windows CE compatibility */
+// Windows CE compatibility
 #ifndef SWP_NOCOPYBITS
 #define SWP_NOCOPYBITS 0
 #endif
@@ -100,9 +100,9 @@ typedef HRESULT(WINAPI *DwmEnableBlurBehindWindow_t)(HWND hwnd, const DWM_BLURBE
 #define WM_POPUPSYSTEMMENU 0x313
 #endif
 
-/* #define HIGHDPI_DEBUG */
+// #define HIGHDPI_DEBUG
 
-/* Fake window to help with DirectInput events. */
+// Fake window to help with DirectInput events.
 HWND SDL_HelperWindow = NULL;
 static const TCHAR *SDL_HelperWindowClassName = TEXT("SDLHelperWindowInputCatcher");
 static const TCHAR *SDL_HelperWindowName = TEXT("SDLHelperWindowInputMsgWindow");
@@ -138,7 +138,7 @@ static DWORD GetWindowStyle(SDL_Window *window)
                but still interacts with the window manager (e.g. task bar shows above it, it can
                be resized to fit within usable desktop area, etc.)
              */
-            if (SDL_GetHintBoolean("SDL_BORDERLESS_WINDOWED_STYLE", SDL_TRUE)) {
+            if (SDL_GetHintBoolean("SDL_BORDERLESS_WINDOWED_STYLE", true)) {
                 style |= STYLE_BORDERLESS_WINDOWED;
             } else {
                 style |= STYLE_BORDERLESS;
@@ -152,12 +152,12 @@ static DWORD GetWindowStyle(SDL_Window *window)
                see https://bugzilla.libsdl.org/show_bug.cgi?id=4466
              */
             if (!(window->flags & SDL_WINDOW_BORDERLESS) ||
-                SDL_GetHintBoolean("SDL_BORDERLESS_RESIZABLE_STYLE", SDL_FALSE)) {
+                SDL_GetHintBoolean("SDL_BORDERLESS_RESIZABLE_STYLE", false)) {
                 style |= STYLE_RESIZABLE;
             }
         }
 
-        /* Need to set initialize minimize style, or when we call ShowWindow with WS_MINIMIZE it will activate a random window */
+        // Need to set initialize minimize style, or when we call ShowWindow with WS_MINIMIZE it will activate a random window
         if (window->flags & SDL_WINDOW_MINIMIZED) {
             style |= WS_MINIMIZE;
         }
@@ -187,7 +187,7 @@ static int WIN_AdjustWindowRectWithStyle(SDL_Window *window, DWORD style, DWORD 
     SDL_VideoData *videodata = SDL_GetVideoDevice() ? SDL_GetVideoDevice()->internal : NULL;
     RECT rect;
 
-    /* Client rect, in points */
+    // Client rect, in points
     switch (rect_type) {
     case SDL_WINDOWRECT_CURRENT:
         SDL_RelativeToGlobalForWindow(window, window->x, window->y, x, y);
@@ -205,8 +205,8 @@ static int WIN_AdjustWindowRectWithStyle(SDL_Window *window, DWORD style, DWORD 
         *height = window->floating.h;
         break;
     default:
-        /* Should never be here */
-        SDL_assert_release(SDL_FALSE);
+        // Should never be here
+        SDL_assert_release(false);
         *width = 0;
         *height = 0;
         break;
@@ -245,7 +245,7 @@ static int WIN_AdjustWindowRectWithStyle(SDL_Window *window, DWORD style, DWORD 
 #endif
     }
 
-    /* Final rect in Windows screen space, including the frame */
+    // Final rect in Windows screen space, including the frame
     *x += rect.left;
     *y += rect.top;
     *width = (rect.right - rect.left);
@@ -298,7 +298,7 @@ int WIN_AdjustWindowRectForHWND(HWND hwnd, LPRECT lpRect, UINT frame_dpi)
     AdjustWindowRectEx(lpRect, style, menu, styleEx);
 #else
     if (WIN_IsPerMonitorV2DPIAware(videodevice)) {
-        /* With per-monitor v2, the window border/titlebar size depend on the DPI, so we need to call AdjustWindowRectExForDpi instead of AdjustWindowRectEx. */
+        // With per-monitor v2, the window border/titlebar size depend on the DPI, so we need to call AdjustWindowRectExForDpi instead of AdjustWindowRectEx.
         if (!frame_dpi) {
             frame_dpi = videodata->GetDpiForWindow ? videodata->GetDpiForWindow(hwnd) : USER_DEFAULT_SCREEN_DPI;
         }
@@ -324,7 +324,7 @@ int WIN_SetWindowPositionInternal(SDL_Window *window, UINT flags, SDL_WindowRect
     int w, h;
     int result = 0;
 
-    /* Figure out what the window area will be */
+    // Figure out what the window area will be
     if (SDL_ShouldAllowTopmost() && (window->flags & SDL_WINDOW_ALWAYS_ON_TOP)) {
         top = HWND_TOPMOST;
     } else {
@@ -333,13 +333,13 @@ int WIN_SetWindowPositionInternal(SDL_Window *window, UINT flags, SDL_WindowRect
 
     WIN_AdjustWindowRect(window, &x, &y, &w, &h, rect_type);
 
-    data->expected_resize = SDL_TRUE;
+    data->expected_resize = true;
     if (SetWindowPos(hwnd, top, x, y, w, h, flags) == 0) {
         result = WIN_SetError("SetWindowPos()");
     }
-    data->expected_resize = SDL_FALSE;
+    data->expected_resize = false;
 
-    /* Update any child windows */
+    // Update any child windows
     for (child_window = window->first_child; child_window; child_window = child_window->next_sibling) {
         if (WIN_SetWindowPositionInternal(child_window, flags, SDL_WINDOWRECT_CURRENT) < 0) {
             result = -1;
@@ -351,7 +351,7 @@ int WIN_SetWindowPositionInternal(SDL_Window *window, UINT flags, SDL_WindowRect
 static void SDLCALL WIN_MouseRelativeModeCenterChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
 {
     SDL_WindowData *data = (SDL_WindowData *)userdata;
-    data->mouse_relative_mode_center = SDL_GetStringBoolean(hint, SDL_TRUE);
+    data->mouse_relative_mode_center = SDL_GetStringBoolean(hint, true);
 }
 
 static SDL_WindowEraseBackgroundMode GetEraseBackgroundModeHint(void)
@@ -383,7 +383,7 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwnd
     SDL_VideoData *videodata = _this->internal;
     SDL_WindowData *data;
 
-    /* Allocate the window data */
+    // Allocate the window data
     data = (SDL_WindowData *)SDL_calloc(1, sizeof(*data));
     if (!data) {
         return -1;
@@ -400,12 +400,12 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwnd
     data->mouse_button_flags = (WPARAM)-1;
     data->last_pointer_update = (LPARAM)-1;
     data->videodata = videodata;
-    data->initializing = SDL_TRUE;
+    data->initializing = true;
     data->last_displayID = window->last_displayID;
     data->dwma_border_color = DWMWA_COLOR_DEFAULT;
     data->hint_erase_background_mode = GetEraseBackgroundModeHint();
 
-    if (SDL_GetHintBoolean("SDL_WINDOW_RETAIN_CONTENT", SDL_FALSE)) {
+    if (SDL_GetHintBoolean("SDL_WINDOW_RETAIN_CONTENT", false)) {
         data->copybits_flag = 0;
     } else {
         data->copybits_flag = SWP_NOCOPYBITS;
@@ -418,7 +418,7 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwnd
     SDL_AddHintCallback(SDL_HINT_MOUSE_RELATIVE_MODE_CENTER, WIN_MouseRelativeModeCenterChanged, data);
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
-    /* Associate the data with the window */
+    // Associate the data with the window
     if (!SetProp(hwnd, TEXT("SDL_WindowData"), data)) {
         ReleaseDC(hwnd, data->hdc);
         SDL_free(data);
@@ -428,7 +428,7 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwnd
 
     window->internal = data;
 
-    /* Set up the window proc function */
+    // Set up the window proc function
 #ifdef GWLP_WNDPROC
     data->wndproc = (WNDPROC)GetWindowLongPtr(hwnd, GWLP_WNDPROC);
     if (data->wndproc == WIN_WindowProc) {
@@ -445,7 +445,7 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwnd
     }
 #endif
 
-    /* Fill in the SDL window with the window state */
+    // Fill in the SDL window with the window state
     {
         DWORD style = GetWindowLong(hwnd, GWL_STYLE);
         if (style & WS_VISIBLE) {
@@ -490,13 +490,13 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwnd
                 window->floating.w = window->windowed.w = window->w = w;
                 window->floating.h = window->windowed.h = window->h = h;
             } else if ((window->windowed.w && window->windowed.w != w) || (window->windowed.h && window->windowed.h != h)) {
-                /* We tried to create a window larger than the desktop and Windows didn't allow it.  Override! */
+                // We tried to create a window larger than the desktop and Windows didn't allow it.  Override!
                 int x, y;
-                /* Figure out what the window area will be */
+                // Figure out what the window area will be
                 WIN_AdjustWindowRect(window, &x, &y, &w, &h, SDL_WINDOWRECT_FLOATING);
-                data->expected_resize = SDL_TRUE;
+                data->expected_resize = true;
                 SetWindowPos(hwnd, NULL, x, y, w, h, data->copybits_flag | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
-                data->expected_resize = SDL_FALSE;
+                data->expected_resize = false;
             } else {
                 window->w = w;
                 window->h = h;
@@ -518,7 +518,7 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwnd
         }
     }
 
-    WIN_UpdateWindowICCProfile(window, SDL_FALSE);
+    WIN_UpdateWindowICCProfile(window, false);
 #endif
 
 #if defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)
@@ -532,30 +532,30 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwnd
 #endif
 
     if (window->flags & SDL_WINDOW_ALWAYS_ON_TOP) {
-        WIN_SetWindowAlwaysOnTop(_this, window, SDL_TRUE);
+        WIN_SetWindowAlwaysOnTop(_this, window, true);
     } else {
-        WIN_SetWindowAlwaysOnTop(_this, window, SDL_FALSE);
+        WIN_SetWindowAlwaysOnTop(_this, window, false);
     }
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
-    /* Enable multi-touch */
+    // Enable multi-touch
     if (videodata->RegisterTouchWindow) {
         videodata->RegisterTouchWindow(hwnd, (TWF_FINETOUCH | TWF_WANTPALM));
     }
 #endif
 
     if (data->parent && !window->parent) {
-        data->destroy_parent_with_window = SDL_TRUE;
+        data->destroy_parent_with_window = true;
     }
 
-    data->initializing = SDL_FALSE;
+    data->initializing = false;
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
     if (window->flags & SDL_WINDOW_EXTERNAL) {
-        /* Query the title from the existing window */
+        // Query the title from the existing window
         LPTSTR title;
         int titleLen;
-        SDL_bool isstack;
+        bool isstack;
 
         titleLen = GetWindowTextLength(hwnd);
         title = SDL_small_alloc(TCHAR, titleLen + 1, &isstack);
@@ -571,14 +571,14 @@ static int SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, HWND hwnd
             SDL_small_free(title, isstack);
         }
     }
-#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
+#endif // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 
     SDL_PropertiesID props = SDL_GetWindowProperties(window);
     SDL_SetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, data->hwnd);
     SDL_SetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HDC_POINTER, data->hdc);
     SDL_SetPointerProperty(props, SDL_PROP_WINDOW_WIN32_INSTANCE_POINTER, data->hinstance);
 
-    /* All done! */
+    // All done!
     return 0;
 }
 
@@ -591,7 +591,7 @@ static void CleanupWindowData(SDL_VideoDevice *_this, SDL_Window *window)
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
         if (data->drop_target) {
-            WIN_AcceptDragAndDrop(window, SDL_FALSE);
+            WIN_AcceptDragAndDrop(window, false);
         }
         if (data->ICMFileName) {
             SDL_free(data->ICMFileName);
@@ -608,7 +608,7 @@ static void CleanupWindowData(SDL_VideoDevice *_this, SDL_Window *window)
                 DestroyWindow(data->parent);
             }
         } else {
-            /* Restore any original event handler... */
+            // Restore any original event handler...
             if (data->wndproc) {
 #ifdef GWLP_WNDPROC
                 SetWindowLongPtr(data->hwnd, GWLP_WNDPROC,
@@ -626,7 +626,7 @@ static void CleanupWindowData(SDL_VideoDevice *_this, SDL_Window *window)
 
 static void WIN_ConstrainPopup(SDL_Window *window)
 {
-    /* Clamp popup windows to the output borders */
+    // Clamp popup windows to the output borders
     if (SDL_WINDOW_IS_POPUP(window)) {
         SDL_Window *w;
         SDL_DisplayID displayID;
@@ -635,7 +635,7 @@ static void WIN_ConstrainPopup(SDL_Window *window)
         int abs_y = window->floating.y;
         int offset_x = 0, offset_y = 0;
 
-        /* Calculate the total offset from the parents */
+        // Calculate the total offset from the parents
         for (w = window->parent; w->parent; w = w->parent) {
             offset_x += w->x;
             offset_y += w->y;
@@ -646,7 +646,7 @@ static void WIN_ConstrainPopup(SDL_Window *window)
         abs_x += offset_x;
         abs_y += offset_y;
 
-        /* Constrain the popup window to the display of the toplevel parent */
+        // Constrain the popup window to the display of the toplevel parent
         displayID = SDL_GetDisplayForWindow(w);
         SDL_GetDisplayBounds(displayID, &rect);
         if (abs_x + window->floating.w > rect.x + rect.w) {
@@ -667,7 +667,7 @@ static void WIN_SetKeyboardFocus(SDL_Window *window)
 {
     SDL_Window *topmost = window;
 
-    /* Find the topmost parent */
+    // Find the topmost parent
     while (topmost->parent) {
         topmost = topmost->parent;
     }
@@ -701,7 +701,7 @@ int WIN_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesI
         style |= GetWindowStyle(window);
         styleEx |= GetWindowStyleEx(window);
 
-        /* Figure out what the window area will be */
+        // Figure out what the window area will be
         WIN_ConstrainPopup(window);
         WIN_AdjustWindowRectWithStyle(window, style, styleEx, FALSE, &x, &y, &w, &h, SDL_WINDOWRECT_FLOATING);
 
@@ -723,7 +723,7 @@ int WIN_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesI
             return -1;
         }
 
-        /* Inform Windows of the frame change so we can respond to WM_NCCALCSIZE */
+        // Inform Windows of the frame change so we can respond to WM_NCCALCSIZE
         SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
 
         if (window->flags & SDL_WINDOW_MINIMIZED) {
@@ -737,7 +737,7 @@ int WIN_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesI
     }
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
-    /* FIXME: does not work on all hardware configurations with different renders (i.e. hybrid GPUs) */
+    // FIXME: does not work on all hardware configurations with different renders (i.e. hybrid GPUs)
     if (window->flags & SDL_WINDOW_TRANSPARENT) {
         void *handle = SDL_LoadObject("dwmapi.dll");
         if (handle) {
@@ -779,13 +779,13 @@ int WIN_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesI
             return 0;
         }
 
-        /* The rest of this macro mess is for OpenGL or OpenGL ES windows */
+        // The rest of this macro mess is for OpenGL or OpenGL ES windows
 #ifdef SDL_VIDEO_OPENGL_ES2
         if ((_this->gl_config.profile_mask == SDL_GL_CONTEXT_PROFILE_ES ||
-             SDL_GetHintBoolean(SDL_HINT_VIDEO_FORCE_EGL, SDL_FALSE))
+             SDL_GetHintBoolean(SDL_HINT_VIDEO_FORCE_EGL, false))
 #ifdef SDL_VIDEO_OPENGL_WGL
              && (!_this->gl_data || WIN_GL_UseEGL(_this))
-#endif /* SDL_VIDEO_OPENGL_WGL */
+#endif // SDL_VIDEO_OPENGL_WGL
         ) {
 #ifdef SDL_VIDEO_OPENGL_EGL
             if (WIN_GLES_SetupWindow(_this, window) < 0) {
@@ -795,9 +795,9 @@ int WIN_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesI
             return 0;
 #else
             return SDL_SetError("Could not create GLES window surface (EGL support not configured)");
-#endif /* SDL_VIDEO_OPENGL_EGL */
+#endif // SDL_VIDEO_OPENGL_EGL
         }
-#endif /* SDL_VIDEO_OPENGL_ES2 */
+#endif // SDL_VIDEO_OPENGL_ES2
 
 #ifdef SDL_VIDEO_OPENGL_WGL
         if (WIN_GL_SetupWindow(_this, window) < 0) {
@@ -808,7 +808,7 @@ int WIN_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesI
         return SDL_SetError("Could not create GL window (WGL support not configured)");
 #endif
     }
-#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
+#endif // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 
     return 0;
 }
@@ -832,16 +832,16 @@ int WIN_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surface *i
     int icon_len, mask_len, row_len, y;
     BITMAPINFOHEADER *bmi;
     Uint8 *dst;
-    SDL_bool isstack;
+    bool isstack;
     int retval = 0;
 
-    /* Create temporary buffer for ICONIMAGE structure */
+    // Create temporary buffer for ICONIMAGE structure
     SDL_COMPILE_TIME_ASSERT(WIN_SetWindowIcon_uses_BITMAPINFOHEADER_to_prepare_an_ICONIMAGE, sizeof(BITMAPINFOHEADER) == 40);
     mask_len = (icon->h * (icon->w + 7) / 8);
     icon_len = sizeof(BITMAPINFOHEADER) + icon->h * icon->w * sizeof(Uint32) + mask_len;
     icon_bmp = SDL_small_alloc(BYTE, icon_len, &isstack);
 
-    /* Write the BITMAPINFO header */
+    // Write the BITMAPINFO header
     bmi = (BITMAPINFOHEADER *)icon_bmp;
     bmi->biSize = SDL_Swap32LE(sizeof(BITMAPINFOHEADER));
     bmi->biWidth = SDL_Swap32LE(icon->w);
@@ -855,7 +855,7 @@ int WIN_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surface *i
     bmi->biClrUsed = SDL_Swap32LE(0);
     bmi->biClrImportant = SDL_Swap32LE(0);
 
-    /* Write the pixels upside down into the bitmap buffer */
+    // Write the pixels upside down into the bitmap buffer
     SDL_assert(icon->format == SDL_PIXELFORMAT_ARGB8888);
     dst = &icon_bmp[sizeof(BITMAPINFOHEADER)];
     row_len = icon->w * sizeof(Uint32);
@@ -866,7 +866,7 @@ int WIN_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surface *i
         dst += row_len;
     }
 
-    /* Write the mask */
+    // Write the mask
     SDL_memset(icon_bmp + icon_len - mask_len, 0xFF, mask_len);
 
     hicon = CreateIconFromResource(icon_bmp, icon_len, TRUE, 0x00030000);
@@ -877,10 +877,10 @@ int WIN_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surface *i
         retval = SDL_SetError("SetWindowIcon() failed, error %08X", (unsigned int)GetLastError());
     }
 
-    /* Set the icon for the window */
+    // Set the icon for the window
     SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hicon);
 
-    /* Set the icon in the task manager (should we do this?) */
+    // Set the icon in the task manager (should we do this?)
     SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hicon);
     return retval;
 #else
@@ -900,10 +900,10 @@ int WIN_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window *window)
                                                  window->internal->copybits_flag | SWP_NOZORDER | SWP_NOOWNERZORDER |
                                                  SWP_NOACTIVATE, SDL_WINDOWRECT_FLOATING);
         } else {
-            window->internal->floating_rect_pending = SDL_TRUE;
+            window->internal->floating_rect_pending = true;
         }
     } else {
-        return SDL_UpdateFullscreenMode(window, SDL_TRUE, SDL_TRUE);
+        return SDL_UpdateFullscreenMode(window, true, true);
     }
 
     return 0;
@@ -914,7 +914,7 @@ void WIN_SetWindowSize(SDL_VideoDevice *_this, SDL_Window *window)
     if (!(window->flags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MAXIMIZED))) {
         WIN_SetWindowPositionInternal(window, window->internal->copybits_flag | SWP_NOMOVE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE, SDL_WINDOWRECT_FLOATING);
     } else {
-        window->internal->floating_rect_pending = SDL_TRUE;
+        window->internal->floating_rect_pending = true;
     }
 }
 
@@ -934,7 +934,7 @@ int WIN_GetWindowBordersSize(SDL_VideoDevice *_this, SDL_Window *window, int *to
     *right = rcClient.right;
 
     return 0;
-#else  /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
+#else  // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
     HWND hwnd = window->internal->hwnd;
     RECT rcClient, rcWindow;
     POINT ptDiff;
@@ -982,7 +982,7 @@ int WIN_GetWindowBordersSize(SDL_VideoDevice *_this, SDL_Window *window, int *to
     *right = rcWindow.right - rcClient.right;
 
     return 0;
-#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
+#endif // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 }
 
 void WIN_GetWindowSizeInPixels(SDL_VideoDevice *_this, SDL_Window *window, int *w, int *h)
@@ -998,7 +998,7 @@ void WIN_GetWindowSizeInPixels(SDL_VideoDevice *_this, SDL_Window *window, int *
         *w = window->last_pixel_w;
         *h = window->last_pixel_h;
     } else {
-        /* Probably created minimized, use the restored size */
+        // Probably created minimized, use the restored size
         *w = window->floating.w;
         *h = window->floating.h;
     }
@@ -1009,10 +1009,10 @@ void WIN_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
     DWORD style;
     HWND hwnd;
 
-    SDL_bool bActivate = SDL_GetHintBoolean(SDL_HINT_WINDOW_ACTIVATE_WHEN_SHOWN, SDL_TRUE);
+    bool bActivate = SDL_GetHintBoolean(SDL_HINT_WINDOW_ACTIVATE_WHEN_SHOWN, true);
 
     if (window->parent) {
-        /* Update our position in case our parent moved while we were hidden */
+        // Update our position in case our parent moved while we were hidden
         WIN_SetWindowPosition(_this, window);
     }
 
@@ -1020,17 +1020,17 @@ void WIN_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
     if (window->flags & SDL_WINDOW_MODAL) {
         EnableWindow(window->parent->internal->hwnd, FALSE);
     }
-#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
+#endif // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 
     hwnd = window->internal->hwnd;
     style = GetWindowLong(hwnd, GWL_EXSTYLE);
     if (style & WS_EX_NOACTIVATE) {
-        bActivate = SDL_FALSE;
+        bActivate = false;
     }
     if (bActivate) {
         ShowWindow(hwnd, SW_SHOW);
     } else {
-        /* Use SetWindowPos instead of ShowWindow to avoid activating the parent window if this is a child window */
+        // Use SetWindowPos instead of ShowWindow to avoid activating the parent window if this is a child window
         SetWindowPos(hwnd, NULL, 0, 0, 0, 0, window->internal->copybits_flag | SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
     }
 
@@ -1049,16 +1049,16 @@ void WIN_HideWindow(SDL_VideoDevice *_this, SDL_Window *window)
     if (window->flags & SDL_WINDOW_MODAL) {
         EnableWindow(window->parent->internal->hwnd, TRUE);
     }
-#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
+#endif // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 
     ShowWindow(hwnd, SW_HIDE);
 
-    /* Transfer keyboard focus back to the parent */
+    // Transfer keyboard focus back to the parent
     if (window->flags & SDL_WINDOW_POPUP_MENU) {
         if (window == SDL_GetKeyboardFocus()) {
             SDL_Window *new_focus = window->parent;
 
-            /* Find the highest level window that isn't being hidden or destroyed. */
+            // Find the highest level window that isn't being hidden or destroyed.
             while (new_focus->parent && (new_focus->is_hiding || new_focus->is_destroying)) {
                 new_focus = new_focus->parent;
             }
@@ -1079,8 +1079,8 @@ void WIN_RaiseWindow(SDL_VideoDevice *_this, SDL_Window *window)
      * nearly impossible to programmatically move a window to the foreground,
      * for "security" reasons. Apparently, the following song-and-dance gets
      * around their objections. */
-    SDL_bool bForce = SDL_GetHintBoolean(SDL_HINT_FORCE_RAISEWINDOW, SDL_FALSE);
-    SDL_bool bActivate = SDL_GetHintBoolean(SDL_HINT_WINDOW_ACTIVATE_WHEN_RAISED, SDL_TRUE);
+    bool bForce = SDL_GetHintBoolean(SDL_HINT_FORCE_RAISEWINDOW, false);
+    bool bActivate = SDL_GetHintBoolean(SDL_HINT_WINDOW_ACTIVATE_WHEN_RAISED, true);
 
     HWND hCurWnd = NULL;
     DWORD dwMyID = 0u;
@@ -1114,7 +1114,7 @@ void WIN_RaiseWindow(SDL_VideoDevice *_this, SDL_Window *window)
         SetFocus(hwnd);
         SetActiveWindow(hwnd);
     }
-#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
+#endif // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 }
 
 void WIN_MaximizeWindow(SDL_VideoDevice *_this, SDL_Window *window)
@@ -1123,9 +1123,9 @@ void WIN_MaximizeWindow(SDL_VideoDevice *_this, SDL_Window *window)
 
     if (!(window->flags & SDL_WINDOW_FULLSCREEN)) {
         HWND hwnd = data->hwnd;
-        data->expected_resize = SDL_TRUE;
+        data->expected_resize = true;
         ShowWindow(hwnd, SW_MAXIMIZE);
-        data->expected_resize = SDL_FALSE;
+        data->expected_resize = false;
 
         /* Clamp the maximized window size to the max window size.
          * This is automatic if maximizing from the window controls.
@@ -1137,12 +1137,12 @@ void WIN_MaximizeWindow(SDL_VideoDevice *_this, SDL_Window *window)
             window->windowed.h = window->max_h ? SDL_min(window->h, window->max_h) : window->windowed.h;
             WIN_AdjustWindowRect(window, &fx, &fy, &fw, &fh, SDL_WINDOWRECT_WINDOWED);
 
-            data->expected_resize = SDL_TRUE;
+            data->expected_resize = true;
             SetWindowPos(hwnd, HWND_TOP, fx, fy, fw, fh, data->copybits_flag | SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
-            data->expected_resize = SDL_FALSE;
+            data->expected_resize = false;
         }
     } else {
-        data->windowed_mode_was_maximized = SDL_TRUE;
+        data->windowed_mode_was_maximized = true;
     }
 }
 
@@ -1152,7 +1152,7 @@ void WIN_MinimizeWindow(SDL_VideoDevice *_this, SDL_Window *window)
     ShowWindow(hwnd, SW_MINIMIZE);
 }
 
-void WIN_SetWindowBordered(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool bordered)
+void WIN_SetWindowBordered(SDL_VideoDevice *_this, SDL_Window *window, bool bordered)
 {
     SDL_WindowData *data = window->internal;
     HWND hwnd = data->hwnd;
@@ -1162,13 +1162,13 @@ void WIN_SetWindowBordered(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool 
     style &= ~STYLE_MASK;
     style |= GetWindowStyle(window);
 
-    data->in_border_change = SDL_TRUE;
+    data->in_border_change = true;
     SetWindowLong(hwnd, GWL_STYLE, style);
     WIN_SetWindowPositionInternal(window, data->copybits_flag | SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOACTIVATE, SDL_WINDOWRECT_CURRENT);
-    data->in_border_change = SDL_FALSE;
+    data->in_border_change = false;
 }
 
-void WIN_SetWindowResizable(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool resizable)
+void WIN_SetWindowResizable(SDL_VideoDevice *_this, SDL_Window *window, bool resizable)
 {
     SDL_WindowData *data = window->internal;
     HWND hwnd = data->hwnd;
@@ -1181,7 +1181,7 @@ void WIN_SetWindowResizable(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool
     SetWindowLong(hwnd, GWL_STYLE, style);
 }
 
-void WIN_SetWindowAlwaysOnTop(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool on_top)
+void WIN_SetWindowAlwaysOnTop(SDL_VideoDevice *_this, SDL_Window *window, bool on_top)
 {
     WIN_SetWindowPositionInternal(window, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE, SDL_WINDOWRECT_CURRENT);
 }
@@ -1191,11 +1191,11 @@ void WIN_RestoreWindow(SDL_VideoDevice *_this, SDL_Window *window)
     SDL_WindowData *data = window->internal;
     if (!(window->flags & SDL_WINDOW_FULLSCREEN)) {
         HWND hwnd = data->hwnd;
-        data->expected_resize = SDL_TRUE;
+        data->expected_resize = true;
         ShowWindow(hwnd, SW_RESTORE);
-        data->expected_resize = SDL_FALSE;
+        data->expected_resize = false;
     } else {
-        data->windowed_mode_was_maximized = SDL_FALSE;
+        data->windowed_mode_was_maximized = false;
     }
 }
 
@@ -1251,7 +1251,7 @@ int WIN_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_Vide
     HWND top;
     int x, y;
     int w, h;
-    SDL_bool enterMaximized = SDL_FALSE;
+    bool enterMaximized = false;
 
 #ifdef HIGHDPI_DEBUG
     SDL_Log("WIN_SetWindowFullscreen: %d", (int)fullscreen);
@@ -1295,11 +1295,11 @@ int WIN_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_Vide
            https://bugzilla.libsdl.org/show_bug.cgi?id=3215
         */
         if (style & WS_MAXIMIZE) {
-            data->windowed_mode_was_maximized = SDL_TRUE;
+            data->windowed_mode_was_maximized = true;
             style &= ~WS_MAXIMIZE;
         }
 
-        /* Disable corner rounding & border color (Windows 11+) so the window fills the full screen */
+        // Disable corner rounding & border color (Windows 11+) so the window fills the full screen
         data->windowed_mode_corner_rounding = WIN_UpdateCornerRoundingForHWND(hwnd, DWMWCP_DONOTROUND);
         data->dwma_border_color = WIN_UpdateBorderColorForHWND(hwnd, DWMWA_COLOR_NONE);
     } else {
@@ -1316,7 +1316,7 @@ int WIN_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_Vide
         */
         if (data->windowed_mode_was_maximized && !data->in_window_deactivation) {
             style |= WS_MAXIMIZE;
-            enterMaximized = SDL_TRUE;
+            enterMaximized = true;
         }
 
         menu = (style & WS_CHILDWINDOW) ? FALSE : (GetMenu(hwnd) != NULL);
@@ -1324,10 +1324,10 @@ int WIN_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_Vide
                                       &x, &y,
                                       &w, &h,
                                       data->windowed_mode_was_maximized ? SDL_WINDOWRECT_WINDOWED : SDL_WINDOWRECT_FLOATING);
-        data->windowed_mode_was_maximized = SDL_FALSE;
+        data->windowed_mode_was_maximized = false;
     }
     SetWindowLong(hwnd, GWL_STYLE, style);
-    data->expected_resize = SDL_TRUE;
+    data->expected_resize = true;
 
     if (!enterMaximized) {
         SetWindowPos(hwnd, top, x, y, w, h, data->copybits_flag | SWP_NOACTIVATE);
@@ -1335,18 +1335,18 @@ int WIN_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_Vide
         WIN_MaximizeWindow(_this, window);
     }
 
-    data->expected_resize = SDL_FALSE;
+    data->expected_resize = false;
 
 #ifdef HIGHDPI_DEBUG
     SDL_Log("WIN_SetWindowFullscreen: %d finished. Set window to %d,%d, %dx%d", (int)fullscreen, x, y, w, h);
 #endif
 
-#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
+#endif // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
     return 0;
 }
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
-void WIN_UpdateWindowICCProfile(SDL_Window *window, SDL_bool send_event)
+void WIN_UpdateWindowICCProfile(SDL_Window *window, bool send_event)
 {
     SDL_WindowData *data = window->internal;
     SDL_DisplayData *displaydata = SDL_GetDisplayDriverDataForWindow(window);
@@ -1357,7 +1357,7 @@ void WIN_UpdateWindowICCProfile(SDL_Window *window, SDL_bool send_event)
             WCHAR fileName[MAX_PATH];
             DWORD fileNameSize = SDL_arraysize(fileName);
             if (GetICMProfileW(hdc, &fileNameSize, fileName)) {
-                /* fileNameSize includes '\0' on return */
+                // fileNameSize includes '\0' on return
                 if (!data->ICMFileName ||
                     SDL_wcscmp(data->ICMFileName, fileName) != 0) {
                     if (data->ICMFileName) {
@@ -1412,7 +1412,7 @@ static void WIN_GrabKeyboard(SDL_Window *window)
         return;
     }
 
-    /* Capture a snapshot of the current keyboard state before the hook */
+    // Capture a snapshot of the current keyboard state before the hook
     if (!GetKeyboardState(data->videodata->pre_hook_key_state)) {
         return;
     }
@@ -1441,13 +1441,13 @@ int WIN_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window)
     return 0;
 }
 
-int WIN_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
+int WIN_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, bool grabbed)
 {
     WIN_UpdateClipCursor(window);
     return 0;
 }
 
-int WIN_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool grabbed)
+int WIN_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, bool grabbed)
 {
     if (grabbed) {
         WIN_GrabKeyboard(window);
@@ -1457,7 +1457,7 @@ int WIN_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, SDL_bo
 
     return 0;
 }
-#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
+#endif // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 
 void WIN_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
@@ -1472,24 +1472,24 @@ int SDL_HelperWindowCreate(void)
     HINSTANCE hInstance = GetModuleHandle(NULL);
     WNDCLASS wce;
 
-    /* Make sure window isn't created twice. */
+    // Make sure window isn't created twice.
     if (SDL_HelperWindow != NULL) {
         return 0;
     }
 
-    /* Create the class. */
+    // Create the class.
     SDL_zero(wce);
     wce.lpfnWndProc = DefWindowProc;
     wce.lpszClassName = SDL_HelperWindowClassName;
     wce.hInstance = hInstance;
 
-    /* Register the class. */
+    // Register the class.
     SDL_HelperWindowClass = RegisterClass(&wce);
     if (SDL_HelperWindowClass == 0 && GetLastError() != ERROR_CLASS_ALREADY_EXISTS) {
         return WIN_SetError("Unable to create Helper Window Class");
     }
 
-    /* Create the window. */
+    // Create the window.
     SDL_HelperWindow = CreateWindowEx(0, SDL_HelperWindowClassName,
                                       SDL_HelperWindowName,
                                       WS_OVERLAPPED, CW_USEDEFAULT,
@@ -1511,7 +1511,7 @@ void SDL_HelperWindowDestroy(void)
 {
     HINSTANCE hInstance = GetModuleHandle(NULL);
 
-    /* Destroy the window. */
+    // Destroy the window.
     if (SDL_HelperWindow != NULL) {
         if (DestroyWindow(SDL_HelperWindow) == 0) {
             WIN_SetError("Unable to destroy Helper Window");
@@ -1520,7 +1520,7 @@ void SDL_HelperWindowDestroy(void)
         SDL_HelperWindow = NULL;
     }
 
-    /* Unregister the class. */
+    // Unregister the class.
     if (SDL_HelperWindowClass != 0) {
         if ((UnregisterClass(SDL_HelperWindowClassName, hInstance)) == 0) {
             WIN_SetError("Unable to destroy Helper Window Class");
@@ -1536,7 +1536,7 @@ void WIN_OnWindowEnter(SDL_VideoDevice *_this, SDL_Window *window)
     SDL_WindowData *data = window->internal;
 
     if (!data || !data->hwnd) {
-        /* The window wasn't fully initialized */
+        // The window wasn't fully initialized
         return;
     }
 
@@ -1547,9 +1547,9 @@ void WIN_OnWindowEnter(SDL_VideoDevice *_this, SDL_Window *window)
 
 static BOOL GetClientScreenRect(HWND hwnd, RECT *rect)
 {
-    return GetClientRect(hwnd, rect) &&             /* RECT( left , top , right , bottom )   */
-           ClientToScreen(hwnd, (LPPOINT)rect) &&   /* POINT( left , top )                    */
-           ClientToScreen(hwnd, (LPPOINT)rect + 1); /*             POINT( right , bottom )   */
+    return GetClientRect(hwnd, rect) &&             // RECT( left , top , right , bottom )
+           ClientToScreen(hwnd, (LPPOINT)rect) &&   // POINT( left , top )
+           ClientToScreen(hwnd, (LPPOINT)rect + 1); // POINT( right , bottom )
 }
 
 void WIN_UpdateClipCursor(SDL_Window *window)
@@ -1574,14 +1574,14 @@ void WIN_UpdateClipCursor(SDL_Window *window)
         (window->flags & SDL_WINDOW_INPUT_FOCUS)) {
         if (mouse->relative_mode && !mouse->relative_mode_warp && data->mouse_relative_mode_center) {
             if (GetClientScreenRect(data->hwnd, &rect)) {
-                /* WIN_WarpCursor() jitters by +1, and remote desktop warp wobble is +/- 1 */
+                // WIN_WarpCursor() jitters by +1, and remote desktop warp wobble is +/- 1
                 LONG remote_desktop_adjustment = GetSystemMetrics(SM_REMOTESESSION) ? 2 : 0;
                 LONG cx, cy;
 
                 cx = (rect.left + rect.right) / 2;
                 cy = (rect.top + rect.bottom) / 2;
 
-                /* Make an absurdly small clip rect */
+                // Make an absurdly small clip rect
                 rect.left = cx - remote_desktop_adjustment;
                 rect.right = cx + 1 + remote_desktop_adjustment;
                 rect.top = cy;
@@ -1599,10 +1599,10 @@ void WIN_UpdateClipCursor(SDL_Window *window)
                     SDL_Rect mouse_rect_win_client;
                     RECT mouse_rect, intersection;
 
-                    /* mouse_rect_win_client is the mouse rect in Windows client space */
+                    // mouse_rect_win_client is the mouse rect in Windows client space
                     mouse_rect_win_client = window->mouse_rect;
 
-                    /* mouse_rect is the rect in Windows screen space */
+                    // mouse_rect is the rect in Windows screen space
                     mouse_rect.left = rect.left + mouse_rect_win_client.x;
                     mouse_rect.top = rect.top + mouse_rect_win_client.y;
                     mouse_rect.right = mouse_rect.left + mouse_rect_win_client.w;
@@ -1610,7 +1610,7 @@ void WIN_UpdateClipCursor(SDL_Window *window)
                     if (IntersectRect(&intersection, &rect, &mouse_rect)) {
                         SDL_memcpy(&rect, &intersection, sizeof(rect));
                     } else if (window->flags & SDL_WINDOW_MOUSE_GRABBED) {
-                        /* Mouse rect was invalid, just do the normal grab */
+                        // Mouse rect was invalid, just do the normal grab
                     } else {
                         SDL_zero(rect);
                     }
@@ -1628,13 +1628,13 @@ void WIN_UpdateClipCursor(SDL_Window *window)
             }
         }
     } else {
-        SDL_bool unclip_cursor = SDL_FALSE;
+        bool unclip_cursor = false;
 
-        /* If the cursor is clipped to the screen, clear the clip state */
+        // If the cursor is clipped to the screen, clear the clip state
         if (!videodevice ||
             (clipped_rect.left == videodevice->desktop_bounds.x &&
              clipped_rect.top == videodevice->desktop_bounds.y)) {
-            unclip_cursor = SDL_TRUE;
+            unclip_cursor = true;
         } else {
             POINT first, second;
 
@@ -1644,7 +1644,7 @@ void WIN_UpdateClipCursor(SDL_Window *window)
             second.y = clipped_rect.bottom - 1;
             if (PtInRect(&data->cursor_clipped_rect, first) &&
                 PtInRect(&data->cursor_clipped_rect, second)) {
-                unclip_cursor = SDL_TRUE;
+                unclip_cursor = true;
             }
         }
         if (unclip_cursor) {
@@ -1655,11 +1655,11 @@ void WIN_UpdateClipCursor(SDL_Window *window)
     data->last_updated_clipcursor = SDL_GetTicks();
 }
 
-int WIN_SetWindowHitTest(SDL_Window *window, SDL_bool enabled)
+int WIN_SetWindowHitTest(SDL_Window *window, bool enabled)
 {
-    return 0; /* just succeed, the real work is done elsewhere. */
+    return 0; // just succeed, the real work is done elsewhere.
 }
-#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
+#endif // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 
 int WIN_SetWindowOpacity(SDL_VideoDevice *_this, SDL_Window *window, float opacity)
 {
@@ -1673,7 +1673,7 @@ int WIN_SetWindowOpacity(SDL_VideoDevice *_this, SDL_Window *window, float opaci
     SDL_assert(style != 0);
 
     if (opacity == 1.0f) {
-        /* want it fully opaque, just mark it unlayered if necessary. */
+        // want it fully opaque, just mark it unlayered if necessary.
         if (style & WS_EX_LAYERED) {
             if (SetWindowLong(hwnd, GWL_EXSTYLE, style & ~WS_EX_LAYERED) == 0) {
                 return WIN_SetError("SetWindowLong()");
@@ -1681,7 +1681,7 @@ int WIN_SetWindowOpacity(SDL_VideoDevice *_this, SDL_Window *window, float opaci
         }
     } else {
         const BYTE alpha = (BYTE)((int)(opacity * 255.0f));
-        /* want it transparent, mark it layered if necessary. */
+        // want it transparent, mark it layered if necessary.
         if (!(style & WS_EX_LAYERED)) {
             if (SetWindowLong(hwnd, GWL_EXSTYLE, style | WS_EX_LAYERED) == 0) {
                 return WIN_SetError("SetWindowLong()");
@@ -1694,7 +1694,7 @@ int WIN_SetWindowOpacity(SDL_VideoDevice *_this, SDL_Window *window, float opaci
     }
 
     return 0;
-#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
+#endif // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 }
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
@@ -2126,7 +2126,7 @@ static void *vtDropTarget[] = {
     (void *)(SDLDropTarget_Drop)
 };
 
-void WIN_AcceptDragAndDrop(SDL_Window *window, SDL_bool accept)
+void WIN_AcceptDragAndDrop(SDL_Window *window, bool accept)
 {
     SDL_WindowData *data = window->internal;
     if (data->videodata->oleinitialized) {
@@ -2199,7 +2199,7 @@ void WIN_ShowWindowSystemMenu(SDL_Window *window, int x, int y)
     SendMessage(data->hwnd, WM_POPUPSYSTEMMENU, 0, MAKELPARAM(pt.x, pt.y));
 }
 
-int WIN_SetWindowFocusable(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool focusable)
+int WIN_SetWindowFocusable(SDL_VideoDevice *_this, SDL_Window *window, bool focusable)
 {
     SDL_WindowData *data = window->internal;
     HWND hwnd = data->hwnd;
@@ -2223,7 +2223,7 @@ int WIN_SetWindowFocusable(SDL_VideoDevice *_this, SDL_Window *window, SDL_bool 
 
     return 0;
 }
-#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
+#endif // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 
 void WIN_UpdateDarkModeForHWND(HWND hwnd)
 {
@@ -2231,7 +2231,7 @@ void WIN_UpdateDarkModeForHWND(HWND hwnd)
     if (handle) {
         DwmSetWindowAttribute_t DwmSetWindowAttributeFunc = (DwmSetWindowAttribute_t)SDL_LoadFunction(handle, "DwmSetWindowAttribute");
         if (DwmSetWindowAttributeFunc) {
-            /* FIXME: Do we need to traverse children? */
+            // FIXME: Do we need to traverse children?
             BOOL value = (SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK) ? TRUE : FALSE;
             DwmSetWindowAttributeFunc(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
         }
@@ -2251,7 +2251,7 @@ int WIN_SetWindowModalFor(SDL_VideoDevice *_this, SDL_Window *modal_window, SDL_
         return 0;
     }
 
-    /* Reenable the old parent window. */
+    // Reenable the old parent window.
     if (old_ptr) {
         EnableWindow((HWND)old_ptr, TRUE);
     }
@@ -2267,13 +2267,13 @@ int WIN_SetWindowModalFor(SDL_VideoDevice *_this, SDL_Window *modal_window, SDL_
         SetParent(modal_data->hwnd, (HWND)parent_hwnd);
     }
 
-    /* Disable the new parent window if the modal window is visible. */
+    // Disable the new parent window if the modal window is visible.
     if (!(modal_window->flags & SDL_WINDOW_HIDDEN) && parent_hwnd) {
         EnableWindow((HWND)parent_hwnd, FALSE);
     }
-#endif /*!defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)*/
+#endif // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 
     return 0;
 }
 
-#endif /* SDL_VIDEO_DRIVER_WINDOWS */
+#endif // SDL_VIDEO_DRIVER_WINDOWS

@@ -22,7 +22,7 @@
 
 #ifdef SDL_JOYSTICK_N3DS
 
-/* This is the N3DS implementation of the SDL joystick API */
+// This is the N3DS implementation of the SDL joystick API
 
 #include <3ds.h>
 
@@ -96,7 +96,7 @@ static int N3DS_JoystickOpen(SDL_Joystick *joystick, int device_index)
     return 0;
 }
 
-static int N3DS_JoystickSetSensorsEnabled(SDL_Joystick *joystick, SDL_bool enabled)
+static int N3DS_JoystickSetSensorsEnabled(SDL_Joystick *joystick, bool enabled)
 {
     return SDL_Unsupported();
 }
@@ -188,9 +188,9 @@ static void N3DS_JoystickQuit(void)
     hidExit();
 }
 
-static SDL_bool N3DS_JoystickGetGamepadMapping(int device_index, SDL_GamepadMapping *out)
+static bool N3DS_JoystickGetGamepadMapping(int device_index, SDL_GamepadMapping *out)
 {
-    /* There is only one possible mapping. */
+    // There is only one possible mapping.
     *out = (SDL_GamepadMapping){
         .a = { EMappingKind_Button, 0 },
         .b = { EMappingKind_Button, 1 },
@@ -219,17 +219,17 @@ static SDL_bool N3DS_JoystickGetGamepadMapping(int device_index, SDL_GamepadMapp
         .lefttrigger = { EMappingKind_Button, 14 },
         .righttrigger = { EMappingKind_Button, 15 },
     };
-    return SDL_TRUE;
+    return true;
 }
 
 static void N3DS_JoystickDetect(void)
 {
 }
 
-static SDL_bool N3DS_JoystickIsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
+static bool N3DS_JoystickIsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
 {
-    /* We don't override any other drivers */
-    return SDL_FALSE;
+    // We don't override any other drivers
+    return false;
 }
 
 static const char *N3DS_JoystickGetDevicePath(int device_index)
@@ -295,4 +295,4 @@ SDL_JoystickDriver SDL_N3DS_JoystickDriver = {
     N3DS_JoystickGetGamepadMapping
 };
 
-#endif /* SDL_JOYSTICK_N3DS */
+#endif // SDL_JOYSTICK_N3DS

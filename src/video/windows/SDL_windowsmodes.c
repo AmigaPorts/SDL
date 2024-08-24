@@ -30,13 +30,13 @@
 #include <dxgi1_6.h>
 #endif
 
-/* Windows CE compatibility */
+// Windows CE compatibility
 #ifndef CDS_FULLSCREEN
 #define CDS_FULLSCREEN 0
 #endif
 
-/* #define DEBUG_MODES */
-/* #define HIGHDPI_DEBUG_VERBOSE */
+// #define DEBUG_MODES
+// #define HIGHDPI_DEBUG_VERBOSE
 
 static void WIN_UpdateDisplayMode(SDL_VideoDevice *_this, LPCWSTR deviceName, DWORD index, SDL_DisplayMode *mode)
 {
@@ -45,7 +45,7 @@ static void WIN_UpdateDisplayMode(SDL_VideoDevice *_this, LPCWSTR deviceName, DW
 
     data->DeviceMode.dmFields = (DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY | DM_DISPLAYFLAGS);
 
-    /* NOLINTNEXTLINE(bugprone-assignment-in-if-condition): No simple way to extract the assignment */
+    // NOLINTNEXTLINE(bugprone-assignment-in-if-condition): No simple way to extract the assignment
     if (index == ENUM_CURRENT_SETTINGS && (hdc = CreateDC(deviceName, NULL, NULL, NULL)) != NULL) {
         char bmi_data[sizeof(BITMAPINFOHEADER) + 256 * sizeof(RGBQUAD)];
         LPBITMAPINFO bmi;
@@ -85,7 +85,7 @@ static void WIN_UpdateDisplayMode(SDL_VideoDevice *_this, LPCWSTR deviceName, DW
             }
         }
     } else if (mode->format == SDL_PIXELFORMAT_UNKNOWN) {
-        /* FIXME: Can we tell what this will be? */
+        // FIXME: Can we tell what this will be?
         if ((data->DeviceMode.dmFields & DM_BITSPERPEL) == DM_BITSPERPEL) {
             switch (data->DeviceMode.dmBitsPerPel) {
             case 32:
@@ -163,7 +163,7 @@ static SDL_DisplayOrientation WIN_GetNaturalOrientation(DEVMODE *mode)
     int width = mode->dmPelsWidth;
     int height = mode->dmPelsHeight;
 
-    /* Use unrotated width/height to guess orientation */
+    // Use unrotated width/height to guess orientation
     if (mode->dmDisplayOrientation == DMDO_90 || mode->dmDisplayOrientation == DMDO_270) {
         int temp = width;
         width = height;
@@ -210,7 +210,7 @@ static SDL_DisplayOrientation WIN_GetDisplayOrientation(DEVMODE *mode)
 
 static void WIN_GetRefreshRate(void *dxgi_output, DEVMODE *mode, int *numerator, int *denominator)
 {
-    /* We're not currently using DXGI to query display modes, so fake NTSC timings */
+    // We're not currently using DXGI to query display modes, so fake NTSC timings
     switch (mode->dmDisplayFrequency) {
     case 119:
     case 59:
@@ -257,7 +257,7 @@ static float WIN_GetContentScale(SDL_VideoDevice *_this, HMONITOR hMonitor)
         }
     }
     if (dpi == 0) {
-        /* Window 8.0 and below: same DPI for all monitors */
+        // Window 8.0 and below: same DPI for all monitors
         HDC hdc = GetDC(NULL);
         if (hdc) {
             dpi = GetDeviceCaps(hdc, LOGPIXELSX);
@@ -265,13 +265,13 @@ static float WIN_GetContentScale(SDL_VideoDevice *_this, HMONITOR hMonitor)
         }
     }
     if (dpi == 0) {
-        /* Safe default */
+        // Safe default
         dpi = USER_DEFAULT_SCREEN_DPI;
     }
     return dpi / (float)USER_DEFAULT_SCREEN_DPI;
 }
 
-static SDL_bool WIN_GetDisplayMode(SDL_VideoDevice *_this, void *dxgi_output, HMONITOR hMonitor, LPCWSTR deviceName, DWORD index, SDL_DisplayMode *mode, SDL_DisplayOrientation *natural_orientation, SDL_DisplayOrientation *current_orientation)
+static bool WIN_GetDisplayMode(SDL_VideoDevice *_this, void *dxgi_output, HMONITOR hMonitor, LPCWSTR deviceName, DWORD index, SDL_DisplayMode *mode, SDL_DisplayOrientation *natural_orientation, SDL_DisplayOrientation *current_orientation)
 {
     SDL_DisplayModeData *data;
     DEVMODE devmode;
@@ -279,12 +279,12 @@ static SDL_bool WIN_GetDisplayMode(SDL_VideoDevice *_this, void *dxgi_output, HM
     devmode.dmSize = sizeof(devmode);
     devmode.dmDriverExtra = 0;
     if (!EnumDisplaySettingsW(deviceName, index, &devmode)) {
-        return SDL_FALSE;
+        return false;
     }
 
     data = (SDL_DisplayModeData *)SDL_malloc(sizeof(*data));
     if (!data) {
-        return SDL_FALSE;
+        return false;
     }
 
     SDL_zerop(mode);
@@ -296,7 +296,7 @@ static SDL_bool WIN_GetDisplayMode(SDL_VideoDevice *_this, void *dxgi_output, HM
     mode->h = data->DeviceMode.dmPelsHeight;
     WIN_GetRefreshRate(dxgi_output, &data->DeviceMode, &mode->refresh_rate_numerator, &mode->refresh_rate_denominator);
 
-    /* Fill in the mode information */
+    // Fill in the mode information
     WIN_UpdateDisplayMode(_this, deviceName, index, mode);
 
     if (natural_orientation) {
@@ -306,7 +306,7 @@ static SDL_bool WIN_GetDisplayMode(SDL_VideoDevice *_this, void *dxgi_output, HM
         *current_orientation = WIN_GetDisplayOrientation(&devmode);
     }
 
-    return SDL_TRUE;
+    return true;
 }
 
 static char *WIN_GetDisplayNameVista(SDL_VideoData *videodata, const WCHAR *deviceName)
@@ -389,12 +389,12 @@ WIN_GetDisplayNameVista_failed:
 }
 
 #ifdef HAVE_DXGI1_6_H
-static SDL_bool WIN_GetMonitorDESC1(HMONITOR hMonitor, DXGI_OUTPUT_DESC1 *desc)
+static bool WIN_GetMonitorDESC1(HMONITOR hMonitor, DXGI_OUTPUT_DESC1 *desc)
 {
     typedef HRESULT (WINAPI * PFN_CREATE_DXGI_FACTORY)(REFIID riid, void **ppFactory);
     PFN_CREATE_DXGI_FACTORY CreateDXGIFactoryFunc = NULL;
     void *hDXGIMod = NULL;
-    SDL_bool found = SDL_FALSE;
+    bool found = false;
 
 #ifdef SDL_PLATFORM_WINRT
     CreateDXGIFactoryFunc = CreateDXGIFactory1;
@@ -420,7 +420,7 @@ static SDL_bool WIN_GetMonitorDESC1(HMONITOR hMonitor, DXGI_OUTPUT_DESC1 *desc)
                     if (SUCCEEDED(IDXGIOutput_QueryInterface(dxgiOutput, &SDL_IID_IDXGIOutput6, (void **)&dxgiOutput6))) {
                         if (SUCCEEDED(IDXGIOutput6_GetDesc1(dxgiOutput6, desc))) {
                             if (desc->Monitor == hMonitor) {
-                                found = SDL_TRUE;
+                                found = true;
                             }
                         }
                         IDXGIOutput6_Release(dxgiOutput6);
@@ -440,7 +440,7 @@ static SDL_bool WIN_GetMonitorDESC1(HMONITOR hMonitor, DXGI_OUTPUT_DESC1 *desc)
     return found;
 }
 
-static SDL_bool WIN_GetMonitorPathInfo(SDL_VideoData *videodata, HMONITOR hMonitor, DISPLAYCONFIG_PATH_INFO *path_info)
+static bool WIN_GetMonitorPathInfo(SDL_VideoData *videodata, HMONITOR hMonitor, DISPLAYCONFIG_PATH_INFO *path_info)
 {
     LONG result;
     MONITORINFOEXW view_info;
@@ -449,10 +449,10 @@ static SDL_bool WIN_GetMonitorPathInfo(SDL_VideoData *videodata, HMONITOR hMonit
     UINT32 num_mode_info_array_elements = 0;
     DISPLAYCONFIG_PATH_INFO *path_infos = NULL, *new_path_infos;
     DISPLAYCONFIG_MODE_INFO *mode_infos = NULL, *new_mode_infos;
-    SDL_bool found = SDL_FALSE;
+    bool found = false;
 
     if (!videodata->GetDisplayConfigBufferSizes || !videodata->QueryDisplayConfig || !videodata->DisplayConfigGetDeviceInfo) {
-        return SDL_FALSE;
+        return false;
     }
 
     SDL_zero(view_info);
@@ -465,7 +465,7 @@ static SDL_bool WIN_GetMonitorPathInfo(SDL_VideoData *videodata, HMONITOR hMonit
         if (videodata->GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &num_path_array_elements, &num_mode_info_array_elements) != ERROR_SUCCESS) {
             SDL_free(path_infos);
             SDL_free(mode_infos);
-            return SDL_FALSE;
+            return false;
         }
 
         new_path_infos = (DISPLAYCONFIG_PATH_INFO *)SDL_realloc(path_infos, num_path_array_elements * sizeof(*path_infos));
@@ -496,7 +496,7 @@ static SDL_bool WIN_GetMonitorPathInfo(SDL_VideoData *videodata, HMONITOR hMonit
             if (videodata->DisplayConfigGetDeviceInfo(&device_name.header) == ERROR_SUCCESS) {
                 if (SDL_wcscmp(view_info.szDevice, device_name.viewGdiDeviceName) == 0) {
                     SDL_copyp(path_info, &path_infos[i]);
-                    found = SDL_TRUE;
+                    found = true;
                     break;
                 }
             }
@@ -524,7 +524,7 @@ static float WIN_GetSDRWhitePoint(SDL_VideoDevice *_this, HMONITOR hMonitor)
         white_level.header.size = sizeof(white_level);
         white_level.header.adapterId = path_info.targetInfo.adapterId;
         white_level.header.id = path_info.targetInfo.id;
-        /* WIN_GetMonitorPathInfo() succeeded: DisplayConfigGetDeviceInfo is not NULL */
+        // WIN_GetMonitorPathInfo() succeeded: DisplayConfigGetDeviceInfo is not NULL
         if (videodata->DisplayConfigGetDeviceInfo(&white_level.header) == ERROR_SUCCESS &&
             white_level.SDRWhiteLevel > 0) {
             SDR_white_level = (white_level.SDRWhiteLevel / 1000.0f);
@@ -546,7 +546,7 @@ static void WIN_GetHDRProperties(SDL_VideoDevice *_this, HMONITOR hMonitor, SDL_
         }
     }
 }
-#endif /* HAVE_DXGI1_6_H */
+#endif // HAVE_DXGI1_6_H
 
 static void WIN_AddDisplay(SDL_VideoDevice *_this, HMONITOR hMonitor, const MONITORINFOEXW *info, int *display_index)
 {
@@ -564,7 +564,7 @@ static void WIN_AddDisplay(SDL_VideoDevice *_this, HMONITOR hMonitor, const MONI
 #endif
 
     dxgi_output = WIN_GetDXGIOutput(_this, info->szDevice);
-    SDL_bool found = WIN_GetDisplayMode(_this, dxgi_output, hMonitor, info->szDevice, ENUM_CURRENT_SETTINGS, &mode, &natural_orientation, &current_orientation);
+    bool found = WIN_GetDisplayMode(_this, dxgi_output, hMonitor, info->szDevice, ENUM_CURRENT_SETTINGS, &mode, &natural_orientation, &current_orientation);
     WIN_ReleaseDXGIOutput(dxgi_output);
     if (!found) {
         return;
@@ -576,16 +576,16 @@ static void WIN_AddDisplay(SDL_VideoDevice *_this, HMONITOR hMonitor, const MONI
     for (i = 0; i < _this->num_displays; ++i) {
         SDL_DisplayData *internal = _this->displays[i]->internal;
         if (SDL_wcscmp(internal->DeviceName, info->szDevice) == 0) {
-            SDL_bool moved = (index != i);
-            SDL_bool changed_bounds = SDL_FALSE;
+            bool moved = (index != i);
+            bool changed_bounds = false;
 
             if (internal->state != DisplayRemoved) {
-                /* We've already enumerated this display, don't move it */
+                // We've already enumerated this display, don't move it
                 return;
             }
 
             if (index >= _this->num_displays) {
-                /* This should never happen due to the check above, but just in case... */
+                // This should never happen due to the check above, but just in case...
                 return;
             }
 
@@ -609,7 +609,7 @@ static void WIN_AddDisplay(SDL_VideoDevice *_this, HMONITOR hMonitor, const MONI
                 SDL_SetDesktopDisplayMode(existing_display, &mode);
                 if (WIN_GetDisplayBounds(_this, existing_display, &bounds) == 0 &&
                     SDL_memcmp(&internal->bounds, &bounds, sizeof(bounds)) != 0) {
-                    changed_bounds = SDL_TRUE;
+                    changed_bounds = true;
                     SDL_copyp(&internal->bounds, &bounds);
                 }
                 if (moved || changed_bounds) {
@@ -656,7 +656,7 @@ static void WIN_AddDisplay(SDL_VideoDevice *_this, HMONITOR hMonitor, const MONI
 #ifdef HAVE_DXGI1_6_H
     WIN_GetHDRProperties(_this, hMonitor, &display.HDR);
 #endif
-    SDL_AddVideoDisplay(&display, SDL_FALSE);
+    SDL_AddVideoDisplay(&display, false);
     SDL_free(display.name);
 
 done:
@@ -667,7 +667,7 @@ typedef struct _WIN_AddDisplaysData
 {
     SDL_VideoDevice *video_device;
     int display_index;
-    SDL_bool want_primary;
+    bool want_primary;
 } WIN_AddDisplaysData;
 
 static BOOL CALLBACK WIN_AddDisplaysCallback(HMONITOR hMonitor,
@@ -682,7 +682,7 @@ static BOOL CALLBACK WIN_AddDisplaysCallback(HMONITOR hMonitor,
     info.cbSize = sizeof(info);
 
     if (GetMonitorInfoW(hMonitor, (LPMONITORINFO)&info) != 0) {
-        const SDL_bool is_primary = ((info.dwFlags & MONITORINFOF_PRIMARY) == MONITORINFOF_PRIMARY);
+        const bool is_primary = ((info.dwFlags & MONITORINFOF_PRIMARY) == MONITORINFOF_PRIMARY);
 
         if (is_primary == data->want_primary) {
             WIN_AddDisplay(data->video_device, hMonitor, &info, &data->display_index);
@@ -699,10 +699,10 @@ static void WIN_AddDisplays(SDL_VideoDevice *_this)
     callback_data.video_device = _this;
     callback_data.display_index = 0;
 
-    callback_data.want_primary = SDL_TRUE;
+    callback_data.want_primary = true;
     EnumDisplayMonitors(NULL, NULL, WIN_AddDisplaysCallback, (LPARAM)&callback_data);
 
-    callback_data.want_primary = SDL_FALSE;
+    callback_data.want_primary = false;
     EnumDisplayMonitors(NULL, NULL, WIN_AddDisplaysCallback, (LPARAM)&callback_data);
 }
 
@@ -774,7 +774,7 @@ int WIN_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay *display)
             break;
         }
         if (SDL_ISPIXELFORMAT_INDEXED(mode.format)) {
-            /* We don't support palettized modes now */
+            // We don't support palettized modes now
             SDL_free(mode.internal);
             continue;
         }
@@ -904,7 +904,7 @@ void WIN_RefreshDisplays(SDL_VideoDevice *_this)
         SDL_VideoDisplay *display = _this->displays[i];
         SDL_DisplayData *internal = display->internal;
         if (internal->state == DisplayRemoved) {
-            SDL_DelVideoDisplay(display->id, SDL_TRUE);
+            SDL_DelVideoDisplay(display->id, true);
         }
     }
 
@@ -920,7 +920,7 @@ void WIN_RefreshDisplays(SDL_VideoDevice *_this)
 
 void WIN_QuitModes(SDL_VideoDevice *_this)
 {
-    /* All fullscreen windows should have restored modes by now */
+    // All fullscreen windows should have restored modes by now
 }
 
-#endif /* SDL_VIDEO_DRIVER_WINDOWS */
+#endif // SDL_VIDEO_DRIVER_WINDOWS

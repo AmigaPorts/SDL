@@ -27,7 +27,7 @@
 
 #include "../SDL_syssensor.h"
 
-/* 1 accelerometer and 1 gyroscope */
+// 1 accelerometer and 1 gyroscope
 #define N3DS_SENSOR_COUNT 2
 
 typedef struct
@@ -42,7 +42,7 @@ static int InitN3DSServices(void);
 static void UpdateN3DSAccelerometer(SDL_Sensor *sensor);
 static void UpdateN3DSGyroscope(SDL_Sensor *sensor);
 
-static SDL_bool IsDeviceIndexValid(int device_index)
+static bool IsDeviceIndexValid(int device_index)
 {
     return device_index >= 0 && device_index < N3DS_SENSOR_COUNT;
 }
@@ -200,4 +200,4 @@ SDL_SensorDriver SDL_N3DS_SensorDriver = {
     .Quit = N3DS_SensorQuit,
 };
 
-#endif /* SDL_SENSOR_N3DS */
+#endif // SDL_SENSOR_N3DS

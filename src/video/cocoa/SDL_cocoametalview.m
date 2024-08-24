@@ -30,7 +30,7 @@
 
 #if defined(SDL_VIDEO_DRIVER_COCOA) && (defined(SDL_VIDEO_VULKAN) || defined(SDL_VIDEO_METAL))
 
-static int SDLCALL SDL_MetalViewEventWatch(void *userdata, SDL_Event *event)
+static SDL_bool SDLCALL SDL_MetalViewEventWatch(void *userdata, SDL_Event *event)
 {
     /* Update the drawable size when SDL receives a size changed event for
      * the window that contains the metal view. It would be nice to use
@@ -47,18 +47,18 @@ static int SDLCALL SDL_MetalViewEventWatch(void *userdata, SDL_Event *event)
             }
         }
     }
-    return 0;
+    return false;
 }
 
 @implementation SDL3_cocoametalview
 
-/* Return a Metal-compatible layer. */
+// Return a Metal-compatible layer.
 + (Class)layerClass
 {
     return NSClassFromString(@"CAMetalLayer");
 }
 
-/* Indicate the view wants to draw using a backing layer instead of drawRect. */
+// Indicate the view wants to draw using a backing layer instead of drawRect.
 - (BOOL)wantsUpdateLayer
 {
     return YES;
@@ -83,7 +83,7 @@ static int SDLCALL SDL_MetalViewEventWatch(void *userdata, SDL_Event *event)
         self.sdlWindowID = windowID;
         self.wantsLayer = YES;
 
-        /* Allow resize. */
+        // Allow resize.
         self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
         self.layer.opaque = opaque;
@@ -152,7 +152,7 @@ SDL_MetalView Cocoa_Metal_CreateView(SDL_VideoDevice *_this, SDL_Window *window)
 
         [view addSubview:newview];
 
-        /* Make sure the drawable size is up to date after attaching the view. */
+        // Make sure the drawable size is up to date after attaching the view.
         [newview updateDrawableSize];
 
         metalview = (SDL_MetalView)CFBridgingRetain(newview);
@@ -177,4 +177,4 @@ void *Cocoa_Metal_GetLayer(SDL_VideoDevice *_this, SDL_MetalView view)
     }
 }
 
-#endif /* SDL_VIDEO_DRIVER_COCOA && (SDL_VIDEO_VULKAN || SDL_VIDEO_METAL) */
+#endif // SDL_VIDEO_DRIVER_COCOA && (SDL_VIDEO_VULKAN || SDL_VIDEO_METAL)

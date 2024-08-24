@@ -22,7 +22,7 @@
 
 #ifdef SDL_VIDEO_DRIVER_X11
 
-#include <limits.h> /* For INT_MAX */
+#include <limits.h> // For INT_MAX
 
 #include "SDL_x11video.h"
 #include "SDL_x11clipboard.h"
@@ -37,7 +37,7 @@ static const char *text_mime_types[] = {
     "STRING"
 };
 
-/* Get any application owned window handle for clipboard association */
+// Get any application owned window handle for clipboard association
 static Window GetWindow(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = _this->internal;
@@ -68,7 +68,7 @@ static int SetSelectionData(SDL_VideoDevice *_this, Atom selection, SDL_Clipboar
     Display *display = videodata->display;
     Window window;
     SDLX11_ClipboardData *clipboard;
-    SDL_bool clipboard_owner = SDL_FALSE;
+    bool clipboard_owner = false;
 
     window = GetWindow(_this);
     if (window == None) {
@@ -83,7 +83,7 @@ static int SetSelectionData(SDL_VideoDevice *_this, Atom selection, SDL_Clipboar
 
     clipboard_owner = X11_XGetSelectionOwner(display, selection) == window;
 
-    /* If we are cancelling our own data we need to clean it up */
+    // If we are cancelling our own data we need to clean it up
     if (clipboard_owner && clipboard->sequence == 0) {
         SDL_free(clipboard->userdata);
     }
@@ -131,29 +131,29 @@ static void *AppendDataBuffer(void *original_buffer, const size_t old_len, const
     }
 }
 
-static SDL_bool WaitForSelection(SDL_VideoDevice *_this, Atom selection_type, SDL_bool *flag)
+static bool WaitForSelection(SDL_VideoDevice *_this, Atom selection_type, bool *flag)
 {
     Uint64 waitStart;
     Uint64 waitElapsed;
 
     waitStart = SDL_GetTicks();
-    *flag = SDL_TRUE;
+    *flag = true;
     while (*flag) {
         SDL_PumpEvents();
         waitElapsed = SDL_GetTicks() - waitStart;
-        /* Wait one second for a selection response. */
+        // Wait one second for a selection response.
         if (waitElapsed > 1000) {
-            *flag = SDL_FALSE;
+            *flag = false;
             SDL_SetError("Selection timeout");
             /* We need to set the selection text so that next time we won't
                timeout, otherwise we will hang on every call to this function. */
             SetSelectionData(_this, selection_type, SDL_ClipboardTextCallback, NULL,
                              text_mime_types, SDL_arraysize(text_mime_types), 0);
-            return SDL_FALSE;
+            return false;
         }
     }
 
-    return SDL_TRUE;
+    return true;
 }
 
 static void *GetSelectionData(SDL_VideoDevice *_this, Atom selection_type,
@@ -172,17 +172,17 @@ static void *GetSelectionData(SDL_VideoDevice *_this, Atom selection_type,
     SDLX11_ClipboardData *clipboard;
     void *data = NULL;
     unsigned char *src = NULL;
-    SDL_bool incr_success = SDL_FALSE;
+    bool incr_success = false;
     Atom XA_MIME = X11_XInternAtom(display, mime_type, False);
     Atom XA_INCR = X11_XInternAtom(display, "INCR", False);
 
     *length = 0;
 
-    /* Get the window that holds the selection */
+    // Get the window that holds the selection
     window = GetWindow(_this);
     owner = X11_XGetSelectionOwner(display, selection_type);
     if (owner == None) {
-        /* This requires a fallback to ancient X10 cut-buffers. We will just skip those for now */
+        // This requires a fallback to ancient X10 cut-buffers. We will just skip those for now
         data = NULL;
     } else if (owner == window) {
         owner = DefaultRootWindow(display);
@@ -197,13 +197,13 @@ static void *GetSelectionData(SDL_VideoDevice *_this, Atom selection_type,
             data = CloneDataBuffer(clipboard_data, *length);
         }
     } else {
-        /* Request that the selection owner copy the data to our window */
+        // Request that the selection owner copy the data to our window
         owner = window;
         selection = X11_XInternAtom(display, "SDL_SELECTION", False);
         X11_XConvertSelection(display, selection_type, XA_MIME, selection, owner,
                               CurrentTime);
 
-        if (WaitForSelection(_this, selection_type, &videodata->selection_waiting) == SDL_FALSE) {
+        if (WaitForSelection(_this, selection_type, &videodata->selection_waiting) == false) {
             data = NULL;
             *length = 0;
         }
@@ -219,7 +219,7 @@ static void *GetSelectionData(SDL_VideoDevice *_this, Atom selection_type,
                     X11_XDeleteProperty(display, owner, selection);
                     X11_XFlush(display);
 
-                    if (WaitForSelection(_this, selection_type, &videodata->selection_incr_waiting) == SDL_FALSE) {
+                    if (WaitForSelection(_this, selection_type, &videodata->selection_incr_waiting) == false) {
                         break;
                     }
 
@@ -230,7 +230,7 @@ static void *GetSelectionData(SDL_VideoDevice *_this, Atom selection_type,
                     }
 
                     if (count == 0) {
-                        incr_success = SDL_TRUE;
+                        incr_success = true;
                         break;
                     }
 
@@ -247,7 +247,7 @@ static void *GetSelectionData(SDL_VideoDevice *_this, Atom selection_type,
                     }
                 }
 
-                if (incr_success == SDL_FALSE) {
+                if (incr_success == false) {
                     SDL_free(data);
                     data = 0;
                     *length = 0;
@@ -287,7 +287,7 @@ void *X11_GetClipboardData(SDL_VideoDevice *_this, const char *mime_type, size_t
     return GetSelectionData(_this, XA_CLIPBOARD, mime_type, length);
 }
 
-SDL_bool X11_HasClipboardData(SDL_VideoDevice *_this, const char *mime_type)
+bool X11_HasClipboardData(SDL_VideoDevice *_this, const char *mime_type)
 {
     size_t length;
     void *data;
@@ -313,13 +313,13 @@ char *X11_GetPrimarySelectionText(SDL_VideoDevice *_this)
     return text;
 }
 
-SDL_bool X11_HasPrimarySelectionText(SDL_VideoDevice *_this)
+bool X11_HasPrimarySelectionText(SDL_VideoDevice *_this)
 {
-    SDL_bool result = SDL_FALSE;
+    bool result = false;
     char *text = X11_GetPrimarySelectionText(_this);
     if (text) {
         if (text[0] != '\0') {
-            result = SDL_TRUE;
+            result = true;
         }
         SDL_free(text);
     }
@@ -337,4 +337,4 @@ void X11_QuitClipboard(SDL_VideoDevice *_this)
     }
 }
 
-#endif /* SDL_VIDEO_DRIVER_X11 */
+#endif // SDL_VIDEO_DRIVER_X11

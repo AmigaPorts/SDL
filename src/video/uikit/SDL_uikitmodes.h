@@ -42,13 +42,13 @@
 @end
 
 #ifndef SDL_PLATFORM_VISIONOS
-extern SDL_bool UIKit_IsDisplayLandscape(UIScreen *uiscreen);
+extern bool UIKit_IsDisplayLandscape(UIScreen *uiscreen);
 #endif
 
 extern int UIKit_InitModes(SDL_VideoDevice *_this);
 #ifndef SDL_PLATFORM_VISIONOS
-extern int UIKit_AddDisplay(UIScreen *uiscreen, SDL_bool send_event);
-extern void UIKit_DelDisplay(UIScreen *uiscreen, SDL_bool send_event);
+extern int UIKit_AddDisplay(UIScreen *uiscreen, bool send_event);
+extern void UIKit_DelDisplay(UIScreen *uiscreen, bool send_event);
 #endif
 extern int UIKit_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay *display);
 extern int UIKit_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_DisplayMode *mode);
@@ -64,4 +64,4 @@ extern int UIKit_GetDisplayUsableBounds(SDL_VideoDevice *_this, SDL_VideoDisplay
 #define SDL_XR_SCREENHEIGHT 720
 #endif
 
-#endif /* SDL_uikitmodes_h_ */
+#endif // SDL_uikitmodes_h_

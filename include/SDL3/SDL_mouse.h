@@ -38,9 +38,26 @@
 extern "C" {
 #endif
 
+/**
+ * This is a unique ID for a mouse for the time it is connected to the system,
+ * and is never reused for the lifetime of the application.
+ *
+ * If the mouse is disconnected and reconnected, it will get a new ID.
+ *
+ * The value 0 is an invalid ID.
+ *
+ * \since This datatype is available since SDL 3.0.0.
+ */
 typedef Uint32 SDL_MouseID;
 
-typedef struct SDL_Cursor SDL_Cursor;   /**< Implementation dependent */
+/**
+ * The structure used to identify an SDL cursor.
+ *
+ * This is opaque data.
+ *
+ * \since This struct is available since SDL 3.0.0.
+ */
+typedef struct SDL_Cursor SDL_Cursor;
 
 /**
  * Cursor types for SDL_CreateSystemCursor().
@@ -423,8 +440,9 @@ extern SDL_DECLSPEC SDL_Cursor * SDLCALL SDL_CreateCursor(const Uint8 * data,
  * situations. For example, if the original surface is 32x32, then on a 2x
  * macOS display or 200% display scale on Windows, a 64x64 version of the
  * image will be used, if available. If a matching version of the image isn't
- * available, the closest size image will be scaled to the appropriate size
- * and be used instead.
+ * available, the closest larger size image will be downscaled to the
+ * appropriate size and be used instead, if available. Otherwise, the closest
+ * smaller image will be upscaled and be used instead.
  *
  * \param surface an SDL_Surface structure representing the cursor image.
  * \param hot_x the x position of the cursor hot spot.

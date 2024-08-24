@@ -37,7 +37,7 @@ typedef struct Cocoa_PenHandle
     NSUInteger deviceid;
     NSUInteger toolid;
     SDL_PenID pen;
-    SDL_bool is_eraser;
+    bool is_eraser;
 } Cocoa_PenHandle;
 
 typedef struct FindPenByDeviceAndToolIDData
@@ -47,18 +47,18 @@ typedef struct FindPenByDeviceAndToolIDData
     void *handle;
 } FindPenByDeviceAndToolIDData;
 
-static SDL_bool FindPenByDeviceAndToolID(void *handle, void *userdata)
+static bool FindPenByDeviceAndToolID(void *handle, void *userdata)
 {
     const Cocoa_PenHandle *cocoa_handle = (const Cocoa_PenHandle *) handle;
     FindPenByDeviceAndToolIDData *data = (FindPenByDeviceAndToolIDData *) userdata;
 
     if (cocoa_handle->deviceid != data->deviceid) {
-        return SDL_FALSE;
+        return false;
     } else if (cocoa_handle->toolid != data->toolid) {
-        return SDL_FALSE;
+        return false;
     }
     data->handle = handle;
-    return SDL_TRUE;
+    return true;
 }
 
 static Cocoa_PenHandle *Cocoa_FindPenByDeviceID(NSUInteger deviceid, NSUInteger toolid)
@@ -78,8 +78,8 @@ static void Cocoa_HandlePenProximityEvent(SDL_CocoaWindowData *_data, NSEvent *e
 
     if (event.enteringProximity) {  // new pen coming!
         const NSPointingDeviceType devtype = [event pointingDeviceType];
-        const SDL_bool is_eraser = (devtype == NSPointingDeviceTypeEraser);
-        const SDL_bool is_pen = (devtype == NSPointingDeviceTypePen);
+        const bool is_eraser = (devtype == NSPointingDeviceTypeEraser);
+        const bool is_pen = (devtype == NSPointingDeviceTypePen);
         if (!is_eraser && !is_pen) {
             return;  // we ignore other things, which hopefully is right.
         }
@@ -89,10 +89,10 @@ static void Cocoa_HandlePenProximityEvent(SDL_CocoaWindowData *_data, NSEvent *e
             return;  // oh well.
         }
 
-        // Cocoa offers almost none of this information.
+        // Cocoa offers almost none of this information as specifics, but can without warning offer any of these specific things.
         SDL_PenInfo peninfo;
         SDL_zero(peninfo);
-        peninfo.capabilities = SDL_PEN_CAPABILITY_PRESSURE | SDL_PEN_CAPABILITY_ROTATION | SDL_PEN_CAPABILITY_XTILT | SDL_PEN_CAPABILITY_YTILT | (is_eraser ? SDL_PEN_CAPABILITY_ERASER : 0);
+        peninfo.capabilities = SDL_PEN_CAPABILITY_PRESSURE | SDL_PEN_CAPABILITY_ROTATION | SDL_PEN_CAPABILITY_XTILT | SDL_PEN_CAPABILITY_YTILT | SDL_PEN_CAPABILITY_TANGENTIAL_PRESSURE | (is_eraser ? SDL_PEN_CAPABILITY_ERASER : 0);
         peninfo.max_tilt = 90.0f;
         peninfo.num_buttons = 2;
         peninfo.subtype = is_eraser ? SDL_PEN_TYPE_ERASER : SDL_PEN_TYPE_PEN;
@@ -125,7 +125,7 @@ static void Cocoa_HandlePenPointEvent(SDL_CocoaWindowData *_data, NSEvent *event
     const NSEventButtonMask buttons = [event buttonMask];
     const NSPoint tilt = [event tilt];
     const NSPoint point = [event locationInWindow];
-    const SDL_bool is_touching = (buttons & NSEventButtonMaskPenTip) != 0;
+    const bool is_touching = (buttons & NSEventButtonMaskPenTip) != 0;
     SDL_Window *window = _data.window;
 
     SDL_SendPenTouch(timestamp, pen, window, is_touching, handle->is_eraser ? 1 : 0);
@@ -136,9 +136,10 @@ static void Cocoa_HandlePenPointEvent(SDL_CocoaWindowData *_data, NSEvent *event
     SDL_SendPenAxis(timestamp, pen, window, SDL_PEN_AXIS_ROTATION, [event rotation]);
     SDL_SendPenAxis(timestamp, pen, window, SDL_PEN_AXIS_XTILT, ((float) tilt.x) * 90.0f);
     SDL_SendPenAxis(timestamp, pen, window, SDL_PEN_AXIS_YTILT, ((float) tilt.y) * 90.0f);
+    SDL_SendPenAxis(timestamp, pen, window, SDL_PEN_AXIS_TANGENTIAL_PRESSURE, event.tangentialPressure);
 }
 
-SDL_bool Cocoa_HandlePenEvent(SDL_CocoaWindowData *_data, NSEvent *event)
+bool Cocoa_HandlePenEvent(SDL_CocoaWindowData *_data, NSEvent *event)
 {
     NSEventType type = [event type];
 
@@ -149,7 +150,7 @@ SDL_bool Cocoa_HandlePenEvent(SDL_CocoaWindowData *_data, NSEvent *event)
         } else if (subtype == NSEventSubtypeTabletProximity) {
             type = NSEventTypeTabletProximity;
         } else {
-            return SDL_FALSE;  // not a tablet event.
+            return false;  // not a tablet event.
         }
     }
 
@@ -158,10 +159,10 @@ SDL_bool Cocoa_HandlePenEvent(SDL_CocoaWindowData *_data, NSEvent *event)
     } else if (type == NSEventTypeTabletProximity) {
         Cocoa_HandlePenProximityEvent(_data, event);
     } else {
-        return SDL_FALSE;  // not a tablet event.
+        return false;  // not a tablet event.
     }
 
-    return SDL_TRUE;
+    return true;
 }
 
 static void Cocoa_FreePenHandle(SDL_PenID instance_id, void *handle, void *userdata)
@@ -174,4 +175,4 @@ void Cocoa_QuitPen(SDL_VideoDevice *_this)
     SDL_RemoveAllPenDevices(Cocoa_FreePenHandle, NULL);
 }
 
-#endif /* SDL_VIDEO_DRIVER_COCOA */
+#endif // SDL_VIDEO_DRIVER_COCOA

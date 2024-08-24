@@ -26,7 +26,7 @@
 #include "../../events/SDL_clipboardevents_c.h"
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED < 101300
-typedef NSString *NSPasteboardType; /* Defined in macOS 10.13+ */
+typedef NSString *NSPasteboardType; // Defined in macOS 10.13+
 #endif
 
 @interface Cocoa_PasteboardDataProvider : NSObject<NSPasteboardItemDataProvider>
@@ -156,16 +156,16 @@ void *Cocoa_GetClipboardData(SDL_VideoDevice *_this, const char *mime_type, size
     }
 }
 
-SDL_bool Cocoa_HasClipboardData(SDL_VideoDevice *_this, const char *mime_type)
+bool Cocoa_HasClipboardData(SDL_VideoDevice *_this, const char *mime_type)
 {
-    SDL_bool result = SDL_FALSE;
+    bool result = false;
     @autoreleasepool {
         NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
         CFStringRef mimeType = CFStringCreateWithCString(NULL, mime_type, kCFStringEncodingUTF8);
         CFStringRef utiType = UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, mimeType, NULL);
         CFRelease(mimeType);
         if ([pasteboard canReadItemWithDataConformingToTypes: @[(__bridge NSString *)utiType]]) {
-            result = SDL_TRUE;
+            result = true;
         }
         CFRelease(utiType);
     }
@@ -173,4 +173,4 @@ SDL_bool Cocoa_HasClipboardData(SDL_VideoDevice *_this, const char *mime_type)
 
 }
 
-#endif /* SDL_VIDEO_DRIVER_COCOA */
+#endif // SDL_VIDEO_DRIVER_COCOA

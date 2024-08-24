@@ -28,7 +28,7 @@
 
 #if SDL_VIDEO_RENDER_VITA_GXM
 #include "../../render/vitagxm/SDL_render_vita_gxm_tools.h"
-#endif /* SDL_VIDEO_RENDER_VITA_GXM */
+#endif // SDL_VIDEO_RENDER_VITA_GXM
 
 int VITA_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
 {
@@ -41,7 +41,7 @@ int VITA_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
 
     SceMsgDialogResult dialog_result;
     SceCommonDialogErrorCode init_result;
-    SDL_bool setup_minimal_gxm = SDL_FALSE;
+    bool setup_minimal_gxm = false;
 
     if (messageboxdata->numbuttons > 3) {
         return -1;
@@ -78,7 +78,7 @@ int VITA_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
     if (init_result == SCE_COMMON_DIALOG_ERROR_GXM_IS_UNINITIALIZED) {
         gxm_minimal_init_for_common_dialog();
         init_result = sceMsgDialogInit(&param);
-        setup_minimal_gxm = SDL_TRUE;
+        setup_minimal_gxm = true;
     }
 
     gxm_init_for_common_dialog();
@@ -122,4 +122,4 @@ int VITA_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
 #endif
 }
 
-#endif /* SDL_VIDEO_DRIVER_VITA */
+#endif // SDL_VIDEO_DRIVER_VITA

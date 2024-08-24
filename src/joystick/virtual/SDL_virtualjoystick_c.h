@@ -47,7 +47,7 @@ typedef struct VirtualSensorEvent
 typedef struct joystick_hwdata
 {
     SDL_JoystickID instance_id;
-    SDL_bool attached;
+    bool attached;
     char *name;
     SDL_JoystickType type;
     SDL_GUID guid;
@@ -59,7 +59,7 @@ typedef struct joystick_hwdata
     SDL_JoystickBallData *balls;
     SDL_JoystickTouchpadInfo *touchpads;
     SDL_JoystickSensorInfo *sensors;
-    SDL_bool sensors_enabled;
+    bool sensors_enabled;
     int num_sensor_events;
     int max_sensor_events;
     VirtualSensorEvent *sensor_events;
@@ -79,6 +79,6 @@ extern int SDL_SetJoystickVirtualHatInner(SDL_Joystick *joystick, int hat, Uint8
 extern int SDL_SetJoystickVirtualTouchpadInner(SDL_Joystick *joystick, int touchpad, int finger, Uint8 state, float x, float y, float pressure);
 extern int SDL_SendJoystickVirtualSensorDataInner(SDL_Joystick *joystick, SDL_SensorType type, Uint64 sensor_timestamp, const float *data, int num_values);
 
-#endif /* SDL_JOYSTICK_VIRTUAL */
+#endif // SDL_JOYSTICK_VIRTUAL
 
-#endif /* SDL_VIRTUALJOYSTICK_C_H */
+#endif // SDL_VIRTUALJOYSTICK_C_H

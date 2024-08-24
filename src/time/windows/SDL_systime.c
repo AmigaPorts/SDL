@@ -34,7 +34,7 @@ typedef void(WINAPI *pfnGetSystemTimePreciseAsFileTime)(FILETIME *);
 
 void SDL_GetSystemTimeLocalePreferences(SDL_DateFormat *df, SDL_TimeFormat *tf)
 {
-    WCHAR str[80]; /* Per the docs, the time and short date format strings can be a max of 80 characters. */
+    WCHAR str[80]; // Per the docs, the time and short date format strings can be a max of 80 characters.
 
     if (df && GetLocaleInfoW(LOCALE_USER_DEFAULT, LOCALE_SSHORTDATE, str, sizeof(str) / sizeof(WCHAR))) {
         LPWSTR s = str;
@@ -57,7 +57,7 @@ void SDL_GetSystemTimeLocalePreferences(SDL_DateFormat *df, SDL_TimeFormat *tf)
 
 found_date:
 
-    /* Figure out the preferred system date format. */
+    // Figure out the preferred system date format.
     if (tf && GetLocaleInfoW(LOCALE_USER_DEFAULT, LOCALE_STIMEFORMAT, str, sizeof(str) / sizeof(WCHAR))) {
         LPWSTR s = str;
         while (*s) {
@@ -89,15 +89,15 @@ int SDL_GetCurrentTime(SDL_Time *ticks)
     GetSystemTimePreciseAsFileTime(&ft);
 #else
     static pfnGetSystemTimePreciseAsFileTime pGetSystemTimePreciseAsFileTime = NULL;
-    static SDL_bool load_attempted = SDL_FALSE;
+    static bool load_attempted = false;
 
-    /* Only available in Win8/Server 2012 or higher. */
+    // Only available in Win8/Server 2012 or higher.
     if (!pGetSystemTimePreciseAsFileTime && !load_attempted) {
         HANDLE kernel32 = GetModuleHandle(TEXT("kernel32.dll"));
         if (kernel32) {
             pGetSystemTimePreciseAsFileTime = (pfnGetSystemTimePreciseAsFileTime)GetProcAddress(kernel32, "GetSystemTimePreciseAsFileTime");
         }
-        load_attempted = SDL_TRUE;
+        load_attempted = true;
     }
 
     if (pGetSystemTimePreciseAsFileTime) {
@@ -130,7 +130,7 @@ int SDL_TimeToDateTime(SDL_Time ticks, SDL_DateTime *dt, SDL_bool localTime)
     if (FileTimeToSystemTime(&ft, &utc_st)) {
         if (localTime) {
             if (SystemTimeToTzSpecificLocalTime(NULL, &utc_st, &local_st)) {
-                /* Calculate the difference for the UTC offset. */
+                // Calculate the difference for the UTC offset.
                 SystemTimeToFileTime(&local_st, &local_ft);
                 const SDL_Time local_ticks = SDL_TimeFromWindows(local_ft.dwLowDateTime, local_ft.dwHighDateTime);
                 dt->utc_offset = (int)SDL_NS_TO_SECONDS(local_ticks - ticks);
@@ -158,4 +158,4 @@ int SDL_TimeToDateTime(SDL_Time ticks, SDL_DateTime *dt, SDL_bool localTime)
     return SDL_SetError("SDL_DateTime conversion failed (%lu)", GetLastError());
 }
 
-#endif /* SDL_TIME_WINDOWS */
+#endif // SDL_TIME_WINDOWS

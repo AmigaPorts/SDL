@@ -1369,7 +1369,7 @@ SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state)
             SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, r.y);
             SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, r.w);
             SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, r.h);
-            SDL_SetNumberProperty(props, "flags", state->window_flags);
+            SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER, state->window_flags);
             state->windows[i] = SDL_CreateWindowWithProperties(props);
             SDL_DestroyProperties(props);
             if (!state->windows[i]) {
@@ -2090,7 +2090,7 @@ static void FullscreenTo(SDLTest_CommonState *state, int index, int windowId)
     SDL_free(displays);
 }
 
-int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event *event)
+SDL_AppResult SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event *event)
 {
     int i;
 
@@ -2487,7 +2487,7 @@ int SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event
 
 void SDLTest_CommonEvent(SDLTest_CommonState *state, SDL_Event *event, int *done)
 {
-    if (SDLTest_CommonEventMainCallbacks(state, event)) {
+    if (SDLTest_CommonEventMainCallbacks(state, event) != SDL_APP_CONTINUE) {
         *done = 1;
     }
 }

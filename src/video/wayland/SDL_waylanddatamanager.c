@@ -217,7 +217,7 @@ static size_t Wayland_send_data(const void *data, size_t length, int fd)
 
     if (length > 0 && data) {
         while (write_pipe(fd, data, length, &result) > 0) {
-            /* Just keep spinning */
+            // Just keep spinning
         }
     }
     close(fd);
@@ -372,7 +372,7 @@ void *Wayland_data_offer_receive(SDL_WaylandDataOffer *offer,
     } else {
         wl_data_offer_receive(offer->offer, mime_type, pipefd[1]);
 
-        /* TODO: Needs pump and flush? */
+        // TODO: Needs pump and flush?
         WAYLAND_wl_display_flush(data_device->video_data->display);
 
         close(pipefd[1]);
@@ -381,6 +381,9 @@ void *Wayland_data_offer_receive(SDL_WaylandDataOffer *offer,
         }
         close(pipefd[0]);
     }
+    SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                 ". In Wayland_data_offer_receive for '%s', buffer (%ld) at %p\n",
+                 mime_type, *length, buffer);
     return buffer;
 }
 
@@ -405,7 +408,7 @@ void *Wayland_primary_selection_offer_receive(SDL_WaylandPrimarySelectionOffer *
     } else {
         zwp_primary_selection_offer_v1_receive(offer->offer, mime_type, pipefd[1]);
 
-        /* TODO: Needs pump and flush? */
+        // TODO: Needs pump and flush?
         WAYLAND_wl_display_flush(primary_selection_device->video_data->display);
 
         close(pipefd[1]);
@@ -414,6 +417,9 @@ void *Wayland_primary_selection_offer_receive(SDL_WaylandPrimarySelectionOffer *
         }
         close(pipefd[0]);
     }
+    SDL_LogDebug(SDL_LOG_CATEGORY_INPUT,
+                 ". In Wayland_primary_selection_offer_receive for '%s', buffer (%ld) at %p\n",
+                 mime_type, *length, buffer);
     return buffer;
 }
 
@@ -429,10 +435,10 @@ int Wayland_primary_selection_offer_add_mime(SDL_WaylandPrimarySelectionOffer *o
     return mime_data_list_add(&offer->mimes, mime_type, NULL, 0);
 }
 
-SDL_bool Wayland_data_offer_has_mime(SDL_WaylandDataOffer *offer,
+bool Wayland_data_offer_has_mime(SDL_WaylandDataOffer *offer,
                                      const char *mime_type)
 {
-    SDL_bool found = SDL_FALSE;
+    bool found = false;
 
     if (offer) {
         found = mime_data_list_find(&offer->mimes, mime_type) != NULL;
@@ -440,10 +446,10 @@ SDL_bool Wayland_data_offer_has_mime(SDL_WaylandDataOffer *offer,
     return found;
 }
 
-SDL_bool Wayland_primary_selection_offer_has_mime(SDL_WaylandPrimarySelectionOffer *offer,
+bool Wayland_primary_selection_offer_has_mime(SDL_WaylandPrimarySelectionOffer *offer,
                                                   const char *mime_type)
 {
-    SDL_bool found = SDL_FALSE;
+    bool found = false;
 
     if (offer) {
         found = mime_data_list_find(&offer->mimes, mime_type) != NULL;
@@ -523,7 +529,7 @@ int Wayland_data_device_set_selection(SDL_WaylandDataDevice *data_device,
             Wayland_data_device_clear_selection(data_device);
             status = SDL_SetError("No mime data");
         } else {
-            /* Only set if there is a valid serial if not set it later */
+            // Only set if there is a valid serial if not set it later
             if (data_device->selection_serial != 0) {
                 wl_data_device_set_selection(data_device->data_device,
                                              source->source,
@@ -564,7 +570,7 @@ int Wayland_primary_selection_device_set_selection(SDL_WaylandPrimarySelectionDe
             Wayland_primary_selection_device_clear_selection(primary_selection_device);
             status = SDL_SetError("No mime data");
         } else {
-            /* Only set if there is a valid serial if not set it later */
+            // Only set if there is a valid serial if not set it later
             if (primary_selection_device->selection_serial != 0) {
                 zwp_primary_selection_device_v1_set_selection(primary_selection_device->primary_selection_device,
                                                               source->source,
@@ -588,7 +594,7 @@ int Wayland_data_device_set_serial(SDL_WaylandDataDevice *data_device,
     if (data_device) {
         status = 0;
 
-        /* If there was no serial and there is a pending selection set it now. */
+        // If there was no serial and there is a pending selection set it now.
         if (data_device->selection_serial == 0 && data_device->selection_source) {
             wl_data_device_set_selection(data_device->data_device,
                                          data_device->selection_source->source,
@@ -608,7 +614,7 @@ int Wayland_primary_selection_device_set_serial(SDL_WaylandPrimarySelectionDevic
     if (primary_selection_device) {
         status = 0;
 
-        /* If there was no serial and there is a pending selection set it now. */
+        // If there was no serial and there is a pending selection set it now.
         if (primary_selection_device->selection_serial == 0 && primary_selection_device->selection_source) {
             zwp_primary_selection_device_v1_set_selection(primary_selection_device->primary_selection_device,
                                                           primary_selection_device->selection_source->source,
@@ -621,4 +627,4 @@ int Wayland_primary_selection_device_set_serial(SDL_WaylandPrimarySelectionDevic
     return status;
 }
 
-#endif /* SDL_VIDEO_DRIVER_WAYLAND */
+#endif // SDL_VIDEO_DRIVER_WAYLAND

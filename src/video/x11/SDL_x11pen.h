@@ -25,10 +25,16 @@
 
 // Pressure-sensitive pen support for X11.
 
-#ifdef SDL_VIDEO_DRIVER_X11_XINPUT2
-
 #include "SDL_x11video.h"
 #include "../../events/SDL_pen_c.h"
+
+// Prep pen support (never fails; pens simply won't be added if there's a problem).
+extern void X11_InitPen(SDL_VideoDevice *_this);
+
+// Clean up pen support.
+extern void X11_QuitPen(SDL_VideoDevice *_this);
+
+#ifdef SDL_VIDEO_DRIVER_X11_XINPUT2
 
 // Forward definition for SDL_x11video.h
 struct SDL_VideoData;
@@ -38,7 +44,7 @@ struct SDL_VideoData;
 typedef struct X11_PenHandle
 {
     SDL_PenID pen;
-    SDL_bool is_eraser;
+    bool is_eraser;
     int x11_deviceid;
     int valuator_for_axis[SDL_PEN_NUM_AXES];
     float slider_bias;      // shift value to add to PEN_AXIS_SLIDER (before normalisation)
@@ -46,12 +52,6 @@ typedef struct X11_PenHandle
     float axis_min[SDL_PEN_NUM_AXES];
     float axis_max[SDL_PEN_NUM_AXES];
 } X11_PenHandle;
-
-// Prep pen support (never fails; pens simply won't be added if there's a problem).
-extern void X11_InitPen(SDL_VideoDevice *_this);
-
-// Clean up pen support.
-extern void X11_QuitPen(SDL_VideoDevice *_this);
 
 // Converts XINPUT2 valuators into pen axis information, including normalisation.
 extern void X11_PenAxesFromValuators(const X11_PenHandle *pen,
@@ -70,4 +70,3 @@ extern X11_PenHandle *X11_FindPenByDeviceID(int deviceid);
 #endif // SDL_VIDEO_DRIVER_X11_XINPUT2
 
 #endif // SDL_x11pen_h_
-

@@ -24,6 +24,8 @@
 
 #include "../SDL_sysrender.h"
 
+#include "SDL_render_psp_c.h"
+
 #include <pspkernel.h>
 #include <pspdisplay.h>
 #include <pspgu.h>
@@ -36,13 +38,7 @@
 #include <stdlib.h>
 #include <vram.h>
 
-/* PSP renderer implementation, based on the PGE  */
-
-#define PSP_SCREEN_WIDTH  480
-#define PSP_SCREEN_HEIGHT 272
-
-#define PSP_FRAME_BUFFER_WIDTH 512
-#define PSP_FRAME_BUFFER_SIZE  (PSP_FRAME_BUFFER_WIDTH * PSP_SCREEN_HEIGHT)
+// PSP renderer implementation, based on the PGE
 
 static unsigned int __attribute__((aligned(16))) DisplayList[262144];
 
@@ -68,7 +64,7 @@ typedef struct PSP_TextureData
     unsigned int bits;          /**< Image bits per pixel. */
     unsigned int format;        /**< Image format - one of ::pgePixelFormat. */
     unsigned int pitch;
-    SDL_bool swizzled;                /**< Is image swizzled. */
+    bool swizzled;                /**< Is image swizzled. */
     struct PSP_TextureData *prevhotw; /**< More recently used render target */
     struct PSP_TextureData *nexthotw; /**< Less recently used render target */
 } PSP_TextureData;
@@ -91,17 +87,17 @@ typedef struct
     void *frontbuffer;         /**< main screen buffer */
     void *backbuffer;          /**< buffer presented to display */
     SDL_Texture *boundTarget;  /**< currently bound rendertarget */
-    SDL_bool initialized;      /**< is driver initialized */
-    SDL_bool displayListAvail; /**< is the display list already initialized for this frame */
+    bool initialized;      /**< is driver initialized */
+    bool displayListAvail; /**< is the display list already initialized for this frame */
     unsigned int psm;          /**< format of the display buffers */
     unsigned int bpp;          /**< bits per pixel of the main display */
 
-    SDL_bool vsync;                       /**< whether we do vsync */
+    bool vsync;                       /**< whether we do vsync */
     PSP_BlendState blendState;            /**< current blend mode */
     PSP_TextureData *most_recent_target;  /**< start of render target LRU double linked list */
     PSP_TextureData *least_recent_target; /**< end of the LRU list */
 
-    SDL_bool vblank_not_reached; /**< whether vblank wasn't reached */
+    bool vblank_not_reached; /**< whether vblank wasn't reached */
 } PSP_RenderData;
 
 typedef struct
@@ -170,7 +166,7 @@ static inline int InVram(void *data)
     return data < (void *)0x04200000;
 }
 
-/* Return next power of 2 */
+// Return next power of 2
 static int TextureNextPow2(unsigned int w)
 {
     unsigned int n = 2;
@@ -188,7 +184,7 @@ static int TextureNextPow2(unsigned int w)
 static void psp_on_vblank(u32 sub, PSP_RenderData *data)
 {
     if (data) {
-        data->vblank_not_reached = SDL_FALSE;
+        data->vblank_not_reached = false;
     }
 }
 
@@ -312,7 +308,7 @@ static int TextureSwizzle(PSP_TextureData *psp_texture, void *dst)
 
     TextureStorageFree(psp_texture->data);
     psp_texture->data = data;
-    psp_texture->swizzled = SDL_TRUE;
+    psp_texture->swizzled = true;
 
     sceKernelDcacheWritebackRange(psp_texture->data, psp_texture->size);
     return 1;
@@ -382,7 +378,7 @@ static int TextureUnswizzle(PSP_TextureData *psp_texture, void *dst)
 
     psp_texture->data = data;
 
-    psp_texture->swizzled = SDL_FALSE;
+    psp_texture->swizzled = false;
 
     sceKernelDcacheWritebackRange(psp_texture->data, psp_texture->size);
     return 1;
@@ -407,7 +403,7 @@ static int TextureSpillToSram(PSP_RenderData *data, PSP_TextureData *psp_texture
     }
 }
 
-static int TexturePromoteToVram(PSP_RenderData *data, PSP_TextureData *psp_texture, SDL_bool target)
+static int TexturePromoteToVram(PSP_RenderData *data, PSP_TextureData *psp_texture, bool target)
 {
     // Assumes texture in sram and a large enough continuous block in vram
     void *tdata = vramalloc(psp_texture->size);
@@ -455,7 +451,7 @@ static int TextureBindAsTarget(PSP_RenderData *data, PSP_TextureData *psp_textur
         if (TextureSpillTargetsForSpace(data, psp_texture->size) < 0) {
             return -1;
         }
-        if (TexturePromoteToVram(data, psp_texture, SDL_TRUE) < 0) {
+        if (TexturePromoteToVram(data, psp_texture, true) < 0) {
             return -1;
         }
     }
@@ -490,7 +486,7 @@ static int PSP_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SDL_P
         return -1;
     }
 
-    psp_texture->swizzled = SDL_FALSE;
+    psp_texture->swizzled = false;
     psp_texture->width = texture->w;
     psp_texture->height = texture->h;
     psp_texture->textureHeight = TextureNextPow2(texture->h);
@@ -547,15 +543,15 @@ static void TextureActivate(SDL_Texture *texture)
     PSP_TextureData *psp_texture = (PSP_TextureData *)texture->internal;
     int scaleMode = (texture->scaleMode == SDL_SCALEMODE_NEAREST) ? GU_NEAREST : GU_LINEAR;
 
-    /* Swizzling is useless with small textures. */
+    // Swizzling is useless with small textures.
     if (TextureShouldSwizzle(psp_texture, texture)) {
         TextureSwizzle(psp_texture, NULL);
     }
 
     sceGuTexWrap(GU_REPEAT, GU_REPEAT);
     sceGuTexMode(psp_texture->format, 0, 0, psp_texture->swizzled);
-    sceGuTexFilter(scaleMode, scaleMode); /* GU_NEAREST good for tile-map */
-    /* GU_LINEAR good for scaling */
+    sceGuTexFilter(scaleMode, scaleMode); // GU_NEAREST good for tile-map
+    // GU_LINEAR good for scaling
     sceGuTexImage(0, psp_texture->textureWidth, psp_texture->textureHeight, psp_texture->textureWidth, psp_texture->data);
 }
 
@@ -604,7 +600,7 @@ static void PSP_UnlockTexture(SDL_Renderer *renderer, SDL_Texture *texture)
     PSP_TextureData *psp_texture = (PSP_TextureData *)texture->internal;
     SDL_Rect rect;
 
-    /* We do whole texture updates, at least for now */
+    // We do whole texture updates, at least for now
     rect.x = 0;
     rect.y = 0;
     rect.w = texture->w;
@@ -614,7 +610,7 @@ static void PSP_UnlockTexture(SDL_Renderer *renderer, SDL_Texture *texture)
 
 static void PSP_SetTextureScaleMode(SDL_Renderer *renderer, SDL_Texture *texture, SDL_ScaleMode scaleMode)
 {
-    /* Nothing to do because TextureActivate takes care of it */
+    // Nothing to do because TextureActivate takes care of it
 }
 
 static int PSP_SetRenderTarget(SDL_Renderer *renderer, SDL_Texture *texture)
@@ -624,7 +620,7 @@ static int PSP_SetRenderTarget(SDL_Renderer *renderer, SDL_Texture *texture)
 
 static int PSP_QueueNoOp(SDL_Renderer *renderer, SDL_RenderCommand *cmd)
 {
-    return 0; /* nothing to do in this backend. */
+    return 0; // nothing to do in this backend.
 }
 
 static int PSP_QueueDrawPoints(SDL_Renderer *renderer, SDL_RenderCommand *cmd, const SDL_FPoint *points, int count)
@@ -956,7 +952,7 @@ static void StartDrawing(SDL_Renderer *renderer)
     // Check if we need to start GU displaylist
     if (!data->displayListAvail) {
         sceGuStart(GU_DIRECT, DisplayList);
-        data->displayListAvail = SDL_TRUE;
+        data->displayListAvail = true;
         // ResetBlendState(&data->blendState);
     }
 
@@ -1012,7 +1008,7 @@ static void PSP_SetBlendState(PSP_RenderData *data, PSP_BlendState *state)
             break;
         case SDL_BLENDMODE_MUL:
             sceGuTexFunc(GU_TFX_MODULATE, GU_TCC_RGBA);
-            /* FIXME SDL_BLENDMODE_MUL is simplified, and dstA is in fact un-changed.*/
+            // FIXME SDL_BLENDMODE_MUL is simplified, and dstA is in fact un-changed.
             sceGuBlendFunc(GU_ADD, GU_DST_COLOR, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
             sceGuEnable(GU_BLEND);
             break;
@@ -1043,7 +1039,7 @@ static void PSP_SetBlendState(PSP_RenderData *data, PSP_BlendState *state)
 
 static void PSP_InvalidateCachedState(SDL_Renderer *renderer)
 {
-    /* currently this doesn't do anything. If this needs to do something (and someone is mixing their own rendering calls in!), update this. */
+    // currently this doesn't do anything. If this needs to do something (and someone is mixing their own rendering calls in!), update this.
 }
 
 static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, void *vertices, size_t vertsize)
@@ -1086,7 +1082,7 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
             sceGuOffset(2048 - (viewport->w >> 1), 2048 - (viewport->h >> 1));
             sceGuViewport(2048, 2048, viewport->w, viewport->h);
             sceGuScissor(viewport->x, viewport->y, viewport->w, viewport->h);
-            /* FIXME: We need to update the clip rect too, see https://github.com/libsdl-org/SDL/issues/9094 */
+            // FIXME: We need to update the clip rect too, see https://github.com/libsdl-org/SDL/issues/9094
             break;
         }
 
@@ -1194,7 +1190,7 @@ static int PSP_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
             if (!cmd->data.draw.texture) {
                 const VertCV *verts = (VertCV *)(gpumem + cmd->data.draw.first);
                 sceGuDisable(GU_TEXTURE_2D);
-                /* In GU_SMOOTH mode */
+                // In GU_SMOOTH mode
                 sceGuDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_2D, count, 0, verts);
                 sceGuEnable(GU_TEXTURE_2D);
             } else {
@@ -1229,14 +1225,14 @@ static int PSP_RenderPresent(SDL_Renderer *renderer)
         return -1;
     }
 
-    data->displayListAvail = SDL_FALSE;
+    data->displayListAvail = false;
     sceGuFinish();
     sceGuSync(0, 0);
 
     if ((data->vsync) && (data->vblank_not_reached)) {
         sceDisplayWaitVblankStart();
     }
-    data->vblank_not_reached = SDL_TRUE;
+    data->vblank_not_reached = true;
 
     data->backbuffer = data->frontbuffer;
     data->frontbuffer = vabsptr(sceGuSwapBuffers());
@@ -1279,8 +1275,8 @@ static void PSP_DestroyRenderer(SDL_Renderer *renderer)
         vfree(data->backbuffer);
         vfree(data->frontbuffer);
 
-        data->initialized = SDL_FALSE;
-        data->displayListAvail = SDL_FALSE;
+        data->initialized = false;
+        data->displayListAvail = false;
         SDL_free(data);
     }
 }
@@ -1319,7 +1315,7 @@ static int PSP_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_Pr
     renderer->QueueSetViewport = PSP_QueueNoOp;
     renderer->QueueSetDrawColor = PSP_QueueNoOp;
     renderer->QueueDrawPoints = PSP_QueueDrawPoints;
-    renderer->QueueDrawLines = PSP_QueueDrawPoints; /* lines and points queue vertices the same way. */
+    renderer->QueueDrawLines = PSP_QueueDrawPoints; // lines and points queue vertices the same way.
     renderer->QueueGeometry = PSP_QueueGeometry;
     renderer->QueueFillRects = PSP_QueueFillRects;
     renderer->QueueCopy = PSP_QueueCopy;
@@ -1341,7 +1337,7 @@ static int PSP_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_Pr
     SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_ABGR8888);
     SDL_SetNumberProperty(SDL_GetRendererProperties(renderer), SDL_PROP_RENDERER_MAX_TEXTURE_SIZE_NUMBER, 512);
 
-    data->initialized = SDL_TRUE;
+    data->initialized = true;
     data->most_recent_target = NULL;
     data->least_recent_target = NULL;
 
@@ -1364,7 +1360,7 @@ static int PSP_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_Pr
     data->frontbuffer = ((uint8_t *)doublebuffer) + PSP_FRAME_BUFFER_SIZE * data->bpp;
 
     sceGuInit();
-    /* setup GU */
+    // setup GU
     sceGuStart(GU_DIRECT, DisplayList);
     sceGuDrawBuffer(data->psm, vrelptr(data->frontbuffer), PSP_FRAME_BUFFER_WIDTH);
     sceGuDispBuffer(PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT, vrelptr(data->backbuffer), PSP_FRAME_BUFFER_WIDTH);
@@ -1374,11 +1370,11 @@ static int PSP_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_Pr
 
     sceGuDisable(GU_DEPTH_TEST);
 
-    /* Scissoring */
+    // Scissoring
     sceGuScissor(0, 0, PSP_SCREEN_WIDTH, PSP_SCREEN_HEIGHT);
     sceGuEnable(GU_SCISSOR_TEST);
 
-    /* Backface culling */
+    // Backface culling
     /*
     FIXME: Culling probably un-needed ? It can conflict with SDL_RENDERCMD_GEOMETRY
     sceGuFrontFace(GU_CCW);
@@ -1393,8 +1389,8 @@ static int PSP_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_Pr
     sceDisplayWaitVblankStartCB();
     sceGuDisplay(GU_TRUE);
 
-    /* Improve performance when VSYC is enabled and it is not reaching the 60 FPS */
-    data->vblank_not_reached = SDL_TRUE;
+    // Improve performance when VSYC is enabled and it is not reaching the 60 FPS
+    data->vblank_not_reached = true;
     sceKernelRegisterSubIntrHandler(PSP_VBLANK_INT, 0, psp_on_vblank, data);
     sceKernelEnableSubIntr(PSP_VBLANK_INT, 0);
 
@@ -1405,4 +1401,4 @@ SDL_RenderDriver PSP_RenderDriver = {
     PSP_CreateRenderer, "PSP"
 };
 
-#endif /* SDL_VIDEO_RENDER_PSP */
+#endif // SDL_VIDEO_RENDER_PSP

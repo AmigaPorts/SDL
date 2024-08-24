@@ -28,7 +28,7 @@
    Also, this file gets included multiple times, don't add #pragma once, etc.
 */
 
-/* direct jump magic can use these, the rest needs special code. */
+// direct jump magic can use these, the rest needs special code.
 #ifndef SDL_DYNAPI_PROC_NO_VARARGS
 SDL_DYNAPI_PROC(size_t,SDL_IOprintf,(SDL_IOStream *a, SDL_PRINTF_FORMAT_STRING const char *b, ...),(a,b),return)
 SDL_DYNAPI_PROC(void,SDL_Log,(SDL_PRINTF_FORMAT_STRING const char *a, ...),(a),)
@@ -46,7 +46,7 @@ SDL_DYNAPI_PROC(int,SDL_sscanf,(const char *a, SDL_SCANF_FORMAT_STRING const cha
 SDL_DYNAPI_PROC(int,SDL_swprintf,(SDL_OUT_Z_CAP(b) wchar_t *a, size_t b, SDL_PRINTF_FORMAT_STRING const wchar_t *c, ...),(a,b,c),return)
 #endif
 
-/* New API symbols are added at the end */
+// New API symbols are added at the end
 SDL_DYNAPI_PROC(SDL_Surface*,SDL_AcquireCameraFrame,(SDL_Camera *a, Uint64 *b),(a,b),return)
 SDL_DYNAPI_PROC(int,SDL_AddEventWatch,(SDL_EventFilter a, void *b),(a,b),return)
 SDL_DYNAPI_PROC(int,SDL_AddGamepadMapping,(const char *a),(a),return)
@@ -792,7 +792,7 @@ SDL_DYNAPI_PROC(int,SDL_SetStringProperty,(SDL_PropertiesID a, const char *b, co
 SDL_DYNAPI_PROC(int,SDL_SetSurfaceAlphaMod,(SDL_Surface *a, Uint8 b),(a,b),return)
 SDL_DYNAPI_PROC(int,SDL_SetSurfaceBlendMode,(SDL_Surface *a, SDL_BlendMode b),(a,b),return)
 SDL_DYNAPI_PROC(SDL_bool,SDL_SetSurfaceClipRect,(SDL_Surface *a, const SDL_Rect *b),(a,b),return)
-SDL_DYNAPI_PROC(int,SDL_SetSurfaceColorKey,(SDL_Surface *a, int b, Uint32 c),(a,b,c),return)
+SDL_DYNAPI_PROC(int,SDL_SetSurfaceColorKey,(SDL_Surface *a, SDL_bool b, Uint32 c),(a,b,c),return)
 SDL_DYNAPI_PROC(int,SDL_SetSurfaceColorMod,(SDL_Surface *a, Uint8 b, Uint8 c, Uint8 d),(a,b,c,d),return)
 SDL_DYNAPI_PROC(int,SDL_SetSurfaceColorspace,(SDL_Surface *a, SDL_Colorspace b),(a,b),return)
 SDL_DYNAPI_PROC(int,SDL_SetSurfacePalette,(SDL_Surface *a, SDL_Palette *b),(a,b),return)
