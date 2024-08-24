@@ -30,7 +30,7 @@
 
 // just turn off clang-format for this whole file, this INDENT_OFF stuff on
 //  each EM_ASM section is ugly.
-/* *INDENT-OFF* */ /* clang-format off */
+/* *INDENT-OFF* */ // clang-format off
 
 EM_JS_DEPS(sdlcamera, "$dynCall");
 
@@ -90,7 +90,6 @@ static void EMSCRIPTENCAMERA_CloseDevice(SDL_Camera *device)
                 return;  // camera was closed and/or subsystem was shut down, we're already done.
             }
             SDL3.camera.stream.getTracks().forEach(track => track.stop());  // stop all recording.
-            _SDL_free(SDL3.camera.rgba);
             SDL3.camera = {};  // dump our references to everything.
         });
         SDL_free(device->hidden);
@@ -104,7 +103,11 @@ static void SDLEmscriptenCameraPermissionOutcome(SDL_Camera *device, int approve
     device->spec.height = device->actual_spec.height = h;
     device->spec.framerate_numerator = device->actual_spec.framerate_numerator = fps;
     device->spec.framerate_denominator = device->actual_spec.framerate_denominator = 1;
-    SDL_CameraPermissionOutcome(device, approved ? SDL_TRUE : SDL_FALSE);
+    if (device->acquire_surface) {
+        device->acquire_surface->w = w;
+        device->acquire_surface->h = h;
+    }
+    SDL_CameraPermissionOutcome(device, approved ? true : false);
 }
 
 static int EMSCRIPTENCAMERA_OpenDevice(SDL_Camera *device, const SDL_CameraSpec *spec)
@@ -187,7 +190,6 @@ static int EMSCRIPTENCAMERA_OpenDevice(SDL_Camera *device, const SDL_CameraSpec 
                 SDL3.camera.video = video;
                 SDL3.camera.canvas = canvas;
                 SDL3.camera.ctx2d = ctx2d;
-                SDL3.camera.rgba = 0;
                 SDL3.camera.next_frame_time = performance.now();
 
                 video.play();
@@ -232,7 +234,7 @@ static void EMSCRIPTENCAMERA_DetectDevices(void)
     }
 }
 
-static SDL_bool EMSCRIPTENCAMERA_Init(SDL_CameraDriverImpl *impl)
+static bool EMSCRIPTENCAMERA_Init(SDL_CameraDriverImpl *impl)
 {
     MAIN_THREAD_EM_ASM({
         if (typeof(Module['SDL3']) === 'undefined') {
@@ -250,16 +252,16 @@ static SDL_bool EMSCRIPTENCAMERA_Init(SDL_CameraDriverImpl *impl)
     impl->FreeDeviceHandle = EMSCRIPTENCAMERA_FreeDeviceHandle;
     impl->Deinitialize = EMSCRIPTENCAMERA_Deinitialize;
 
-    impl->ProvidesOwnCallbackThread = SDL_TRUE;
+    impl->ProvidesOwnCallbackThread = true;
 
-    return SDL_TRUE;
+    return true;
 }
 
 CameraBootStrap EMSCRIPTENCAMERA_bootstrap = {
-    "emscripten", "SDL Emscripten MediaStream camera driver", EMSCRIPTENCAMERA_Init, SDL_FALSE
+    "emscripten", "SDL Emscripten MediaStream camera driver", EMSCRIPTENCAMERA_Init, false
 };
 
-/* *INDENT-ON* */ /* clang-format on */
+/* *INDENT-ON* */ // clang-format on
 
 #endif // SDL_CAMERA_DRIVER_EMSCRIPTEN
 

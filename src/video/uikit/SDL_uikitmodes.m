@@ -86,13 +86,13 @@
 + (void)screenConnected:(NSNotification *)notification
 {
     UIScreen *uiscreen = [notification object];
-    UIKit_AddDisplay(uiscreen, SDL_TRUE);
+    UIKit_AddDisplay(uiscreen, true);
 }
 
 + (void)screenDisconnected:(NSNotification *)notification
 {
     UIScreen *uiscreen = [notification object];
-    UIKit_DelDisplay(uiscreen, SDL_TRUE);
+    UIKit_DelDisplay(uiscreen, true);
 }
 
 @end
@@ -105,7 +105,7 @@ static int UIKit_AllocateDisplayModeData(SDL_DisplayMode *mode,
     SDL_UIKitDisplayModeData *data = nil;
 
     if (uiscreenmode != nil) {
-        /* Allocate the display mode data */
+        // Allocate the display mode data
         data = [[SDL_UIKitDisplayModeData alloc] init];
         if (!data) {
             return SDL_OutOfMemory();
@@ -164,14 +164,14 @@ static int UIKit_AddSingleDisplayMode(SDL_VideoDisplay *display, int w, int h,
 }
 
 static int UIKit_AddDisplayMode(SDL_VideoDisplay *display, int w, int h,
-                                UIScreen *uiscreen, UIScreenMode *uiscreenmode, SDL_bool addRotation)
+                                UIScreen *uiscreen, UIScreenMode *uiscreenmode, bool addRotation)
 {
     if (UIKit_AddSingleDisplayMode(display, w, h, uiscreen, uiscreenmode) < 0) {
         return -1;
     }
 
     if (addRotation) {
-        /* Add the rotated version */
+        // Add the rotated version
         if (UIKit_AddSingleDisplayMode(display, h, w, uiscreen, uiscreenmode) < 0) {
             return -1;
         }
@@ -203,14 +203,14 @@ static CGSize GetUIScreenModeSize(UIScreen *uiscreen, UIScreenMode *mode)
     return size;
 }
 
-int UIKit_AddDisplay(UIScreen *uiscreen, SDL_bool send_event)
+int UIKit_AddDisplay(UIScreen *uiscreen, bool send_event)
 {
     UIScreenMode *uiscreenmode = uiscreen.currentMode;
     CGSize size = GetUIScreenModeSize(uiscreen, uiscreenmode);
     SDL_VideoDisplay display;
     SDL_DisplayMode mode;
 
-    /* Make sure the width/height are oriented correctly */
+    // Make sure the width/height are oriented correctly
     if (UIKit_IsDisplayLandscape(uiscreen) != (size.width > size.height)) {
         CGFloat height = size.width;
         size.width = size.height;
@@ -231,7 +231,7 @@ int UIKit_AddDisplay(UIScreen *uiscreen, SDL_bool send_event)
     SDL_zero(display);
 #ifndef SDL_PLATFORM_TVOS
     if (uiscreen == [UIScreen mainScreen]) {
-        /* The natural orientation (used by sensors) is portrait */
+        // The natural orientation (used by sensors) is portrait
         display.natural_orientation = SDL_ORIENTATION_PORTRAIT;
     } else
 #endif
@@ -253,9 +253,9 @@ int UIKit_AddDisplay(UIScreen *uiscreen, SDL_bool send_event)
             display.HDR.HDR_headroom = uiscreen.potentialEDRHeadroom;
         }
     }
-#endif /* !SDL_PLATFORM_TVOS */
+#endif // !SDL_PLATFORM_TVOS
 
-    /* Allocate the display data */
+    // Allocate the display data
 #ifdef SDL_PLATFORM_VISIONOS
     SDL_UIKitDisplayData *data = [[SDL_UIKitDisplayData alloc] init];
 #else
@@ -275,7 +275,7 @@ int UIKit_AddDisplay(UIScreen *uiscreen, SDL_bool send_event)
 #endif
 
 #ifdef SDL_PLATFORM_VISIONOS
-int UIKit_AddDisplay(SDL_bool send_event){
+int UIKit_AddDisplay(bool send_event){
     CGSize size = CGSizeMake(SDL_XR_SCREENWIDTH, SDL_XR_SCREENHEIGHT);
     SDL_VideoDisplay display;
     SDL_DisplayMode mode;
@@ -308,7 +308,7 @@ int UIKit_AddDisplay(SDL_bool send_event){
 
 #ifndef SDL_PLATFORM_VISIONOS
 
-void UIKit_DelDisplay(UIScreen *uiscreen, SDL_bool send_event)
+void UIKit_DelDisplay(UIScreen *uiscreen, bool send_event)
 {
     SDL_DisplayID *displays;
     int i;
@@ -330,13 +330,13 @@ void UIKit_DelDisplay(UIScreen *uiscreen, SDL_bool send_event)
     }
 }
 
-SDL_bool UIKit_IsDisplayLandscape(UIScreen *uiscreen)
+bool UIKit_IsDisplayLandscape(UIScreen *uiscreen)
 {
 #ifndef SDL_PLATFORM_TVOS
     if (uiscreen == [UIScreen mainScreen]) {
         return UIInterfaceOrientationIsLandscape([UIApplication sharedApplication].statusBarOrientation);
     } else
-#endif /* !SDL_PLATFORM_TVOS */
+#endif // !SDL_PLATFORM_TVOS
     {
         CGSize size = uiscreen.bounds.size;
         return (size.width > size.height);
@@ -347,10 +347,10 @@ int UIKit_InitModes(SDL_VideoDevice *_this)
 {
     @autoreleasepool {
 #ifdef SDL_PLATFORM_VISIONOS
-        UIKit_AddDisplay(SDL_FALSE);
+        UIKit_AddDisplay(false);
 #else
         for (UIScreen *uiscreen in [UIScreen screens]) {
-            if (UIKit_AddDisplay(uiscreen, SDL_FALSE) < 0) {
+            if (UIKit_AddDisplay(uiscreen, false) < 0) {
                 return -1;
             }
         }
@@ -374,12 +374,12 @@ int UIKit_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay *display)
     @autoreleasepool {
         SDL_UIKitDisplayData *data = (__bridge SDL_UIKitDisplayData *)display->internal;
 
-        SDL_bool isLandscape = UIKit_IsDisplayLandscape(data.uiscreen);
-        SDL_bool addRotation = (data.uiscreen == [UIScreen mainScreen]);
+        bool isLandscape = UIKit_IsDisplayLandscape(data.uiscreen);
+        bool addRotation = (data.uiscreen == [UIScreen mainScreen]);
         NSArray *availableModes = nil;
 
 #ifdef SDL_PLATFORM_TVOS
-        addRotation = SDL_FALSE;
+        addRotation = false;
         availableModes = @[ data.uiscreen.currentMode ];
 #else
         availableModes = data.uiscreen.availableModes;
@@ -390,7 +390,7 @@ int UIKit_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay *display)
             int w = (int)size.width;
             int h = (int)size.height;
 
-            /* Make sure the width/height are oriented correctly */
+            // Make sure the width/height are oriented correctly
             if (isLandscape != (w > h)) {
                 int tmp = w;
                 w = h;
@@ -465,7 +465,7 @@ void UIKit_QuitModes(SDL_VideoDevice *_this)
     [SDL_DisplayWatch stop];
 #endif
 
-    /* Release Objective-C objects, so higher level doesn't free() them. */
+    // Release Objective-C objects, so higher level doesn't free() them.
     int i, j;
     @autoreleasepool {
         for (i = 0; i < _this->num_displays; i++) {
@@ -506,7 +506,7 @@ void SDL_OnApplicationDidChangeStatusBarOrientation(void)
             mode->h = height;
         }
 
-        /* Same deal with the fullscreen modes */
+        // Same deal with the fullscreen modes
         for (i = 0; i < display->num_fullscreen_modes; ++i) {
             mode = &display->fullscreen_modes[i];
             if (isLandscape != (mode->w > mode->h)) {
@@ -524,11 +524,11 @@ void SDL_OnApplicationDidChangeStatusBarOrientation(void)
             orientation = SDL_ORIENTATION_PORTRAIT_FLIPPED;
             break;
         case UIInterfaceOrientationLandscapeLeft:
-            /* Bug: UIInterfaceOrientationLandscapeLeft/Right are reversed - http://openradar.appspot.com/7216046 */
+            // Bug: UIInterfaceOrientationLandscapeLeft/Right are reversed - http://openradar.appspot.com/7216046
             orientation = SDL_ORIENTATION_LANDSCAPE_FLIPPED;
             break;
         case UIInterfaceOrientationLandscapeRight:
-            /* Bug: UIInterfaceOrientationLandscapeLeft/Right are reversed - http://openradar.appspot.com/7216046 */
+            // Bug: UIInterfaceOrientationLandscapeLeft/Right are reversed - http://openradar.appspot.com/7216046
             orientation = SDL_ORIENTATION_LANDSCAPE;
             break;
         default:
@@ -537,6 +537,6 @@ void SDL_OnApplicationDidChangeStatusBarOrientation(void)
         SDL_SendDisplayEvent(display, SDL_EVENT_DISPLAY_ORIENTATION, orientation, 0);
     }
 }
-#endif /* !SDL_PLATFORM_TVOS */
+#endif // !SDL_PLATFORM_TVOS
 
-#endif /* SDL_VIDEO_DRIVER_UIKIT */
+#endif // SDL_VIDEO_DRIVER_UIKIT

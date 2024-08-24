@@ -46,11 +46,11 @@ void Wayland_Vulkan_DestroySurface(SDL_VideoDevice *_this,
                                    VkInstance instance,
                                    VkSurfaceKHR surface,
                                    const struct VkAllocationCallbacks *allocator);
-SDL_bool Wayland_Vulkan_GetPresentationSupport(SDL_VideoDevice *_this,
+bool Wayland_Vulkan_GetPresentationSupport(SDL_VideoDevice *_this,
                                                VkInstance instance,
                                                VkPhysicalDevice physicalDevice,
                                                Uint32 queueFamilyIndex);
 
 #endif
 
-#endif /* SDL_waylandvulkan_h_ */
+#endif // SDL_waylandvulkan_h_

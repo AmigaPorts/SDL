@@ -138,9 +138,9 @@ int SDL_SYS_HapticMouse(void)
     return -1;
 }
 
-SDL_bool SDL_SYS_JoystickIsHaptic(SDL_Joystick *joystick)
+bool SDL_SYS_JoystickIsHaptic(SDL_Joystick *joystick)
 {
-    return SDL_FALSE;
+    return false;
 }
 
 int SDL_SYS_HapticOpenFromJoystick(SDL_Haptic *haptic, SDL_Joystick *joystick)
@@ -148,9 +148,9 @@ int SDL_SYS_HapticOpenFromJoystick(SDL_Haptic *haptic, SDL_Joystick *joystick)
     return SDL_Unsupported();
 }
 
-SDL_bool SDL_SYS_JoystickSameHaptic(SDL_Haptic *haptic, SDL_Joystick *joystick)
+bool SDL_SYS_JoystickSameHaptic(SDL_Haptic *haptic, SDL_Joystick *joystick)
 {
-    return SDL_FALSE;
+    return false;
 }
 
 void SDL_SYS_HapticClose(SDL_Haptic *haptic)
@@ -277,7 +277,7 @@ int Android_RemoveHaptic(int device_id)
     SDL_hapticlist_item *prev = NULL;
 
     for (item = SDL_hapticlist; item; item = item->next) {
-        /* found it, remove it. */
+        // found it, remove it.
         if (device_id == item->device_id) {
             const int retval = item->haptic ? 0 : -1;
 
@@ -291,9 +291,9 @@ int Android_RemoveHaptic(int device_id)
                 SDL_hapticlist_tail = prev;
             }
 
-            /* Need to decrement the haptic count */
+            // Need to decrement the haptic count
             --numhaptics;
-            /* !!! TODO: Send a haptic remove event? */
+            // !!! TODO: Send a haptic remove event?
 
             SDL_free(item->name);
             SDL_free(item);
@@ -304,4 +304,4 @@ int Android_RemoveHaptic(int device_id)
     return -1;
 }
 
-#endif /* SDL_HAPTIC_ANDROID */
+#endif // SDL_HAPTIC_ANDROID

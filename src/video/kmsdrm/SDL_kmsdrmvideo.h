@@ -74,15 +74,15 @@
 
 struct SDL_VideoData
 {
-    int devindex;     /* device index that was passed on creation */
-    int drm_fd;       /* DRM file desc */
-    char devpath[32]; /* DRM dev path. */
+    int devindex;     // device index that was passed on creation
+    int drm_fd;       // DRM file desc
+    char devpath[32]; // DRM dev path.
 
     struct gbm_device *gbm_dev;
 
-    SDL_bool video_init;             /* Has VideoInit succeeded? */
-    SDL_bool vulkan_mode;            /* Are we in Vulkan mode? One VK window is enough to be. */
-    SDL_bool async_pageflip_support; /* Does the hardware support async. pageflips? */
+    bool video_init;             // Has VideoInit succeeded?
+    bool vulkan_mode;            // Are we in Vulkan mode? One VK window is enough to be.
+    bool async_pageflip_support; // Does the hardware support async. pageflips?
 
     SDL_Window **windows;
     int max_windows;
@@ -90,7 +90,7 @@ struct SDL_VideoData
 
     /* Even if we have several displays, we only have to
        open 1 FD and create 1 gbm device. */
-    SDL_bool gbm_init;
+    bool gbm_init;
 
 };
 
@@ -107,8 +107,8 @@ struct SDL_DisplayData
     drmModeModeInfo original_mode;
     drmModeModeInfo fullscreen_mode;
 
-    drmModeCrtc *saved_crtc; /* CRTC to restore on quit */
-    SDL_bool saved_vrr;
+    drmModeCrtc *saved_crtc; // CRTC to restore on quit
+    bool saved_vrr;
 
     /* DRM & GBM cursor stuff lives here, not in an SDL_Cursor's internal struct,
        because setting/unsetting up these is done on window creation/destruction,
@@ -118,7 +118,7 @@ struct SDL_DisplayData
     int cursor_bo_drm_fd;
     uint64_t cursor_w, cursor_h;
 
-    SDL_bool default_cursor_init;
+    bool default_cursor_init;
 };
 
 struct SDL_WindowData
@@ -132,30 +132,30 @@ struct SDL_WindowData
     struct gbm_bo *bo;
     struct gbm_bo *next_bo;
 
-    SDL_bool waiting_for_flip;
-    SDL_bool double_buffer;
+    bool waiting_for_flip;
+    bool double_buffer;
 
     EGLSurface egl_surface;
-    SDL_bool egl_surface_dirty;
+    bool egl_surface_dirty;
 };
 
 typedef struct KMSDRM_FBInfo
 {
-    int drm_fd;     /* DRM file desc */
-    uint32_t fb_id; /* DRM framebuffer ID */
+    int drm_fd;     // DRM file desc
+    uint32_t fb_id; // DRM framebuffer ID
 } KMSDRM_FBInfo;
 
-/* Helper functions */
+// Helper functions
 int KMSDRM_CreateSurfaces(SDL_VideoDevice *_this, SDL_Window *window);
 KMSDRM_FBInfo *KMSDRM_FBFromBO(SDL_VideoDevice *_this, struct gbm_bo *bo);
 KMSDRM_FBInfo *KMSDRM_FBFromBO2(SDL_VideoDevice *_this, struct gbm_bo *bo, int w, int h);
-SDL_bool KMSDRM_WaitPageflip(SDL_VideoDevice *_this, SDL_WindowData *windata);
+bool KMSDRM_WaitPageflip(SDL_VideoDevice *_this, SDL_WindowData *windata);
 
 /****************************************************************************/
-/* SDL_VideoDevice functions declaration                                    */
+// SDL_VideoDevice functions declaration
 /****************************************************************************/
 
-/* Display and window functions */
+// Display and window functions
 int KMSDRM_VideoInit(SDL_VideoDevice *_this);
 void KMSDRM_VideoQuit(SDL_VideoDevice *_this);
 int KMSDRM_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay *display);
@@ -173,7 +173,7 @@ void KMSDRM_MinimizeWindow(SDL_VideoDevice *_this, SDL_Window *window);
 void KMSDRM_RestoreWindow(SDL_VideoDevice *_this, SDL_Window *window);
 void KMSDRM_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window);
 
-/* OpenGL/OpenGL ES functions */
+// OpenGL/OpenGL ES functions
 int KMSDRM_GLES_LoadLibrary(SDL_VideoDevice *_this, const char *path);
 SDL_FunctionPointer KMSDRM_GLES_GetProcAddress(SDL_VideoDevice *_this, const char *proc);
 void KMSDRM_GLES_UnloadLibrary(SDL_VideoDevice *_this);
@@ -184,4 +184,4 @@ int KMSDRM_GLES_GetSwapInterval(SDL_VideoDevice *_this);
 int KMSDRM_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window);
 int KMSDRM_GLES_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context);
 
-#endif /* SDL_kmsdrmvideo_h */
+#endif // SDL_kmsdrmvideo_h

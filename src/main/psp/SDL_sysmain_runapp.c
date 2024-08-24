@@ -23,10 +23,11 @@
 
 #ifdef SDL_PLATFORM_PSP
 
-/* SDL_RunApp() for PSP based on SDL_psp_main.c, placed in the public domain by Sam Lantinga  3/13/14 */
+// SDL_RunApp() for PSP based on SDL_psp_main.c, placed in the public domain by Sam Lantinga  3/13/14
 
 #include <pspkernel.h>
 #include <pspthreadman.h>
+#include "../../events/SDL_events_c.h"
 
 /* If application's main() is redefined as SDL_main, and libSDL_main is
    linked, then this file will create the standard exit callback,
@@ -43,7 +44,7 @@ PSP_MAIN_THREAD_ATTR(THREAD_ATTR_VFPU | THREAD_ATTR_USER);
 
 int sdl_psp_exit_callback(int arg1, int arg2, void *common)
 {
-    sceKernelExitGame();
+    SDL_SendQuit();
     return 0;
 }
 
@@ -78,4 +79,4 @@ int SDL_RunApp(int argc, char* argv[], SDL_main_func mainFunction, void * reserv
     return mainFunction(argc, argv);
 }
 
-#endif /* SDL_PLATFORM_PSP */
+#endif // SDL_PLATFORM_PSP

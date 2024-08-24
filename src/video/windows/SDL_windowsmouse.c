@@ -76,7 +76,7 @@ static SDL_Cursor *WIN_CreateDefaultCursor(void)
     return WIN_CreateCursorAndData(LoadCursor(NULL, IDC_ARROW));
 }
 
-static SDL_bool IsMonochromeSurface(SDL_Surface *surface)
+static bool IsMonochromeSurface(SDL_Surface *surface)
 {
     int x, y;
     Uint8 r, g, b, a;
@@ -87,19 +87,19 @@ static SDL_bool IsMonochromeSurface(SDL_Surface *surface)
         for (x = 0; x < surface->w; x++) {
             SDL_ReadSurfacePixel(surface, x, y, &r, &g, &b, &a);
 
-            /* Black or white pixel. */
+            // Black or white pixel.
             if (!((r == 0x00 && g == 0x00 && b == 0x00) || (r == 0xff && g == 0xff && b == 0xff))) {
-                return SDL_FALSE;
+                return false;
             }
 
-            /* Transparent or opaque pixel. */
+            // Transparent or opaque pixel.
             if (!(a == 0x00 || a == 0xff)) {
-                return SDL_FALSE;
+                return false;
             }
         }
     }
 
-    return SDL_TRUE;
+    return true;
 }
 
 static HBITMAP CreateColorBitmap(SDL_Surface *surface)
@@ -113,7 +113,7 @@ static HBITMAP CreateColorBitmap(SDL_Surface *surface)
     SDL_zero(bi);
     bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
     bi.bmiHeader.biWidth = surface->w;
-    bi.bmiHeader.biHeight = -surface->h; /* Invert height to make the top-down DIB. */
+    bi.bmiHeader.biHeight = -surface->h; // Invert height to make the top-down DIB.
     bi.bmiHeader.biPlanes = 1;
     bi.bmiHeader.biBitCount = 32;
     bi.bmiHeader.biCompression = BI_RGB;
@@ -134,10 +134,10 @@ static HBITMAP CreateColorBitmap(SDL_Surface *surface)
  * For info on the expected mask format see:
  * https://devblogs.microsoft.com/oldnewthing/20101018-00/?p=12513
  */
-static HBITMAP CreateMaskBitmap(SDL_Surface *surface, SDL_bool is_monochrome)
+static HBITMAP CreateMaskBitmap(SDL_Surface *surface, bool is_monochrome)
 {
     HBITMAP bitmap;
-    SDL_bool isstack;
+    bool isstack;
     void *pixels;
     int x, y;
     Uint8 r, g, b, a;
@@ -155,7 +155,7 @@ static HBITMAP CreateMaskBitmap(SDL_Surface *surface, SDL_bool is_monochrome)
 
     dst = (Uint8 *)pixels;
 
-    /* Make the mask completely transparent. */
+    // Make the mask completely transparent.
     SDL_memset(dst, 0xff, size);
     if (is_monochrome) {
         SDL_memset(dst + size, 0x00, size);
@@ -166,12 +166,12 @@ static HBITMAP CreateMaskBitmap(SDL_Surface *surface, SDL_bool is_monochrome)
             SDL_ReadSurfacePixel(surface, x, y, &r, &g, &b, &a);
 
             if (a != 0) {
-                /* Reset bit of an opaque pixel. */
+                // Reset bit of an opaque pixel.
                 dst[x >> 3] &= ~masks[x & 7];
             }
 
             if (is_monochrome && !(r == 0x00 && g == 0x00 && b == 0x00)) {
-                /* Set bit of white or inverted pixel. */
+                // Set bit of white or inverted pixel.
                 dst[size + (x >> 3)] |= masks[x & 7];
             }
         }
@@ -191,7 +191,7 @@ static HCURSOR WIN_CreateHCursor(SDL_Surface *surface, int hot_x, int hot_y)
 {
     HCURSOR hcursor;
     ICONINFO ii;
-    SDL_bool is_monochrome = IsMonochromeSurface(surface);
+    bool is_monochrome = IsMonochromeSurface(surface);
 
     SDL_zero(ii);
     ii.fIcon = FALSE;
@@ -428,13 +428,13 @@ static int WIN_ShowCursor(SDL_Cursor *cursor)
 
 void WIN_SetCursorPos(int x, int y)
 {
-    /* We need to jitter the value because otherwise Windows will occasionally inexplicably ignore the SetCursorPos() or SendInput() */
+    // We need to jitter the value because otherwise Windows will occasionally inexplicably ignore the SetCursorPos() or SendInput()
     SetCursorPos(x, y);
     SetCursorPos(x + 1, y);
     SetCursorPos(x, y);
 
-    /* Flush any mouse motion prior to or associated with this warp */
-#ifdef _MSC_VER /* We explicitly want to use GetTickCount(), not GetTickCount64() */
+    // Flush any mouse motion prior to or associated with this warp
+#ifdef _MSC_VER // We explicitly want to use GetTickCount(), not GetTickCount64()
 #pragma warning(push)
 #pragma warning(disable : 28159)
 #endif
@@ -453,7 +453,7 @@ static int WIN_WarpMouse(SDL_Window *window, float x, float y)
     HWND hwnd = data->hwnd;
     POINT pt;
 
-    /* Don't warp the mouse while we're doing a modal interaction */
+    // Don't warp the mouse while we're doing a modal interaction
     if (data->in_title_click || data->focus_click_pending) {
         return 0;
     }
@@ -463,8 +463,8 @@ static int WIN_WarpMouse(SDL_Window *window, float x, float y)
     ClientToScreen(hwnd, &pt);
     WIN_SetCursorPos(pt.x, pt.y);
 
-    /* Send the exact mouse motion associated with this warp */
-    SDL_SendMouseMotion(0, window, SDL_GLOBAL_MOUSE_ID, SDL_FALSE, x, y);
+    // Send the exact mouse motion associated with this warp
+    SDL_SendMouseMotion(0, window, SDL_GLOBAL_MOUSE_ID, false, x, y);
     return 0;
 }
 
@@ -478,7 +478,7 @@ static int WIN_WarpMouseGlobal(float x, float y)
     return 0;
 }
 
-static int WIN_SetRelativeMouseMode(SDL_bool enabled)
+static int WIN_SetRelativeMouseMode(bool enabled)
 {
     return WIN_SetRawMouseEnabled(SDL_GetVideoDevice(), enabled);
 }
@@ -507,7 +507,7 @@ static SDL_MouseButtonFlags WIN_GetGlobalMouseState(float *x, float *y)
 {
     SDL_MouseButtonFlags retval = 0;
     POINT pt = { 0, 0 };
-    SDL_bool swapButtons = GetSystemMetrics(SM_SWAPBUTTON) != 0;
+    bool swapButtons = GetSystemMetrics(SM_SWAPBUTTON) != 0;
 
     GetCursorPos(&pt);
     *x = (float)pt.x;
@@ -555,7 +555,7 @@ void WIN_QuitMouse(SDL_VideoDevice *_this)
  * https://superuser.com/questions/278362/windows-mouse-acceleration-curve-smoothmousexcurve-and-smoothmouseycurve
  * http://www.esreality.com/?a=post&id=1846538/
  */
-static SDL_bool LoadFiveFixedPointFloats(const BYTE *bytes, float *values)
+static bool LoadFiveFixedPointFloats(const BYTE *bytes, float *values)
 {
     int i;
 
@@ -565,7 +565,7 @@ static SDL_bool LoadFiveFixedPointFloats(const BYTE *bytes, float *values)
         *values++ = value;
         bytes += 8;
     }
-    return SDL_TRUE;
+    return true;
 }
 
 static void WIN_SetEnhancedMouseScale(int mouse_speed)
@@ -650,4 +650,4 @@ void WIN_UpdateMouseSystemScale(void)
     }
 }
 
-#endif /* SDL_VIDEO_DRIVER_WINDOWS */
+#endif // SDL_VIDEO_DRIVER_WINDOWS

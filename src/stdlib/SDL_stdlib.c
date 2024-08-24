@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-/* This file contains portable stdlib functions for SDL */
+// This file contains portable stdlib functions for SDL
 
 #include "../libm/math_libm.h"
 
@@ -122,7 +122,7 @@ double SDL_ceil(double x)
         integer += 1.0;
     }
     return integer;
-#endif /* HAVE_CEIL */
+#endif // HAVE_CEIL
 }
 
 float SDL_ceilf(float x)
@@ -141,14 +141,14 @@ double SDL_copysign(double x, double y)
 #elif defined(HAVE__COPYSIGN)
     return _copysign(x, y);
 #elif defined(__WATCOMC__) && defined(__386__)
-    /* this is nasty as hell, but it works.. */
+    // this is nasty as hell, but it works..
     unsigned int *xi = (unsigned int *)&x,
                  *yi = (unsigned int *)&y;
     xi[1] = (yi[1] & 0x80000000) | (xi[1] & 0x7fffffff);
     return x;
 #else
     return SDL_uclibc_copysign(x, y);
-#endif /* HAVE_COPYSIGN */
+#endif // HAVE_COPYSIGN
 }
 
 float SDL_copysignf(float x, float y)
@@ -272,7 +272,7 @@ float SDL_fmodf(float x, float y)
 #endif
 }
 
-SDL_bool SDL_isinf(double x)
+int SDL_isinf(double x)
 {
 #ifdef HAVE_ISINF
     return isinf(x);
@@ -281,7 +281,7 @@ SDL_bool SDL_isinf(double x)
 #endif
 }
 
-SDL_bool SDL_isinff(float x)
+int SDL_isinff(float x)
 {
 #ifdef HAVE_ISINF_FLOAT_MACRO
     return isinf(x);
@@ -292,7 +292,7 @@ SDL_bool SDL_isinff(float x)
 #endif
 }
 
-SDL_bool SDL_isnan(double x)
+int SDL_isnan(double x)
 {
 #ifdef HAVE_ISNAN
     return isnan(x);
@@ -301,7 +301,7 @@ SDL_bool SDL_isnan(double x)
 #endif
 }
 
-SDL_bool SDL_isnanf(float x)
+int SDL_isnanf(float x)
 {
 #ifdef HAVE_ISNAN_FLOAT_MACRO
     return isnan(x);
@@ -544,13 +544,13 @@ void *SDL_aligned_alloc(size_t alignment, size_t size)
         SDL_size_add_overflow(size, padding, &size) == 0) {
         void *original = SDL_malloc(size);
         if (original) {
-            /* Make sure we have enough space to store the original pointer */
+            // Make sure we have enough space to store the original pointer
             retval = (Uint8 *)original + sizeof(original);
 
-            /* Align the pointer we're going to return */
+            // Align the pointer we're going to return
             retval += alignment - (((size_t)retval) % alignment);
 
-            /* Store the original pointer right before the returned value */
+            // Store the original pointer right before the returned value
             SDL_memcpy(retval - sizeof(original), &original, sizeof(original));
         }
     }

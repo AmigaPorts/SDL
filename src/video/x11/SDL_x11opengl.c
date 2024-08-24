@@ -25,7 +25,7 @@
 
 #include "SDL_x11video.h"
 
-/* GLX implementation of SDL OpenGL support */
+// GLX implementation of SDL OpenGL support
 
 #ifdef SDL_VIDEO_OPENGL_GLX
 #include "SDL_x11opengles.h"
@@ -75,7 +75,7 @@
 #define GLX_CONTEXT_DEBUG_BIT_ARB              0x0001
 #define GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB 0x0002
 
-/* Typedef for the GL 3.0 context creation function */
+// Typedef for the GL 3.0 context creation function
 typedef GLXContext (*PFNGLXCREATECONTEXTATTRIBSARBPROC)(Display *dpy,
                                                         GLXFBConfig config,
                                                         GLXContext
@@ -170,7 +170,7 @@ int X11_GL_LoadLibrary(SDL_VideoDevice *_this, const char *path)
         return SDL_SetError("OpenGL context already created");
     }
 
-    /* Load the OpenGL library */
+    // Load the OpenGL library
     if (path == NULL) {
         path = SDL_GetHint(SDL_HINT_OPENGL_LIBRARY);
     }
@@ -187,7 +187,7 @@ int X11_GL_LoadLibrary(SDL_VideoDevice *_this, const char *path)
     SDL_strlcpy(_this->gl_config.driver_path, path,
                 SDL_arraysize(_this->gl_config.driver_path));
 
-    /* Allocate OpenGL memory */
+    // Allocate OpenGL memory
     _this->gl_data =
         (struct SDL_GLDriverData *)SDL_calloc(1,
                                               sizeof(struct
@@ -196,7 +196,7 @@ int X11_GL_LoadLibrary(SDL_VideoDevice *_this, const char *path)
         return -1;
     }
 
-    /* Load function pointers */
+    // Load function pointers
     handle = _this->gl_config.dll_handle;
     _this->gl_data->glXQueryExtension =
         (Bool(*)(Display *, int *, int *))
@@ -239,7 +239,7 @@ int X11_GL_LoadLibrary(SDL_VideoDevice *_this, const char *path)
 
     _this->gl_data->swap_interval_tear_behavior = SDL_SWAPINTERVALTEAR_UNTESTED;
 
-    /* Initialize extensions */
+    // Initialize extensions
     /* See lengthy comment about the inc/dec in
        ../windows/SDL_windowsopengl.c. */
     ++_this->gl_config.driver_loaded;
@@ -250,7 +250,7 @@ int X11_GL_LoadLibrary(SDL_VideoDevice *_this, const char *path)
      * GLX_EXT_create_context_es2_profile extension, switch over to X11_GLES functions
      */
     if (((_this->gl_config.profile_mask == SDL_GL_CONTEXT_PROFILE_ES) ||
-         SDL_GetHintBoolean(SDL_HINT_VIDEO_FORCE_EGL, SDL_FALSE)) &&
+         SDL_GetHintBoolean(SDL_HINT_VIDEO_FORCE_EGL, false)) &&
         X11_GL_UseEGL(_this)) {
 #ifdef SDL_VIDEO_OPENGL_EGL
         X11_GL_UnloadLibrary(_this);
@@ -291,24 +291,24 @@ void X11_GL_UnloadLibrary(SDL_VideoDevice *_this)
     _this->gl_config.dll_handle = NULL;
 #endif
 
-    /* Free OpenGL memory */
+    // Free OpenGL memory
     SDL_free(_this->gl_data);
     _this->gl_data = NULL;
 }
 
-static SDL_bool HasExtension(const char *extension, const char *extensions)
+static bool HasExtension(const char *extension, const char *extensions)
 {
     const char *start;
     const char *where, *terminator;
 
     if (!extensions) {
-        return SDL_FALSE;
+        return false;
     }
 
-    /* Extension names should not have spaces. */
+    // Extension names should not have spaces.
     where = SDL_strchr(extension, ' ');
     if (where || *extension == '\0') {
-        return SDL_FALSE;
+        return false;
     }
 
     /* It takes a bit of care to be fool-proof about parsing the
@@ -326,13 +326,13 @@ static SDL_bool HasExtension(const char *extension, const char *extensions)
         terminator = where + SDL_strlen(extension);
         if (where == start || *(where - 1) == ' ') {
             if (*terminator == ' ' || *terminator == '\0') {
-                return SDL_TRUE;
+                return true;
             }
         }
 
         start = terminator;
     }
-    return SDL_FALSE;
+    return false;
 }
 
 static void X11_GL_InitExtensions(SDL_VideoDevice *_this)
@@ -347,7 +347,7 @@ static void X11_GL_InitExtensions(SDL_VideoDevice *_this)
     const char *(*glXQueryExtensionsStringFunc)(Display *, int);
     const char *extensions;
 
-    vinfo = X11_GL_GetVisual(_this, display, screen, SDL_FALSE);
+    vinfo = X11_GL_GetVisual(_this, display, screen, false);
     if (vinfo) {
         GLXContext (*glXGetCurrentContextFunc)(void) =
             (GLXContext(*)(void))
@@ -390,18 +390,18 @@ static void X11_GL_InitExtensions(SDL_VideoDevice *_this)
         extensions = NULL;
     }
 
-    /* Check for GLX_EXT_swap_control(_tear) */
-    _this->gl_data->HAS_GLX_EXT_swap_control_tear = SDL_FALSE;
+    // Check for GLX_EXT_swap_control(_tear)
+    _this->gl_data->HAS_GLX_EXT_swap_control_tear = false;
     if (HasExtension("GLX_EXT_swap_control", extensions)) {
         _this->gl_data->glXSwapIntervalEXT =
             (void (*)(Display *, GLXDrawable, int))
                 X11_GL_GetProcAddress(_this, "glXSwapIntervalEXT");
         if (HasExtension("GLX_EXT_swap_control_tear", extensions)) {
-            _this->gl_data->HAS_GLX_EXT_swap_control_tear = SDL_TRUE;
+            _this->gl_data->HAS_GLX_EXT_swap_control_tear = true;
         }
     }
 
-    /* Check for GLX_MESA_swap_control */
+    // Check for GLX_MESA_swap_control
     if (HasExtension("GLX_MESA_swap_control", extensions)) {
         _this->gl_data->glXSwapIntervalMESA =
             (int (*)(int))X11_GL_GetProcAddress(_this, "glXSwapIntervalMESA");
@@ -410,13 +410,13 @@ static void X11_GL_InitExtensions(SDL_VideoDevice *_this)
                                                  "glXGetSwapIntervalMESA");
     }
 
-    /* Check for GLX_SGI_swap_control */
+    // Check for GLX_SGI_swap_control
     if (HasExtension("GLX_SGI_swap_control", extensions)) {
         _this->gl_data->glXSwapIntervalSGI =
             (int (*)(int))X11_GL_GetProcAddress(_this, "glXSwapIntervalSGI");
     }
 
-    /* Check for GLX_ARB_create_context */
+    // Check for GLX_ARB_create_context
     if (HasExtension("GLX_ARB_create_context", extensions)) {
         _this->gl_data->glXCreateContextAttribsARB =
             (GLXContext(*)(Display *, GLXFBConfig, GLXContext, Bool, const int *))
@@ -429,20 +429,20 @@ static void X11_GL_InitExtensions(SDL_VideoDevice *_this)
                 X11_GL_GetProcAddress(_this, "glXGetVisualFromFBConfig");
     }
 
-    /* Check for GLX_EXT_visual_rating */
+    // Check for GLX_EXT_visual_rating
     if (HasExtension("GLX_EXT_visual_rating", extensions)) {
-        _this->gl_data->HAS_GLX_EXT_visual_rating = SDL_TRUE;
+        _this->gl_data->HAS_GLX_EXT_visual_rating = true;
     }
 
-    /* Check for GLX_EXT_visual_info */
+    // Check for GLX_EXT_visual_info
     if (HasExtension("GLX_EXT_visual_info", extensions)) {
-        _this->gl_data->HAS_GLX_EXT_visual_info = SDL_TRUE;
+        _this->gl_data->HAS_GLX_EXT_visual_info = true;
     }
 
-    /* Check for GLX_EXT_create_context_es2_profile */
+    // Check for GLX_EXT_create_context_es2_profile
     if (HasExtension("GLX_EXT_create_context_es2_profile", extensions)) {
-        /* this wants to call glGetString(), so it needs a context. */
-        /* !!! FIXME: it would be nice not to make a context here though! */
+        // this wants to call glGetString(), so it needs a context.
+        // !!! FIXME: it would be nice not to make a context here though!
         if (context) {
             SDL_GL_DeduceMaxSupportedESProfile(
                 &_this->gl_data->es_profile_max_supported_version.major,
@@ -450,19 +450,19 @@ static void X11_GL_InitExtensions(SDL_VideoDevice *_this)
         }
     }
 
-    /* Check for GLX_ARB_context_flush_control */
+    // Check for GLX_ARB_context_flush_control
     if (HasExtension("GLX_ARB_context_flush_control", extensions)) {
-        _this->gl_data->HAS_GLX_ARB_context_flush_control = SDL_TRUE;
+        _this->gl_data->HAS_GLX_ARB_context_flush_control = true;
     }
 
-    /* Check for GLX_ARB_create_context_robustness */
+    // Check for GLX_ARB_create_context_robustness
     if (HasExtension("GLX_ARB_create_context_robustness", extensions)) {
-        _this->gl_data->HAS_GLX_ARB_create_context_robustness = SDL_TRUE;
+        _this->gl_data->HAS_GLX_ARB_create_context_robustness = true;
     }
 
-    /* Check for GLX_ARB_create_context_no_error */
+    // Check for GLX_ARB_create_context_no_error
     if (HasExtension("GLX_ARB_create_context_no_error", extensions)) {
-        _this->gl_data->HAS_GLX_ARB_create_context_no_error = SDL_TRUE;
+        _this->gl_data->HAS_GLX_ARB_create_context_no_error = true;
     }
 
     if (context) {
@@ -486,16 +486,16 @@ static void X11_GL_InitExtensions(SDL_VideoDevice *_this)
  *  In case of failure, if that pointer is not NULL, set that pointer to None
  *  and try again.
  */
-static int X11_GL_GetAttributes(SDL_VideoDevice *_this, Display *display, int screen, int *attribs, int size, Bool for_FBConfig, int **_pvistypeattr, SDL_bool transparent)
+static int X11_GL_GetAttributes(SDL_VideoDevice *_this, Display *display, int screen, int *attribs, int size, Bool for_FBConfig, int **_pvistypeattr, bool transparent)
 {
     int i = 0;
     const int MAX_ATTRIBUTES = 64;
     int *pvistypeattr = NULL;
 
-    /* assert buffer is large enough to hold all SDL attributes. */
+    // assert buffer is large enough to hold all SDL attributes.
     SDL_assert(size >= MAX_ATTRIBUTES);
 
-    /* Setup our GLX attributes according to the gl_config. */
+    // Setup our GLX attributes according to the gl_config.
     if (for_FBConfig) {
         attribs[i++] = GLX_RENDER_TYPE;
         if (_this->gl_config.floatbuffers) {
@@ -577,7 +577,7 @@ static int X11_GL_GetAttributes(SDL_VideoDevice *_this, Display *display, int sc
 
     if (_this->gl_config.framebuffer_srgb_capable) {
         attribs[i++] = GLX_FRAMEBUFFER_SRGB_CAPABLE_ARB;
-        attribs[i++] = True; /* always needed, for_FBConfig or not! */
+        attribs[i++] = True; // always needed, for_FBConfig or not!
     }
 
     if (_this->gl_config.accelerated >= 0 &&
@@ -586,7 +586,7 @@ static int X11_GL_GetAttributes(SDL_VideoDevice *_this, Display *display, int sc
         attribs[i++] = _this->gl_config.accelerated ? GLX_NONE_EXT : GLX_SLOW_VISUAL_EXT;
     }
 
-    /* Un-wanted when we request a transparent buffer */
+    // Un-wanted when we request a transparent buffer
     if (!transparent) {
         /* If we're supposed to use DirectColor visuals, and we've got the
            EXT_visual_info extension, then add GLX_X_VISUAL_TYPE_EXT. */
@@ -608,15 +608,15 @@ static int X11_GL_GetAttributes(SDL_VideoDevice *_this, Display *display, int sc
     return i;
 }
 
-XVisualInfo *X11_GL_GetVisual(SDL_VideoDevice *_this, Display *display, int screen, SDL_bool transparent)
+XVisualInfo *X11_GL_GetVisual(SDL_VideoDevice *_this, Display *display, int screen, bool transparent)
 {
-    /* 64 seems nice. */
+    // 64 seems nice.
     int attribs[64];
     XVisualInfo *vinfo = NULL;
     int *pvistypeattr = NULL;
 
     if (!_this->gl_data) {
-        /* The OpenGL library wasn't loaded, SDL_GetError() should have info */
+        // The OpenGL library wasn't loaded, SDL_GetError() should have info
         return NULL;
     }
 
@@ -625,7 +625,7 @@ XVisualInfo *X11_GL_GetVisual(SDL_VideoDevice *_this, Display *display, int scre
         GLXFBConfig *framebuffer_config = NULL;
         int fbcount = 0;
 
-        X11_GL_GetAttributes(_this, display, screen, attribs, 64, SDL_TRUE, &pvistypeattr, transparent);
+        X11_GL_GetAttributes(_this, display, screen, attribs, 64, true, &pvistypeattr, transparent);
         framebuffer_config = _this->gl_data->glXChooseFBConfig(display, screen, attribs, &fbcount);
         if (!framebuffer_config && (pvistypeattr != NULL)) {
             *pvistypeattr = None;
@@ -633,13 +633,13 @@ XVisualInfo *X11_GL_GetVisual(SDL_VideoDevice *_this, Display *display, int scre
         }
 
         if (transparent) {
-            /* Return the first transparent Visual */
+            // Return the first transparent Visual
             int i;
             for (i = 0; i < fbcount; i++) {
                 Uint32 format;
                 vinfo = _this->gl_data->glXGetVisualFromFBConfig(display, framebuffer_config[i]);
                 format = X11_GetPixelFormatFromVisualInfo(display, vinfo);
-                if (SDL_ISPIXELFORMAT_ALPHA(format)) { /* found! */
+                if (SDL_ISPIXELFORMAT_ALPHA(format)) { // found!
                     X11_XFree(framebuffer_config);
                     framebuffer_config = NULL;
                     break;
@@ -657,7 +657,7 @@ XVisualInfo *X11_GL_GetVisual(SDL_VideoDevice *_this, Display *display, int scre
     }
 
     if (!vinfo) {
-        X11_GL_GetAttributes(_this, display, screen, attribs, 64, SDL_FALSE, &pvistypeattr, transparent);
+        X11_GL_GetAttributes(_this, display, screen, attribs, 64, false, &pvistypeattr, transparent);
         vinfo = _this->gl_data->glXChooseVisual(display, screen, attribs);
 
         if (!vinfo && (pvistypeattr != NULL)) {
@@ -696,16 +696,16 @@ static int X11_GL_ErrorHandler(Display *d, XErrorEvent *e)
     return (0);
 }
 
-SDL_bool X11_GL_UseEGL(SDL_VideoDevice *_this)
+bool X11_GL_UseEGL(SDL_VideoDevice *_this)
 {
     SDL_assert(_this->gl_data != NULL);
-    if (SDL_GetHintBoolean(SDL_HINT_VIDEO_FORCE_EGL, SDL_FALSE)) {
-        /* use of EGL has been requested, even for desktop GL */
-        return SDL_TRUE;
+    if (SDL_GetHintBoolean(SDL_HINT_VIDEO_FORCE_EGL, false)) {
+        // use of EGL has been requested, even for desktop GL
+        return true;
     }
 
     SDL_assert(_this->gl_config.profile_mask == SDL_GL_CONTEXT_PROFILE_ES);
-    return (SDL_GetHintBoolean(SDL_HINT_OPENGL_ES_DRIVER, SDL_FALSE) || _this->gl_config.major_version == 1 /* No GLX extension for OpenGL ES 1.x profiles. */
+    return (SDL_GetHintBoolean(SDL_HINT_OPENGL_ES_DRIVER, false) || _this->gl_config.major_version == 1 // No GLX extension for OpenGL ES 1.x profiles.
             || _this->gl_config.major_version > _this->gl_data->es_profile_max_supported_version.major || (_this->gl_config.major_version == _this->gl_data->es_profile_max_supported_version.major && _this->gl_config.minor_version > _this->gl_data->es_profile_max_supported_version.minor));
 }
 
@@ -719,7 +719,7 @@ SDL_GLContext X11_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window *window)
     int n;
     SDL_GLContext context = NULL;
     GLXContext share_context;
-    const int transparent = (window->flags & SDL_WINDOW_TRANSPARENT) ? SDL_TRUE : SDL_FALSE;
+    const int transparent = (window->flags & SDL_WINDOW_TRANSPARENT) ? true : false;
 
     if (_this->gl_config.share_with_current_context) {
         share_context = (GLXContext)SDL_GL_GetCurrentContext();
@@ -727,7 +727,7 @@ SDL_GLContext X11_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window *window)
         share_context = NULL;
     }
 
-    /* We do this to create a clean separation between X and GLX errors. */
+    // We do this to create a clean separation between X and GLX errors.
     X11_XSync(display, False);
     errorHandlerOperation = "create GL context";
     errorBase = _this->gl_data->errorBase;
@@ -741,11 +741,11 @@ SDL_GLContext X11_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window *window)
         if (_this->gl_config.major_version < 3 &&
             _this->gl_config.profile_mask == 0 &&
             _this->gl_config.flags == 0 && !transparent) {
-            /* Create legacy context */
+            // Create legacy context
             context =
                 (SDL_GLContext)_this->gl_data->glXCreateContext(display, vinfo, share_context, True);
         } else {
-            /* max 14 attributes plus terminator */
+            // max 14 attributes plus terminator
             int attribs[15] = {
                 GLX_CONTEXT_MAJOR_VERSION_ARB,
                 _this->gl_config.major_version,
@@ -755,33 +755,33 @@ SDL_GLContext X11_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window *window)
             };
             int iattr = 4;
 
-            /* SDL profile bits match GLX profile bits */
+            // SDL profile bits match GLX profile bits
             if (_this->gl_config.profile_mask != 0) {
                 attribs[iattr++] = GLX_CONTEXT_PROFILE_MASK_ARB;
                 attribs[iattr++] = _this->gl_config.profile_mask;
             }
 
-            /* SDL flags match GLX flags */
+            // SDL flags match GLX flags
             if (_this->gl_config.flags != 0) {
                 attribs[iattr++] = GLX_CONTEXT_FLAGS_ARB;
                 attribs[iattr++] = _this->gl_config.flags;
             }
 
-            /* only set if glx extension is available and not the default setting */
+            // only set if glx extension is available and not the default setting
             if ((_this->gl_data->HAS_GLX_ARB_context_flush_control) && (_this->gl_config.release_behavior == 0)) {
                 attribs[iattr++] = GLX_CONTEXT_RELEASE_BEHAVIOR_ARB;
                 attribs[iattr++] =
                     _this->gl_config.release_behavior ? GLX_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB : GLX_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB;
             }
 
-            /* only set if glx extension is available and not the default setting */
+            // only set if glx extension is available and not the default setting
             if ((_this->gl_data->HAS_GLX_ARB_create_context_robustness) && (_this->gl_config.reset_notification != 0)) {
                 attribs[iattr++] = GLX_CONTEXT_RESET_NOTIFICATION_STRATEGY_ARB;
                 attribs[iattr++] =
                     _this->gl_config.reset_notification ? GLX_LOSE_CONTEXT_ON_RESET_ARB : GLX_NO_RESET_NOTIFICATION_ARB;
             }
 
-            /* only set if glx extension is available and not the default setting */
+            // only set if glx extension is available and not the default setting
             if ((_this->gl_data->HAS_GLX_ARB_create_context_no_error) && (_this->gl_config.no_error != 0)) {
                 attribs[iattr++] = GLX_CONTEXT_OPENGL_NO_ERROR_ARB;
                 attribs[iattr++] = _this->gl_config.no_error;
@@ -789,18 +789,18 @@ SDL_GLContext X11_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window *window)
 
             attribs[iattr++] = 0;
 
-            /* Get a pointer to the context creation function for GL 3.0 */
+            // Get a pointer to the context creation function for GL 3.0
             if (!_this->gl_data->glXCreateContextAttribsARB) {
                 SDL_SetError("OpenGL 3.0 and later are not supported by this system");
             } else {
                 int glxAttribs[64];
 
-                /* Create a GL 3.x context */
+                // Create a GL 3.x context
                 GLXFBConfig *framebuffer_config = NULL;
                 int fbcount = 0;
                 int *pvistypeattr = NULL;
 
-                X11_GL_GetAttributes(_this, display, screen, glxAttribs, 64, SDL_TRUE, &pvistypeattr, transparent);
+                X11_GL_GetAttributes(_this, display, screen, glxAttribs, 64, true, &pvistypeattr, transparent);
 
                 if (_this->gl_data->glXChooseFBConfig) {
                     framebuffer_config = _this->gl_data->glXChooseFBConfig(display,
@@ -855,7 +855,7 @@ int X11_GL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window *window, SDL_GLContext
         return SDL_SetError("OpenGL not initialized");
     }
 
-    /* We do this to create a clean separation between X and GLX errors. */
+    // We do this to create a clean separation between X and GLX errors.
     X11_XSync(display, False);
     errorHandlerOperation = "make GL context current";
     errorBase = _this->gl_data->errorBase;
@@ -864,9 +864,9 @@ int X11_GL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window *window, SDL_GLContext
     rc = _this->gl_data->glXMakeCurrent(display, drawable, glx_context);
     X11_XSetErrorHandler(handler);
 
-    if (errorCode != Success) { /* uhoh, an X error was thrown! */
-        return -1;              /* the error handler called SDL_SetError() already. */
-    } else if (!rc) {           /* glXMakeCurrent() failed without throwing an X error */
+    if (errorCode != Success) { // uhoh, an X error was thrown!
+        return -1;              // the error handler called SDL_SetError() already.
+    } else if (!rc) {           // glXMakeCurrent() failed without throwing an X error
         return SDL_SetError("Unable to make GL context current");
     }
 
@@ -951,22 +951,22 @@ static SDL_GLSwapIntervalTearBehavior CheckSwapIntervalTearBehavior(SDL_VideoDev
              */
             _this->gl_data->glXSwapIntervalEXT(display, drawable, current_val);
 
-            /* set it to no swap interval and see how it affects GLX_LATE_SWAPS_TEAR_EXT... */
+            // set it to no swap interval and see how it affects GLX_LATE_SWAPS_TEAR_EXT...
             _this->gl_data->glXSwapIntervalEXT(display, drawable, 0);
             _this->gl_data->glXQueryDrawable(display, drawable, GLX_LATE_SWAPS_TEAR_EXT, &allow_late_swap_tearing);
 
-            if (allow_late_swap_tearing == 0) { /* GLX_LATE_SWAPS_TEAR_EXT says whether late swapping is currently in use */
+            if (allow_late_swap_tearing == 0) { // GLX_LATE_SWAPS_TEAR_EXT says whether late swapping is currently in use
                 _this->gl_data->swap_interval_tear_behavior = SDL_SWAPINTERVALTEAR_NVIDIA;
                 if (current_allow_late) {
                     original_val = -original_val;
                 }
-            } else if (allow_late_swap_tearing == 1) {  /* GLX_LATE_SWAPS_TEAR_EXT says whether the Drawable can use late swapping at all */
+            } else if (allow_late_swap_tearing == 1) {  // GLX_LATE_SWAPS_TEAR_EXT says whether the Drawable can use late swapping at all
                 _this->gl_data->swap_interval_tear_behavior = SDL_SWAPINTERVALTEAR_MESA;
-            } else {  /* unexpected outcome! */
+            } else {  // unexpected outcome!
                 _this->gl_data->swap_interval_tear_behavior = SDL_SWAPINTERVALTEAR_UNKNOWN;
             }
 
-            /* set us back to what it was originally... */
+            // set us back to what it was originally...
             _this->gl_data->glXSwapIntervalEXT(display, drawable, original_val);
         }
     }
@@ -985,7 +985,7 @@ int X11_GL_GetSwapInterval(SDL_VideoDevice *_this, int *interval)
         unsigned int val = 0;
 
         if (_this->gl_data->HAS_GLX_EXT_swap_control_tear) {
-            allow_late_swap_tearing = 22;  /* set this to nonsense. */
+            allow_late_swap_tearing = 22;  // set this to nonsense.
             _this->gl_data->glXQueryDrawable(display, drawable,
                                              GLX_LATE_SWAPS_TEAR_EXT,
                                              &allow_late_swap_tearing);
@@ -998,7 +998,7 @@ int X11_GL_GetSwapInterval(SDL_VideoDevice *_this, int *interval)
 
         switch (CheckSwapIntervalTearBehavior(_this, drawable, val, allow_late_swap_tearing)) {
             case SDL_SWAPINTERVALTEAR_MESA:
-                *interval = (int)val;  /* unsigned int cast to signed that generates negative value if necessary. */
+                *interval = (int)val;  // unsigned int cast to signed that generates negative value if necessary.
                 break;
 
             case SDL_SWAPINTERVALTEAR_NVIDIA:
@@ -1045,6 +1045,6 @@ int X11_GL_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context)
     return 0;
 }
 
-#endif /* SDL_VIDEO_OPENGL_GLX */
+#endif // SDL_VIDEO_OPENGL_GLX
 
-#endif /* SDL_VIDEO_DRIVER_X11 */
+#endif // SDL_VIDEO_DRIVER_X11

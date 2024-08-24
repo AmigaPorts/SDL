@@ -21,7 +21,7 @@ static SDL_AudioStream *stream_in = NULL;
 static SDL_AudioStream *stream_out = NULL;
 static SDLTest_CommonState *state = NULL;
 
-int SDL_AppInit(void **appstate, int argc, char **argv)
+SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv)
 {
     SDL_AudioDeviceID *devices;
     SDL_AudioSpec outspec;
@@ -113,7 +113,7 @@ int SDL_AppInit(void **appstate, int argc, char **argv)
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create an audio stream for playback: %s!\n", SDL_GetError());
         SDL_free(devices);
         return SDL_APP_FAILURE;
-    } else if (SDL_BindAudioStream(device, stream_out) == -1) {
+    } else if (SDL_BindAudioStream(device, stream_out) < 0) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't bind an audio stream for playback: %s!\n", SDL_GetError());
         SDL_free(devices);
         return SDL_APP_FAILURE;
@@ -137,7 +137,7 @@ int SDL_AppInit(void **appstate, int argc, char **argv)
     if (!stream_in) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create an audio stream for recording: %s!\n", SDL_GetError());
         return SDL_APP_FAILURE;
-    } else if (SDL_BindAudioStream(device, stream_in) == -1) {
+    } else if (SDL_BindAudioStream(device, stream_in) < 0) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't bind an audio stream for recording: %s!\n", SDL_GetError());
         return SDL_APP_FAILURE;
     }
@@ -149,7 +149,7 @@ int SDL_AppInit(void **appstate, int argc, char **argv)
     return SDL_APP_CONTINUE;
 }
 
-int SDL_AppEvent(void *appstate, const SDL_Event *event)
+SDL_AppResult SDL_AppEvent(void *appstate, const SDL_Event *event)
 {
     if (event->type == SDL_EVENT_QUIT) {
         return SDL_APP_SUCCESS;
@@ -173,7 +173,7 @@ int SDL_AppEvent(void *appstate, const SDL_Event *event)
     return SDL_APP_CONTINUE;
 }
 
-int SDL_AppIterate(void *appstate)
+SDL_AppResult SDL_AppIterate(void *appstate)
 {
     if (!SDL_AudioDevicePaused(SDL_GetAudioStreamDevice(stream_in))) {
         SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);

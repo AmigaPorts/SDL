@@ -23,7 +23,7 @@
 
 #include "../SDL_sysstorage.h"
 
-#include <stdbool.h> /* Needed by Steamworks */
+#include <stdbool.h> // Needed by Steamworks
 
 // !!! FIXME: Async API can use SteamRemoteStorage_ReadFileAsync
 // !!! FIXME: Async API can use SteamRemoteStorage_WriteFileAsync
@@ -57,7 +57,7 @@ static int STEAM_CloseStorage(void *userdata)
 
 static SDL_bool STEAM_StorageReady(void *userdata)
 {
-    return SDL_TRUE;
+    return true;
 }
 
 static int STEAM_GetStoragePathInfo(void *userdata, const char *path, SDL_PathInfo *info)
@@ -133,14 +133,14 @@ static Uint64 STEAM_GetStorageSpaceRemaining(void *userdata)
 static const SDL_StorageInterface STEAM_user_iface = {
     STEAM_CloseStorage,
     STEAM_StorageReady,
-    NULL,   /* enumerate */
+    NULL,   // enumerate
     STEAM_GetStoragePathInfo,
     STEAM_ReadStorageFile,
     STEAM_WriteStorageFile,
-    NULL,   /* mkdir */
-    NULL,   /* remove */
-    NULL,   /* rename */
-    NULL,   /* copy */
+    NULL,   // mkdir
+    NULL,   // remove
+    NULL,   // rename
+    NULL,   // copy
     STEAM_GetStorageSpaceRemaining
 };
 

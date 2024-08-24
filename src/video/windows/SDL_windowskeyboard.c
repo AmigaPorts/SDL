@@ -45,7 +45,7 @@ static void IME_GetCandidateList(SDL_VideoData *videodata, HWND hwnd);
 static void IME_Quit(SDL_VideoData *videodata);
 #else
 static void IME_SetTextInputArea(SDL_VideoData *videodata, HWND hwnd, const SDL_Rect *rect, int cursor);
-#endif /* !SDL_DISABLE_WINDOWS_IME */
+#endif // !SDL_DISABLE_WINDOWS_IME
 
 #ifndef MAPVK_VK_TO_VSC
 #define MAPVK_VK_TO_VSC 0
@@ -54,7 +54,7 @@ static void IME_SetTextInputArea(SDL_VideoData *videodata, HWND hwnd, const SDL_
 #define MAPVK_VSC_TO_VK 1
 #endif
 
-/* Alphabetic scancodes for PC keyboards */
+// Alphabetic scancodes for PC keyboards
 void WIN_InitKeyboard(SDL_VideoDevice *_this)
 {
 #ifndef SDL_DISABLE_WINDOWS_IME
@@ -63,21 +63,21 @@ void WIN_InitKeyboard(SDL_VideoDevice *_this)
     data->ime_candlistindexbase = 1;
     data->ime_composition_length = 32 * sizeof(WCHAR);
     data->ime_composition = (WCHAR *)SDL_calloc(data->ime_composition_length, sizeof(WCHAR));
-#endif /* !SDL_DISABLE_WINDOWS_IME */
+#endif // !SDL_DISABLE_WINDOWS_IME
 
-    WIN_UpdateKeymap(SDL_FALSE);
+    WIN_UpdateKeymap(false);
 
     SDL_SetScancodeName(SDL_SCANCODE_APPLICATION, "Menu");
     SDL_SetScancodeName(SDL_SCANCODE_LGUI, "Left Windows");
     SDL_SetScancodeName(SDL_SCANCODE_RGUI, "Right Windows");
 
-    /* Are system caps/num/scroll lock active? Set our state to match. */
-    SDL_ToggleModState(SDL_KMOD_CAPS, (GetKeyState(VK_CAPITAL) & 0x0001) ? SDL_TRUE : SDL_FALSE);
-    SDL_ToggleModState(SDL_KMOD_NUM, (GetKeyState(VK_NUMLOCK) & 0x0001) ? SDL_TRUE : SDL_FALSE);
-    SDL_ToggleModState(SDL_KMOD_SCROLL, (GetKeyState(VK_SCROLL) & 0x0001) ? SDL_TRUE : SDL_FALSE);
+    // Are system caps/num/scroll lock active? Set our state to match.
+    SDL_ToggleModState(SDL_KMOD_CAPS, (GetKeyState(VK_CAPITAL) & 0x0001) ? true : false);
+    SDL_ToggleModState(SDL_KMOD_NUM, (GetKeyState(VK_NUMLOCK) & 0x0001) ? true : false);
+    SDL_ToggleModState(SDL_KMOD_SCROLL, (GetKeyState(VK_SCROLL) & 0x0001) ? true : false);
 }
 
-void WIN_UpdateKeymap(SDL_bool send_event)
+void WIN_UpdateKeymap(bool send_event)
 {
     SDL_Scancode scancode;
     SDL_Keymap *keymap;
@@ -103,13 +103,13 @@ void WIN_UpdateKeymap(SDL_bool send_event)
             int vk, sc, result;
             Uint32 *ch = 0;
 
-            /* Make sure this scancode is a valid character scancode */
+            // Make sure this scancode is a valid character scancode
             scancode = windows_scancode_table[i];
             if (scancode == SDL_SCANCODE_UNKNOWN ||
                 scancode == SDL_SCANCODE_DELETE ||
                 (SDL_GetKeymapKeycode(NULL, scancode, SDL_KMOD_NONE) & SDLK_SCANCODE_MASK)) {
 
-                /* The Colemak mapping swaps Backspace and CapsLock */
+                // The Colemak mapping swaps Backspace and CapsLock
                 if (mods[m] == SDL_KMOD_NONE &&
                     (scancode == SDL_SCANCODE_CAPSLOCK ||
                      scancode == SDL_SCANCODE_BACKSPACE)) {
@@ -123,7 +123,7 @@ void WIN_UpdateKeymap(SDL_bool send_event)
                 continue;
             }
 
-            /* Unpack the single byte index to make the scan code. */
+            // Unpack the single byte index to make the scan code.
             sc = MAKEWORD(i & 0x7f, (i & 0x80) ? 0xe0 : 0x00);
             vk = LOBYTE(MapVirtualKey(sc, MAPVK_VSC_TO_VK));
             if (!vk) {
@@ -139,7 +139,7 @@ void WIN_UpdateKeymap(SDL_bool send_event)
             result = ToUnicode(vk, sc, keyboardState, buffer, 16, 0);
             buffer[SDL_abs(result)] = 0;
 
-            /* Convert UTF-16 to UTF-32 code points */
+            // Convert UTF-16 to UTF-32 code points
             ch = (Uint32 *)SDL_iconv_string("UTF-32LE", "UTF-16LE", (const char *)buffer, (SDL_abs(result) + 1) * sizeof(WCHAR));
             if (ch) {
                 /* Windows keyboard layouts can emit several UTF-32 code points on a single key press.
@@ -174,7 +174,7 @@ void WIN_QuitKeyboard(SDL_VideoDevice *_this)
         SDL_free(data->ime_composition);
         data->ime_composition = NULL;
     }
-#endif /* !SDL_DISABLE_WINDOWS_IME */
+#endif // !SDL_DISABLE_WINDOWS_IME
 }
 
 void WIN_ResetDeadKeys(void)
@@ -195,14 +195,14 @@ void WIN_ResetDeadKeys(void)
     vk = VK_SPACE;
     sc = MapVirtualKey(vk, MAPVK_VK_TO_VSC);
     if (sc == 0) {
-        /* the keyboard doesn't have this key */
+        // the keyboard doesn't have this key
         return;
     }
 
     for (i = 0; i < 5; i++) {
         result = ToUnicode(vk, sc, keyboardState, buffer, 16, 0);
         if (result > 0) {
-            /* success */
+            // success
             return;
         }
     }
@@ -219,7 +219,7 @@ int WIN_StartTextInput(SDL_VideoDevice *_this, SDL_Window *window, SDL_Propertie
     IME_Enable(videodata, hwnd);
 
     WIN_UpdateTextInputArea(_this, window);
-#endif /* !SDL_DISABLE_WINDOWS_IME */
+#endif // !SDL_DISABLE_WINDOWS_IME
 
     return 0;
 }
@@ -233,7 +233,7 @@ int WIN_StopTextInput(SDL_VideoDevice *_this, SDL_Window *window)
     SDL_VideoData *videodata = _this->internal;
     IME_Init(videodata, window);
     IME_Disable(videodata, hwnd);
-#endif /* !SDL_DISABLE_WINDOWS_IME */
+#endif // !SDL_DISABLE_WINDOWS_IME
 
     return 0;
 }
@@ -259,9 +259,9 @@ int WIN_ClearComposition(SDL_VideoDevice *_this, SDL_Window *window)
 
 #ifdef SDL_DISABLE_WINDOWS_IME
 
-SDL_bool WIN_HandleIMEMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM *lParam, SDL_VideoData *videodata)
+bool WIN_HandleIMEMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM *lParam, SDL_VideoData *videodata)
 {
-    return SDL_FALSE;
+    return false;
 }
 
 void WIN_UpdateIMECandidates(SDL_VideoDevice *_this)
@@ -323,36 +323,36 @@ static int IME_Init(SDL_VideoData *videodata, SDL_Window *window)
 
     const char *hint = SDL_GetHint(SDL_HINT_IME_IMPLEMENTED_UI);
     if (hint && SDL_strstr(hint, "composition")) {
-        videodata->ime_internal_composition = SDL_TRUE;
+        videodata->ime_internal_composition = true;
     }
     if (hint && SDL_strstr(hint, "candidates")) {
-        videodata->ime_internal_candidates = SDL_TRUE;
+        videodata->ime_internal_candidates = true;
     }
 
     videodata->ime_hwnd_main = hwnd;
-    videodata->ime_initialized = SDL_TRUE;
+    videodata->ime_initialized = true;
     videodata->ime_himm32 = SDL_LoadObject("imm32.dll");
     if (!videodata->ime_himm32) {
-        videodata->ime_available = SDL_FALSE;
+        videodata->ime_available = false;
         SDL_ClearError();
         return 0;
     }
-    /* *INDENT-OFF* */ /* clang-format off */
+    /* *INDENT-OFF* */ // clang-format off
     videodata->ImmLockIMC = (LPINPUTCONTEXT2 (WINAPI *)(HIMC))SDL_LoadFunction(videodata->ime_himm32, "ImmLockIMC");
     videodata->ImmUnlockIMC = (BOOL (WINAPI *)(HIMC))SDL_LoadFunction(videodata->ime_himm32, "ImmUnlockIMC");
     videodata->ImmLockIMCC = (LPVOID (WINAPI *)(HIMCC))SDL_LoadFunction(videodata->ime_himm32, "ImmLockIMCC");
     videodata->ImmUnlockIMCC = (BOOL (WINAPI *)(HIMCC))SDL_LoadFunction(videodata->ime_himm32, "ImmUnlockIMCC");
-    /* *INDENT-ON* */ /* clang-format on */
+    /* *INDENT-ON* */ // clang-format on
 
     IME_SetWindow(videodata, window);
     videodata->ime_himc = ImmGetContext(hwnd);
     ImmReleaseContext(hwnd, videodata->ime_himc);
     if (!videodata->ime_himc) {
-        videodata->ime_available = SDL_FALSE;
+        videodata->ime_available = false;
         IME_Disable(videodata, hwnd);
         return 0;
     }
-    videodata->ime_available = SDL_TRUE;
+    videodata->ime_available = true;
     IME_UpdateInputLocale(videodata);
     IME_SetupAPI(videodata);
     IME_UpdateInputLocale(videodata);
@@ -374,7 +374,7 @@ static void IME_Enable(SDL_VideoData *videodata, HWND hwnd)
         ImmAssociateContext(videodata->ime_hwnd_current, videodata->ime_himc);
     }
 
-    videodata->ime_enabled = SDL_TRUE;
+    videodata->ime_enabled = true;
     IME_UpdateInputLocale(videodata);
 }
 
@@ -389,7 +389,7 @@ static void IME_Disable(SDL_VideoData *videodata, HWND hwnd)
         ImmAssociateContext(videodata->ime_hwnd_current, (HIMC)0);
     }
 
-    videodata->ime_enabled = SDL_FALSE;
+    videodata->ime_enabled = false;
 }
 
 static void IME_Quit(SDL_VideoData *videodata)
@@ -412,7 +412,7 @@ static void IME_Quit(SDL_VideoData *videodata)
         SDL_free(videodata->ime_candidates[i]);
         videodata->ime_candidates[i] = NULL;
     }
-    videodata->ime_initialized = SDL_FALSE;
+    videodata->ime_initialized = false;
 }
 
 static void IME_GetReadingString(SDL_VideoData *videodata, HWND hwnd)
@@ -621,12 +621,12 @@ static void IME_SetupAPI(SDL_VideoData *videodata)
         return;
     }
 
-    /* *INDENT-OFF* */ /* clang-format off */
+    /* *INDENT-OFF* */ // clang-format off
     videodata->GetReadingString = (UINT (WINAPI *)(HIMC, UINT, LPWSTR, PINT, BOOL*, PUINT))
         SDL_LoadFunction(hime, "GetReadingString");
     videodata->ShowReadingWindow = (BOOL (WINAPI *)(HIMC, BOOL))
         SDL_LoadFunction(hime, "ShowReadingWindow");
-    /* *INDENT-ON* */ /* clang-format on */
+    /* *INDENT-ON* */ // clang-format on
 
     if (videodata->ShowReadingWindow) {
         HIMC himc = ImmGetContext(videodata->ime_hwnd_current);
@@ -860,7 +860,7 @@ static void IME_SendEditingEvent(SDL_VideoData *videodata)
             SDL_SendEditingText(s, videodata->ime_cursor, 0);
         }
         if (*s) {
-            videodata->ime_needs_clear_composition = SDL_TRUE;
+            videodata->ime_needs_clear_composition = true;
         }
         SDL_free(s);
     }
@@ -871,13 +871,13 @@ static void IME_SendClearComposition(SDL_VideoData *videodata)
 {
     if (videodata->ime_needs_clear_composition) {
         SDL_SendEditingText("", 0, 0);
-        videodata->ime_needs_clear_composition = SDL_FALSE;
+        videodata->ime_needs_clear_composition = false;
     }
 }
 
 static int IME_OpenCandidateList(SDL_VideoData *videodata)
 {
-    videodata->ime_candidates_open = SDL_TRUE;
+    videodata->ime_candidates_open = true;
     videodata->ime_candcount = 0;
     return 0;
 }
@@ -904,7 +904,7 @@ static void IME_SendCandidateList(SDL_VideoData *videodata)
 
 static void IME_CloseCandidateList(SDL_VideoData *videodata)
 {
-    videodata->ime_candidates_open = SDL_FALSE;
+    videodata->ime_candidates_open = false;
 
     if (videodata->ime_candcount > 0) {
         for (int i = 0; i < videodata->ime_candcount; ++i) {
@@ -913,7 +913,7 @@ static void IME_CloseCandidateList(SDL_VideoData *videodata)
         }
         videodata->ime_candcount = 0;
 
-        SDL_SendEditingTextCandidates(NULL, 0, -1, SDL_FALSE);
+        SDL_SendEditingTextCandidates(NULL, 0, -1, false);
     }
 }
 
@@ -922,7 +922,7 @@ static void IME_GetCandidateList(SDL_VideoData *videodata, HWND hwnd)
     HIMC himc;
     DWORD size;
     LPCANDIDATELIST cand_list;
-    SDL_bool has_candidates = SDL_FALSE;
+    bool has_candidates = false;
 
     himc = ImmGetContext(hwnd);
     if (himc) {
@@ -966,7 +966,7 @@ static void IME_GetCandidateList(SDL_VideoData *videodata, HWND hwnd)
                             IME_AddCandidate(videodata, j, candidate);
                         }
 
-                        has_candidates = SDL_TRUE;
+                        has_candidates = true;
                         IME_SendCandidateList(videodata);
                     }
                 }
@@ -981,9 +981,9 @@ static void IME_GetCandidateList(SDL_VideoData *videodata, HWND hwnd)
     }
 }
 
-SDL_bool WIN_HandleIMEMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM *lParam, SDL_VideoData *videodata)
+bool WIN_HandleIMEMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM *lParam, SDL_VideoData *videodata)
 {
-    SDL_bool trap = SDL_FALSE;
+    bool trap = false;
     HIMC himc = 0;
 
     if (msg == WM_IME_SETCONTEXT) {
@@ -1003,18 +1003,18 @@ SDL_bool WIN_HandleIMEMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM *lParam
         }
         *lParam &= element_mask;
 
-        return SDL_FALSE;
+        return false;
     }
 
     if (!videodata->ime_initialized || !videodata->ime_available || !videodata->ime_enabled) {
-        return SDL_FALSE;
+        return false;
     }
 
     switch (msg) {
     case WM_KEYDOWN:
         if (wParam == VK_PROCESSKEY) {
             SDL_DebugIMELog("WM_KEYDOWN VK_PROCESSKEY\n");
-            trap = SDL_TRUE;
+            trap = true;
         } else {
             SDL_DebugIMELog("WM_KEYDOWN normal\n");
         }
@@ -1026,13 +1026,13 @@ SDL_bool WIN_HandleIMEMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM *lParam
     case WM_IME_STARTCOMPOSITION:
         SDL_DebugIMELog("WM_IME_STARTCOMPOSITION\n");
         if (videodata->ime_internal_composition) {
-            trap = SDL_TRUE;
+            trap = true;
         }
         break;
     case WM_IME_COMPOSITION:
         SDL_DebugIMELog("WM_IME_COMPOSITION %x\n", lParam);
         if (videodata->ime_internal_composition) {
-            trap = SDL_TRUE;
+            trap = true;
             himc = ImmGetContext(hwnd);
             if (*lParam & GCS_RESULTSTR) {
                 SDL_DebugIMELog("GCS_RESULTSTR\n");
@@ -1052,7 +1052,7 @@ SDL_bool WIN_HandleIMEMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM *lParam
     case WM_IME_ENDCOMPOSITION:
         SDL_DebugIMELog("WM_IME_ENDCOMPOSITION\n");
         if (videodata->ime_internal_composition) {
-            trap = SDL_TRUE;
+            trap = true;
             videodata->ime_composition[0] = 0;
             videodata->ime_readingstring[0] = 0;
             videodata->ime_cursor = 0;
@@ -1082,15 +1082,15 @@ SDL_bool WIN_HandleIMEMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM *lParam
         case IMN_CHANGECANDIDATE:
             SDL_DebugIMELog("%s\n", wParam == IMN_OPENCANDIDATE ? "IMN_OPENCANDIDATE" : "IMN_CHANGECANDIDATE");
             if (videodata->ime_internal_candidates) {
-                trap = SDL_TRUE;
-                videodata->ime_update_candidates = SDL_TRUE;
+                trap = true;
+                videodata->ime_update_candidates = true;
             }
             break;
         case IMN_CLOSECANDIDATE:
             SDL_DebugIMELog("IMN_CLOSECANDIDATE\n");
             if (videodata->ime_internal_candidates) {
-                trap = SDL_TRUE;
-                videodata->ime_update_candidates = SDL_FALSE;
+                trap = true;
+                videodata->ime_update_candidates = false;
                 IME_CloseCandidateList(videodata);
             }
             break;
@@ -1106,7 +1106,7 @@ SDL_bool WIN_HandleIMEMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM *lParam
             case IMEID_CHS_VER41:
             case IMEID_CHS_VER42:
                 if (*lParam == 1 || *lParam == 2) {
-                    trap = SDL_TRUE;
+                    trap = true;
                 }
 
                 break;
@@ -1116,13 +1116,13 @@ SDL_bool WIN_HandleIMEMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM *lParam
             case IMEID_CHT_VER60:
             case IMEID_CHS_VER53:
                 if (*lParam == 16 || *lParam == 17 || *lParam == 26 || *lParam == 27 || *lParam == 28) {
-                    trap = SDL_TRUE;
+                    trap = true;
                 }
                 break;
             }
         } break;
         default:
-            trap = SDL_TRUE;
+            trap = true;
             break;
         }
         break;
@@ -1136,10 +1136,10 @@ void WIN_UpdateIMECandidates(SDL_VideoDevice *_this)
 
     if (videodata->ime_update_candidates) {
         IME_GetCandidateList(videodata, videodata->ime_hwnd_current);
-        videodata->ime_update_candidates = SDL_FALSE;
+        videodata->ime_update_candidates = false;
     }
 }
 
-#endif /* SDL_DISABLE_WINDOWS_IME */
+#endif // SDL_DISABLE_WINDOWS_IME
 
-#endif /* SDL_VIDEO_DRIVER_WINDOWS */
+#endif // SDL_VIDEO_DRIVER_WINDOWS

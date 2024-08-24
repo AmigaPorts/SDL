@@ -456,7 +456,7 @@ endif()
 sdl_compile_definitions(PRIVATE "USING_GENERATED_CONFIG_H")
 sdl_include_directories(
   PRIVATE
-    "${SDL3_BINARY_DIR}/include-config-$<LOWER_CASE:$<CONFIG>>"
+    "${SDL3_BINARY_DIR}/include-config-$<LOWER_CASE:$<CONFIG>>/build_config"
     "${SDL3_BINARY_DIR}/include"
     "${SDL3_SOURCE_DIR}/include"
 )
@@ -467,37 +467,6 @@ else()
   sdl_include_directories(NO_EXPORT SYSTEM PRIVATE "$<BUILD_INTERFACE:${SDL3_SOURCE_DIR}/src/video/khronos>")
 endif()
 
-# General source files
-sdl_glob_sources(
-  "${SDL3_SOURCE_DIR}/src/*.c"
-  "${SDL3_SOURCE_DIR}/src/atomic/*.c"
-  "${SDL3_SOURCE_DIR}/src/audio/*.c"
-  "${SDL3_SOURCE_DIR}/src/camera/*.c"
-  "${SDL3_SOURCE_DIR}/src/core/*.c"
-  "${SDL3_SOURCE_DIR}/src/cpuinfo/*.c"
-  "${SDL3_SOURCE_DIR}/src/dynapi/*.c"
-  "${SDL3_SOURCE_DIR}/src/events/*.c"
-  "${SDL3_SOURCE_DIR}/src/file/*.c"
-  "${SDL3_SOURCE_DIR}/src/filesystem/*.c"
-  "${SDL3_SOURCE_DIR}/src/joystick/*.c"
-  "${SDL3_SOURCE_DIR}/src/haptic/*.c"
-  "${SDL3_SOURCE_DIR}/src/hidapi/*.c"
-  "${SDL3_SOURCE_DIR}/src/libm/*.c"
-  "${SDL3_SOURCE_DIR}/src/locale/*.c"
-  "${SDL3_SOURCE_DIR}/src/main/*.c"
-  "${SDL3_SOURCE_DIR}/src/misc/*.c"
-  "${SDL3_SOURCE_DIR}/src/power/*.c"
-  "${SDL3_SOURCE_DIR}/src/render/*.c"
-  "${SDL3_SOURCE_DIR}/src/render/*/*.c"
-  "${SDL3_SOURCE_DIR}/src/sensor/*.c"
-  "${SDL3_SOURCE_DIR}/src/stdlib/*.c"
-  "${SDL3_SOURCE_DIR}/src/storage/*.c"
-  "${SDL3_SOURCE_DIR}/src/thread/*.c"
-  "${SDL3_SOURCE_DIR}/src/time/*.c"
-  "${SDL3_SOURCE_DIR}/src/timer/*.c"
-  "${SDL3_SOURCE_DIR}/src/video/*.c"
-  "${SDL3_SOURCE_DIR}/src/video/yuv2rgb/*.c"
-)
 if(MSVC AND TARGET SDL3-shared)
   if(SDL_CPU_X64)
     enable_language(ASM_MASM)
@@ -972,6 +941,7 @@ if(SDL_LIBC)
     memory.h
     signal.h
     stdarg.h
+    stdbool.h
     stddef.h
     stdint.h
     stdio.h
@@ -1069,7 +1039,7 @@ if(SDL_LIBC)
         return ${math_fn}f(f);
       }
     " LIBC_HAS_${MATH_FN}F)
-    set(HAVE_${MATH_FN}F "${LIBC_HAS_${MATH_FN}}")
+    set(HAVE_${MATH_FN}F "${LIBC_HAS_${MATH_FN}F}")
   endforeach()
   cmake_pop_check_state()
 
@@ -1141,6 +1111,52 @@ else()
   endif()
 endif()
 
+# General source files
+sdl_glob_sources(
+  "${SDL3_SOURCE_DIR}/src/*.c"
+  "${SDL3_SOURCE_DIR}/src/atomic/*.c"
+  "${SDL3_SOURCE_DIR}/src/audio/*.c"
+  "${SDL3_SOURCE_DIR}/src/camera/*.c"
+  "${SDL3_SOURCE_DIR}/src/core/*.c"
+  "${SDL3_SOURCE_DIR}/src/cpuinfo/*.c"
+  "${SDL3_SOURCE_DIR}/src/dynapi/*.c"
+  "${SDL3_SOURCE_DIR}/src/events/*.c"
+  "${SDL3_SOURCE_DIR}/src/file/*.c"
+  "${SDL3_SOURCE_DIR}/src/filesystem/*.c"
+  "${SDL3_SOURCE_DIR}/src/joystick/*.c"
+  "${SDL3_SOURCE_DIR}/src/haptic/*.c"
+  "${SDL3_SOURCE_DIR}/src/hidapi/*.c"
+  "${SDL3_SOURCE_DIR}/src/locale/*.c"
+  "${SDL3_SOURCE_DIR}/src/main/*.c"
+  "${SDL3_SOURCE_DIR}/src/misc/*.c"
+  "${SDL3_SOURCE_DIR}/src/power/*.c"
+  "${SDL3_SOURCE_DIR}/src/render/*.c"
+  "${SDL3_SOURCE_DIR}/src/render/*/*.c"
+  "${SDL3_SOURCE_DIR}/src/sensor/*.c"
+  "${SDL3_SOURCE_DIR}/src/stdlib/*.c"
+  "${SDL3_SOURCE_DIR}/src/storage/*.c"
+  "${SDL3_SOURCE_DIR}/src/thread/*.c"
+  "${SDL3_SOURCE_DIR}/src/time/*.c"
+  "${SDL3_SOURCE_DIR}/src/timer/*.c"
+  "${SDL3_SOURCE_DIR}/src/video/*.c"
+  "${SDL3_SOURCE_DIR}/src/video/yuv2rgb/*.c"
+)
+
+# Build uclibc as a static library such that non-used symbols don't end up in the SDL3 shared library.
+file(GLOB SDL_UCLIBC_SOURCES "${SDL3_SOURCE_DIR}/src/libm/*.c")
+add_library(SDL_uclibc STATIC "${SDL_UCLIBC_SOURCES}")
+target_compile_definitions(SDL_uclibc PRIVATE USING_GENERATED_CONFIG_H)
+target_include_directories(SDL_uclibc PRIVATE "${SDL3_BINARY_DIR}/include-config-$<LOWER_CASE:$<CONFIG>>/build_config")
+target_include_directories(SDL_uclibc PRIVATE "${SDL3_SOURCE_DIR}/src")
+target_include_directories(SDL_uclibc PRIVATE "${SDL3_SOURCE_DIR}/include")
+SDL_AddCommonCompilerFlags(SDL_uclibc)
+sdl_sources(STATIC "$<TARGET_OBJECTS:SDL_uclibc>")
+if(TARGET SDL3-shared)
+  target_link_libraries(SDL3-shared PRIVATE SDL_uclibc)
+endif()
+if(HAVE_GCC_FVISIBILITY)
+  set_property(TARGET SDL_uclibc PROPERTY C_VISIBILITY_PRESET "hidden")
+endif()
 
 # Enable/disable various subsystems of the SDL library
 foreach(_SUB ${SDL_SUBSYSTEMS})
@@ -2752,6 +2768,7 @@ elseif(PSP)
 elseif(PS2)
   sdl_compile_definitions(PRIVATE "PS2" "__PS2__")
   sdl_include_directories(PRIVATE SYSTEM "$ENV{PS2SDK}/ports/include" "$ENV{PS2DEV}/gsKit/include")
+  target_include_directories(SDL_uclibc PRIVATE "$ENV{PS2SDK}/ports/include" "$ENV{PS2DEV}/gsKit/include")
 
   sdl_glob_sources("${SDL3_SOURCE_DIR}/src/main/ps2/*.c")
 
@@ -3305,7 +3322,7 @@ if(SDL_SHARED)
   target_link_libraries(SDL3-shared PRIVATE ${SDL_CMAKE_DEPENDS})
   target_include_directories(SDL3-shared
     PRIVATE
-      "$<BUILD_INTERFACE:${SDL3_BINARY_DIR}/include-config-$<LOWER_CASE:$<CONFIG>>>"
+      "$<BUILD_INTERFACE:${SDL3_BINARY_DIR}/include-config-$<LOWER_CASE:$<CONFIG>>>/build_config"
       "$<BUILD_INTERFACE:${SDL3_SOURCE_DIR}/src>"
   )
   target_link_libraries(SDL3-shared PUBLIC $<TARGET_NAME:SDL3::Headers>)
@@ -3332,7 +3349,7 @@ if(SDL_STATIC)
   target_link_libraries(SDL3-static PRIVATE ${SDL_CMAKE_DEPENDS})
   target_include_directories(SDL3-static
     PRIVATE
-      "$<BUILD_INTERFACE:${SDL3_BINARY_DIR}/include-config-$<LOWER_CASE:$<CONFIG>>>"
+      "$<BUILD_INTERFACE:${SDL3_BINARY_DIR}/include-config-$<LOWER_CASE:$<CONFIG>>>/build_config"
       "$<BUILD_INTERFACE:${SDL3_SOURCE_DIR}/src>"
   )
   target_link_libraries(SDL3-static PUBLIC $<TARGET_NAME:SDL3::Headers>)
@@ -3591,7 +3608,8 @@ if(NOT SDL_DISABLE_INSTALL)
     if(TARGET SDL3-jar)
       set(SDL_INSTALL_JAVADIR "${CMAKE_INSTALL_DATAROOTDIR}/java" CACHE PATH "Path where to install java clases + java sources")
       set(PROGUARD_RULES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/android-project/app/proguard-rules.pro")
-      install(FILES $<TARGET_PROPERTY:SDL3-jar,INSTALL_FILES>
+      # install_jar or $<TARGET_PROPERTY:SDL3-jar,INSTALL_FILES> does not work on Windows: a SDL3.jar symlink is not generated
+      install(FILES "${CMAKE_CURRENT_BINARY_DIR}/SDL3-${SDL3_VERSION}.jar"
         DESTINATION "${SDL_INSTALL_JAVADIR}/SDL3")
       install(FILES "${PROGUARD_RULES_PATH}" RENAME "proguard.txt"
         DESTINATION "${SDL_INSTALL_JAVADIR}/SDL3")

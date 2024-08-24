@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-/* This file contains portable iconv functions for SDL */
+// This file contains portable iconv functions for SDL
 
 #ifdef SDL_PLATFORM_AMIGAOS4
 /* HACK: AmigaOS 4 iconv implementation doesn't support all conversions, making testiconv fail.
@@ -30,7 +30,7 @@ As a workaround, fallback to custom implementation. */
 
 #if defined(HAVE_ICONV) && defined(HAVE_ICONV_H)
 #ifndef SDL_USE_LIBICONV
-/* Define LIBICONV_PLUG to use iconv from the base instead of ports and avoid linker errors. */
+// Define LIBICONV_PLUG to use iconv from the base instead of ports and avoid linker errors.
 #define LIBICONV_PLUG 1
 #endif
 #include <iconv.h>
@@ -93,10 +93,10 @@ enum
     ENCODING_ASCII,
     ENCODING_LATIN1,
     ENCODING_UTF8,
-    ENCODING_UTF16, /* Needs byte order marker */
+    ENCODING_UTF16, // Needs byte order marker
     ENCODING_UTF16BE,
     ENCODING_UTF16LE,
-    ENCODING_UTF32, /* Needs byte order marker */
+    ENCODING_UTF32, // Needs byte order marker
     ENCODING_UTF32BE,
     ENCODING_UTF32LE,
     ENCODING_UCS2BE,
@@ -127,7 +127,7 @@ static struct
     const char *name;
     int format;
 } encodings[] = {
-    /* *INDENT-OFF* */ /* clang-format off */
+    /* *INDENT-OFF* */ // clang-format off
     { "ASCII", ENCODING_ASCII },
     { "US-ASCII", ENCODING_ASCII },
     { "8859-1", ENCODING_LATIN1 },
@@ -161,7 +161,7 @@ static struct
     { "UCS-4LE", ENCODING_UCS4LE },
     { "UCS-4BE", ENCODING_UCS4BE },
     { "UCS-4-INTERNAL", ENCODING_UCS4NATIVE },
-/* *INDENT-ON* */ /* clang-format on */
+/* *INDENT-ON* */ // clang-format on
 };
 
 static const char *getlocale(char *buffer, size_t bufsize)
@@ -183,7 +183,7 @@ static const char *getlocale(char *buffer, size_t bufsize)
         lang = "ASCII";
     }
 
-    /* We need to trim down strings like "en_US.UTF-8@blah" to "UTF-8" */
+    // We need to trim down strings like "en_US.UTF-8@blah" to "UTF-8"
     ptr = SDL_strchr(lang, '.');
     if (ptr) {
         lang = ptr + 1;
@@ -192,7 +192,7 @@ static const char *getlocale(char *buffer, size_t bufsize)
     SDL_strlcpy(buffer, lang, bufsize);
     ptr = SDL_strchr(buffer, '@');
     if (ptr) {
-        *ptr = '\0'; /* chop end of string. */
+        *ptr = '\0'; // chop end of string.
     }
 
     return buffer;
@@ -241,7 +241,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
           const char **inbuf, size_t *inbytesleft,
           char **outbuf, size_t *outbytesleft)
 {
-    /* For simplicity, we'll convert everything to and from UCS-4 */
+    // For simplicity, we'll convert everything to and from UCS-4
     const char *src;
     char *dst;
     size_t srclen, dstlen;
@@ -252,7 +252,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
         return SDL_ICONV_ERROR;
     }
     if (!inbuf || !*inbuf) {
-        /* Reset the context */
+        // Reset the context
         return 0;
     }
     if (!outbuf || !*outbuf || !outbytesleft || !*outbytesleft) {
@@ -265,7 +265,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
 
     switch (cd->src_fmt) {
     case ENCODING_UTF16:
-        /* Scan for a byte order marker */
+        // Scan for a byte order marker
         {
             Uint8 *p = (Uint8 *)src;
             size_t n = srclen / 2;
@@ -281,13 +281,13 @@ size_t SDL_iconv(SDL_iconv_t cd,
                 --n;
             }
             if (n == 0) {
-                /* We can't tell, default to host order */
+                // We can't tell, default to host order
                 cd->src_fmt = ENCODING_UTF16NATIVE;
             }
         }
         break;
     case ENCODING_UTF32:
-        /* Scan for a byte order marker */
+        // Scan for a byte order marker
         {
             Uint8 *p = (Uint8 *)src;
             size_t n = srclen / 4;
@@ -305,7 +305,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
                 --n;
             }
             if (n == 0) {
-                /* We can't tell, default to host order */
+                // We can't tell, default to host order
                 cd->src_fmt = ENCODING_UTF32NATIVE;
             }
         }
@@ -314,7 +314,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
 
     switch (cd->dst_fmt) {
     case ENCODING_UTF16:
-        /* Default to host order, need to add byte order marker */
+        // Default to host order, need to add byte order marker
         if (dstlen < 2) {
             return SDL_ICONV_E2BIG;
         }
@@ -324,7 +324,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
         cd->dst_fmt = ENCODING_UTF16NATIVE;
         break;
     case ENCODING_UTF32:
-        /* Default to host order, need to add byte order marker */
+        // Default to host order, need to add byte order marker
         if (dstlen < 4) {
             return SDL_ICONV_E2BIG;
         }
@@ -337,7 +337,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
 
     total = 0;
     while (srclen > 0) {
-        /* Decode a character */
+        // Decode a character
         switch (cd->src_fmt) {
         case ENCODING_ASCII:
         {
@@ -353,11 +353,11 @@ size_t SDL_iconv(SDL_iconv_t cd,
             ++src;
             --srclen;
         } break;
-        case ENCODING_UTF8: /* RFC 3629 */
+        case ENCODING_UTF8: // RFC 3629
         {
             Uint8 *p = (Uint8 *)src;
             size_t left = 0;
-            SDL_bool overlong = SDL_FALSE;
+            bool overlong = false;
             if (p[0] >= 0xF0) {
                 if ((p[0] & 0xF8) != 0xF0) {
                     /* Skip illegal sequences
@@ -366,7 +366,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
                     ch = UNKNOWN_UNICODE;
                 } else {
                     if (p[0] == 0xF0 && srclen > 1 && (p[1] & 0xF0) == 0x80) {
-                        overlong = SDL_TRUE;
+                        overlong = true;
                     }
                     ch = (Uint32)(p[0] & 0x07);
                     left = 3;
@@ -379,7 +379,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
                     ch = UNKNOWN_UNICODE;
                 } else {
                     if (p[0] == 0xE0 && srclen > 1 && (p[1] & 0xE0) == 0x80) {
-                        overlong = SDL_TRUE;
+                        overlong = true;
                     }
                     ch = (Uint32)(p[0] & 0x0F);
                     left = 2;
@@ -392,7 +392,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
                     ch = UNKNOWN_UNICODE;
                 } else {
                     if ((p[0] & 0xDE) == 0xC0) {
-                        overlong = SDL_TRUE;
+                        overlong = true;
                     }
                     ch = (Uint32)(p[0] & 0x1F);
                     left = 1;
@@ -440,7 +440,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
                 ch = UNKNOWN_UNICODE;
             }
         } break;
-        case ENCODING_UTF16BE: /* RFC 2781 */
+        case ENCODING_UTF16BE: // RFC 2781
         {
             Uint8 *p = (Uint8 *)src;
             Uint16 W1, W2;
@@ -479,7 +479,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
                   (Uint32)(W2 & 0x3FF)) +
                  0x10000;
         } break;
-        case ENCODING_UTF16LE: /* RFC 2781 */
+        case ENCODING_UTF16LE: // RFC 2781
         {
             Uint8 *p = (Uint8 *)src;
             Uint16 W1, W2;
@@ -566,7 +566,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
         } break;
         }
 
-        /* Encode a character */
+        // Encode a character
         switch (cd->dst_fmt) {
         case ENCODING_ASCII:
         {
@@ -596,7 +596,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
             ++dst;
             --dstlen;
         } break;
-        case ENCODING_UTF8: /* RFC 3629 */
+        case ENCODING_UTF8: // RFC 3629
         {
             Uint8 *p = (Uint8 *)dst;
             if (ch > 0x10FFFF) {
@@ -638,7 +638,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
                 dstlen -= 4;
             }
         } break;
-        case ENCODING_UTF16BE: /* RFC 2781 */
+        case ENCODING_UTF16BE: // RFC 2781
         {
             Uint8 *p = (Uint8 *)dst;
             if (ch > 0x10FFFF) {
@@ -668,7 +668,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
                 dstlen -= 4;
             }
         } break;
-        case ENCODING_UTF16LE: /* RFC 2781 */
+        case ENCODING_UTF16LE: // RFC 2781
         {
             Uint8 *p = (Uint8 *)dst;
             if (ch > 0x10FFFF) {
@@ -772,7 +772,7 @@ size_t SDL_iconv(SDL_iconv_t cd,
             break;
         }
 
-        /* Update state */
+        // Update state
         *inbuf = src;
         *inbytesleft = srclen;
         *outbuf = dst;
@@ -791,7 +791,7 @@ int SDL_iconv_close(SDL_iconv_t cd)
     return 0;
 }
 
-#endif /* !HAVE_ICONV */
+#endif // !HAVE_ICONV
 
 char *SDL_iconv_string(const char *tocode, const char *fromcode, const char *inbuf, size_t inbytesleft)
 {
@@ -844,17 +844,17 @@ char *SDL_iconv_string(const char *tocode, const char *fromcode, const char *inb
             continue;
         }
         case SDL_ICONV_EILSEQ:
-            /* Try skipping some input data - not perfect, but... */
+            // Try skipping some input data - not perfect, but...
             ++inbuf;
             --inbytesleft;
             break;
         case SDL_ICONV_EINVAL:
         case SDL_ICONV_ERROR:
-            /* We can't continue... */
+            // We can't continue...
             inbytesleft = 0;
             break;
         }
-        /* Avoid infinite loops when nothing gets converted */
+        // Avoid infinite loops when nothing gets converted
         if (oldinbytesleft == inbytesleft) {
             break;
         }

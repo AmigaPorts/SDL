@@ -34,9 +34,9 @@ struct SDL_CursorData
     Cursor cursor;
 };
 
-/* FIXME: Find a better place to put this... */
+// FIXME: Find a better place to put this...
 static Cursor x11_empty_cursor = None;
-static SDL_bool x11_cursor_visible = SDL_TRUE;
+static bool x11_cursor_visible = true;
 
 static SDL_Cursor *sys_cursors[SDL_HITTEST_RESIZE_LEFT + 1];
 
@@ -91,7 +91,7 @@ static SDL_Cursor *X11_CreateCursorAndData(Cursor x11_cursor)
 
 static SDL_Cursor *X11_CreateDefaultCursor(void)
 {
-    /* None is used to indicate the default cursor */
+    // None is used to indicate the default cursor
     return X11_CreateCursorAndData(None);
 }
 
@@ -121,7 +121,7 @@ static Cursor X11_CreateXCursorCursor(SDL_Surface *surface, int hot_x, int hot_y
 
     return cursor;
 }
-#endif /* SDL_VIDEO_DRIVER_X11_XCURSOR */
+#endif // SDL_VIDEO_DRIVER_X11_XCURSOR
 
 static Cursor X11_CreatePixmapCursor(SDL_Surface *surface, int hot_x, int hot_y)
 {
@@ -146,7 +146,7 @@ static Cursor X11_CreatePixmapCursor(SDL_Surface *surface, int hot_x, int hot_y)
         return None;
     }
 
-    /* Code below assumes ARGB pixel format */
+    // Code below assumes ARGB pixel format
     SDL_assert(surface->format == SDL_PIXELFORMAT_ARGB8888);
 
     rfg = gfg = bfg = rbg = gbg = bbg = fgBits = bgBits = 0;
@@ -227,8 +227,8 @@ static SDL_Cursor *X11_CreateCursor(SDL_Surface *surface, int hot_x, int hot_y)
 static unsigned int GetLegacySystemCursorShape(SDL_SystemCursor id)
 {
     switch (id) {
-        /* X Font Cursors reference: */
-        /*   http://tronche.com/gui/x/xlib/appendix/b/ */
+        // X Font Cursors reference:
+        // http://tronche.com/gui/x/xlib/appendix/b/
         case SDL_SYSTEM_CURSOR_DEFAULT: return XC_left_ptr;
         case SDL_SYSTEM_CURSOR_TEXT: return XC_xterm;
         case SDL_SYSTEM_CURSOR_WAIT: return XC_watch;
@@ -249,7 +249,7 @@ static unsigned int GetLegacySystemCursorShape(SDL_SystemCursor id)
         case SDL_SYSTEM_CURSOR_S_RESIZE: return XC_bottom_side;
         case SDL_SYSTEM_CURSOR_SW_RESIZE: return XC_bottom_left_corner;
         case SDL_SYSTEM_CURSOR_W_RESIZE: return XC_left_side;
-        case SDL_NUM_SYSTEM_CURSORS: break;  /* so the compiler might notice if an enum value is missing here. */
+        case SDL_NUM_SYSTEM_CURSORS: break;  // so the compiler might notice if an enum value is missing here.
     }
 
     SDL_assert(0);
@@ -300,7 +300,7 @@ static int X11_ShowCursor(SDL_Cursor *cursor)
         x11_cursor = X11_CreateEmptyCursor();
     }
 
-    /* FIXME: Is there a better way than this? */
+    // FIXME: Is there a better way than this?
     {
         SDL_VideoDevice *video = SDL_GetVideoDevice();
         Display *display = GetDisplay();
@@ -327,11 +327,11 @@ static void X11_WarpMouseInternal(Window xwindow, float x, float y)
 {
     SDL_VideoData *videodata = SDL_GetVideoDevice()->internal;
     Display *display = videodata->display;
-    SDL_bool warp_hack = SDL_FALSE;
+    bool warp_hack = false;
 
-    /* XWayland will only warp the cursor if it is hidden, so this workaround is required. */
+    // XWayland will only warp the cursor if it is hidden, so this workaround is required.
     if (videodata->is_xwayland && x11_cursor_visible) {
-        warp_hack = SDL_TRUE;
+        warp_hack = true;
     }
 
     if (warp_hack) {
@@ -360,7 +360,7 @@ static void X11_WarpMouseInternal(Window xwindow, float x, float y)
         X11_ShowCursor(SDL_GetCursor());
     }
     X11_XSync(display, False);
-    videodata->global_mouse_changed = SDL_TRUE;
+    videodata->global_mouse_changed = true;
 }
 
 static int X11_WarpMouse(SDL_Window *window, float x, float y)
@@ -368,8 +368,8 @@ static int X11_WarpMouse(SDL_Window *window, float x, float y)
     SDL_WindowData *data = window->internal;
 
 #ifdef SDL_VIDEO_DRIVER_X11_XFIXES
-    /* If we have no barrier, we need to warp */
-    if (data->pointer_barrier_active == SDL_FALSE) {
+    // If we have no barrier, we need to warp
+    if (data->pointer_barrier_active == false) {
         X11_WarpMouseInternal(data->xwindow, x, y);
     }
 #else
@@ -384,7 +384,7 @@ static int X11_WarpMouseGlobal(float x, float y)
     return 0;
 }
 
-static int X11_SetRelativeMouseMode(SDL_bool enabled)
+static int X11_SetRelativeMouseMode(bool enabled)
 {
     if (!X11_Xinput2IsInitialized()) {
         return SDL_Unsupported();
@@ -431,14 +431,14 @@ static SDL_MouseButtonFlags X11_GetGlobalMouseState(float *x, float *y)
     Display *display = GetDisplay();
     int i;
 
-    /* !!! FIXME: should we XSync() here first? */
+    // !!! FIXME: should we XSync() here first?
 
     if (!X11_Xinput2IsInitialized()) {
-        videodata->global_mouse_changed = SDL_TRUE;
+        videodata->global_mouse_changed = true;
     }
 
-    /* check if we have this cached since XInput last saw the mouse move. */
-    /* !!! FIXME: can we just calculate this from XInput's events? */
+    // check if we have this cached since XInput last saw the mouse move.
+    // !!! FIXME: can we just calculate this from XInput's events?
     if (videodata->global_mouse_changed) {
         displays = SDL_GetDisplays(NULL);
         if (displays) {
@@ -454,7 +454,7 @@ static SDL_MouseButtonFlags X11_GetGlobalMouseState(float *x, float *y)
                         buttons |= (mask & Button1Mask) ? SDL_BUTTON_LMASK : 0;
                         buttons |= (mask & Button2Mask) ? SDL_BUTTON_MMASK : 0;
                         buttons |= (mask & Button3Mask) ? SDL_BUTTON_RMASK : 0;
-                        /* Use the SDL state for the extended buttons - it's better than nothing */
+                        // Use the SDL state for the extended buttons - it's better than nothing
                         buttons |= (SDL_GetMouseState(NULL, NULL) & (SDL_BUTTON_X1MASK | SDL_BUTTON_X2MASK));
                         /* SDL_DisplayData->x,y point to screen origin, and adding them to mouse coordinates relative to root window doesn't do the right thing
                          * (observed on dual monitor setup with primary display being the rightmost one - mouse was offset to the right).
@@ -464,7 +464,7 @@ static SDL_MouseButtonFlags X11_GetGlobalMouseState(float *x, float *y)
                         videodata->global_mouse_position.x = root_attrs.x + rootx;
                         videodata->global_mouse_position.y = root_attrs.y + rooty;
                         videodata->global_mouse_buttons = buttons;
-                        videodata->global_mouse_changed = SDL_FALSE;
+                        videodata->global_mouse_changed = false;
                         break;
                     }
                 }
@@ -473,7 +473,7 @@ static SDL_MouseButtonFlags X11_GetGlobalMouseState(float *x, float *y)
         }
     }
 
-    SDL_assert(!videodata->global_mouse_changed); /* The pointer wasn't on any X11 screen?! */
+    SDL_assert(!videodata->global_mouse_changed); // The pointer wasn't on any X11 screen?!
 
     *x = (float)videodata->global_mouse_position.x;
     *y = (float)videodata->global_mouse_position.y;
@@ -544,4 +544,4 @@ void X11_SetHitTestCursor(SDL_HitTestResult rc)
     }
 }
 
-#endif /* SDL_VIDEO_DRIVER_X11 */
+#endif // SDL_VIDEO_DRIVER_X11
