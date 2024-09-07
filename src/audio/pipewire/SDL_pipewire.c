@@ -94,26 +94,25 @@ static int (*PIPEWIRE_pw_properties_setf)(struct pw_properties *, const char *, 
 static const char *pipewire_library = SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC;
 static void *pipewire_handle = NULL;
 
-static int pipewire_dlsym(const char *fn, void **addr)
+static bool pipewire_dlsym(const char *fn, void **addr)
 {
     *addr = SDL_LoadFunction(pipewire_handle, fn);
     if (!*addr) {
         // Don't call SDL_SetError(): SDL_LoadFunction already did.
-        return 0;
+        return false;
     }
 
-    return 1;
+    return true;
 }
 
 #define SDL_PIPEWIRE_SYM(x)                                    \
-    if (!pipewire_dlsym(#x, (void **)(char *)&PIPEWIRE_##x)) { \
-        return -1;                                             \
-    }
+    if (!pipewire_dlsym(#x, (void **)(char *)&PIPEWIRE_##x))   \
+        return false
 
-static int load_pipewire_library(void)
+static bool load_pipewire_library(void)
 {
     pipewire_handle = SDL_LoadObject(pipewire_library);
-    return pipewire_handle ? 0 : -1;
+    return pipewire_handle ? true : false;
 }
 
 static void unload_pipewire_library(void)
@@ -128,9 +127,9 @@ static void unload_pipewire_library(void)
 
 #define SDL_PIPEWIRE_SYM(x) PIPEWIRE_##x = x
 
-static int load_pipewire_library(void)
+static bool load_pipewire_library(void)
 {
-    return 0;
+    return true;
 }
 
 static void unload_pipewire_library(void)
@@ -140,7 +139,7 @@ static void unload_pipewire_library(void)
 
 #endif // SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC
 
-static int load_pipewire_syms(void)
+static bool load_pipewire_syms(void)
 {
     SDL_PIPEWIRE_SYM(pw_get_library_version);
     SDL_PIPEWIRE_SYM(pw_init);
@@ -176,19 +175,19 @@ static int load_pipewire_syms(void)
     SDL_PIPEWIRE_SYM(pw_properties_set);
     SDL_PIPEWIRE_SYM(pw_properties_setf);
 
-    return 0;
+    return true;
 }
 
-static int init_pipewire_library(void)
+static bool init_pipewire_library(void)
 {
-    if (!load_pipewire_library()) {
-        if (!load_pipewire_syms()) {
+    if (load_pipewire_library()) {
+        if (load_pipewire_syms()) {
             PIPEWIRE_pw_init(NULL, NULL);
-            return 0;
+            return true;
         }
     }
 
-    return -1;
+    return false;
 }
 
 static void deinit_pipewire_library(void)
@@ -248,17 +247,29 @@ static int hotplug_init_seq_val;
 static bool hotplug_init_complete;
 static bool hotplug_events_enabled;
 
-static int pipewire_version_major;
-static int pipewire_version_minor;
-static int pipewire_version_patch;
+static int pipewire_core_version_major = 0;
+static int pipewire_core_version_minor = 0;
+static int pipewire_core_version_patch = 0;
+
+static int pipewire_client_version_major = 0;
+static int pipewire_client_version_minor = 0;
+static int pipewire_client_version_patch = 0;
+
 static char *pipewire_default_sink_id = NULL;
 static char *pipewire_default_source_id = NULL;
 
 static bool pipewire_core_version_at_least(int major, int minor, int patch)
 {
-    return (pipewire_version_major >= major) &&
-           (pipewire_version_major > major || pipewire_version_minor >= minor) &&
-           (pipewire_version_major > major || pipewire_version_minor > minor || pipewire_version_patch >= patch);
+    return (pipewire_core_version_major >= major) &&
+           (pipewire_core_version_major > major || pipewire_core_version_minor >= minor) &&
+           (pipewire_core_version_major > major || pipewire_core_version_minor > minor || pipewire_core_version_patch >= patch);
+}
+
+static bool pipewire_client_version_at_least(int major, int minor, int patch)
+{
+    return (pipewire_client_version_major >= major) &&
+           (pipewire_client_version_major > major || pipewire_client_version_minor >= minor) &&
+           (pipewire_client_version_major > major || pipewire_client_version_minor > minor || pipewire_client_version_patch >= patch);
 }
 
 // The active node list
@@ -409,10 +420,10 @@ static void core_events_hotplug_init_callback(void *object, uint32_t id, int seq
 
 static void core_events_hotplug_info_callback(void *data, const struct pw_core_info *info)
 {
-    if (SDL_sscanf(info->version, "%d.%d.%d", &pipewire_version_major, &pipewire_version_minor, &pipewire_version_patch) < 3) {
-        pipewire_version_major = 0;
-        pipewire_version_minor = 0;
-        pipewire_version_patch = 0;
+    if (SDL_sscanf(info->version, "%d.%d.%d", &pipewire_core_version_major, &pipewire_core_version_minor, &pipewire_core_version_patch) < 3) {
+        pipewire_core_version_major = 0;
+        pipewire_core_version_minor = 0;
+        pipewire_core_version_patch = 0;
     }
 }
 
@@ -705,7 +716,7 @@ static const struct pw_registry_events registry_events = { PW_VERSION_REGISTRY_E
                                                            .global_remove = registry_event_remove_callback };
 
 // The hotplug thread
-static int hotplug_loop_init(void)
+static bool hotplug_loop_init(void)
 {
     int res;
 
@@ -745,7 +756,7 @@ static int hotplug_loop_init(void)
         return SDL_SetError("Pipewire: Failed to start hotplug detection loop");
     }
 
-    return 0;
+    return true;
 }
 
 static void hotplug_loop_destroy(void)
@@ -896,6 +907,9 @@ static void initialize_spa_info(const SDL_AudioSpec *spec, struct spa_audio_info
     case SDL_AUDIO_F32BE:
         info->format = SPA_AUDIO_FORMAT_F32_BE;
         break;
+    default:
+        info->format = SPA_AUDIO_FORMAT_UNKNOWN;
+        break;
     }
 }
 
@@ -920,7 +934,7 @@ static Uint8 *PIPEWIRE_GetDeviceBuf(SDL_AudioDevice *device, int *buffer_size)
     return (Uint8 *) spa_buf->datas[0].data;
 }
 
-static int PIPEWIRE_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buffer_size)
+static bool PIPEWIRE_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buffer_size)
 {
     struct pw_stream *stream = device->hidden->stream;
     struct pw_buffer *pw_buf = device->hidden->pw_buf;
@@ -932,7 +946,7 @@ static int PIPEWIRE_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int
     PIPEWIRE_pw_stream_queue_buffer(stream, pw_buf);
     device->hidden->pw_buf = NULL;
 
-    return 0;
+    return true;
 }
 
 static void output_callback(void *data)
@@ -1022,7 +1036,7 @@ static const struct pw_stream_events stream_input_events = { PW_VERSION_STREAM_E
                                                              .add_buffer = stream_add_buffer_callback,
                                                              .process = input_callback };
 
-static int PIPEWIRE_OpenDevice(SDL_AudioDevice *device)
+static bool PIPEWIRE_OpenDevice(SDL_AudioDevice *device)
 {
     /*
      * NOTE: The PW_STREAM_FLAG_RT_PROCESS flag can be set to call the stream
@@ -1083,7 +1097,7 @@ static int PIPEWIRE_OpenDevice(SDL_AudioDevice *device)
     priv = SDL_calloc(1, sizeof(struct SDL_PrivateAudioData));
     device->hidden = priv;
     if (!priv) {
-        return -1;
+        return false;
     }
 
     // Size of a single audio frame in bytes
@@ -1172,7 +1186,7 @@ static int PIPEWIRE_OpenDevice(SDL_AudioDevice *device)
         return SDL_SetError("Pipewire: Stream error: %s", error);
     }
 
-    return 0;
+    return true;
 }
 
 static void PIPEWIRE_CloseDevice(SDL_AudioDevice *device)
@@ -1221,14 +1235,23 @@ static void PIPEWIRE_Deinitialize(void)
 static bool PipewireInitialize(SDL_AudioDriverImpl *impl)
 {
     if (!pipewire_initialized) {
-
-        if (init_pipewire_library() < 0) {
+        if (!init_pipewire_library()) {
             return false;
         }
 
         pipewire_initialized = true;
 
-        if (hotplug_loop_init() < 0) {
+        if (SDL_sscanf(PIPEWIRE_pw_get_library_version(), "%d.%d.%d", &pipewire_client_version_major, &pipewire_client_version_minor, &pipewire_client_version_patch) < 3) {
+            PIPEWIRE_Deinitialize();
+            return false;
+        }
+
+        if (!pipewire_client_version_at_least(1, 0, 0)) {
+            PIPEWIRE_Deinitialize();
+            return false;
+        }
+
+        if (!hotplug_loop_init()) {
             PIPEWIRE_Deinitialize();
             return false;
         }
@@ -1264,7 +1287,7 @@ static bool PIPEWIRE_PREFERRED_Init(SDL_AudioDriverImpl *impl)
         PIPEWIRE_pw_thread_loop_wait(hotplug_loop);
     }
 
-    const int no_devices = spa_list_is_empty(&hotplug_io_list);
+    const bool no_devices = spa_list_is_empty(&hotplug_io_list);
 
     PIPEWIRE_pw_thread_loop_unlock(hotplug_loop);
 

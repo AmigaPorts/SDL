@@ -40,7 +40,6 @@
 extern "C" {
 #endif
 
-
 /* ------------ Definitions --------- */
 
 /* Definition shared by all CRC routines */
@@ -77,8 +76,7 @@ extern "C" {
  * \returns 0 for OK, -1 on error
  *
  */
- int SDLTest_Crc32Init(SDLTest_Crc32Context *crcContext);
-
+int SDLCALL SDLTest_Crc32Init(SDLTest_Crc32Context *crcContext);
 
 /*
  * calculate a crc32 from a data block
@@ -91,13 +89,12 @@ extern "C" {
  * \returns 0 for OK, -1 on error
  *
  */
-int SDLTest_Crc32Calc(SDLTest_Crc32Context *crcContext, CrcUint8 *inBuf, CrcUint32 inLen, CrcUint32 *crc32);
+int SDLCALL SDLTest_Crc32Calc(SDLTest_Crc32Context *crcContext, CrcUint8 *inBuf, CrcUint32 inLen, CrcUint32 *crc32);
 
 /* Same routine broken down into three steps */
-int SDLTest_Crc32CalcStart(SDLTest_Crc32Context *crcContext, CrcUint32 *crc32);
-int SDLTest_Crc32CalcEnd(SDLTest_Crc32Context *crcContext, CrcUint32 *crc32);
-int SDLTest_Crc32CalcBuffer(SDLTest_Crc32Context *crcContext, CrcUint8 *inBuf, CrcUint32 inLen, CrcUint32 *crc32);
-
+int SDLCALL SDLTest_Crc32CalcStart(SDLTest_Crc32Context *crcContext, CrcUint32 *crc32);
+int SDLCALL SDLTest_Crc32CalcEnd(SDLTest_Crc32Context *crcContext, CrcUint32 *crc32);
+int SDLCALL SDLTest_Crc32CalcBuffer(SDLTest_Crc32Context *crcContext, CrcUint8 *inBuf, CrcUint32 inLen, CrcUint32 *crc32);
 
 /*
  * clean up CRC context
@@ -108,8 +105,7 @@ int SDLTest_Crc32CalcBuffer(SDLTest_Crc32Context *crcContext, CrcUint8 *inBuf, C
  *
 */
 
-int SDLTest_Crc32Done(SDLTest_Crc32Context *crcContext);
-
+int SDLCALL SDLTest_Crc32Done(SDLTest_Crc32Context *crcContext);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

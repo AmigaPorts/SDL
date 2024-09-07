@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-#if (defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK)) && defined(HAVE_MMDEVICEAPI_H)
+#if defined(SDL_PLATFORM_WINDOWS) && defined(HAVE_MMDEVICEAPI_H)
 
 #include "SDL_windows.h"
 #include "SDL_immdevice.h"
@@ -207,12 +207,12 @@ static ULONG STDMETHODCALLTYPE SDLMMNotificationClient_Release(IMMNotificationCl
 {
     // client is a static object; we don't ever free it.
     SDLMMNotificationClient *client = (SDLMMNotificationClient *)iclient;
-    const ULONG retval = SDL_AtomicDecRef(&client->refcount);
-    if (retval == 0) {
+    const ULONG rc = SDL_AtomicDecRef(&client->refcount);
+    if (rc == 0) {
         SDL_AtomicSet(&client->refcount, 0); // uhh...
         return 0;
     }
-    return retval - 1;
+    return rc - 1;
 }
 
 // These are the entry points called when WASAPI device endpoints change.
@@ -288,7 +288,7 @@ static const IMMNotificationClientVtbl notification_client_vtbl = {
 
 static SDLMMNotificationClient notification_client = { &notification_client_vtbl, { 1 } };
 
-int SDL_IMMDevice_Init(const SDL_IMMDevice_callbacks *callbacks)
+bool SDL_IMMDevice_Init(const SDL_IMMDevice_callbacks *callbacks)
 {
     HRESULT ret;
 
@@ -320,7 +320,7 @@ int SDL_IMMDevice_Init(const SDL_IMMDevice_callbacks *callbacks)
         immcallbacks.default_audio_device_changed = SDL_DefaultAudioDeviceChanged;
     }
 
-    return 0;
+    return true;
 }
 
 void SDL_IMMDevice_Quit(void)
@@ -336,7 +336,7 @@ void SDL_IMMDevice_Quit(void)
     WIN_CoUninitialize();
 }
 
-int SDL_IMMDevice_Get(SDL_AudioDevice *device, IMMDevice **immdevice, bool recording)
+bool SDL_IMMDevice_Get(SDL_AudioDevice *device, IMMDevice **immdevice, bool recording)
 {
     const Uint64 timeout = SDL_GetTicks() + 8000;  // intel's audio drivers can fail for up to EIGHT SECONDS after a device is connected or we wake from sleep.
 
@@ -357,8 +357,10 @@ int SDL_IMMDevice_Get(SDL_AudioDevice *device, IMMDevice **immdevice, bool recor
         break;
     }
 
-    return SUCCEEDED(ret) ? 0 : WIN_SetErrorFromHRESULT("WASAPI can't find requested audio endpoint", ret);
-
+    if (!SUCCEEDED(ret)) {
+        return WIN_SetErrorFromHRESULT("WASAPI can't find requested audio endpoint", ret);
+    }
+    return true;
 }
 
 static void EnumerateEndpointsForFlow(const bool recording, SDL_AudioDevice **default_device)
@@ -429,4 +431,4 @@ void SDL_IMMDevice_EnumerateEndpoints(SDL_AudioDevice **default_playback, SDL_Au
     IMMDeviceEnumerator_RegisterEndpointNotificationCallback(enumerator, (IMMNotificationClient *)&notification_client);
 }
 
-#endif // (defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK)) && defined(HAVE_MMDEVICEAPI_H)
+#endif // defined(SDL_PLATFORM_WINDOWS) && defined(HAVE_MMDEVICEAPI_H)

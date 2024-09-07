@@ -334,7 +334,7 @@ OS4_RestoreSdlCursorForWindow(struct Window * window)
     OS4_SetPointerObjectOrTypeForWindow(window, type, object);
 }
 
-static int
+static bool
 OS4_ShowCursor(SDL_Cursor * cursor)
 {
     ULONG type = POINTERTYPE_NORMAL;
@@ -350,7 +350,7 @@ OS4_ShowCursor(SDL_Cursor * cursor)
             object = data->object;
         } else {
             dprintf("No cursor data\n");
-            return -1;
+            return false;
         }
     } else {
         dprintf("Hiding cursor\n");
@@ -368,7 +368,7 @@ OS4_ShowCursor(SDL_Cursor * cursor)
 
     OS4_SetPointerForEachWindow(type, object);
 
-    return 0;
+    return true;
 }
 
 static void
@@ -412,12 +412,12 @@ OS4_RefreshCursorState(void)
     }
 }
 
-static int
+static bool
 OS4_WarpMouseInternal(struct Screen *screen, float x, float y)
 {
     SDL_VideoDevice *device = SDL_GetVideoDevice();
     SDL_VideoData *videoData = device->internal;
-    int result = -1;
+    bool result = false;
 
     if (videoData->inputReq != NULL) {
         struct InputEvent     *fakeEvent;
@@ -457,14 +457,14 @@ OS4_WarpMouseInternal(struct Screen *screen, float x, float y)
             OS4_SaveFreePooled(device, (void *)fakeEvent,
                 sizeof(struct InputEvent) + sizeof(struct IEPointerPixel));
 
-            result = 0;
+            result = true;
         }
     }
 
     return result;
 }
 
-static int
+static bool
 OS4_WarpMouseGlobal(float x, float y)
 {
     dprintf("Warping mouse to %f, %f\n", x, y);
@@ -472,7 +472,7 @@ OS4_WarpMouseGlobal(float x, float y)
     return OS4_WarpMouseInternal(NULL, x, y);
 }
 
-static int
+static bool
 OS4_WarpMouse(SDL_Window * window, float x, float y)
 {
     SDL_WindowData *winData = window->internal;
@@ -503,13 +503,13 @@ OS4_WarpMouse(SDL_Window * window, float x, float y)
         SDL_SendMouseMotion(0, window, 0, relativeMouseMode, x, y);
     }
 
-    return 0;
+    return true;
 }
 
-static int
+static bool
 OS4_SetRelativeMouseMode(SDL_bool enabled)
 {
-    return 0;
+    return true;
 }
 
 static Uint32

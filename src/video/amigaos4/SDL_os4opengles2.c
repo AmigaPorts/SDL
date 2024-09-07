@@ -48,7 +48,7 @@ OS4_GLES_LogLibraryError()
     SDL_SetError("No OpenGL ES 2 library available");
 }
 
-int
+bool
 OS4_GLES_LoadLibrary(SDL_VideoDevice *_this, const char * path)
 {
     dprintf("Called %d\n", _this->gl_config.driver_loaded);
@@ -58,8 +58,7 @@ OS4_GLES_LoadLibrary(SDL_VideoDevice *_this, const char * path)
 
         if (!OGLES2base) {
             dprintf("Failed to open ogles2.library\n");
-            SDL_SetError("Failed to open ogles2.library");
-            return -1;
+            return SDL_SetError("Failed to open ogles2.library");
         }
     }
 
@@ -68,14 +67,13 @@ OS4_GLES_LoadLibrary(SDL_VideoDevice *_this, const char * path)
 
         if (!IOGLES2) {
             dprintf("Failed to open OpenGL ES 2 interface\n");
-            SDL_SetError("Failed to open OpenGL ES 2 interface");
-            return -1;
+            return SDL_SetError("Failed to open OpenGL ES 2 interface");
         }
 
         dprintf("OpenGL ES 2 library opened\n");
     }
 
-    return 0;
+    return true;
 }
 
 SDL_FunctionPointer
@@ -175,32 +173,29 @@ OS4_GLES_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
     return NULL;
 }
 
-int
+bool
 OS4_GLES_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext context)
 {
-    int result = -1;
-
     if (!window || !context) {
         dprintf("Called (window %p, context %p)\n", window, context);
     }
 
     if (IOGLES2) {
         aglMakeCurrent(context);
-        result = 0;
+        return true;
     } else {
         OS4_GLES_LogLibraryError();
     }
 
-    return result;
+    return false;
 }
 
-int
+bool
 OS4_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
     //dprintf("Called\n");
 
     if (IOGLES2) {
-
         SDL_WindowData *data = window->internal;
 
         if (data->glContext) {
@@ -251,7 +246,7 @@ OS4_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 
                 aglSetBitmap(data->glBackBuffer);
 
-                return 0;
+                return true;
             } else {
                 dprintf("BltBitMapTags() returned %d\n", blitRet);
             }
@@ -263,11 +258,11 @@ OS4_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
         OS4_GLES_LogLibraryError();
     }
 
-    return -1;
+    return false;
 }
 
-int
-OS4_GLES_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context)
+bool
+OS4_GLES_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
 {
     dprintf("Called with context=%p\n", context);
 
@@ -291,19 +286,19 @@ OS4_GLES_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context)
 
             if (deletions == 0) {
                 dprintf("OpenGL ES 2 context doesn't seem to have window binding\n");
-		return -1;
+		return false;
             }
         } else {
             dprintf("No context to delete\n");
-	    return -1;
+	    return false;
         }
 
     } else {
         OS4_GLES_LogLibraryError();
-	return -1;
+	return false;
     }
 
-    return 0;
+    return true;
 }
 
 SDL_bool

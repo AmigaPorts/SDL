@@ -55,7 +55,7 @@ OS4_GL_LogLibraryError()
     SDL_SetError("No MiniGL library available");
 }
 
-int
+bool
 OS4_GL_LoadLibrary(SDL_VideoDevice *_this, const char * path)
 {
     dprintf("Called %d\n", _this->gl_config.driver_loaded);
@@ -65,8 +65,7 @@ OS4_GL_LoadLibrary(SDL_VideoDevice *_this, const char * path)
 
         if (!MiniGLBase) {
             dprintf("Failed to open minigl.library\n");
-            SDL_SetError("Failed to open minigl.library");
-            return -1;
+            return SDL_SetError("Failed to open minigl.library");
         }
     }
 
@@ -75,14 +74,13 @@ OS4_GL_LoadLibrary(SDL_VideoDevice *_this, const char * path)
 
         if (!IMiniGL) {
             dprintf("Failed to open MiniGL interace\n");
-            SDL_SetError("Failed to open MiniGL interface");
-            return -1;
+            return SDL_SetError("Failed to open MiniGL interface");
         }
 
         dprintf("MiniGL library opened\n");
     }
 
-    return 0;
+    return true;
 }
 
 SDL_FunctionPointer
@@ -251,23 +249,21 @@ OS4_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
     }
 }
 
-int
+bool
 OS4_GL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext context)
 {
-    int result = -1;
-
     if (!window || !context) {
         dprintf("Called (window %p, context %p)\n", window, context);
     }
 
     if (IMiniGL) {
         mglMakeCurrent(context);
-        result = 0;
+        return true;
     } else {
         OS4_GL_LogLibraryError();
     }
     
-    return result;
+    return false;
 }
 
 void
@@ -276,7 +272,7 @@ OS4_GL_GetDrawableSize(SDL_VideoDevice *_this, SDL_Window * window, int * w, int
     OS4_WaitForResize(window, w, h);
 }
 
-int
+bool
 OS4_GL_SetSwapInterval(SDL_VideoDevice *_this, int interval)
 {
     SDL_VideoData *data = _this->internal;
@@ -286,14 +282,14 @@ OS4_GL_SetSwapInterval(SDL_VideoDevice *_this, int interval)
         case 1:
             data->vsyncEnabled = interval ? TRUE : FALSE;
             dprintf("VSYNC %d\n", interval);
-            return 0;
+            return true;
         default:
             dprintf("Unsupported interval %d\n", interval);
-            return -1;
+            return false;
     }
 }
 
-int
+bool
 OS4_GL_GetSwapInterval(SDL_VideoDevice *_this, int* interval)
 {
     //dprintf("Called\n");
@@ -302,10 +298,10 @@ OS4_GL_GetSwapInterval(SDL_VideoDevice *_this, int* interval)
 
     *interval = data->vsyncEnabled ? 1 : 0;
 
-    return 0;
+    return true;
 }
 
-int
+bool
 OS4_GL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
     //dprintf("Called\n");
@@ -368,10 +364,10 @@ OS4_GL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
                                     MGLCC_FrontBuffer,data->glFrontBuffer,
                                     MGLCC_BackBuffer, data->glBackBuffer,
                                     TAG_DONE);
-                return 0;
+                return true;
             } else {
                 dprintf("BltBitMapTags() returned %d\n", blitRet);
-                return -1;
+                return SDL_SetError("BltBitMapTags failed");
             }
         } else {
             dprintf("No MiniGL context\n");
@@ -380,11 +376,11 @@ OS4_GL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
         OS4_GL_LogLibraryError();
     }
 
-    return -1;
+    return false;
 }
 
-int
-OS4_GL_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context)
+bool
+OS4_GL_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
 {
     dprintf("Called with context=%p\n", context);
 
@@ -410,18 +406,18 @@ OS4_GL_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context)
 
             if (deletions == 0) {
                 dprintf("MiniGL context doesn't seem to have window binding\n");
-		return -1;
+		return false;
             }
         } else {
             dprintf("No context to delete\n");
-	    return -1;
+	    return false;
         }
     } else {
         OS4_GL_LogLibraryError();
-	return -1;
+	return false;
     }
 
-    return 0;
+    return true;
 }
 
 SDL_bool

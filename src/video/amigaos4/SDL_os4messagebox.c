@@ -39,12 +39,10 @@ OS4_MakeButtonString(const SDL_MessageBoxData * messageboxdata)
     char *buttonBuffer = SDL_malloc(BUTTON_BUF_SIZE);
 
     if (buttonBuffer) {
-        int b;
-
         SDL_memset(buttonBuffer, 0, BUTTON_BUF_SIZE);
 
-        /* Generate "Button 1|Button2... "*/
-        for (b = 0; b < messageboxdata->numbuttons; b++) {
+        // Generate "Button 1|Button2... "
+        for (int b = 0; b < messageboxdata->numbuttons; b++) {
             strncat(buttonBuffer, messageboxdata->buttons[b].text, BUTTON_BUF_SIZE - strlen(buttonBuffer) - 1);
 
             if (b != (messageboxdata->numbuttons - 1)) {
@@ -71,16 +69,13 @@ OS4_GetWindow(const SDL_MessageBoxData * messageboxdata)
     return syswin;
 }
 
-int
+bool
 OS4_ShowMessageBox(const SDL_MessageBoxData * messageboxdata, int * buttonid)
 {
-    int result = -1;
-
     if (IIntuition) {
         char *buttonString;
 
         if ((buttonString = OS4_MakeButtonString(messageboxdata))) {
-
             struct EasyStruct es = {
                 sizeof(struct EasyStruct),
                 0, // Flags
@@ -93,14 +88,14 @@ OS4_ShowMessageBox(const SDL_MessageBoxData * messageboxdata, int * buttonid)
 
             const int LAST_BUTTON = messageboxdata->numbuttons;
 
-            /* Amiga button order is 1, 2, ..., N, 0! */
-            int amigaButton = IIntuition->EasyRequest(OS4_GetWindow(messageboxdata), &es, 0, NULL);
+            // Amiga button order is 1, 2, ..., N, 0!
+            const int amigaButton = IIntuition->EasyRequest(OS4_GetWindow(messageboxdata), &es, 0, NULL);
 
             dprintf("Button %d chosen\n", amigaButton);
 
             if (amigaButton >= 0 && amigaButton < LAST_BUTTON) {
                 if (amigaButton == 0) {
-                    /* Last */
+                    // Last
                     *buttonid = messageboxdata->buttons[LAST_BUTTON - 1].buttonID;
                 } else {
                     *buttonid = messageboxdata->buttons[amigaButton - 1].buttonID;
@@ -110,13 +105,12 @@ OS4_ShowMessageBox(const SDL_MessageBoxData * messageboxdata, int * buttonid)
             }
 
             SDL_free(buttonString);
-            result = 0;
+            return true;
         }
-    } else {
-        dprintf("Failed to open IIntuition\n");
     }
 
-    return result;
+    dprintf("Failed to open IIntuition\n");
+    return false;
 }
 
 #endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */

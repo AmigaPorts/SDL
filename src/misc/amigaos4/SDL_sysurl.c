@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -27,14 +27,12 @@
 
 #include <proto/dos.h>
 
-int
+bool
 SDL_SYS_OpenURL(const char *url)
 {
-    int result = -1;
-
     if (!IDOS) {
         dprintf("IDOS nullptr\n");
-        return result;
+        return false;
     }
 
     char buffer[1024];
@@ -45,12 +43,12 @@ SDL_SYS_OpenURL(const char *url)
     if (handle) {
         IDOS->Close(handle);
         dprintf("URL '%s' opened\n", url);
-        result = 0;
-    } else {
-        dprintf("Failed to open URL '%s'\n", url);
+        return true;
     }
 
-    return result;
+    dprintf("Failed to open URL '%s'\n", url);
+
+    return false;
 }
 
 /* vi: set ts=4 sw=4 expandtab: */

@@ -47,7 +47,7 @@
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
-static int OS4_VideoInit(SDL_VideoDevice *_this);
+static bool OS4_VideoInit(SDL_VideoDevice *_this);
 static void OS4_VideoQuit(SDL_VideoDevice *_this);
 
 SDL_bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window) = NULL;
@@ -82,7 +82,7 @@ OS4_FindApplicationName(SDL_VideoDevice *_this)
     dprintf("Application name: '%s'\n", data->appName);
 }
 
-static int
+static bool
 OS4_SuspendScreenSaver(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->internal;
@@ -94,14 +94,14 @@ OS4_SuspendScreenSaver(SDL_VideoDevice *_this)
                                                               TAG_DONE);
         if (result) {
             dprintf("Blanker %s\n", state ? "enabled" : "disabled");
-            return 0;
+            return true;
         } else {
             dprintf("Failed to configure blanker\n");
-            return -1;
+            return false;
         }
     }
 
-    return -2;
+    return false;
 }
 
 static void
@@ -282,7 +282,7 @@ OS4_SetMiniGLFunctions(SDL_VideoDevice * device)
     device->GL_GetSwapInterval = OS4_GL_GetSwapInterval;
     device->GL_SwapWindow = OS4_GL_SwapWindow;
     device->GL_CreateContext = OS4_GL_CreateContext;
-    device->GL_DeleteContext = OS4_GL_DeleteContext;
+    device->GL_DestroyContext = OS4_GL_DestroyContext;
     //device->GL_DefaultProfileConfig = OS4_GL_DefaultProfileConfig;
 
     OS4_ResizeGlContext = OS4_GL_ResizeContext;
@@ -302,7 +302,7 @@ OS4_SetGLESFunctions(SDL_VideoDevice * device)
     device->GL_GetSwapInterval = OS4_GL_GetSwapInterval;
     device->GL_SwapWindow = OS4_GLES_SwapWindow;
     device->GL_CreateContext = OS4_GLES_CreateContext;
-    device->GL_DeleteContext = OS4_GLES_DeleteContext;
+    device->GL_DestroyContext = OS4_GLES_DestroyContext;
     //device->GL_DefaultProfileConfig = OS4_GL(ES)_DefaultProfileConfig;
 
     OS4_ResizeGlContext = OS4_GLES_ResizeContext;
@@ -338,7 +338,7 @@ OS4_IsOpenGLES2(SDL_VideoDevice *_this)
 }
 #endif
 
-static int
+static bool
 OS4_LoadGlLibrary(SDL_VideoDevice *_this, const char * path)
 {
     dprintf("Profile_mask %d, major ver %d, minor ver %d\n",
@@ -359,8 +359,7 @@ OS4_LoadGlLibrary(SDL_VideoDevice *_this, const char * path)
 #endif
 
     dprintf("Invalid OpenGL version\n");
-    SDL_SetError("Invalid OpenGL version");
-    return -1;
+    return SDL_SetError("Invalid OpenGL version");
 }
 
 static void
@@ -491,12 +490,12 @@ VideoBootStrap AMIGAOS4_bootstrap = {
     OS4_ShowMessageBox
 };
 
-int
+bool
 OS4_VideoInit(SDL_VideoDevice *_this)
 {
     dprintf("Called\n");
 
-    if (OS4_InitModes(_this) < 0) {
+    if (!OS4_InitModes(_this)) {
         return SDL_SetError("Failed to initialize modes");
     }
 
@@ -520,7 +519,7 @@ OS4_VideoInit(SDL_VideoDevice *_this)
         SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "0");
     }
 
-    return 0;
+    return true;
 }
 
 void

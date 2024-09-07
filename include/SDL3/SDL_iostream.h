@@ -72,7 +72,7 @@ typedef enum SDL_IOWhence
 {
     SDL_IO_SEEK_SET,  /**< Seek from the beginning of data */
     SDL_IO_SEEK_CUR,  /**< Seek relative to current read point */
-    SDL_IO_SEEK_END,  /**< Seek relative to the end of data */
+    SDL_IO_SEEK_END   /**< Seek relative to the end of data */
 } SDL_IOWhence;
 
 /**
@@ -83,10 +83,17 @@ typedef enum SDL_IOWhence
  * already offers several common types of I/O streams, via functions like
  * SDL_IOFromFile() and SDL_IOFromMem().
  *
+ * This structure should be initialized using SDL_INIT_INTERFACE()
+ *
  * \since This struct is available since SDL 3.0.0.
+ *
+ * \sa SDL_INIT_INTERFACE
  */
 typedef struct SDL_IOStreamInterface
 {
+    /* The version of this interface */
+    Uint32 version;
+
     /**
      *  Return the number of bytes in this SDL_IOStream
      *
@@ -132,11 +139,21 @@ typedef struct SDL_IOStreamInterface
      *  The SDL_IOStream is still destroyed even if this fails, so clean up anything
      *  even if flushing to disk returns an error.
      *
-     *  \return 0 if successful or -1 on write error when flushing data.
+     *  \return SDL_TRUE if successful or SDL_FALSE on write error when flushing data.
      */
-    int (SDLCALL *close)(void *userdata);
+    SDL_bool (SDLCALL *close)(void *userdata);
+
 } SDL_IOStreamInterface;
 
+/* Check the size of SDL_IOStreamInterface
+ *
+ * If this assert fails, either the compiler is padding to an unexpected size,
+ * or the interface has been updated and this should be updated to match and
+ * the code using this interface should be updated to handle the old version.
+ */
+SDL_COMPILE_TIME_ASSERT(SDL_IOStreamInterface_SIZE,
+    (sizeof(void *) == 4 && sizeof(SDL_IOStreamInterface) == 24) ||
+    (sizeof(void *) == 8 && sizeof(SDL_IOStreamInterface) == 48));
 
 /**
  * The read/write operation structure.
@@ -346,20 +363,19 @@ extern SDL_DECLSPEC SDL_IOStream * SDLCALL SDL_IOFromDynamicMem(void);
  * read/write a common data source, you should use the built-in
  * implementations in SDL, like SDL_IOFromFile() or SDL_IOFromMem(), etc.
  *
- * You must free the returned pointer with SDL_CloseIO().
- *
  * This function makes a copy of `iface` and the caller does not need to keep
- * this data around after this call.
+ * it around after this call.
  *
- * \param iface the function pointers that implement this SDL_IOStream.
- * \param userdata the app-controlled pointer that is passed to iface's
- *                 functions when called.
+ * \param iface the interface that implements this SDL_IOStream, initialized
+ *              using SDL_INIT_INTERFACE().
+ * \param userdata the pointer that will be passed to the interface functions.
  * \returns a pointer to the allocated memory on success or NULL on failure;
  *          call SDL_GetError() for more information.
  *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_CloseIO
+ * \sa SDL_INIT_INTERFACE
  * \sa SDL_IOFromConstMem
  * \sa SDL_IOFromFile
  * \sa SDL_IOFromMem
@@ -371,21 +387,21 @@ extern SDL_DECLSPEC SDL_IOStream * SDLCALL SDL_OpenIO(const SDL_IOStreamInterfac
  *
  * SDL_CloseIO() closes and cleans up the SDL_IOStream stream. It releases any
  * resources used by the stream and frees the SDL_IOStream itself. This
- * returns 0 on success, or -1 if the stream failed to flush to its output
- * (e.g. to disk).
+ * returns SDL_TRUE on success, or SDL_FALSE if the stream failed to flush to
+ * its output (e.g. to disk).
  *
  * Note that if this fails to flush the stream to disk, this function reports
  * an error, but the SDL_IOStream is still invalid once this function returns.
  *
  * \param context SDL_IOStream structure to close.
- * \returns 0 on success or a negative error code on failure; call
- *          SDL_GetError() for more information.
+ * \returns SDL_TRUE on success or SDL_FALSE on failure; call SDL_GetError()
+ *          for more information.
  *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_OpenIO
  */
-extern SDL_DECLSPEC int SDLCALL SDL_CloseIO(SDL_IOStream *context);
+extern SDL_DECLSPEC SDL_bool SDLCALL SDL_CloseIO(SDL_IOStream *context);
 
 /**
  * Get the properties associated with an SDL_IOStream.

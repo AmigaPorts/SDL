@@ -40,15 +40,14 @@ Uint32 getRandomUint32() {
 /*
  * Resets PRNG state to initialize tests using PRNG
  */
-void blitSetUp(void *arg) {
+void SDLCALL blitSetUp(void **arg) {
     rngState[0] = 1;
     rngState[1] = 2;
 }
 /*
- * Generates a stream of PRNG pixel data given length
+ * Fill buffer with stream of PRNG pixel data given size
  */
-Uint32 *getNextRandomBuffer(const int width, const int height) {
-    Uint32* buf = SDL_malloc(sizeof(Uint32) * width * height);
+static Uint32 *fillNextRandomBuffer(Uint32 *buf, const int width, const int height) {
     int i;
     for (i = 0; i < width * height; i++) {
         buf[i] = getRandomUint32();
@@ -56,10 +55,12 @@ Uint32 *getNextRandomBuffer(const int width, const int height) {
     return buf;
 }
 /*
- * Generates a small 15 x 15px surface of PRNG pixel data
+ * Generates a stream of PRNG pixel data given length
  */
-SDL_Surface* getRandomBlitChunk(Uint32 *pixels, SDL_PixelFormat format) {
-    return SDL_CreateSurfaceFrom(15, 15, format, pixels, 15 * 4);
+static Uint32 *getNextRandomBuffer(const int width, const int height) {
+    Uint32* buf = SDL_malloc(sizeof(Uint32) * width * height);
+    fillNextRandomBuffer(buf, width, height);
+    return buf;
 }
 /*
  * Generates a 800 x 600 surface of PRNG pixel data
@@ -95,7 +96,7 @@ Uint32 hashSurfacePixels(SDL_Surface * surface) {
  * Tests rendering a rainbow gradient background onto a blank surface, then rendering a sprite with complex geometry and
  * transparency on top of said surface, and comparing the result to known accurate renders with a hash.
  */
-int blit_testExampleApplicationRender(void *arg) {
+static int SDLCALL blit_testExampleApplicationRender(void *arg) {
     const int width = 32;
     const int height = 32;
     const Uint32 correct_hash = 0xe345d7a7;
@@ -122,7 +123,7 @@ int blit_testExampleApplicationRender(void *arg) {
  * different source and destination pixel formats, without an alpha shuffle, at SVGA resolution. Compares to known
  * accurate renders with a hash.
  */
-int blit_testRandomToRandomSVGA(void *arg) {
+static int SDLCALL blit_testRandomToRandomSVGA(void *arg) {
     const int width = 800;
     const int height = 600;
     const Uint32 correct_hash = 0x42140c5f;
@@ -151,18 +152,25 @@ int blit_testRandomToRandomSVGA(void *arg) {
  * shift operations between the different source and destination pixel formats, including an alpha shuffle. Compares to
  * known accurate renders with a hash.
  */
-int blit_testRandomToRandomSVGAMultipleIterations(void *arg) {
+static int SDLCALL blit_testRandomToRandomSVGAMultipleIterations(void *arg) {
     const int width = 800;
     const int height = 600;
+    const int blit_width = 15;
+    const int blit_height = 15;
     int i;
     const Uint32 correct_hash = 0x5d26be78;
+    Uint32 *buf = SDL_malloc(blit_width * blit_height * sizeof(Uint32));
     // Create blank source surface
+    SDL_Surface *sourceSurface = SDL_CreateSurface(blit_width, blit_height, SDL_PIXELFORMAT_RGBA8888);
+    // Create blank destination surface
     SDL_Surface* dest_surface = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_ABGR8888);
 
     // Perform 250k random blits into random areas of the blank surface
     for (i = 0; i < 250000; i++) {
-        Uint32 *buf = getNextRandomBuffer(15, 15);
-        SDL_Surface *sourceSurface = getRandomBlitChunk(buf, SDL_PIXELFORMAT_RGBA8888);
+        fillNextRandomBuffer(buf, blit_width, blit_height);
+        SDL_LockSurface(sourceSurface);
+        SDL_memcpy(sourceSurface->pixels, buf, blit_width * blit_height * sizeof(Uint32));
+        SDL_UnlockSurface(sourceSurface);
 
         SDL_Rect dest_rect;
         int location = (int)getRandomUint32();
@@ -170,9 +178,6 @@ int blit_testRandomToRandomSVGAMultipleIterations(void *arg) {
         dest_rect.y = location % (height - 15 - 1);
 
         SDL_BlitSurface(sourceSurface, NULL, dest_surface, &dest_rect);
-
-        SDL_DestroySurface(sourceSurface);
-        SDL_free(buf);
     }
     // Check result
     const Uint32 hash = hashSurfacePixels(dest_surface);
@@ -181,19 +186,21 @@ int blit_testRandomToRandomSVGAMultipleIterations(void *arg) {
     SDLTest_AssertCheck(hash == correct_hash,
                         "Should render identically, expected hash 0x%" SDL_PRIx32 ", got 0x%" SDL_PRIx32,
                         correct_hash, hash);
+    SDL_DestroySurface(sourceSurface);
+    SDL_free(buf);
     return TEST_COMPLETED;
 }
 
 static const SDLTest_TestCaseReference blitTest1 = {
-        (SDLTest_TestCaseFp)blit_testExampleApplicationRender, "blit_testExampleApplicationRender",
+        blit_testExampleApplicationRender, "blit_testExampleApplicationRender",
         "Test example application render.", TEST_ENABLED
 };
 static const SDLTest_TestCaseReference blitTest2 = {
-        (SDLTest_TestCaseFp)blit_testRandomToRandomSVGA, "blit_testRandomToRandomSVGA",
+        blit_testRandomToRandomSVGA, "blit_testRandomToRandomSVGA",
         "Test SVGA noise render.", TEST_ENABLED
 };
 static const SDLTest_TestCaseReference blitTest3 = {
-        (SDLTest_TestCaseFp)blit_testRandomToRandomSVGAMultipleIterations, "blit_testRandomToRandomSVGAMultipleIterations",
+        blit_testRandomToRandomSVGAMultipleIterations, "blit_testRandomToRandomSVGAMultipleIterations",
         "Test SVGA noise render (250k iterations).", TEST_ENABLED
 };
 static const SDLTest_TestCaseReference *blitTests[] = {

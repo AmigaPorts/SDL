@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINRT) || defined(SDL_PLATFORM_GDK)
+#if defined(SDL_PLATFORM_WINDOWS)
 #include "core/windows/SDL_windows.h"
 #endif
 
@@ -92,7 +92,8 @@ static const char * const SDL_category_names[] = {
     "VIDEO",
     "RENDER",
     "INPUT",
-    "TEST"
+    "TEST",
+    "GPU"
 };
 SDL_COMPILE_TIME_ASSERT(category_names, SDL_arraysize(SDL_category_names) == SDL_LOG_CATEGORY_RESERVED1);
 
@@ -338,7 +339,7 @@ static const char *SDL_GetLogPriorityPrefix(SDL_LogPriority priority)
     }
 }
 
-int SDL_SetLogPriorityPrefix(SDL_LogPriority priority, const char *prefix)
+SDL_bool SDL_SetLogPriorityPrefix(SDL_LogPriority priority, const char *prefix)
 {
     if (priority < SDL_LOG_PRIORITY_VERBOSE || priority >= SDL_NUM_LOG_PRIORITIES) {
         return SDL_InvalidParamError("priority");
@@ -349,11 +350,11 @@ int SDL_SetLogPriorityPrefix(SDL_LogPriority priority, const char *prefix)
     } else {
         prefix = SDL_GetPersistentString(prefix);
         if (!prefix) {
-            return -1;
+            return false;
         }
     }
     SDL_priority_prefixes[priority] = prefix;
-    return 0;
+    return true;
 }
 
 void SDL_Log(SDL_PRINTF_FORMAT_STRING const char *fmt, ...)
@@ -479,7 +480,7 @@ void SDL_LogMessageV(int category, SDL_LogPriority priority, SDL_PRINTF_FORMAT_S
     }
 
     // If message truncated, allocate and re-render
-    if (len >= sizeof(stack_buf) && SDL_size_add_overflow(len, 1, &len_plus_term) == 0) {
+    if (len >= sizeof(stack_buf) && SDL_size_add_check_overflow(len, 1, &len_plus_term)) {
         // Allocate exactly what we need, including the zero-terminator
         message = (char *)SDL_malloc(len_plus_term);
         if (!message) {
@@ -510,12 +511,11 @@ void SDL_LogMessageV(int category, SDL_LogPriority priority, SDL_PRINTF_FORMAT_S
     }
 }
 
-#if defined(SDL_PLATFORM_WIN32) && !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_GDK)
+#if defined(SDL_PLATFORM_WIN32) && !defined(SDL_PLATFORM_GDK)
 enum {
     CONSOLE_UNATTACHED = 0,
     CONSOLE_ATTACHED_CONSOLE = 1,
     CONSOLE_ATTACHED_FILE = 2,
-    CONSOLE_ATTACHED_MSVC = 3,
     CONSOLE_ATTACHED_ERROR = -1,
 } consoleAttached = CONSOLE_UNATTACHED;
 
@@ -526,7 +526,7 @@ static HANDLE stderrHandle = NULL;
 static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority priority,
                                   const char *message)
 {
-#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_WINRT) || defined(SDL_PLATFORM_GDK)
+#if defined(SDL_PLATFORM_WINDOWS)
     // Way too many allocations here, urgh
     // Note: One can't call SDL_SetError here, since that function itself logs.
     {
@@ -535,13 +535,11 @@ static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority 
         LPTSTR tstr;
         bool isstack;
 
-#if !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_GDK)
+#if !defined(SDL_PLATFORM_GDK)
         BOOL attachResult;
         DWORD attachError;
         DWORD consoleMode;
-#if !defined(HAVE_STDIO_H)
         DWORD charsWritten;
-#endif
 
         // Maybe attach console and get stderr handle
         if (consoleAttached == CONSOLE_UNATTACHED) {
@@ -551,7 +549,7 @@ static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority 
                 if (attachError == ERROR_INVALID_HANDLE) {
                     // This is expected when running from Visual Studio
                     // OutputDebugString(TEXT("Parent process has no console\r\n"));
-                    consoleAttached = CONSOLE_ATTACHED_MSVC;
+                    consoleAttached = CONSOLE_ATTACHED_ERROR;
                 } else if (attachError == ERROR_GEN_FAILURE) {
                     OutputDebugString(TEXT("Could not attach to console of parent process\r\n"));
                     consoleAttached = CONSOLE_ATTACHED_ERROR;
@@ -576,25 +574,16 @@ static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority 
                 }
             }
         }
-#endif // !defined(HAVE_STDIO_H) && !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_GDK)
+#endif // !defined(SDL_PLATFORM_GDK)
         length = SDL_strlen(SDL_GetLogPriorityPrefix(priority)) + SDL_strlen(message) + 1 + 1 + 1;
         output = SDL_small_alloc(char, length, &isstack);
         (void)SDL_snprintf(output, length, "%s%s\r\n", SDL_GetLogPriorityPrefix(priority), message);
         tstr = WIN_UTF8ToString(output);
 
-
-#if defined(HAVE_STDIO_H) && !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_GDK)
-        // When running in MSVC and using stdio, rely on forwarding of stderr to the debug stream
-        if (consoleAttached != CONSOLE_ATTACHED_MSVC) {
-            // Output to debugger
-            OutputDebugString(tstr);
-        }
-#else
         // Output to debugger
         OutputDebugString(tstr);
-#endif
 
-#if !defined(HAVE_STDIO_H) && !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_GDK)
+#if !defined(SDL_PLATFORM_GDK)
         // Screen output to stderr, if console was attached.
         if (consoleAttached == CONSOLE_ATTACHED_CONSOLE) {
             if (!WriteConsole(stderrHandle, tstr, (DWORD)SDL_tcslen(tstr), &charsWritten, NULL)) {
@@ -609,7 +598,7 @@ static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority 
                 OutputDebugString(TEXT("Error calling WriteFile\r\n"));
             }
         }
-#endif // !defined(HAVE_STDIO_H) && !defined(SDL_PLATFORM_WINRT) && !defined(SDL_PLATFORM_GDK)
+#endif // !defined(SDL_PLATFORM_GDK)
 
         SDL_free(tstr);
         SDL_small_free(output, isstack);
@@ -658,7 +647,8 @@ static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority 
     }
 #endif
 #if defined(HAVE_STDIO_H) && \
-    !(defined(SDL_PLATFORM_APPLE) && (defined(SDL_VIDEO_DRIVER_COCOA) || defined(SDL_VIDEO_DRIVER_UIKIT)))
+    !(defined(SDL_PLATFORM_APPLE) && (defined(SDL_VIDEO_DRIVER_COCOA) || defined(SDL_VIDEO_DRIVER_UIKIT))) && \
+    !(defined(SDL_PLATFORM_WIN32))
     (void)fprintf(stderr, "%s%s\n", SDL_GetLogPriorityPrefix(priority), message);
 #endif
 }

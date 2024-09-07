@@ -166,7 +166,7 @@ OS4_WindowEvent(SDL_Renderer * renderer, const SDL_WindowEvent *event)
     }
 }
 
-static int
+static bool
 OS4_GetBitMapSize(SDL_Renderer * renderer, struct BitMap * bitmap, int * w, int * h)
 {
     if (bitmap) {
@@ -179,21 +179,19 @@ OS4_GetBitMapSize(SDL_Renderer * renderer, struct BitMap * bitmap, int * w, int 
 			//dprintf("h=%d\n", *h);
         }
 
-        return 0;
+        return true;
     } else {
-        SDL_SetError("NULL bitmap");
-        return -1;
+        return SDL_SetError("NULL bitmap");
     }
 }
 
-static int
+static bool
 OS4_GetOutputSize(SDL_Renderer * renderer, int *w, int *h)
 {
     struct BitMap * bitmap = OS4_ActivateRenderer(renderer);
 
     if (!bitmap) {
-        SDL_SetError("OS4 renderer doesn't have an output bitmap");
-        return -1;
+        return SDL_SetError("OS4 renderer doesn't have an output bitmap");
     }
 
     return OS4_GetBitMapSize(renderer, bitmap, w, h);
@@ -282,14 +280,12 @@ OS4_SetupCompositing(SDL_Texture * dst, OS4_CompositingParams * params, SDL_Scal
 static void
 OS4_RotateVertices(OS4_Vertex vertices[4], const double angle, const SDL_FPoint * center)
 {
-    int i;
-
     float rads = angle * M_PI / 180.0f;
 
     float sina = SDL_sinf(rads);
     float cosa = SDL_cosf(rads);
 
-    for (i = 0; i < 4; ++i) {
+    for (int i = 0; i < 4; ++i) {
         float x = vertices[i].x - center->x;
         float y = vertices[i].y - center->y;
 
@@ -301,9 +297,7 @@ OS4_RotateVertices(OS4_Vertex vertices[4], const double angle, const SDL_FPoint 
 static void
 OS4_ScaleVertices(OS4_Vertex vertices[4], const float scale_x, const float scale_y)
 {
-     int i;
-
-     for (i = 0; i < 4; i++) {
+     for (int i = 0; i < 4; i++) {
          vertices[i].x *= scale_x;
          vertices[i].y *= scale_y;
      }
@@ -375,25 +369,25 @@ OS4_FillVertexData(OS4_Vertex vertices[4], const SDL_FRect * srcrect, const SDL_
     }
 }
 
-static int
+static bool
 OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, int count, SDL_BlendMode mode,
     Uint8 a, Uint8 r, Uint8 g, Uint8 b)
 {
     OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
     struct BitMap *bitmap = OS4_ActivateRenderer(renderer);
-    int i, status;
+    bool status;
 
     //dprintf("Called for %d rects\n", count);
     //Sint32 s = SDL_GetTicks();
 
     if (!bitmap) {
-        return -1;
+        return false;
     }
 
     if (mode == SDL_BLENDMODE_NONE) {
         const Uint32 color = a << 24 | r << 16 | g << 8 | b;
 
-        for (i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i) {
             //dprintf("rp %p, rect x %f, y %f, w %f, h %f\n", &data->rastport, rects[i].x, rects[i].y, rects[i].w, rects[i].h);
             SDL_Rect irect, tmp;
             irect.x = rects[i].x;
@@ -414,23 +408,23 @@ OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, int count,
                 color); // graphics.lib v54!
         }
 
-        status = 0;
+        status = true;
     } else {
         Uint32 colormod;
 
         if (!data->solidcolor) {
-            return -1;
+            return false;
         }
 
         colormod = a << 24 | r << 16 | g << 8 | b;
 
         // Color modulation is implemented through fill texture manipulation
         if (!OS4_SetSolidColor(renderer, colormod)) {
-            return -1;
+            return false;
         }
 
         /* TODO: batch */
-        for (i = 0; i < count; ++i) {
+        for (int i = 0; i < count; ++i) {
             const SDL_FRect srcrect = { 0.0f, 0.0f, 1.0f, 1.0f };
 
             OS4_Vertex vertices[4];
@@ -463,7 +457,7 @@ OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, int count,
             }
         }
 
-        status = 0;
+        status = true;
     }
 
     //dprintf("Took %d\n", SDL_GetTicks() - s);
@@ -471,7 +465,7 @@ OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, int count,
     return status;
 }
 
-static int
+static bool
 OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Vertex * vertices,
     size_t count, struct BitMap * dst)
 {
@@ -488,7 +482,7 @@ OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Ver
     uint32 ret_code;
 
     if (!dst) {
-        return -1;
+        return false;
     }
 
     OS4_SetupCompositing(renderer->target, &params, texture->scaleMode, mode, cmd->data.draw.color.a);
@@ -522,10 +516,10 @@ OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Ver
         return SDL_SetError("CompositeTags failed");
     }
 
-    return 0;
+    return true;
 }
 
-static int
+static bool
 OS4_RenderGeometry(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Vertex * vertices,
     struct BitMap * dst)
 {
@@ -539,7 +533,7 @@ OS4_RenderGeometry(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_V
     uint32 ret_code;
 
     if (!dst) {
-        return -1;
+        return false;
     }
 
     OS4_SetupCompositing(renderer->target, &params, texture->scaleMode, mode, 1.0f);
@@ -571,7 +565,7 @@ OS4_RenderGeometry(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_V
     }
 
 
-    return 0;
+    return true;
 }
 
 static SDL_Surface*
@@ -614,7 +608,7 @@ static int min(int a, int b)
     return (a < b) ? a : b;
 }
 
-static int
+static bool
 OS4_RenderPresent(SDL_Renderer * renderer)
 {
     SDL_Window *window = renderer->window;
@@ -661,13 +655,13 @@ OS4_RenderPresent(SDL_Renderer * renderer)
 
             if (ret != -1) {
                 dprintf("BltBitMapTags(): %d\n", ret);
-                return -1;
+                return false;
             }
         }
     }
     //dprintf("Took %d\n", SDL_GetTicks() - s);
 
-    return 0;
+    return true;
 }
 
 static void
@@ -712,61 +706,59 @@ OS4_DestroyRenderer(SDL_Renderer * renderer)
     SDL_free(data);
 }
 
-static int
+static bool
 OS4_QueueNop(SDL_Renderer * renderer, SDL_RenderCommand *cmd)
 {
-    return 0;
+    return true;
 }
 
-static int
+static bool
 OS4_QueueDrawPoints(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FPoint * points, int count)
 {
     SDL_Point *verts = (SDL_Point *) SDL_AllocateRenderVertices(renderer, count * sizeof(SDL_Point), 0, &cmd->data.draw.first);
-    size_t i;
 
     if (!verts) {
-        return -1;
+        return SDL_OutOfMemory();
     }
 
     cmd->data.draw.count = count;
 
-    for (i = 0; i < count; i++, verts++, points++) {
+    for (size_t i = 0; i < count; i++, verts++, points++) {
         verts->x = (int)points->x;
         verts->y = (int)points->y;
     }
 
-    return 0;
+    return true;
 }
 
-static int
+static bool
 OS4_QueueDrawLines(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FPoint * points, int count)
 {
     return OS4_QueueDrawPoints(renderer, cmd, points, count);
 }
 
-static int
+static bool
 OS4_QueueFillRects(SDL_Renderer * renderer, SDL_RenderCommand *cmd, const SDL_FRect * rects, int count)
 {
     SDL_FRect *verts = (SDL_FRect *) SDL_AllocateRenderVertices(renderer, count * sizeof(SDL_FRect), 0, &cmd->data.draw.first);
-    size_t i;
 
     if (!verts) {
-        return -1;
+        return false;
     }
 
     cmd->data.draw.count = count;
 
-    for (i = 0; i < count; i++, verts++, rects++) {
+    for (size_t i = 0; i < count; i++, verts++, rects++) {
         verts->x = (int)rects->x;
         verts->y = (int)rects->y;
         verts->w = SDL_max((int)rects->w, 1);
         verts->h = SDL_max((int)rects->h, 1);
     }
 
-    return 0;
+    return true;
 }
 
-static int
+static bool
 OS4_QueueCopyEx(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * texture,
                const SDL_FRect * srcrect, const SDL_FRect * dstrect,
                const double angle, const SDL_FPoint *center, const SDL_FlipMode flip, float scale_x, float scale_y)
@@ -777,7 +769,7 @@ OS4_QueueCopyEx(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * t
         4 * sizeof(OS4_Vertex), 0, &cmd->data.draw.first);
 
     if (!verts) {
-        return -1;
+        return SDL_OutOfMemory();
     }
     //dprintf("SRC %d, %d, %d, %d, DST %f, %f, %f, %f\n", srcrect->x, srcrect->y, srcrect->w, srcrect->h, dstrect->x, dstrect->y, dstrect->w, dstrect->h);
     cmd->data.draw.count = 1;
@@ -790,7 +782,7 @@ OS4_QueueCopyEx(SDL_Renderer * renderer, SDL_RenderCommand *cmd, SDL_Texture * t
     return OS4_SetTextureColorMod(renderer, texture);
 }
 
-static int
+static bool
 OS4_QueueCopy(SDL_Renderer * renderer, SDL_RenderCommand * cmd, SDL_Texture * texture,
     const SDL_FRect * srcrect, const SDL_FRect *dstrect)
 {
@@ -798,12 +790,11 @@ OS4_QueueCopy(SDL_Renderer * renderer, SDL_RenderCommand * cmd, SDL_Texture * te
     return OS4_QueueCopyEx(renderer, cmd, texture, srcrect, dstrect, 0.0, &center, SDL_FLIP_NONE, 1.0f, 1.0f);
 }
 
-static int OS4_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Texture *texture,
+static bool OS4_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Texture *texture,
     const float *xy, int xy_stride, const SDL_FColor *color, int color_stride, const float *uv, int uv_stride,
     int num_vertices, const void *indices, int num_indices, int size_indices,
     float scale_x, float scale_y)
 {
-    int i;
     int count = indices ? num_indices : num_vertices;
     OS4_Vertex *verts;
 
@@ -827,13 +818,13 @@ static int OS4_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL
 
     verts = (OS4_Vertex *) SDL_AllocateRenderVertices(renderer, count * sizeof(OS4_Vertex), 0, &cmd->data.draw.first);
     if (!verts) {
-        return -1;
+        return SDL_OutOfMemory();
     }
 
     cmd->data.draw.count = count;
     size_indices = indices ? size_indices : 0;
 
-    for (i = 0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
         int j;
         float *xy_;
         if (size_indices == 4) {
@@ -858,7 +849,7 @@ static int OS4_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL
         verts++;
     }
 
-    return 0;
+    return true;
 }
 
 static void
@@ -878,7 +869,7 @@ OS4_ResetClipRect(SDL_Renderer * renderer, struct BitMap * bitmap)
     data->cliprect.h = height;
 }
 
-static int
+static bool
 OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * vertices, size_t vertsize)
 {
     OS4_RenderData *data = (OS4_RenderData *)renderer->internal;
@@ -887,7 +878,7 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
 
     if (!bitmap) {
         dprintf("NULL bitmap\n");
-        return -1;
+        return false;
     }
 
     while (cmd) {
@@ -960,8 +951,7 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
 
                 /* Apply viewport */
                 if (data->viewport.x || data->viewport.y) {
-                    int i;
-                    for (i = 0; i < count; i++) {
+                    for (int i = 0; i < count; i++) {
                         verts[i].x += data->viewport.x;
                         verts[i].y += data->viewport.y;
                     }
@@ -982,8 +972,7 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
 
                 /* Apply viewport */
                 if (data->viewport.x || data->viewport.y) {
-                    int i;
-                    for (i = 0; i < count; i++) {
+                    for (int i = 0; i < count; i++) {
                         verts[i].x += data->viewport.x;
                         verts[i].y += data->viewport.y;
                     }
@@ -1004,8 +993,7 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
 
                 /* Apply viewport */
                 if (data->viewport.x || data->viewport.y) {
-                    int i;
-                    for (i = 0; i < count; i++) {
+                    for (int i = 0; i < count; i++) {
                         verts[i].x += data->viewport.x;
                         verts[i].y += data->viewport.y;
                     }
@@ -1107,8 +1095,7 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
 
                 /* Apply viewport */
                 if (data->viewport.x || data->viewport.y) {
-                    int i;
-                    for (i = 0; i < count; i++) {
+                    for (int i = 0; i < count; i++) {
                         verts[i].x += data->viewport.x;
                         verts[i].y += data->viewport.y;
                     }
@@ -1125,10 +1112,10 @@ OS4_RunCommandQueue(SDL_Renderer * renderer, SDL_RenderCommand * cmd, void * ver
         cmd = cmd->next;
     }
 
-    return 0;
+    return true;
 }
 
-static int
+static bool
 OS4_SetVSync(SDL_Renderer * renderer, int vsync)
 {
     OS4_RenderData *data = renderer->internal;
@@ -1137,7 +1124,7 @@ OS4_SetVSync(SDL_Renderer * renderer, int vsync)
 
     data->vsync = vsync;
 
-    return 0;
+    return true;
 }
 
 static void
@@ -1162,7 +1149,7 @@ OS4_PrecalculateIndices(void)
     }
 }
 
-int
+bool
 OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, SDL_PropertiesID create_props)
 {
     OS4_RenderData *data;
@@ -1211,7 +1198,7 @@ OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, SDL_PropertiesI
 
     OS4_PrecalculateIndices();
 
-    return 0;
+    return true;
 }
 
 SDL_RenderDriver OS4_RenderDriver = {

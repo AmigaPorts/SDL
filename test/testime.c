@@ -361,14 +361,14 @@ static int unifont_load_texture(Uint32 textureID)
         }
         unifontTexture[UNIFONT_NUM_TEXTURES * i + textureID] = tex;
         SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
-        if (SDL_UpdateTexture(tex, NULL, textureRGBA, UNIFONT_TEXTURE_PITCH) < 0) {
+        if (!SDL_UpdateTexture(tex, NULL, textureRGBA, UNIFONT_TEXTURE_PITCH)) {
             SDL_Log("unifont error: Failed to update texture %" SDL_PRIu32 " data for renderer %d.\n", textureID, i);
         }
     }
 
     SDL_free(textureRGBA);
     unifontTextureLoaded[textureID] = 1;
-    return 0;
+    return -1;
 }
 
 static int unifont_glyph_width(Uint32 codepoint)
@@ -1094,7 +1094,7 @@ int main(int argc, char *argv[])
 
     font = TTF_OpenFont(fontname, DEFAULT_PTSIZE);
     if (!font) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to find font: %s\n", TTF_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to find font: %s\n", SDL_GetError());
         return -1;
     }
 #else

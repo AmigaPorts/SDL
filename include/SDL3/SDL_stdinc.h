@@ -36,6 +36,9 @@
 #include <inttypes.h>
 #endif
 #include <stdarg.h>
+#ifndef __cplusplus
+#include <stdbool.h>
+#endif
 #include <stdint.h>
 #include <string.h>
 #include <wchar.h>
@@ -191,7 +194,7 @@ void *alloca(size_t);
  *
  * \sa SDL_bool
  */
-#define SDL_FALSE 0
+#define SDL_FALSE false
 
 /**
  * A boolean true.
@@ -200,7 +203,7 @@ void *alloca(size_t);
  *
  * \sa SDL_bool
  */
-#define SDL_TRUE 1
+#define SDL_TRUE true
 
 /**
  * A boolean type: true or false.
@@ -210,7 +213,7 @@ void *alloca(size_t);
  * \sa SDL_TRUE
  * \sa SDL_FALSE
  */
-typedef int SDL_bool;
+typedef bool SDL_bool;
 
 /**
  * A signed 8-bit integer type.
@@ -333,7 +336,7 @@ typedef Sint64 SDL_Time;
  * <stdint.h> should define these but this is not true all platforms.
  * (for example win32) */
 #ifndef SDL_PRIs64
-#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK)
+#if defined(SDL_PLATFORM_WINDOWS)
 #define SDL_PRIs64 "I64d"
 #elif defined(PRIs64)
 #define SDL_PRIs64 PRIs64
@@ -344,7 +347,7 @@ typedef Sint64 SDL_Time;
 #endif
 #endif
 #ifndef SDL_PRIu64
-#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK)
+#if defined(SDL_PLATFORM_WINDOWS)
 #define SDL_PRIu64 "I64u"
 #elif defined(PRIu64)
 #define SDL_PRIu64 PRIu64
@@ -355,7 +358,7 @@ typedef Sint64 SDL_Time;
 #endif
 #endif
 #ifndef SDL_PRIx64
-#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK)
+#if defined(SDL_PLATFORM_WINDOWS)
 #define SDL_PRIx64 "I64x"
 #elif defined(PRIx64)
 #define SDL_PRIx64 PRIx64
@@ -366,7 +369,7 @@ typedef Sint64 SDL_Time;
 #endif
 #endif
 #ifndef SDL_PRIX64
-#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK)
+#if defined(SDL_PLATFORM_WINDOWS)
 #define SDL_PRIX64 "I64X"
 #elif defined(PRIX64)
 #define SDL_PRIX64 PRIX64
@@ -482,6 +485,7 @@ typedef Sint64 SDL_Time;
 
 /** \cond */
 #ifndef DOXYGEN_SHOULD_IGNORE_THIS
+SDL_COMPILE_TIME_ASSERT(bool, sizeof(SDL_bool) == 1);
 SDL_COMPILE_TIME_ASSERT(uint8, sizeof(Uint8) == 1);
 SDL_COMPILE_TIME_ASSERT(sint8, sizeof(Sint8) == 1);
 SDL_COMPILE_TIME_ASSERT(uint16, sizeof(Uint16) == 2);
@@ -490,6 +494,12 @@ SDL_COMPILE_TIME_ASSERT(uint32, sizeof(Uint32) == 4);
 SDL_COMPILE_TIME_ASSERT(sint32, sizeof(Sint32) == 4);
 SDL_COMPILE_TIME_ASSERT(uint64, sizeof(Uint64) == 8);
 SDL_COMPILE_TIME_ASSERT(sint64, sizeof(Sint64) == 8);
+typedef struct SDL_alignment_test
+{
+    Uint8 a;
+    void *b;
+} SDL_alignment_test;
+SDL_COMPILE_TIME_ASSERT(struct_alignment, sizeof(SDL_alignment_test) == (2 * sizeof(void *)));
 #endif /* DOXYGEN_SHOULD_IGNORE_THIS */
 /** \endcond */
 
@@ -518,6 +528,51 @@ SDL_COMPILE_TIME_ASSERT(enum, sizeof(SDL_DUMMY_ENUM) == sizeof(int));
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * A macro to initialize an SDL interface.
+ *
+ * This macro will initialize an SDL interface structure and should be called
+ * before you fill out the fields with your implementation.
+ *
+ * You can use it like this:
+ *
+ * ```c
+ * SDL_IOStreamInterface iface;
+ *
+ * SDL_INIT_INTERFACE(&iface);
+ *
+ * // Fill in the interface function pointers with your implementation
+ * iface.seek = ...
+ *
+ * stream = SDL_OpenIO(&iface, NULL);
+ * ```
+ *
+ * If you are using designated initializers, you can use the size of the
+ * interface as the version, e.g.
+ *
+ * ```c
+ * SDL_IOStreamInterface iface = {
+ *     .version = sizeof(iface),
+ *     .seek = ...
+ * };
+ * stream = SDL_OpenIO(&iface, NULL);
+ * ```
+ *
+ * \threadsafety It is safe to call this macro from any thread.
+ *
+ * \since This macro is available since SDL 3.0.0.
+ *
+ * \sa SDL_IOStreamInterface
+ * \sa SDL_StorageInterface
+ * \sa SDL_VirtualJoystickDesc
+ */
+#define SDL_INIT_INTERFACE(iface)               \
+    do {                                        \
+        SDL_zerop(iface);                       \
+        (iface)->version = sizeof(*(iface));    \
+    } while (0)
+
 
 #ifndef SDL_DISABLE_ALLOCA
 #define SDL_stack_alloc(type, count)    (type*)alloca(sizeof(type)*(count))
@@ -595,8 +650,8 @@ extern SDL_DECLSPEC void SDLCALL SDL_GetMemoryFunctions(SDL_malloc_func *malloc_
  * \param calloc_func custom calloc function.
  * \param realloc_func custom realloc function.
  * \param free_func custom free function.
- * \returns 0 on success or a negative error code on failure; call
- *          SDL_GetError() for more information.
+ * \returns SDL_TRUE on success or SDL_FALSE on failure; call SDL_GetError()
+ *          for more information.
  *
  * \threadsafety It is safe to call this function from any thread, but one
  *               should not replace the memory functions once any allocations
@@ -607,10 +662,10 @@ extern SDL_DECLSPEC void SDLCALL SDL_GetMemoryFunctions(SDL_malloc_func *malloc_
  * \sa SDL_GetMemoryFunctions
  * \sa SDL_GetOriginalMemoryFunctions
  */
-extern SDL_DECLSPEC int SDLCALL SDL_SetMemoryFunctions(SDL_malloc_func malloc_func,
-                                                   SDL_calloc_func calloc_func,
-                                                   SDL_realloc_func realloc_func,
-                                                   SDL_free_func free_func);
+extern SDL_DECLSPEC SDL_bool SDLCALL SDL_SetMemoryFunctions(SDL_malloc_func malloc_func,
+                                                            SDL_calloc_func calloc_func,
+                                                            SDL_realloc_func realloc_func,
+                                                            SDL_free_func free_func);
 
 /**
  * Allocate memory aligned to a specific value.
@@ -1286,6 +1341,22 @@ extern SDL_DECLSPEC int SDLCALL SDL_strcasecmp(const char *str1, const char *str
  * \since This function is available since SDL 3.0.0.
  */
 extern SDL_DECLSPEC int SDLCALL SDL_strncasecmp(const char *str1, const char *str2, size_t maxlen);
+
+/**
+ * Searches a string for the first occurence of any character contained in a
+ * breakset, and returns a pointer from the string to that character.
+ *
+ * \param str The null-terminated string to be searched.
+ * \param breakset A null-terminated string containing the list of characters
+ *                 to look for.
+ * \returns A pointer to the location, in str, of the first occurence of a
+ *          character present in the breakset, or NULL if none is found.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.0.0.
+ */
+extern SDL_DECLSPEC char * SDLCALL SDL_strpbrk(const char * SDL_RESTRICT str, const char * SDL_RESTRICT breakset);
 
 /**
  * The Unicode REPLACEMENT CHARACTER codepoint.
@@ -3069,6 +3140,7 @@ size_t wcslcat(wchar_t *dst, const wchar_t *src, size_t size);
 #define SDL_wcsncmp wcsncmp
 #define SDL_strcasecmp strcasecmp
 #define SDL_strncasecmp strncasecmp
+#define SDL_strpbrk strpbrk
 #define SDL_sscanf sscanf
 #define SDL_vsscanf vsscanf
 #define SDL_snprintf snprintf
@@ -3078,29 +3150,28 @@ size_t wcslcat(wchar_t *dst, const wchar_t *src, size_t size);
 /**
  * Multiply two integers, checking for overflow.
  *
- * If `a * b` would overflow, return -1.
+ * If `a * b` would overflow, return SDL_FALSE.
  *
- * Otherwise store `a * b` via ret and return 0.
+ * Otherwise store `a * b` via ret and return SDL_TRUE.
  *
  * \param a the multiplicand.
  * \param b the multiplier.
  * \param ret on non-overflow output, stores the multiplication result. May
  *            not be NULL.
- * \returns -1 on overflow, 0 if result doesn't overflow.
+ * \returns SDL_FALSE on overflow, SDL_TRUE if result is multiplied without
+ *          overflow.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
  * \since This function is available since SDL 3.0.0.
  */
-SDL_FORCE_INLINE int SDL_size_mul_overflow (size_t a,
-                                            size_t b,
-                                            size_t *ret)
+SDL_FORCE_INLINE SDL_bool SDL_size_mul_check_overflow(size_t a, size_t b, size_t *ret)
 {
     if (a != 0 && b > SDL_SIZE_MAX / a) {
-        return -1;
+        return SDL_FALSE;
     }
     *ret = a * b;
-    return 0;
+    return SDL_TRUE;
 }
 
 #ifndef SDL_WIKI_DOCUMENTATION_SECTION
@@ -3108,13 +3179,11 @@ SDL_FORCE_INLINE int SDL_size_mul_overflow (size_t a,
 /* This needs to be wrapped in an inline rather than being a direct #define,
  * because __builtin_mul_overflow() is type-generic, but we want to be
  * consistent about interpreting a and b as size_t. */
-SDL_FORCE_INLINE int SDL_size_mul_overflow_builtin (size_t a,
-                                                     size_t b,
-                                                     size_t *ret)
+SDL_FORCE_INLINE SDL_bool SDL_size_mul_check_overflow_builtin(size_t a, size_t b, size_t *ret)
 {
-    return __builtin_mul_overflow(a, b, ret) == 0 ? 0 : -1;
+    return (__builtin_mul_overflow(a, b, ret) == 0);
 }
-#define SDL_size_mul_overflow(a, b, ret) (SDL_size_mul_overflow_builtin(a, b, ret))
+#define SDL_size_mul_check_overflow(a, b, ret) SDL_size_mul_check_overflow_builtin(a, b, ret)
 #endif
 #endif
 
@@ -3129,34 +3198,31 @@ SDL_FORCE_INLINE int SDL_size_mul_overflow_builtin (size_t a,
  * \param b the second addend.
  * \param ret on non-overflow output, stores the addition result. May not be
  *            NULL.
- * \returns -1 on overflow, 0 if result doesn't overflow.
+ * \returns SDL_FALSE on overflow, SDL_TRUE if result is added without
+ *          overflow.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
  * \since This function is available since SDL 3.0.0.
  */
-SDL_FORCE_INLINE int SDL_size_add_overflow (size_t a,
-                                            size_t b,
-                                            size_t *ret)
+SDL_FORCE_INLINE SDL_bool SDL_size_add_check_overflow(size_t a, size_t b, size_t *ret)
 {
     if (b > SDL_SIZE_MAX - a) {
-        return -1;
+        return SDL_FALSE;
     }
     *ret = a + b;
-    return 0;
+    return SDL_TRUE;
 }
 
 #ifndef SDL_WIKI_DOCUMENTATION_SECTION
 #if SDL_HAS_BUILTIN(__builtin_add_overflow)
 /* This needs to be wrapped in an inline rather than being a direct #define,
  * the same as the call to __builtin_mul_overflow() above. */
-SDL_FORCE_INLINE int SDL_size_add_overflow_builtin (size_t a,
-                                                     size_t b,
-                                                     size_t *ret)
+SDL_FORCE_INLINE SDL_bool SDL_size_add_check_overflow_builtin(size_t a, size_t b, size_t *ret)
 {
-    return __builtin_add_overflow(a, b, ret) == 0 ? 0 : -1;
+    return (__builtin_add_overflow(a, b, ret) == 0);
 }
-#define SDL_size_add_overflow(a, b, ret) (SDL_size_add_overflow_builtin(a, b, ret))
+#define SDL_size_add_check_overflow(a, b, ret) SDL_size_add_check_overflow_builtin(a, b, ret)
 #endif
 #endif
 

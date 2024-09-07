@@ -38,8 +38,6 @@
 #include "vita/SDL_systhread_c.h"
 #elif defined(SDL_THREAD_N3DS)
 #include "n3ds/SDL_systhread_c.h"
-#elif defined(SDL_THREAD_STDCPP)
-#include "stdcpp/SDL_systhread_c.h"
 #elif defined(SDL_THREAD_AMIGAOS4)
 #include "amigaos4/SDL_systhread_c.h"
 #elif defined(SDL_THREAD_NGAGE)
@@ -100,7 +98,7 @@ extern void SDL_QuitTLSData(void);
  */
 extern void SDL_Generic_InitTLSData(void);
 extern SDL_TLSData *SDL_Generic_GetTLSData(void);
-extern int SDL_Generic_SetTLSData(SDL_TLSData *data);
+extern bool SDL_Generic_SetTLSData(SDL_TLSData *data);
 extern void SDL_Generic_QuitTLSData(void);
 
 #endif // SDL_thread_c_h_

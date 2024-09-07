@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,13 +23,13 @@
 #ifndef _SDL_os4opengles_h
 #define _SDL_os4opengles_h
 
-extern int OS4_GLES_LoadLibrary(SDL_VideoDevice *_this, const char *path);
+extern bool OS4_GLES_LoadLibrary(SDL_VideoDevice *_this, const char *path);
 extern SDL_FunctionPointer OS4_GLES_GetProcAddress(SDL_VideoDevice *_this, const char *proc);
 extern void OS4_GLES_UnloadLibrary(SDL_VideoDevice *_this);
 extern SDL_GLContext OS4_GLES_CreateContext(SDL_VideoDevice *_this, SDL_Window * window);
-extern int OS4_GLES_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext context);
-extern int OS4_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window);
-extern int OS4_GLES_DeleteContext(SDL_VideoDevice *_this, SDL_GLContext context);
+extern bool OS4_GLES_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext context);
+extern bool OS4_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window);
+extern bool OS4_GLES_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context);
 
 extern SDL_bool OS4_GLES_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window);
 extern void OS4_GLES_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window);

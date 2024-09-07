@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -25,7 +25,7 @@
 
 struct SDL_MessageBoxData;
 
-extern int OS4_ShowMessageBox(const SDL_MessageBoxData * messageboxdata, int * buttonid);
+extern bool OS4_ShowMessageBox(const SDL_MessageBoxData * messageboxdata, int * buttonid);
 
 #endif /* _SDL_os4messagebox_h */
 

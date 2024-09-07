@@ -44,7 +44,7 @@ OS4_IsBlendModeSupported(SDL_BlendMode mode)
     }
 }
 
-int
+bool
 OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture, SDL_PropertiesID create_props)
 {
     int bpp;
@@ -82,7 +82,7 @@ OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture, SDL_Properties
 
     texture->internal = texturedata;
 
-    return 0;
+    return true;
 }
 
 static SDL_bool
@@ -103,16 +103,11 @@ OS4_ModulateRGB(SDL_Renderer * renderer, SDL_Texture * texture, Uint8 * src, int
             TAG_DONE);
 
         if (lock) {
-            int y;
-
-            for (y = 0; y < texture->h; y++) {
-
+            for (int y = 0; y < texture->h; y++) {
                 Uint32 *readaddress = (Uint32 *)(src + y * pitch);
                 Uint32 *writeaddress = (Uint32 *)(baseaddress + y * bytesperrow);
 
-                int x;
-
-                for (x = 0; x < texture->w; x++) {
+                for (int x = 0; x < texture->w; x++) {
 
                     Uint32 oldcolor = readaddress[x];
                     Uint32 newcolor = (oldcolor & 0xFF000000);
@@ -156,7 +151,7 @@ OS4_NeedRemodulation(SDL_Texture * texture)
     return SDL_FALSE;
 }
 
-int
+bool
 OS4_SetTextureColorMod(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     /* Modulate only when needed, it's CPU heavy */
@@ -212,10 +207,10 @@ OS4_SetTextureColorMod(SDL_Renderer * renderer, SDL_Texture * texture)
         SDL_FlushRenderer(renderer);
     }
 
-    return 0;
+    return true;
 }
 
-int
+bool
 OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                  const SDL_Rect * rect, const void *pixels, int pitch)
 {
@@ -250,10 +245,10 @@ OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
         }
     }
 
-    return 0;
+    return true;
 }
 
-int
+bool
 OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                const SDL_Rect * rect, void **pixels, int *pitch)
 {
@@ -277,11 +272,11 @@ OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
 
         *pitch = bytesperrow;
 
-        return 0;
-    } else {
-        dprintf("Lock failed\n");
-        return SDL_SetError("Lock failed");
+        return true;
     }
+
+    dprintf("Lock failed\n");
+    return SDL_SetError("Lock failed");
 }
 
 void
@@ -297,7 +292,7 @@ OS4_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     }
 }
 
-int
+bool
 OS4_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
 {
     OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
@@ -311,7 +306,7 @@ OS4_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture)
         data->target = data->bitmap;
         //dprintf("Render target window\n");
     }
-    return 0;
+    return true;
 }
 
 void
