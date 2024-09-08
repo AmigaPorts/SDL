@@ -39,6 +39,7 @@
 #ifndef SDL_pen_h_
 #define SDL_pen_h_
 
+#include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_error.h>
 
 /* Set up for C function definitions, even when using C++ */
@@ -111,4 +112,3 @@ typedef enum SDL_PenAxis
 
 #endif /* SDL_pen_h_ */
 
-/* vi: set ts=4 sw=4 expandtab: */

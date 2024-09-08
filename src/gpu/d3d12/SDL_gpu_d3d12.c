@@ -2470,10 +2470,10 @@ static bool D3D12_INTERNAL_ConvertVertexInputState(SDL_GPUVertexInputState verte
         desc[i].SemanticName = semantic;
         desc[i].SemanticIndex = attribute.location;
         desc[i].Format = SDLToD3D12_VertexFormat[attribute.format];
-        desc[i].InputSlot = attribute.binding;
+        desc[i].InputSlot = attribute.binding_index;
         desc[i].AlignedByteOffset = attribute.offset;
-        desc[i].InputSlotClass = SDLToD3D12_InputRate[vertexInputState.vertex_bindings[attribute.binding].input_rate];
-        desc[i].InstanceDataStepRate = (vertexInputState.vertex_bindings[attribute.binding].input_rate == SDL_GPU_VERTEXINPUTRATE_INSTANCE) ? vertexInputState.vertex_bindings[attribute.binding].instance_step_rate : 0;
+        desc[i].InputSlotClass = SDLToD3D12_InputRate[vertexInputState.vertex_bindings[attribute.binding_index].input_rate];
+        desc[i].InstanceDataStepRate = (vertexInputState.vertex_bindings[attribute.binding_index].input_rate == SDL_GPU_VERTEXINPUTRATE_INSTANCE) ? vertexInputState.vertex_bindings[attribute.binding_index].instance_step_rate : 0;
     }
 
     return true;
@@ -3038,7 +3038,7 @@ static D3D12Buffer *D3D12_INTERNAL_CreateBuffer(
         resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }
 #if (defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES))
-    if (usage & SDL_GPU_BUFFERUSAGE_INDIRECT) {
+    if (usageFlags & SDL_GPU_BUFFERUSAGE_INDIRECT) {
         resourceFlags |= D3D12XBOX_RESOURCE_FLAG_ALLOW_INDIRECT_BUFFER;
     }
 #endif
@@ -3950,9 +3950,15 @@ static void D3D12_BeginRenderPass(
         commandBuffer,
         0);
 
+    SDL_FColor blendConstants;
+    blendConstants.r = 1.0f;
+    blendConstants.g = 1.0f;
+    blendConstants.b = 1.0f;
+    blendConstants.a = 1.0f;
+
     D3D12_SetBlendConstants(
         commandBuffer,
-        (SDL_FColor){ 1.0f, 1.0f, 1.0f, 1.0f });
+        blendConstants);
 }
 
 static void D3D12_INTERNAL_TrackUniformBuffer(
@@ -5822,8 +5828,8 @@ static bool D3D12_SupportsSwapchainComposition(
 {
 #if defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)
     // FIXME: HDR support would be nice to add, but it seems complicated...
-    return swapchain_composition == SDL_GPU_SWAPCHAINCOMPOSITION_SDR ||
-           swapchain_composition == SDL_GPU_SWAPCHAINCOMPOSITION_SDR_LINEAR;
+    return swapchainComposition == SDL_GPU_SWAPCHAINCOMPOSITION_SDR ||
+           swapchainComposition == SDL_GPU_SWAPCHAINCOMPOSITION_SDR_LINEAR;
 #else
     D3D12Renderer *renderer = (D3D12Renderer *)driverData;
     DXGI_FORMAT format;
@@ -5931,7 +5937,7 @@ static bool D3D12_INTERNAL_CreateSwapchain(
 
     // Initialize the swapchain data
     windowData->present_mode = present_mode;
-    windowData->swapchain_composition = swapchain_composition;
+    windowData->swapchainComposition = swapchain_composition;
     windowData->swapchainColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
     windowData->frameCounter = 0;
     windowData->swapchainWidth = width;
@@ -5993,7 +5999,7 @@ static bool D3D12_INTERNAL_ResizeSwapchainIfNeeded(
         D3D12_INTERNAL_CreateSwapchain(
             renderer,
             windowData,
-            windowData->swapchain_composition,
+            windowData->swapchainComposition,
             windowData->present_mode);
     }
 
@@ -7519,7 +7525,7 @@ static void D3D12_INTERNAL_InitBlitResources(
     }
 }
 
-static bool D3D12_PrepareDriver(SDL_VideoDevice *this)
+static bool D3D12_PrepareDriver(SDL_VideoDevice *_this)
 {
 #if defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)
     return true;
@@ -7916,7 +7922,7 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
 #if defined(SDL_PLATFORM_XBOXSERIES)
         createDeviceParams.DisableDXR = TRUE;
 #endif
-        if (debug_mode) {
+        if (debugMode) {
             createDeviceParams.ProcessDebugFlags = D3D12XBOX_PROCESS_DEBUG_FLAG_DEBUG;
         }
 

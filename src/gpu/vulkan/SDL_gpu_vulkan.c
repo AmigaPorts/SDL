@@ -4461,17 +4461,17 @@ static bool VULKAN_INTERNAL_CreateSwapchain(
     bool hasValidSwapchainComposition, hasValidPresentMode;
     Sint32 drawableWidth, drawableHeight;
     Uint32 i;
-    SDL_VideoDevice *this = SDL_GetVideoDevice();
+    SDL_VideoDevice *_this = SDL_GetVideoDevice();
 
-    SDL_assert(this && this->Vulkan_CreateSurface);
+    SDL_assert(_this && _this->Vulkan_CreateSurface);
 
     swapchainData = SDL_malloc(sizeof(VulkanSwapchainData));
     swapchainData->frameCounter = 0;
 
     // Each swapchain must have its own surface.
 
-    if (!this->Vulkan_CreateSurface(
-            this,
+    if (!_this->Vulkan_CreateSurface(
+            _this,
             windowData->window,
             renderer->instance,
             NULL, // FIXME: VAllocationCallbacks
@@ -6483,7 +6483,7 @@ static SDL_GPUGraphicsPipeline *VULKAN_CreateGraphicsPipeline(
     // Vertex input
 
     for (i = 0; i < createinfo->vertex_input_state.num_vertex_bindings; i += 1) {
-        vertexInputBindingDescriptions[i].binding = createinfo->vertex_input_state.vertex_bindings[i].binding;
+        vertexInputBindingDescriptions[i].binding = createinfo->vertex_input_state.vertex_bindings[i].index;
         vertexInputBindingDescriptions[i].inputRate = SDLToVK_VertexInputRate[createinfo->vertex_input_state.vertex_bindings[i].input_rate];
         vertexInputBindingDescriptions[i].stride = createinfo->vertex_input_state.vertex_bindings[i].pitch;
 
@@ -6493,7 +6493,7 @@ static SDL_GPUGraphicsPipeline *VULKAN_CreateGraphicsPipeline(
     }
 
     for (i = 0; i < createinfo->vertex_input_state.num_vertex_attributes; i += 1) {
-        vertexInputAttributeDescriptions[i].binding = createinfo->vertex_input_state.vertex_attributes[i].binding;
+        vertexInputAttributeDescriptions[i].binding = createinfo->vertex_input_state.vertex_attributes[i].binding_index;
         vertexInputAttributeDescriptions[i].format = SDLToVK_VertexFormat[createinfo->vertex_input_state.vertex_attributes[i].format];
         vertexInputAttributeDescriptions[i].location = createinfo->vertex_input_state.vertex_attributes[i].location;
         vertexInputAttributeDescriptions[i].offset = createinfo->vertex_input_state.vertex_attributes[i].offset;
@@ -6512,7 +6512,7 @@ static SDL_GPUGraphicsPipeline *VULKAN_CreateGraphicsPipeline(
 
         for (i = 0; i < createinfo->vertex_input_state.num_vertex_bindings; i += 1) {
             if (createinfo->vertex_input_state.vertex_bindings[i].input_rate == SDL_GPU_VERTEXINPUTRATE_INSTANCE) {
-                divisorDescriptions[divisorDescriptionCount].binding = createinfo->vertex_input_state.vertex_bindings[i].binding;
+                divisorDescriptions[divisorDescriptionCount].binding = createinfo->vertex_input_state.vertex_bindings[i].index;
                 divisorDescriptions[divisorDescriptionCount].divisor = createinfo->vertex_input_state.vertex_bindings[i].instance_step_rate;
 
                 divisorDescriptionCount += 1;
@@ -7863,6 +7863,7 @@ static void VULKAN_BeginRenderPass(
     Uint32 i;
     SDL_GPUViewport defaultViewport;
     SDL_Rect defaultScissor;
+    SDL_FColor defaultBlendConstants;
     Uint32 framebufferWidth = UINT32_MAX;
     Uint32 framebufferHeight = UINT32_MAX;
 
@@ -8056,9 +8057,14 @@ static void VULKAN_BeginRenderPass(
         vulkanCommandBuffer,
         &defaultScissor);
 
+    defaultBlendConstants.r = 1.0f;
+    defaultBlendConstants.g = 1.0f;
+    defaultBlendConstants.b = 1.0f;
+    defaultBlendConstants.a = 1.0f;
+
     VULKAN_INTERNAL_SetCurrentBlendConstants(
         vulkanCommandBuffer,
-        (SDL_FColor){ 1.0f, 1.0f, 1.0f, 1.0f });
+        defaultBlendConstants);
 
     VULKAN_INTERNAL_SetCurrentStencilReference(
         vulkanCommandBuffer,
@@ -11623,13 +11629,13 @@ static bool VULKAN_INTERNAL_PrepareVulkan(
     return true;
 }
 
-static bool VULKAN_PrepareDriver(SDL_VideoDevice *this)
+static bool VULKAN_PrepareDriver(SDL_VideoDevice *_this)
 {
     // Set up dummy VulkanRenderer
     VulkanRenderer *renderer;
     Uint8 result;
 
-    if (this->Vulkan_CreateSurface == NULL) {
+    if (_this->Vulkan_CreateSurface == NULL) {
         return false;
     }
 
