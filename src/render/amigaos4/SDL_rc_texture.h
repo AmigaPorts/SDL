@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -34,18 +34,18 @@ typedef struct
     Uint8 *rambuf; /* Work buffer for color modulation */
 } OS4_TextureData;
 
-extern int OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture, SDL_PropertiesID create_props);
+extern bool OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture, SDL_PropertiesID create_props);
 
-extern int OS4_SetTextureColorMod(SDL_Renderer * renderer,
+extern bool OS4_SetTextureColorMod(SDL_Renderer * renderer,
                                  SDL_Texture * texture);
 
-extern int OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
+extern bool OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                             const SDL_Rect * rect, const void *pixels,
                             int pitch);
 
-extern int OS4_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture);
+extern bool OS4_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture);
 
-extern int OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
+extern bool OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                           const SDL_Rect * rect, void **pixels, int *pitch);
 
 extern void OS4_UnlockTexture(SDL_Renderer * renderer, SDL_Texture * texture);

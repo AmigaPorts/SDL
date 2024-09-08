@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,8 +23,8 @@
 #ifndef _SDL_os4framebuffer_h
 #define _SDL_os4framebuffer_h
 
-extern int OS4_CreateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, Uint32 * format, void ** pixels, int *pitch);
-extern int OS4_UpdateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, const SDL_Rect * rects, int numrects);
+extern bool OS4_CreateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, Uint32 * format, void ** pixels, int *pitch);
+extern bool OS4_UpdateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, const SDL_Rect * rects, int numrects);
 extern void OS4_DestroyWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window);
 
 #endif /* _SDL_os4framebuffer_h */

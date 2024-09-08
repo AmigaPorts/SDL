@@ -127,7 +127,7 @@ OS4_UnlockPubScreen(SDL_VideoDevice *_this)
     }
 }
 
-int
+bool
 OS4_InitModes(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->internal;
@@ -152,7 +152,7 @@ OS4_InitModes(SDL_VideoDevice *_this)
     if (!OS4_GetDisplayMode(modeid, &current_mode)) {
         dprintf("Failed to get display mode for %d\n", modeid);
         SDL_free(displaydata);
-        return SDL_SetError("Couldn't get display mode\n");
+        return SDL_SetError("Couldn't get display mode");
     }
 
     /* OS4 has no multi-monitor support */
@@ -164,10 +164,10 @@ OS4_InitModes(SDL_VideoDevice *_this)
 
     SDL_AddVideoDisplay(&display, SDL_FALSE);
 
-    return 0;
+    return true;
 }
 
-int
+bool
 OS4_GetDisplayBounds(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_Rect * rect)
 {
     SDL_DisplayModeData *data = (SDL_DisplayModeData *) display->current_mode->internal;
@@ -179,10 +179,10 @@ OS4_GetDisplayBounds(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_Rec
 
     dprintf("x=%d, y=%d, w=%d, h=%d\n", rect->x, rect->y, rect->w, rect->h);
 
-    return 0;
+    return true;
 }
 
-int
+bool
 OS4_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay * display)
 {
     SDL_DisplayMode mode;
@@ -201,10 +201,10 @@ OS4_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay * display)
             }
         } else {
             dprintf("Failed to get display mode for %d\n", id);
-            return -1;
+            return false;
         }
     }
-    return 0;
+    return true;
 }
 
 void
@@ -230,7 +230,7 @@ OS4_CloseScreen(SDL_VideoDevice *_this, struct Screen * screen)
     }
 }
 
-int
+bool
 OS4_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
 {
     SDL_VideoData *driverdata = (SDL_VideoData *) _this->internal;
@@ -244,7 +244,7 @@ OS4_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_Displ
         dprintf("Desktop mode passed\n");
 
         //TODO: should we check the current display ID and reopen the screen when needed?
-        return 0;
+        return true;
     }
 
     displaydata->screen = IIntuition->OpenScreenTags(NULL,
@@ -289,14 +289,14 @@ OS4_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_Displ
                 SDL_SetError("OpenScreen failed");
                 break;
         }
-        return -1;
+        return false;
     }
 
     // Paint it black (it helps in cases where window doesn't fill the screen)
     // ...do we need a backfill hook?
     IGraphics->RectFillColor(&displaydata->screen->RastPort, 0, 0, mode->w - 1, mode->h - 1, 0xFF000000);
 
-    return 0;
+    return true;
 }
 
 void

@@ -11,7 +11,7 @@
  * Call to SDL_strnlen
  */
 #undef SDL_strnlen
-static int stdlib_strnlen(void *arg)
+static int SDLCALL stdlib_strnlen(void *arg)
 {
     size_t result;
     char *text_result;
@@ -39,7 +39,7 @@ static int stdlib_strnlen(void *arg)
  * Call to SDL_strlcpy
  */
 #undef SDL_strlcpy
-static int stdlib_strlcpy(void *arg)
+static int SDLCALL stdlib_strlcpy(void *arg)
 {
     size_t result;
     char text[1024];
@@ -63,7 +63,7 @@ static int stdlib_strlcpy(void *arg)
 /**
  * Call to SDL_strstr
  */
-static int stdlib_strstr(void *arg)
+static int SDLCALL stdlib_strstr(void *arg)
 {
     char *result;
     const char *text = "abcdef";
@@ -136,7 +136,7 @@ static int stdlib_strstr(void *arg)
  * Call to SDL_snprintf
  */
 #undef SDL_snprintf
-static int stdlib_snprintf(void *arg)
+static int SDLCALL stdlib_snprintf(void *arg)
 {
     int result;
     int predicted;
@@ -382,7 +382,7 @@ static int stdlib_snprintf(void *arg)
  * Call to SDL_swprintf
  */
 #undef SDL_swprintf
-static int stdlib_swprintf(void *arg)
+static int SDLCALL stdlib_swprintf(void *arg)
 {
     int result;
     int predicted;
@@ -548,7 +548,7 @@ static int stdlib_swprintf(void *arg)
 /**
  * Call to SDL_getenv and SDL_setenv
  */
-static int stdlib_getsetenv(void *arg)
+static int SDLCALL stdlib_getsetenv(void *arg)
 {
     const int nameLen = 16;
     char name[17];
@@ -721,7 +721,7 @@ static int stdlib_getsetenv(void *arg)
  * Call to SDL_sscanf
  */
 #undef SDL_sscanf
-static int stdlib_sscanf(void *arg)
+static int SDLCALL stdlib_sscanf(void *arg)
 {
     int output;
     int result;
@@ -889,7 +889,7 @@ static int stdlib_sscanf(void *arg)
 /**
  * Call to SDL_aligned_alloc
  */
-static int stdlib_aligned_alloc(void *arg)
+static int SDLCALL stdlib_aligned_alloc(void *arg)
 {
     size_t i, alignment;
     void *ptr;
@@ -917,35 +917,35 @@ typedef struct
     size_t a;
     size_t b;
     size_t result;
-    int status;
+    SDL_bool status;
 } overflow_test;
 
 static const overflow_test multiplications[] = {
-    { 1, 1, 1, 0 },
-    { 0, 0, 0, 0 },
-    { SDL_SIZE_MAX, 0, 0, 0 },
-    { SDL_SIZE_MAX, 1, SDL_SIZE_MAX, 0 },
-    { SDL_SIZE_MAX / 2, 2, SDL_SIZE_MAX - (SDL_SIZE_MAX % 2), 0 },
-    { SDL_SIZE_MAX / 23, 23, SDL_SIZE_MAX - (SDL_SIZE_MAX % 23), 0 },
+    { 1, 1, 1, SDL_TRUE },
+    { 0, 0, 0, SDL_TRUE },
+    { SDL_SIZE_MAX, 0, 0, SDL_TRUE },
+    { SDL_SIZE_MAX, 1, SDL_SIZE_MAX, SDL_TRUE },
+    { SDL_SIZE_MAX / 2, 2, SDL_SIZE_MAX - (SDL_SIZE_MAX % 2), SDL_TRUE },
+    { SDL_SIZE_MAX / 23, 23, SDL_SIZE_MAX - (SDL_SIZE_MAX % 23), SDL_TRUE },
 
-    { (SDL_SIZE_MAX / 2) + 1, 2, 0, -1 },
-    { (SDL_SIZE_MAX / 23) + 42, 23, 0, -1 },
-    { SDL_SIZE_MAX, SDL_SIZE_MAX, 0, -1 },
+    { (SDL_SIZE_MAX / 2) + 1, 2, 0, SDL_FALSE },
+    { (SDL_SIZE_MAX / 23) + 42, 23, 0, SDL_FALSE },
+    { SDL_SIZE_MAX, SDL_SIZE_MAX, 0, SDL_FALSE },
 };
 
 static const overflow_test additions[] = {
-    { 1, 1, 2, 0 },
-    { 0, 0, 0, 0 },
-    { SDL_SIZE_MAX, 0, SDL_SIZE_MAX, 0 },
-    { SDL_SIZE_MAX - 1, 1, SDL_SIZE_MAX, 0 },
-    { SDL_SIZE_MAX - 42, 23, SDL_SIZE_MAX - (42 - 23), 0 },
+    { 1, 1, 2, SDL_TRUE },
+    { 0, 0, 0, SDL_TRUE },
+    { SDL_SIZE_MAX, 0, SDL_SIZE_MAX, SDL_TRUE },
+    { SDL_SIZE_MAX - 1, 1, SDL_SIZE_MAX, SDL_TRUE },
+    { SDL_SIZE_MAX - 42, 23, SDL_SIZE_MAX - (42 - 23), SDL_TRUE },
 
-    { SDL_SIZE_MAX, 1, 0, -1 },
-    { SDL_SIZE_MAX, 23, 0, -1 },
-    { SDL_SIZE_MAX, SDL_SIZE_MAX, 0, -1 },
+    { SDL_SIZE_MAX, 1, 0, SDL_FALSE },
+    { SDL_SIZE_MAX, 23, 0, SDL_FALSE },
+    { SDL_SIZE_MAX, SDL_SIZE_MAX, 0, SDL_FALSE },
 };
 
-static int
+static int SDLCALL
 stdlib_overflow(void *arg)
 {
     size_t i;
@@ -964,22 +964,22 @@ stdlib_overflow(void *arg)
             size_t result = ~t->result;
 
             if (useBuiltin) {
-                status = SDL_size_mul_overflow(t->a, t->b, &result);
+                status = SDL_size_mul_check_overflow(t->a, t->b, &result);
             } else {
                 /* This disables the macro that tries to use a gcc/clang
                  * builtin, so we test the fallback implementation instead. */
-                status = (SDL_size_mul_overflow)(t->a, t->b, &result);
+                status = (SDL_size_mul_check_overflow)(t->a, t->b, &result);
             }
 
-            if (t->status == 0) {
-                SDLTest_AssertCheck(status == 0,
+            if (t->status) {
+                SDLTest_AssertCheck(status,
                                     "(%" SIZE_FORMAT " * %" SIZE_FORMAT ") should succeed",
                                     t->a, t->b);
                 SDLTest_AssertCheck(result == t->result,
                                     "(%" SIZE_FORMAT " * %" SIZE_FORMAT "): expected %" SIZE_FORMAT ", got %" SIZE_FORMAT,
                                     t->a, t->b, t->result, result);
             } else {
-                SDLTest_AssertCheck(status == -1,
+                SDLTest_AssertCheck(!status,
                                     "(%" SIZE_FORMAT " * %" SIZE_FORMAT ") should fail",
                                     t->a, t->b);
             }
@@ -991,20 +991,20 @@ stdlib_overflow(void *arg)
             result = ~t->result;
 
             if (useBuiltin) {
-                status = SDL_size_mul_overflow(t->b, t->a, &result);
+                status = SDL_size_mul_check_overflow(t->b, t->a, &result);
             } else {
-                status = (SDL_size_mul_overflow)(t->b, t->a, &result);
+                status = (SDL_size_mul_check_overflow)(t->b, t->a, &result);
             }
 
-            if (t->status == 0) {
-                SDLTest_AssertCheck(status == 0,
+            if (t->status) {
+                SDLTest_AssertCheck(status,
                                     "(%" SIZE_FORMAT " * %" SIZE_FORMAT ") should succeed",
                                     t->b, t->a);
                 SDLTest_AssertCheck(result == t->result,
                                     "(%" SIZE_FORMAT " * %" SIZE_FORMAT "): expected %" SIZE_FORMAT ", got %" SIZE_FORMAT,
                                     t->b, t->a, t->result, result);
             } else {
-                SDLTest_AssertCheck(status == -1,
+                SDLTest_AssertCheck(!status,
                                     "(%" SIZE_FORMAT " * %" SIZE_FORMAT ") should fail",
                                     t->b, t->a);
             }
@@ -1012,24 +1012,24 @@ stdlib_overflow(void *arg)
 
         for (i = 0; i < SDL_arraysize(additions); i++) {
             const overflow_test *t = &additions[i];
-            int status;
+            SDL_bool status;
             size_t result = ~t->result;
 
             if (useBuiltin) {
-                status = SDL_size_add_overflow(t->a, t->b, &result);
+                status = SDL_size_add_check_overflow(t->a, t->b, &result);
             } else {
-                status = (SDL_size_add_overflow)(t->a, t->b, &result);
+                status = (SDL_size_add_check_overflow)(t->a, t->b, &result);
             }
 
-            if (t->status == 0) {
-                SDLTest_AssertCheck(status == 0,
+            if (t->status) {
+                SDLTest_AssertCheck(status,
                                     "(%" SIZE_FORMAT " + %" SIZE_FORMAT ") should succeed",
                                     t->a, t->b);
                 SDLTest_AssertCheck(result == t->result,
                                     "(%" SIZE_FORMAT " + %" SIZE_FORMAT "): expected %" SIZE_FORMAT ", got %" SIZE_FORMAT,
                                     t->a, t->b, t->result, result);
             } else {
-                SDLTest_AssertCheck(status == -1,
+                SDLTest_AssertCheck(!status,
                                     "(%" SIZE_FORMAT " + %" SIZE_FORMAT ") should fail",
                                     t->a, t->b);
             }
@@ -1041,20 +1041,20 @@ stdlib_overflow(void *arg)
             result = ~t->result;
 
             if (useBuiltin) {
-                status = SDL_size_add_overflow(t->b, t->a, &result);
+                status = SDL_size_add_check_overflow(t->b, t->a, &result);
             } else {
-                status = (SDL_size_add_overflow)(t->b, t->a, &result);
+                status = (SDL_size_add_check_overflow)(t->b, t->a, &result);
             }
 
-            if (t->status == 0) {
-                SDLTest_AssertCheck(status == 0,
+            if (t->status) {
+                SDLTest_AssertCheck(status,
                                     "(%" SIZE_FORMAT " + %" SIZE_FORMAT ") should succeed",
                                     t->b, t->a);
                 SDLTest_AssertCheck(result == t->result,
                                     "(%" SIZE_FORMAT " + %" SIZE_FORMAT "): expected %" SIZE_FORMAT ", got %" SIZE_FORMAT,
                                     t->b, t->a, t->result, result);
             } else {
-                SDLTest_AssertCheck(status == -1,
+                SDLTest_AssertCheck(!status,
                                     "(%" SIZE_FORMAT " + %" SIZE_FORMAT ") should fail",
                                     t->b, t->a);
             }
@@ -1072,7 +1072,7 @@ static void format_for_description(char *buffer, size_t buflen, const char *text
     }
 }
 
-static int
+static int SDLCALL
 stdlib_iconv(void *arg)
 {
     struct {
@@ -1188,6 +1188,46 @@ stdlib_iconv(void *arg)
     return TEST_COMPLETED;
 }
 
+
+static int SDLCALL
+stdlib_strpbrk(void *arg)
+{
+    struct {
+        const char *input;
+        const char *accept;
+        int expected[3]; /* negative if NULL */
+    } test_cases[] = {
+        { "",               "",             { -1, -1, -1  } },
+        { "abc",            "",             { -1, -1, -1  } },
+        { "Abc",            "a",            { -1, -1, -1  } },
+        { "abc",            "a",            {  0, -1, -1  } },
+        { "abcbd",          "bbbb",         {  1,  3, -1  } },
+        { "a;b;c",          ";",            {  1,  3, -1  } },
+        { "a;b;c",          ",",            { -1, -1, -1  } },
+        { "a:bbbb;c",       ";:",           {  1,  6, -1  } },
+        { "Hello\tS DL\n",   " \t\r\n",     {  5,  7,  10 } },
+    };
+    int i;
+
+    for (i = 0; i < SDL_arraysize(test_cases); i++) {
+        int j;
+        const char *input = test_cases[i].input;
+
+        for (j = 0; j < SDL_arraysize(test_cases[i].expected); j++) {
+            char *result;
+
+            SDLTest_AssertPass("About to call SDL_strpbrk(\"%s\", \"%s\")", input, test_cases[i].accept);
+            result = SDL_strpbrk(input, test_cases[i].accept);
+            if (test_cases[i].expected[j] < 0) {
+                SDLTest_AssertCheck(result == NULL, "Expected NULL, got %p", result);
+            } else {
+                SDLTest_AssertCheck(result == test_cases[i].input + test_cases[i].expected[j], "Expected %p, got %p", test_cases[i].input + test_cases[i].expected[j], result);
+                input = test_cases[i].input + test_cases[i].expected[j] + 1;
+            }
+        }
+    }
+    return TEST_COMPLETED;
+}
 /* ================= Test References ================== */
 
 /* Standard C routine test cases */
@@ -1227,8 +1267,12 @@ static const SDLTest_TestCaseReference stdlibTestOverflow = {
     stdlib_overflow, "stdlib_overflow", "Overflow detection", TEST_ENABLED
 };
 
-static const SDLTest_TestCaseReference stdlibIconv = {
-    stdlib_iconv, "stdlib_iconv", "Calls to iconv", TEST_ENABLED
+static const SDLTest_TestCaseReference stdlibTest_iconv = {
+    stdlib_iconv, "stdlib_iconv", "Calls to SDL_iconv", TEST_ENABLED
+};
+
+static const SDLTest_TestCaseReference stdlibTest_strpbrk = {
+    stdlib_strpbrk, "stdlib_strpbrk", "Calls to SDL_strpbrk", TEST_ENABLED
 };
 
 /* Sequence of Standard C routine test cases */
@@ -1242,7 +1286,8 @@ static const SDLTest_TestCaseReference *stdlibTests[] = {
     &stdlibTest_sscanf,
     &stdlibTest_aligned_alloc,
     &stdlibTestOverflow,
-    &stdlibIconv,
+    &stdlibTest_iconv,
+    &stdlibTest_strpbrk,
     NULL
 };
 

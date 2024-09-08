@@ -26,13 +26,13 @@
 #include "SDL_vitamessagebox.h"
 #include <psp2/message_dialog.h>
 
-#if SDL_VIDEO_RENDER_VITA_GXM
+#ifdef SDL_VIDEO_RENDER_VITA_GXM
 #include "../../render/vitagxm/SDL_render_vita_gxm_tools.h"
 #endif // SDL_VIDEO_RENDER_VITA_GXM
 
-int VITA_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
+bool VITA_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
 {
-#if SDL_VIDEO_RENDER_VITA_GXM
+#ifdef SDL_VIDEO_RENDER_VITA_GXM
     SceMsgDialogParam param;
     SceMsgDialogUserMessageParam msgParam;
     SceMsgDialogButtonsParam buttonParam;
@@ -44,7 +44,7 @@ int VITA_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
     bool setup_minimal_gxm = false;
 
     if (messageboxdata->numbuttons > 3) {
-        return -1;
+        return false;
     }
 
     SDL_zero(param);
@@ -105,7 +105,7 @@ int VITA_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
         }
         sceMsgDialogTerm();
     } else {
-        return -1;
+        return false;
     }
 
     gxm_term_for_common_dialog();
@@ -114,12 +114,12 @@ int VITA_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
         gxm_minimal_term_for_common_dialog();
     }
 
-    return 0;
+    return true;
 #else
     (void)messageboxdata;
     (void)buttonID;
-    return -1;
-#endif
+    return SDL_Unsupported();
+#endif // SDL_VIDEO_RENDER_VITA_GXM
 }
 
 #endif // SDL_VIDEO_DRIVER_VITA

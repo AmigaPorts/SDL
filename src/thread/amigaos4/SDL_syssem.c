@@ -108,7 +108,7 @@ SDL_DestroySemaphore(SDL_Semaphore * sem)
     }
 }
 
-int
+bool
 SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore * sem, Sint64 timeout)
 {
     if (!sem) {
@@ -139,7 +139,7 @@ SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore * sem, Sint64 timeout)
             if (timeout == 0) {
                 //dprintf("Semaphore %p trying timed out\n", sem);
                 IExec->MutexRelease(sem->mutex);
-                return SDL_MUTEX_TIMEDOUT;
+                return SDL_SetError("Timed out");
             }
 
             node.task = task;
@@ -159,12 +159,12 @@ SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore * sem, Sint64 timeout)
 
             if (signals & BREAK_SIGNAL) {
                 dprintf("Semaphore %p interrupted\n", sem);
-                return SDL_MUTEX_TIMEDOUT;
+                return SDL_SetError("Timed out");
             }
 
             if (signals & alarmSignal) {
                 //dprintf("Semaphore %p timer triggered\n");
-                return SDL_MUTEX_TIMEDOUT;
+                return SDL_SetError("Timed out");
             }
 
             if (signals & MUTEX_SIGNAL) {
@@ -179,7 +179,7 @@ SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore * sem, Sint64 timeout)
 
     //dprintf("Semaphore %p obtained\n", sem);
 
-    return 0;
+    return true;
 }
 
 /* Returns the current count of the semaphore */
@@ -193,11 +193,11 @@ SDL_GetSemaphoreValue(SDL_Semaphore * sem)
     return (Uint32)sem->count;
 }
 
-int
+void
 SDL_SignalSemaphore(SDL_Semaphore * sem)
 {
     if (!sem) {
-        return SDL_SetError("Passed a NULL sem");
+        return;
     }
 
     //dprintf("Called\n");
@@ -216,8 +216,6 @@ SDL_SignalSemaphore(SDL_Semaphore * sem)
     IExec->MutexRelease(sem->mutex);
 
     dprintf("Semaphore %p value %u\n", sem, sem->count);
-
-    return 0;
 }
 
 #endif /* SDL_THREAD_AMIGAOS4 */

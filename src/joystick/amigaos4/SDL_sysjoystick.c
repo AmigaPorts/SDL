@@ -169,10 +169,7 @@ AMIGAINPUT_CloseLibrary(void)
     OS4_CloseLibrary(&SDL_AIN_Base);
 }
 
-/* Function to scan the system for joysticks.
- * It should return 0, or -1 on an unrecoverable fatal error.
- */
-static int
+static bool
 AMIGAINPUT_Init(void)
 {
     if (AMIGAINPUT_OpenLibrary()) {
@@ -199,13 +196,13 @@ AMIGAINPUT_Init(void)
                 }
             }
 
-            return 0;
+            return true;
         } else {
             dprintf("Failed to create AmigaInput context\n");
         }
     }
 
-    return -1;
+    return false;
 }
 
 static int
@@ -282,12 +279,7 @@ AMIGAINPUT_SwapAxis(struct joystick_hwdata * hwdata, int a, int b)
     strlcpy(hwdata->axisName[b], tmpstr, 32);
 }
 
-/* Function to open a joystick for use.
-   The joystick to open is specified by the index field of the joystick.
-   This should fill the nbuttons and naxes fields of the joystick structure.
-   It returns 0, or -1 if there is an error.
- */
-static int
+static bool
 AMIGAINPUT_Open(SDL_Joystick * joystick, int device_index)
 {
     const AIN_DeviceID id = joystickData.ids[joystick->instance_id - 1].id;
@@ -358,7 +350,7 @@ AMIGAINPUT_Open(SDL_Joystick * joystick, int device_index)
 
             if (result) {
                 dprintf("Successful\n");
-                return 0;
+                return true;
             }
         }
 
@@ -368,7 +360,7 @@ AMIGAINPUT_Open(SDL_Joystick * joystick, int device_index)
     SDL_SetError("Failed to open device\n");
     dprintf("Failed\n");
 
-    return -1;
+    return false;
 }
 
 /* Function to update the state of a joystick - called as a device poll.
@@ -492,35 +484,35 @@ AMIGAINPUT_GetDeviceGUID(int device_index)
                                   data);
 }
 
-static int
+static bool
 AMIGAINPUT_Rumble(SDL_Joystick * joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble)
 {
     dprintf("Called\n");
     return SDL_Unsupported();
 }
 
-static int
+static bool
 AMIGAINPUT_RumbleTriggers(SDL_Joystick * joystick, Uint16 left_rumble, Uint16 right_rumble)
 {
     dprintf("Called\n");
     return SDL_Unsupported();
 }
 
-static int
+static bool
 AMIGAINPUT_SetLED(SDL_Joystick * joystick, Uint8 red, Uint8 green, Uint8 blue)
 {
     dprintf("Called\n");
     return SDL_Unsupported();
 }
 
-static int
+static bool
 AMIGAINPUT_SendEffect(SDL_Joystick *joystick, const void *data, int size)
 {
     dprintf("Called\n");
     return SDL_Unsupported();
 }
 
-static int
+static bool
 AMIGAINPUT_SetSensorsEnabled(SDL_Joystick * joystick, SDL_bool enabled)
 {
     dprintf("Called\n");
@@ -531,7 +523,7 @@ static SDL_bool
 AMIGAINPUT_GetGamepadMapping(int device_index, SDL_GamepadMapping * out)
 {
     dprintf("Called\n");
-    return SDL_FALSE;
+    return SDL_Unsupported();
 }
 
 SDL_JoystickDriver SDL_AMIGAINPUT_JoystickDriver =

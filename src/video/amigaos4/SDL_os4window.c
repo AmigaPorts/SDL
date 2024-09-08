@@ -174,7 +174,7 @@ OS4_CreateAppWindow(SDL_VideoDevice *_this, SDL_Window * window)
     }
 }
 
-static int
+static bool
 OS4_SetupWindowData(SDL_Window * sdlwin, struct Window * syswin)
 {
     SDL_WindowData *data;
@@ -212,7 +212,7 @@ OS4_SetupWindowData(SDL_Window * sdlwin, struct Window * syswin)
         SDL_SetPointerProperty(props, "SDL.window.amigaos4.window", data->syswin);
     }
 
-    return 0;
+    return true;
 }
 
 static uint32
@@ -563,7 +563,7 @@ OS4_CreateControls(SDL_VideoDevice *_this, SDL_Window *window)
     OS4_CreateMenu(window);
 }
 
-int
+bool
 OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID create_props)
 {
     struct Window *syswin = (struct Window *)SDL_GetPointerProperty(create_props, "amigaos4.window",
@@ -578,8 +578,8 @@ OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID c
             window->title = SDL_strdup(syswin->Title);
         }
 
-        if (OS4_SetupWindowData(window, syswin) < 0) {
-            return -1;
+        if (!OS4_SetupWindowData(window, syswin)) {
+            return false;
         }
     } else {
         if (OS4_IsFullscreen(window)) {
@@ -592,7 +592,7 @@ OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID c
             }
         }
 
-        if (OS4_SetupWindowData(window, syswin) < 0) {
+        if (!OS4_SetupWindowData(window, syswin)) {
             // There is no AppWindow in this scenario
             OS4_CloseSystemWindow(_this, syswin);
             return SDL_SetError("Failed to setup window data");
@@ -601,7 +601,7 @@ OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID c
         OS4_CreateControls(_this, window);
     }
 
-    return 0;
+    return true;
 }
 
 void
@@ -641,7 +641,7 @@ OS4_SetWindowBox(SDL_VideoDevice *_this, SDL_Window * window, SDL_Rect * rect)
     }
 }
 
-int
+bool
 OS4_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window * window)
 {
     dprintf("New window position %d, %d\n", window->floating.x, window->floating.y);
@@ -652,7 +652,7 @@ OS4_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window * window)
         window->floating.x,
         window->floating.y);
 
-    return 0;
+    return true;
 }
 
 void
@@ -821,7 +821,7 @@ OS4_DecodeFullscreenOp(SDL_FullscreenOp fullscreen)
 }
 #endif
 
-int
+SDL_FullscreenResult
 OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDisplay * display, SDL_FullscreenOp fullscreen)
 {
     // TODO: SDL_FULLSCREEN_OP_UPDATE
@@ -846,7 +846,7 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
                 if (displayData->screen && data->syswin) {
                     if (data->syswin->WScreen == displayData->screen) {
                         dprintf("Same screen, useless mode change ignored\n");
-                        return 0;
+                        return SDL_FULLSCREEN_SUCCEEDED;
                     }
                 }
             }
@@ -909,11 +909,11 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
         }
     }
 
-    return 0;
+    return SDL_FULLSCREEN_SUCCEEDED;
 }
 
 // This may be called from os4events.c
-int
+bool
 OS4_SetWindowGrabPrivate(SDL_VideoDevice *_this, struct Window * w, SDL_bool activate)
 {
     if (w) {
@@ -947,14 +947,14 @@ OS4_SetWindowGrabPrivate(SDL_VideoDevice *_this, struct Window * w, SDL_bool act
         } else {
             dprintf("Window %p ('%s') input was %s\n",
                 w, w->Title, activate ? "grabbed" : "released");
-	    return 0;
+	    return true;
         }
     }
 
-    return -1;
+    return false;
 }
 
-int
+bool
 OS4_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window * window, SDL_bool grabbed)
 {
     SDL_WindowData *data = window->internal;
@@ -991,13 +991,13 @@ OS4_DestroyWindow(SDL_VideoDevice *_this, SDL_Window * window)
     window->internal = NULL;
 }
 
-int
+bool
 OS4_SetWindowHitTest(SDL_Window * window, SDL_bool enabled)
 {
-    return 0; // just succeed, the real work is done elsewhere
+    return true; // just succeed, the real work is done elsewhere
 }
 
-static SDL_bool
+static bool
 OS4_SetWindowOpacityPrivate(struct Window * window, const UBYTE value)
 {
     const LONG ret = IIntuition->SetWindowAttrs(
@@ -1007,13 +1007,13 @@ OS4_SetWindowOpacityPrivate(struct Window * window, const UBYTE value)
 
     if (ret) {
         dprintf("Failed to set window opaqueness to %u\n", value);
-        return SDL_FALSE;
+        return false;
     }
 
-    return SDL_TRUE;
+    return true;
 }
 
-int
+bool
 OS4_SetWindowOpacity(SDL_VideoDevice *_this, SDL_Window * window, float opacity)
 {
     struct Window *syswin = ((SDL_WindowData *) window->internal)->syswin;
@@ -1022,10 +1022,10 @@ OS4_SetWindowOpacity(SDL_VideoDevice *_this, SDL_Window * window, float opacity)
 
     dprintf("Setting window '%s' opaqueness to %u\n", window->title, value);
 
-    return OS4_SetWindowOpacityPrivate(syswin, value) ? 0 : -1;
+    return OS4_SetWindowOpacityPrivate(syswin, value);
 }
 
-int
+bool
 OS4_GetWindowBordersSize(SDL_VideoDevice *_this, SDL_Window * window, int * top, int * left, int * bottom, int * right)
 {
     struct Window *syswin = ((SDL_WindowData *) window->internal)->syswin;
@@ -1046,7 +1046,7 @@ OS4_GetWindowBordersSize(SDL_VideoDevice *_this, SDL_Window * window, int * top,
         *right = syswin->BorderRight;
     }
 
-    return 0;
+    return true;
 }
 
 void
@@ -1285,7 +1285,7 @@ void OS4_FlashWindowPrivate(struct Window * window)
     OS4_SetWindowOpacityPrivate(window, opacity);
 }
 
-int
+bool
 OS4_FlashWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_FlashOperation operation)
 {
     SDL_WindowData *data = window->internal;
@@ -1300,7 +1300,7 @@ OS4_FlashWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_FlashOperation 
                 break;
         }
     }
-    return 0;
+    return true;
 }
 
 #endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */

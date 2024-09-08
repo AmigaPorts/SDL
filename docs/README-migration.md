@@ -6,6 +6,36 @@ Details on API changes are organized by SDL 2.0 header below.
 
 The file with your main() function should include <SDL3/SDL_main.h>, as that is no longer included in SDL.h.
 
+Functions that previously returned a negative error code now return SDL_bool.
+
+Code that used to look like this:
+```c
+    if (SDL_Function() < 0 || SDL_Function() == -1) {
+        /* Failure... */
+    }
+```
+or
+```c
+    if (SDL_Function() == 0) {
+        /* Success... */
+    }
+```
+or
+```c
+    if (!SDL_Function()) {
+        /* Success... */
+    }
+```
+should be changed to:
+```c
+    if (SDL_Function()) {
+        /* Success... */
+    } else {
+        /* Failure... */
+    }
+```
+This only applies to camel case functions, e.g. `SDL_[A-Z]*`. Lower case functions like SDL_strcmp() and SDL_memcmp() are unchanged, matching their C runtime counterpart.
+
 Many functions and symbols have been renamed. We have provided a handy Python script [rename_symbols.py](https://github.com/libsdl-org/SDL/blob/main/build-scripts/rename_symbols.py) to rename SDL2 functions to their SDL3 counterparts:
 ```sh
 rename_symbols.py --all-symbols source_code_path
@@ -58,7 +88,9 @@ The following structures have been renamed:
 The following functions have been renamed:
 * SDL_AtomicCAS() => SDL_AtomicCompareAndSwap()
 * SDL_AtomicCASPtr() => SDL_AtomicCompareAndSwapPointer()
+* SDL_AtomicGetPtr() => SDL_AtomicGetPointer()
 * SDL_AtomicLock() => SDL_LockSpinlock()
+* SDL_AtomicSetPtr() => SDL_AtomicSetPointer()
 * SDL_AtomicTryLock() => SDL_TryLockSpinlock()
 * SDL_AtomicUnlock() => SDL_UnlockSpinlock()
 
@@ -152,7 +184,7 @@ Rather than iterating over audio devices using a device index, there are new fun
 
 ```c
 {
-    if (SDL_InitSubSystem(SDL_INIT_AUDIO) == 0) {
+    if (SDL_InitSubSystem(SDL_INIT_AUDIO)) {
         int i, num_devices;
         SDL_AudioDeviceID *devices = SDL_GetAudioPlaybackDevices(&num_devices);
         if (devices) {
@@ -191,7 +223,7 @@ SDL_FreeWAV has been removed and calls can be replaced with SDL_free.
 
 SDL_LoadWAV() is a proper function now and no longer a macro (but offers the same functionality otherwise).
 
-SDL_LoadWAV_IO() and SDL_LoadWAV() return an int now: zero on success, -1 on error, like most of SDL. They no longer return a pointer to an SDL_AudioSpec.
+SDL_LoadWAV_IO() and SDL_LoadWAV() return an SDL_bool now, like most of SDL. They no longer return a pointer to an SDL_AudioSpec.
 
 SDL_AudioCVT interface has been removed, the SDL_AudioStream interface (for audio supplied in pieces) or the new SDL_ConvertAudioSamples() function (for converting a complete audio buffer in one call) can be used instead.
 
@@ -211,7 +243,7 @@ should be changed to:
     int dst_len = 0;
     const SDL_AudioSpec src_spec = { src_format, src_channels, src_rate };
     const SDL_AudioSpec dst_spec = { dst_format, dst_channels, dst_rate };
-    if (SDL_ConvertAudioSamples(&src_spec, src_data, src_len, &dst_spec, &dst_data, &dst_len) < 0) {
+    if (!SDL_ConvertAudioSamples(&src_spec, src_data, src_len, &dst_spec, &dst_data, &dst_len)) {
         /* error */
     }
     do_something(dst_data, dst_len);
@@ -248,13 +280,13 @@ In SDL2, SDL_AUDIODEVICEREMOVED events would fire for open devices with the `whi
 
 The following functions have been renamed:
 * SDL_AudioStreamAvailable() => SDL_GetAudioStreamAvailable()
-* SDL_AudioStreamClear() => SDL_ClearAudioStream()
-* SDL_AudioStreamFlush() => SDL_FlushAudioStream()
+* SDL_AudioStreamClear() => SDL_ClearAudioStream(), returns SDL_bool
+* SDL_AudioStreamFlush() => SDL_FlushAudioStream(), returns SDL_bool
 * SDL_AudioStreamGet() => SDL_GetAudioStreamData()
-* SDL_AudioStreamPut() => SDL_PutAudioStreamData()
+* SDL_AudioStreamPut() => SDL_PutAudioStreamData(), returns SDL_bool
 * SDL_FreeAudioStream() => SDL_DestroyAudioStream()
-* SDL_LoadWAV_RW() => SDL_LoadWAV_IO()
-* SDL_MixAudioFormat() => SDL_MixAudio()
+* SDL_LoadWAV_RW() => SDL_LoadWAV_IO(), returns SDL_bool
+* SDL_MixAudioFormat() => SDL_MixAudio(), returns SDL_bool
 * SDL_NewAudioStream() => SDL_CreateAudioStream()
 
 
@@ -375,7 +407,7 @@ The iscapture field of SDL_AudioDeviceEvent has been renamed recording.
 
 SDL_QUERY, SDL_IGNORE, SDL_ENABLE, and SDL_DISABLE have been removed. You can use the functions SDL_SetEventEnabled() and SDL_EventEnabled() to set and query event processing state.
 
-SDL_AddEventWatch() now returns -1 if it fails because it ran out of memory and couldn't add the event watch callback.
+SDL_AddEventWatch() now returns SDL_FALSE_ if it fails because it ran out of memory and couldn't add the event watch callback.
 
 SDL_RegisterEvents() now returns 0 if it couldn't allocate any user events.
 
@@ -455,6 +487,9 @@ The following functions have been removed:
 
 The following enums have been renamed:
 * SDL_eventaction => SDL_EventAction
+
+The following functions have been renamed:
+* SDL_DelEventWatch() => SDL_RemoveEventWatch()
 
 ## SDL_gamecontroller.h
 
@@ -591,13 +626,13 @@ The following functions have been renamed:
 * SDL_GameControllerGetPlayerIndex() => SDL_GetGamepadPlayerIndex()
 * SDL_GameControllerGetProduct() => SDL_GetGamepadProduct()
 * SDL_GameControllerGetProductVersion() => SDL_GetGamepadProductVersion()
-* SDL_GameControllerGetSensorData() => SDL_GetGamepadSensorData()
+* SDL_GameControllerGetSensorData() => SDL_GetGamepadSensorData(), returns SDL_bool
 * SDL_GameControllerGetSensorDataRate() => SDL_GetGamepadSensorDataRate()
 * SDL_GameControllerGetSerial() => SDL_GetGamepadSerial()
 * SDL_GameControllerGetSteamHandle() => SDL_GetGamepadSteamHandle()
 * SDL_GameControllerGetStringForAxis() => SDL_GetGamepadStringForAxis()
 * SDL_GameControllerGetStringForButton() => SDL_GetGamepadStringForButton()
-* SDL_GameControllerGetTouchpadFinger() => SDL_GetGamepadTouchpadFinger()
+* SDL_GameControllerGetTouchpadFinger() => SDL_GetGamepadTouchpadFinger(), returns SDL_bool
 * SDL_GameControllerGetType() => SDL_GetGamepadType()
 * SDL_GameControllerGetVendor() => SDL_GetGamepadVendor()
 * SDL_GameControllerHasAxis() => SDL_GamepadHasAxis()
@@ -609,12 +644,12 @@ The following functions have been renamed:
 * SDL_GameControllerName() => SDL_GetGamepadName()
 * SDL_GameControllerOpen() => SDL_OpenGamepad()
 * SDL_GameControllerPath() => SDL_GetGamepadPath()
-* SDL_GameControllerRumble() => SDL_RumbleGamepad()
-* SDL_GameControllerRumbleTriggers() => SDL_RumbleGamepadTriggers()
-* SDL_GameControllerSendEffect() => SDL_SendGamepadEffect()
-* SDL_GameControllerSetLED() => SDL_SetGamepadLED()
-* SDL_GameControllerSetPlayerIndex() => SDL_SetGamepadPlayerIndex()
-* SDL_GameControllerSetSensorEnabled() => SDL_SetGamepadSensorEnabled()
+* SDL_GameControllerRumble() => SDL_RumbleGamepad(), returns SDL_bool
+* SDL_GameControllerRumbleTriggers() => SDL_RumbleGamepadTriggers(), returns SDL_bool
+* SDL_GameControllerSendEffect() => SDL_SendGamepadEffect(), returns SDL_bool
+* SDL_GameControllerSetLED() => SDL_SetGamepadLED(), returns SDL_bool
+* SDL_GameControllerSetPlayerIndex() => SDL_SetGamepadPlayerIndex(), returns SDL_bool
+* SDL_GameControllerSetSensorEnabled() => SDL_SetGamepadSensorEnabled(), returns SDL_bool
 * SDL_GameControllerUpdate() => SDL_UpdateGamepads()
 * SDL_IsGameController() => SDL_IsGamepad()
 
@@ -702,7 +737,7 @@ Gamepads with simple rumble capability no longer show up in the SDL haptics inte
 Rather than iterating over haptic devices using device index, there is a new function SDL_GetHaptics() to get the current list of haptic devices, and new functions to get information about haptic devices from their instance ID:
 ```c
 {
-    if (SDL_InitSubSystem(SDL_INIT_HAPTIC) == 0) {
+    if (SDL_InitSubSystem(SDL_INIT_HAPTIC)) {
         int i, num_haptics;
         SDL_HapticID *haptics = SDL_GetHaptics(&num_haptics);
         if (haptics) {
@@ -717,12 +752,12 @@ Rather than iterating over haptic devices using device index, there is a new fun
 }
 ```
 
-SDL_HapticEffectSupported(), SDL_HapticRumbleSupported(), and SDL_IsJoystickHaptic() now return SDL_bool instead of an optional negative error code.
+SDL_GetHapticEffectStatus() now returns SDL_bool instead of an int result. You should call SDL_GetHapticFeatures() to make sure effect status is supported before calling this function.
 
 The following functions have been renamed:
 * SDL_HapticClose() => SDL_CloseHaptic()
 * SDL_HapticDestroyEffect() => SDL_DestroyHapticEffect()
-* SDL_HapticGetEffectStatus() => SDL_GetHapticEffectStatus()
+* SDL_HapticGetEffectStatus() => SDL_GetHapticEffectStatus(), returns SDL_bool
 * SDL_HapticNewEffect() => SDL_CreateHapticEffect()
 * SDL_HapticNumAxes() => SDL_GetNumHapticAxes()
 * SDL_HapticNumEffects() => SDL_GetMaxHapticEffects()
@@ -730,18 +765,18 @@ The following functions have been renamed:
 * SDL_HapticOpen() => SDL_OpenHaptic()
 * SDL_HapticOpenFromJoystick() => SDL_OpenHapticFromJoystick()
 * SDL_HapticOpenFromMouse() => SDL_OpenHapticFromMouse()
-* SDL_HapticPause() => SDL_PauseHaptic()
+* SDL_HapticPause() => SDL_PauseHaptic(), returns SDL_bool
 * SDL_HapticQuery() => SDL_GetHapticFeatures()
-* SDL_HapticRumbleInit() => SDL_InitHapticRumble()
-* SDL_HapticRumblePlay() => SDL_PlayHapticRumble()
-* SDL_HapticRumbleStop() => SDL_StopHapticRumble()
-* SDL_HapticRunEffect() => SDL_RunHapticEffect()
-* SDL_HapticSetAutocenter() => SDL_SetHapticAutocenter()
-* SDL_HapticSetGain() => SDL_SetHapticGain()
-* SDL_HapticStopAll() => SDL_StopHapticEffects()
-* SDL_HapticStopEffect() => SDL_StopHapticEffect()
-* SDL_HapticUnpause() => SDL_ResumeHaptic()
-* SDL_HapticUpdateEffect() => SDL_UpdateHapticEffect()
+* SDL_HapticRumbleInit() => SDL_InitHapticRumble(), returns SDL_bool
+* SDL_HapticRumblePlay() => SDL_PlayHapticRumble(), returns SDL_bool
+* SDL_HapticRumbleStop() => SDL_StopHapticRumble(), returns SDL_bool
+* SDL_HapticRunEffect() => SDL_RunHapticEffect(), returns SDL_bool
+* SDL_HapticSetAutocenter() => SDL_SetHapticAutocenter(), returns SDL_bool
+* SDL_HapticSetGain() => SDL_SetHapticGain(), returns SDL_bool
+* SDL_HapticStopAll() => SDL_StopHapticEffects(), returns SDL_bool
+* SDL_HapticStopEffect() => SDL_StopHapticEffect(), returns SDL_bool
+* SDL_HapticUnpause() => SDL_ResumeHaptic(), returns SDL_bool
+* SDL_HapticUpdateEffect() => SDL_UpdateHapticEffect(), returns SDL_bool
 * SDL_JoystickIsHaptic() => SDL_IsJoystickHaptic()
 * SDL_MouseIsHaptic() => SDL_IsMouseHaptic()
 
@@ -753,11 +788,7 @@ The following functions have been removed:
 
 ## SDL_hints.h
 
-SDL_AddHintCallback() now returns a standard int result instead of void, returning 0 if the function succeeds or a negative error code if there was an error.
-
 Calling SDL_GetHint() with the name of the hint being changed from within a hint callback will now return the new value rather than the old value. The old value is still passed as a parameter to the hint callback.
-
-SDL_SetHint, SDL_SetHintWithPriority, and SDL_ResetHint now return int (-1 on error, 0 on success) instead of SDL_bool (SDL_FALSE on error, SDL_TRUE on success).
 
 The environment variables SDL_VIDEODRIVER and SDL_AUDIODRIVER have been renamed to SDL_VIDEO_DRIVER and SDL_AUDIO_DRIVER.
 
@@ -805,6 +836,9 @@ The following hints have been removed:
 * SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING - SDL now properly handles the 0x406D1388 Exception if no debugger intercepts it, preventing its propagation.
 * SDL_HINT_WINDOWS_FORCE_MUTEX_CRITICAL_SECTIONS - Slim Reader/Writer Locks are always used if available
 * SDL_HINT_WINDOWS_NO_CLOSE_ON_ALT_F4 - replaced with SDL_HINT_WINDOWS_CLOSE_ON_ALT_F4, defaulting to SDL_TRUE
+* SDL_HINT_WINRT_HANDLE_BACK_BUTTON - WinRT support was removed in SDL3.
+* SDL_HINT_WINRT_PRIVACY_POLICY_LABEL - WinRT support was removed in SDL3.
+* SDL_HINT_WINRT_PRIVACY_POLICY_URL - WinRT support was removed in SDL3.
 * SDL_HINT_XINPUT_USE_OLD_JOYSTICK_MAPPING
 * SDL_HINT_AUDIO_DEVICE_APP_NAME - replaced by either using the appname param to SDL_SetAppMetadata() or setting SDL_PROP_APP_METADATA_NAME_STRING with SDL_SetAppMetadataProperty()
 
@@ -834,6 +868,9 @@ The following environment variables have been removed:
 The following functions have been removed:
 * SDL_ClearHints() - replaced with SDL_ResetHints()
 
+The following functions have been renamed:
+* SDL_DelHintCallback() => SDL_RemoveHintCallback()
+
 ## SDL_init.h
 
 On Haiku OS, SDL no longer sets the current working directory to the executable's path during SDL_Init(). If you need this functionality, the fastest solution is to add this code directly after the call to SDL_Init:
@@ -861,7 +898,7 @@ SDL_JoystickID has changed from Sint32 to Uint32, with an invalid ID being 0.
 Rather than iterating over joysticks using device index, there is a new function SDL_GetJoysticks() to get the current list of joysticks, and new functions to get information about joysticks from their instance ID:
 ```c
 {
-    if (SDL_InitSubSystem(SDL_INIT_JOYSTICK) == 0) {
+    if (SDL_InitSubSystem(SDL_INIT_JOYSTICK)) {
         int i, num_joysticks;
         SDL_JoystickID *joysticks = SDL_GetJoysticks(&num_joysticks);
         if (joysticks) {
@@ -886,18 +923,18 @@ The functions SDL_GetJoysticks(), SDL_GetJoystickNameForID(), SDL_GetJoystickPat
 
 SDL_AttachVirtualJoystick() now returns the joystick instance ID instead of a device index, and returns 0 if there was an error.
 
-SDL_VirtualJoystickDesc no longer takes a struct version; if we need to extend this in the future, we'll make a second struct and a second SDL_AttachVirtualJoystickEx-style function that uses it. Just zero the struct and don't set a version.
+SDL_VirtualJoystickDesc version should not be set to SDL_VIRTUAL_JOYSTICK_DESC_VERSION, instead the structure should be initialized using SDL_INIT_INTERFACE().
 
 The following functions have been renamed:
 * SDL_JoystickAttachVirtualEx() => SDL_AttachVirtualJoystick()
 * SDL_JoystickClose() => SDL_CloseJoystick()
-* SDL_JoystickDetachVirtual() => SDL_DetachVirtualJoystick()
+* SDL_JoystickDetachVirtual() => SDL_DetachVirtualJoystick(), returns SDL_bool
 * SDL_JoystickFromInstanceID() => SDL_GetJoystickFromID()
 * SDL_JoystickFromPlayerIndex() => SDL_GetJoystickFromPlayerIndex()
 * SDL_JoystickGetAttached() => SDL_JoystickConnected()
 * SDL_JoystickGetAxis() => SDL_GetJoystickAxis()
 * SDL_JoystickGetAxisInitialState() => SDL_GetJoystickAxisInitialState()
-* SDL_JoystickGetBall() => SDL_GetJoystickBall()
+* SDL_JoystickGetBall() => SDL_GetJoystickBall(), returns SDL_bool
 * SDL_JoystickGetButton() => SDL_GetJoystickButton()
 * SDL_JoystickGetFirmwareVersion() => SDL_GetJoystickFirmwareVersion()
 * SDL_JoystickGetGUID() => SDL_GetJoystickGUID()
@@ -918,14 +955,14 @@ The following functions have been renamed:
 * SDL_JoystickNumHats() => SDL_GetNumJoystickHats()
 * SDL_JoystickOpen() => SDL_OpenJoystick()
 * SDL_JoystickPath() => SDL_GetJoystickPath()
-* SDL_JoystickRumble() => SDL_RumbleJoystick()
-* SDL_JoystickRumbleTriggers() => SDL_RumbleJoystickTriggers()
-* SDL_JoystickSendEffect() => SDL_SendJoystickEffect()
-* SDL_JoystickSetLED() => SDL_SetJoystickLED()
-* SDL_JoystickSetPlayerIndex() => SDL_SetJoystickPlayerIndex()
-* SDL_JoystickSetVirtualAxis() => SDL_SetJoystickVirtualAxis()
-* SDL_JoystickSetVirtualButton() => SDL_SetJoystickVirtualButton()
-* SDL_JoystickSetVirtualHat() => SDL_SetJoystickVirtualHat()
+* SDL_JoystickRumble() => SDL_RumbleJoystick(), returns SDL_bool
+* SDL_JoystickRumbleTriggers() => SDL_RumbleJoystickTriggers(), returns SDL_bool
+* SDL_JoystickSendEffect() => SDL_SendJoystickEffect(), returns SDL_bool
+* SDL_JoystickSetLED() => SDL_SetJoystickLED(), returns SDL_bool
+* SDL_JoystickSetPlayerIndex() => SDL_SetJoystickPlayerIndex(), returns SDL_bool
+* SDL_JoystickSetVirtualAxis() => SDL_SetJoystickVirtualAxis(), returns SDL_bool
+* SDL_JoystickSetVirtualButton() => SDL_SetJoystickVirtualButton(), returns SDL_bool
+* SDL_JoystickSetVirtualHat() => SDL_SetJoystickVirtualHat(), returns SDL_bool
 * SDL_JoystickUpdate() => SDL_UpdateJoysticks()
 
 The following symbols have been renamed:
@@ -949,7 +986,7 @@ The following functions have been removed:
 * SDL_JoystickNameForIndex() - replaced with SDL_GetJoystickNameForID()
 * SDL_JoystickPathForIndex() - replaced with SDL_GetJoystickPathForID()
 * SDL_NumJoysticks() - replaced with SDL_GetJoysticks()
-* SDL_VIRTUAL_JOYSTICK_DESC_VERSION - no longer needed, version info has been removed from SDL_VirtualJoystickDesc.
+* SDL_VIRTUAL_JOYSTICK_DESC_VERSION - no longer needed
 
 The following symbols have been removed:
 * SDL_JOYBALLMOTION
@@ -1084,10 +1121,13 @@ Using it is really simple: Just `#include <SDL3/SDL_main.h>` in the source file 
 Several platform-specific entry point functions have been removed as unnecessary. If for some reason you explicitly need them, here are easy replacements:
 
 ```c
-#define SDL_WinRTRunApp(MAIN_FUNC, RESERVED)  SDL_RunApp(0, NULL, MAIN_FUNC, RESERVED)
 #define SDL_UIKitRunApp(ARGC, ARGV, MAIN_FUNC)  SDL_RunApp(ARGC, ARGV, MAIN_FUNC, NULL)
 #define SDL_GDKRunApp(MAIN_FUNC, RESERVED)  SDL_RunApp(0, NULL, MAIN_FUNC, RESERVED)
 ```
+
+The following functions have been removed:
+* SDL_WinRTRunApp() - WinRT support was removed in SDL3.
+
 
 ## SDL_messagebox.h
 
@@ -1128,20 +1168,24 @@ The following symbols have been renamed:
 
 SDL_MUTEX_MAXWAIT has been removed; it suggested there was a maximum timeout one could outlive, instead of an infinite wait. Instead, pass a -1 to functions that accepted this symbol.
 
-SDL_LockMutex and SDL_UnlockMutex now return void; if the mutex is valid (including being a NULL pointer, which returns immediately), these functions never fail. If the mutex is invalid or the caller does something illegal, like unlock another thread's mutex, this is considered undefined behavior.
+SDL_MUTEX_TIMEDOUT has been removed, the wait functions return SDL_TRUE if the operation succeeded or SDL_FALSE if they timed out.
+
+SDL_LockMutex(), SDL_UnlockMutex(), SDL_WaitSemaphore(), SDL_SignalSemaphore(), SDL_WaitCondition(), SDL_SignalCondition(), and SDL_BroadcastCondition() now return void; if the object is valid (including being a NULL pointer, which returns immediately), these functions never fail. If the object is invalid or the caller does something illegal, like unlock another thread's mutex, this is considered undefined behavior.
+
+SDL_TryWaitSemaphore(), SDL_WaitSemaphoreTimeout(), and SDL_WaitConditionTimeout() now return SDL_TRUE if the operation succeeded or SDL_FALSE if they timed out.
 
 The following functions have been renamed:
 * SDL_CondBroadcast() => SDL_BroadcastCondition()
 * SDL_CondSignal() => SDL_SignalCondition()
 * SDL_CondWait() => SDL_WaitCondition()
-* SDL_CondWaitTimeout() => SDL_WaitConditionTimeout()
+* SDL_CondWaitTimeout() => SDL_WaitConditionTimeout(), returns SDL_bool
 * SDL_CreateCond() => SDL_CreateCondition()
 * SDL_DestroyCond() => SDL_DestroyCondition()
 * SDL_SemPost() => SDL_SignalSemaphore()
-* SDL_SemTryWait() => SDL_TryWaitSemaphore()
+* SDL_SemTryWait() => SDL_TryWaitSemaphore(), returns SDL_bool
 * SDL_SemValue() => SDL_GetSemaphoreValue()
 * SDL_SemWait() => SDL_WaitSemaphore()
-* SDL_SemWaitTimeout() => SDL_WaitSemaphoreTimeout()
+* SDL_SemWaitTimeout() => SDL_WaitSemaphoreTimeout(), returns SDL_bool
 
 The following symbols have been renamed:
 * SDL_cond => SDL_Condition
@@ -1174,8 +1218,6 @@ should be changed to:
     pixel = SDL_MapSurfaceRGBA(surface, r, g, b, a);
 ```
 
-SDL_GetMasksForPixelFormat() now returns the standard int error code.
-
 SDL_CalculateGammaRamp has been removed, because SDL_SetWindowGammaRamp has been removed as well due to poor support in modern operating systems (see [SDL_video.h](#sdl_videoh)).
 
 The following functions have been renamed:
@@ -1183,7 +1225,7 @@ The following functions have been renamed:
 * SDL_AllocPalette() => SDL_CreatePalette()
 * SDL_FreePalette() => SDL_DestroyPalette()
 * SDL_MasksToPixelFormatEnum() => SDL_GetPixelFormatForMasks()
-* SDL_PixelFormatEnumToMasks() => SDL_GetMasksForPixelFormat()
+* SDL_PixelFormatEnumToMasks() => SDL_GetMasksForPixelFormat(), returns SDL_bool
 
 The following symbols have been renamed:
 * SDL_PIXELFORMAT_BGR444 => SDL_PIXELFORMAT_XBGR4444
@@ -1239,7 +1281,6 @@ The following platform preprocessor macros have been renamed:
 | `__VITA__`        | `SDL_PLATFORM_VITA`       |
 | `__WIN32__`       | `SDL_PLATFORM_WIN32`      |
 | `__WINGDK__`      | `SDL_PLATFORM_WINGDK`     |
-| `__WINRT__`       | `SDL_PLATFORM_WINRT`      |
 | `__XBOXONE__`     | `SDL_PLATFORM_XBOXONE`    |
 | `__XBOXSERIES__`  | `SDL_PLATFORM_XBOXSERIES` |
 
@@ -1252,6 +1293,8 @@ The following platform preprocessor macros have been removed:
 * `__NACL__`
 * `__PNACL__`
 * `__WINDOWS__`
+* `__WINRT__`
+
 
 ## SDL_quit.h
 
@@ -1282,8 +1325,8 @@ The following functions have been renamed:
 * SDL_IntersectRectAndLine() => SDL_GetRectAndLineIntersection()
 * SDL_PointInFRect() => SDL_PointInRectFloat()
 * SDL_RectEquals() => SDL_RectsEqual()
-* SDL_UnionFRect() => SDL_GetRectUnionFloat()
-* SDL_UnionRect() => SDL_GetRectUnion()
+* SDL_UnionFRect() => SDL_GetRectUnionFloat(), returns SDL_bool
+* SDL_UnionRect() => SDL_GetRectUnion(), returns SDL_bool
 
 ## SDL_render.h
 
@@ -1329,42 +1372,42 @@ SDL_Vertex has been changed to use floating point colors, in the range of [0..1]
 SDL_RenderReadPixels() returns a surface instead of filling in preallocated memory.
 
 The following functions have been renamed:
-* SDL_GetRendererOutputSize() => SDL_GetCurrentRenderOutputSize()
-* SDL_RenderCopy() => SDL_RenderTexture()
-* SDL_RenderCopyEx() => SDL_RenderTextureRotated()
-* SDL_RenderCopyExF() => SDL_RenderTextureRotated()
-* SDL_RenderCopyF() => SDL_RenderTexture()
-* SDL_RenderDrawLine() => SDL_RenderLine()
-* SDL_RenderDrawLineF() => SDL_RenderLine()
-* SDL_RenderDrawLines() => SDL_RenderLines()
-* SDL_RenderDrawLinesF() => SDL_RenderLines()
-* SDL_RenderDrawPoint() => SDL_RenderPoint()
-* SDL_RenderDrawPointF() => SDL_RenderPoint()
-* SDL_RenderDrawPoints() => SDL_RenderPoints()
-* SDL_RenderDrawPointsF() => SDL_RenderPoints()
-* SDL_RenderDrawRect() => SDL_RenderRect()
-* SDL_RenderDrawRectF() => SDL_RenderRect()
-* SDL_RenderDrawRects() => SDL_RenderRects()
-* SDL_RenderDrawRectsF() => SDL_RenderRects()
-* SDL_RenderFillRectF() => SDL_RenderFillRect()
-* SDL_RenderFillRectsF() => SDL_RenderFillRects()
-* SDL_RenderFlush() => SDL_FlushRenderer()
-* SDL_RenderGetClipRect() => SDL_GetRenderClipRect()
+* SDL_GetRendererOutputSize() => SDL_GetCurrentRenderOutputSize(), returns SDL_bool
+* SDL_RenderCopy() => SDL_RenderTexture(), returns SDL_bool
+* SDL_RenderCopyEx() => SDL_RenderTextureRotated(), returns SDL_bool
+* SDL_RenderCopyExF() => SDL_RenderTextureRotated(), returns SDL_bool
+* SDL_RenderCopyF() => SDL_RenderTexture(), returns SDL_bool
+* SDL_RenderDrawLine() => SDL_RenderLine(), returns SDL_bool
+* SDL_RenderDrawLineF() => SDL_RenderLine(), returns SDL_bool
+* SDL_RenderDrawLines() => SDL_RenderLines(), returns SDL_bool
+* SDL_RenderDrawLinesF() => SDL_RenderLines(), returns SDL_bool
+* SDL_RenderDrawPoint() => SDL_RenderPoint(), returns SDL_bool
+* SDL_RenderDrawPointF() => SDL_RenderPoint(), returns SDL_bool
+* SDL_RenderDrawPoints() => SDL_RenderPoints(), returns SDL_bool
+* SDL_RenderDrawPointsF() => SDL_RenderPoints(), returns SDL_bool
+* SDL_RenderDrawRect() => SDL_RenderRect(), returns SDL_bool
+* SDL_RenderDrawRectF() => SDL_RenderRect(), returns SDL_bool
+* SDL_RenderDrawRects() => SDL_RenderRects(), returns SDL_bool
+* SDL_RenderDrawRectsF() => SDL_RenderRects(), returns SDL_bool
+* SDL_RenderFillRectF() => SDL_RenderFillRect(), returns SDL_bool
+* SDL_RenderFillRectsF() => SDL_RenderFillRects(), returns SDL_bool
+* SDL_RenderFlush() => SDL_FlushRenderer(), returns SDL_bool
+* SDL_RenderGetClipRect() => SDL_GetRenderClipRect(), returns SDL_bool
 * SDL_RenderGetIntegerScale() => SDL_GetRenderIntegerScale()
-* SDL_RenderGetLogicalSize() => SDL_GetRenderLogicalPresentation()
+* SDL_RenderGetLogicalSize() => SDL_GetRenderLogicalPresentation(), returns SDL_bool
 * SDL_RenderGetMetalCommandEncoder() => SDL_GetRenderMetalCommandEncoder()
 * SDL_RenderGetMetalLayer() => SDL_GetRenderMetalLayer()
-* SDL_RenderGetScale() => SDL_GetRenderScale()
-* SDL_RenderGetViewport() => SDL_GetRenderViewport()
+* SDL_RenderGetScale() => SDL_GetRenderScale(), returns SDL_bool
+* SDL_RenderGetViewport() => SDL_GetRenderViewport(), returns SDL_bool
 * SDL_RenderGetWindow() => SDL_GetRenderWindow()
 * SDL_RenderIsClipEnabled() => SDL_RenderClipEnabled()
-* SDL_RenderLogicalToWindow() => SDL_RenderCoordinatesToWindow()
-* SDL_RenderSetClipRect() => SDL_SetRenderClipRect()
-* SDL_RenderSetLogicalSize() => SDL_SetRenderLogicalPresentation()
-* SDL_RenderSetScale() => SDL_SetRenderScale()
-* SDL_RenderSetVSync() => SDL_SetRenderVSync()
-* SDL_RenderSetViewport() => SDL_SetRenderViewport()
-* SDL_RenderWindowToLogical() => SDL_RenderCoordinatesFromWindow()
+* SDL_RenderLogicalToWindow() => SDL_RenderCoordinatesToWindow(), returns SDL_bool
+* SDL_RenderSetClipRect() => SDL_SetRenderClipRect(), returns SDL_bool
+* SDL_RenderSetLogicalSize() => SDL_SetRenderLogicalPresentation(), returns SDL_bool
+* SDL_RenderSetScale() => SDL_SetRenderScale(), returns SDL_bool
+* SDL_RenderSetVSync() => SDL_SetRenderVSync(), returns SDL_bool
+* SDL_RenderSetViewport() => SDL_SetRenderViewport(), returns SDL_bool
+* SDL_RenderWindowToLogical() => SDL_RenderCoordinatesFromWindow(), returns SDL_bool
 
 The following functions have been removed:
 * SDL_GL_BindTexture() - use SDL_GetTextureProperties() to get the OpenGL texture ID and bind the texture directly
@@ -1379,7 +1422,6 @@ The following enums have been renamed:
 * SDL_RendererFlip => SDL_FlipMode - moved to SDL_surface.h
 
 The following symbols have been renamed:
-* SDL_ScaleModeBest => SDL_SCALEMODE_BEST
 * SDL_ScaleModeLinear => SDL_SCALEMODE_LINEAR
 * SDL_ScaleModeNearest => SDL_SCALEMODE_NEAREST
 
@@ -1388,6 +1430,7 @@ The following symbols have been removed:
 * SDL_RENDERER_PRESENTVSYNC - replaced with SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_NUMBER during renderer creation and SDL_PROP_RENDERER_VSYNC_NUMBER after renderer creation
 * SDL_RENDERER_SOFTWARE - you can check whether the name of the renderer is `SDL_SOFTWARE_RENDERER`
 * SDL_RENDERER_TARGETTEXTURE - all renderers support target texture functionality
+* SDL_ScaleModeBest = use SDL_SCALEMODE_LINEAR instead
 
 ## SDL_rwops.h
 
@@ -1472,17 +1515,20 @@ static Sint64 SDLCALL stdio_seek(void *userdata, Sint64 offset, int whence)
         stdiowhence = SEEK_END;
         break;
     default:
-        return SDL_SetError("Unknown value for 'whence'");
+        SDL_SetError("Unknown value for 'whence'");
+        return -1;
     }
 
     if (fseek(fp, (fseek_off_t)offset, stdiowhence) == 0) {
         const Sint64 pos = ftell(fp);
         if (pos < 0) {
-            return SDL_SetError("Couldn't get stream offset");
+            SDL_SetError("Couldn't get stream offset");
+            return -1;
         }
         return pos;
     }
-    return SDL_Error(SDL_EFSEEK);
+    SDL_SetError("Couldn't seek in stream");
+    return -1;
 }
 
 static size_t SDLCALL stdio_read(void *userdata, void *ptr, size_t size, SDL_IOStatus *status)
@@ -1490,7 +1536,7 @@ static size_t SDLCALL stdio_read(void *userdata, void *ptr, size_t size, SDL_IOS
     FILE *fp = ((IOStreamStdioFPData *) userdata)->fp;
     const size_t bytes = fread(ptr, 1, size, fp);
     if (bytes == 0 && ferror(fp)) {
-        SDL_Error(SDL_EFREAD);
+        SDL_SetError("Couldn't read stream");
     }
     return bytes;
 }
@@ -1500,18 +1546,19 @@ static size_t SDLCALL stdio_write(void *userdata, const void *ptr, size_t size, 
     FILE *fp = ((IOStreamStdioFPData *) userdata)->fp;
     const size_t bytes = fwrite(ptr, 1, size, fp);
     if (bytes == 0 && ferror(fp)) {
-        SDL_Error(SDL_EFWRITE);
+        SDL_SetError("Couldn't write stream");
     }
     return bytes;
 }
 
-static int SDLCALL stdio_close(void *userdata)
+static SDL_bool SDLCALL stdio_close(void *userdata)
 {
     IOStreamStdioData *rwopsdata = (IOStreamStdioData *) userdata;
-    int status = 0;
+    SDL_bool status = SDL_TRUE;
     if (rwopsdata->autoclose) {
         if (fclose(rwopsdata->fp) != 0) {
-            status = SDL_Error(SDL_EFWRITE);
+            SDL_SetError("Couldn't close stream");
+            status = SDL_FALSE;
         }
     }
     return status;
@@ -1528,7 +1575,7 @@ SDL_IOStream *SDL_RWFromFP(FILE *fp, SDL_bool autoclose)
         return NULL;
     }
 
-    SDL_zero(iface);
+    SDL_INIT_INTERFACE(&iface);
     /* There's no stdio_size because SDL_GetIOSize emulates it the same way we'd do it for stdio anyhow. */
     iface.seek = stdio_seek;
     iface.read = stdio_read;
@@ -1557,7 +1604,7 @@ The following functions have been renamed:
 * SDL_RWFromConstMem() => SDL_IOFromConstMem()
 * SDL_RWFromFile() => SDL_IOFromFile()
 * SDL_RWFromMem() => SDL_IOFromMem()
-* SDL_RWclose() => SDL_CloseIO()
+* SDL_RWclose() => SDL_CloseIO(), returns SDL_bool
 * SDL_RWread() => SDL_ReadIO()
 * SDL_RWseek() => SDL_SeekIO()
 * SDL_RWsize() => SDL_GetIOSize()
@@ -1614,7 +1661,7 @@ SDL_SensorID has changed from Sint32 to Uint32, with an invalid ID being 0.
 Rather than iterating over sensors using device index, there is a new function SDL_GetSensors() to get the current list of sensors, and new functions to get information about sensors from their instance ID:
 ```c
 {
-    if (SDL_InitSubSystem(SDL_INIT_SENSOR) == 0) {
+    if (SDL_InitSubSystem(SDL_INIT_SENSOR)) {
         int i, num_sensors;
         SDL_SensorID *sensors = SDL_GetSensors(&num_sensors);
         if (sensors) {
@@ -1638,7 +1685,7 @@ Removed SDL_SensorGetDataWithTimestamp(), if you want timestamps for the sensor 
 The following functions have been renamed:
 * SDL_SensorClose() => SDL_CloseSensor()
 * SDL_SensorFromInstanceID() => SDL_GetSensorFromID()
-* SDL_SensorGetData() => SDL_GetSensorData()
+* SDL_SensorGetData() => SDL_GetSensorData(), returns SDL_bool
 * SDL_SensorGetInstanceID() => SDL_GetSensorID()
 * SDL_SensorGetName() => SDL_GetSensorName()
 * SDL_SensorGetNonPortableType() => SDL_GetSensorNonPortableType()
@@ -1664,6 +1711,8 @@ This header has been removed and a simplified version of this API has been added
 The standard C headers like stdio.h and stdlib.h are no longer included, you should include them directly in your project if you use non-SDL C runtime functions.
 M_PI is no longer defined in SDL_stdinc.h, you can use the new symbols SDL_PI_D (double) and SDL_PI_F (float) instead.
 
+SDL_bool is now defined as bool, and is 1 byte instead of the size of an int.
+
 SDL3 attempts to apply consistency to case-insensitive string functions. In SDL2, things like SDL_strcasecmp() would usually only work on English letters, and depending on the user's locale, possibly not even those. In SDL3, consistency is applied:
 
 - Many things that don't care about case-insensitivity, like SDL_strcmp(), continue to work with any null-terminated string of bytes, even if it happens to be malformed UTF-8.
@@ -1681,6 +1730,8 @@ The following macros have been removed:
 * SDL_TABLESIZE() - use SDL_arraysize() instead
 
 The following functions have been renamed:
+* SDL_size_add_overflow() => SDL_size_add_check_overflow(), returns SDL_bool
+* SDL_size_mul_overflow() => SDL_size_mul_check_overflow(), returns SDL_bool
 * SDL_strtokr() => SDL_strtok_r()
 
 The following functions have been removed:
@@ -1764,23 +1815,23 @@ SDL_SetSurfaceColorKey() takes an SDL_bool to enable and disable colorkey. RLE a
 SDL_SetSurfaceRLE() takes an SDL_bool to enable and disable RLE acceleration.
 
 The following functions have been renamed:
-* SDL_BlitScaled() => SDL_BlitSurfaceScaled()
+* SDL_BlitScaled() => SDL_BlitSurfaceScaled(), returns SDL_bool
 * SDL_ConvertSurfaceFormat() => SDL_ConvertSurface()
-* SDL_FillRect() => SDL_FillSurfaceRect()
-* SDL_FillRects() => SDL_FillSurfaceRects()
+* SDL_FillRect() => SDL_FillSurfaceRect(), returns SDL_bool
+* SDL_FillRects() => SDL_FillSurfaceRects(), returns SDL_bool
 * SDL_FreeSurface() => SDL_DestroySurface()
-* SDL_GetClipRect() => SDL_GetSurfaceClipRect()
-* SDL_GetColorKey() => SDL_GetSurfaceColorKey()
+* SDL_GetClipRect() => SDL_GetSurfaceClipRect(), returns SDL_bool
+* SDL_GetColorKey() => SDL_GetSurfaceColorKey(), returns SDL_bool
 * SDL_HasColorKey() => SDL_SurfaceHasColorKey()
 * SDL_HasSurfaceRLE() => SDL_SurfaceHasRLE()
 * SDL_LoadBMP_RW() => SDL_LoadBMP_IO()
-* SDL_LowerBlit() => SDL_BlitSurfaceUnchecked()
-* SDL_LowerBlitScaled() => SDL_BlitSurfaceUncheckedScaled()
-* SDL_SaveBMP_RW() => SDL_SaveBMP_IO()
+* SDL_LowerBlit() => SDL_BlitSurfaceUnchecked(), returns SDL_bool
+* SDL_LowerBlitScaled() => SDL_BlitSurfaceUncheckedScaled(), returns SDL_bool
+* SDL_SaveBMP_RW() => SDL_SaveBMP_IO(), returns SDL_bool
 * SDL_SetClipRect() => SDL_SetSurfaceClipRect()
-* SDL_SetColorKey() => SDL_SetSurfaceColorKey()
-* SDL_UpperBlit() => SDL_BlitSurface()
-* SDL_UpperBlitScaled() => SDL_BlitSurfaceScaled()
+* SDL_SetColorKey() => SDL_SetSurfaceColorKey(), returns SDL_bool
+* SDL_UpperBlit() => SDL_BlitSurface(), returns SDL_bool
+* SDL_UpperBlitScaled() => SDL_BlitSurfaceScaled(), returns SDL_bool
 
 The following symbols have been removed:
 * SDL_SWSURFACE
@@ -1805,13 +1856,13 @@ SDL_RequestAndroidPermission is no longer a blocking call; the caller now provid
 
 SDL_iPhoneSetAnimationCallback() and SDL_iPhoneSetEventPump() have been renamed to SDL_SetiOSAnimationCallback() and SDL_SetiOSEventPump(), respectively. SDL2 has had macros to provide this new name with the old symbol since the introduction of the iPad, but now the correctly-named symbol is the only option.
 
-SDL_GetDXGIOutputInfo() now returns the standard int error code.
-
 The following functions have been removed:
+* SDL_GetWinRTFSPathUNICODE() - WinRT support was removed in SDL3.
+* SDL_GetWinRTFSPathUTF8() - WinRT support was removed in SDL3.
 * SDL_RenderGetD3D11Device() - replaced with the "SDL.renderer.d3d11.device" property
 * SDL_RenderGetD3D12Device() - replaced with the "SDL.renderer.d3d12.device" property
 * SDL_RenderGetD3D9Device() - replaced with the "SDL.renderer.d3d9.device" property
-* SDL_GetWinRTFSPathUNICODE() - Use SDL_GetWinRTFSPath() and SDL_iconv_string to convert from UTF-8 to UTF-16.
+* SDL_WinRTGetDeviceFamily() - WinRT support was removed in SDL3.
 
 The following functions have been renamed:
 * SDL_AndroidBackButton() => SDL_SendAndroidBackButton()
@@ -1820,23 +1871,21 @@ The following functions have been renamed:
 * SDL_AndroidGetExternalStorageState() => SDL_GetAndroidExternalStorageState()
 * SDL_AndroidGetInternalStoragePath() => SDL_GetAndroidInternalStoragePath()
 * SDL_AndroidGetJNIEnv() => SDL_GetAndroidJNIEnv()
-* SDL_AndroidRequestPermission() => SDL_RequestAndroidPermission()
+* SDL_AndroidRequestPermission() => SDL_RequestAndroidPermission(), returns SDL_bool
 * SDL_AndroidRequestPermissionCallback() => SDL_RequestAndroidPermissionCallback()
-* SDL_AndroidSendMessage() => SDL_SendAndroidMessage()
-* SDL_AndroidShowToast() => SDL_ShowAndroidToast()
-* SDL_DXGIGetOutputInfo() => SDL_GetDXGIOutputInfo()
+* SDL_AndroidSendMessage() => SDL_SendAndroidMessage(), returns SDL_bool
+* SDL_AndroidShowToast() => SDL_ShowAndroidToast(), returns SDL_bool
+* SDL_DXGIGetOutputInfo() => SDL_GetDXGIOutputInfo(), returns SDL_bool
 * SDL_Direct3D9GetAdapterIndex() => SDL_GetDirect3D9AdapterIndex()
-* SDL_GDKGetDefaultUser() => SDL_GetGDKDefaultUser()
-* SDL_GDKGetTaskQueue() => SDL_GetGDKTaskQueue()
-* SDL_LinuxSetThreadPriority() => SDL_SetLinuxThreadPriority()
-* SDL_LinuxSetThreadPriorityAndPolicy() => SDL_SetLinuxThreadPriorityAndPolicy()
+* SDL_GDKGetDefaultUser() => SDL_GetGDKDefaultUser(), returns SDL_bool
+* SDL_GDKGetTaskQueue() => SDL_GetGDKTaskQueue(), returns SDL_bool
+* SDL_LinuxSetThreadPriority() => SDL_SetLinuxThreadPriority(), returns SDL_bool
+* SDL_LinuxSetThreadPriorityAndPolicy() => SDL_SetLinuxThreadPriorityAndPolicy(), returns SDL_bool
 * SDL_OnApplicationDidBecomeActive() => SDL_OnApplicationDidEnterForeground()
 * SDL_OnApplicationWillResignActive() => SDL_OnApplicationWillEnterBackground()
-* SDL_WinRTGetDeviceFamily() => SDL_GetWinRTDeviceFamily()
-* SDL_GetWinRTFSPathUTF8() => SDL_GetWinRTFSPath()
-* SDL_iOSSetAnimationCallback() => SDL_SetiOSAnimationCallback()
+* SDL_iOSSetAnimationCallback() => SDL_SetiOSAnimationCallback(), returns SDL_bool
 * SDL_iOSSetEventPump() => SDL_SetiOSEventPump()
-* SDL_iPhoneSetAnimationCallback() => SDL_SetiOSAnimationCallback()
+* SDL_iPhoneSetAnimationCallback() => SDL_SetiOSAnimationCallback(), returns SDL_bool
 * SDL_iPhoneSetEventPump() => SDL_SetiOSEventPump()
 
 ## SDL_syswm.h
@@ -1944,7 +1993,7 @@ SDL_GetTLS() and SDL_SetTLS() take a pointer to a TLS ID, and will automatically
 The following functions have been renamed:
 * SDL_TLSCleanup() => SDL_CleanupTLS()
 * SDL_TLSGet() => SDL_GetTLS()
-* SDL_TLSSet() => SDL_SetTLS()
+* SDL_TLSSet() => SDL_SetTLS(), returns SDL_bool
 * SDL_ThreadID() => SDL_GetCurrentThreadID()
 
 The following functions have been removed:
@@ -1981,8 +2030,6 @@ The callback passed to SDL_AddTimer() has changed parameters to:
 ```c
 Uint32 SDLCALL TimerCallback(void *userdata, SDL_TimerID timerID, Uint32 interval);
 ````
-
-SDL_RemoveTimer() now returns the standard int error code.
 
 ## SDL_touch.h
 
@@ -2023,7 +2070,7 @@ SDL_VideoInit() and SDL_VideoQuit() have been removed. Instead you can call SDL_
 Rather than iterating over displays using display index, there is a new function SDL_GetDisplays() to get the current list of displays, and functions which used to take a display index now take SDL_DisplayID, with an invalid ID being 0.
 ```c
 {
-    if (SDL_InitSubSystem(SDL_INIT_VIDEO) == 0) {
+    if (SDL_InitSubSystem(SDL_INIT_VIDEO)) {
         int i, num_displays = 0;
         SDL_DisplayID *displays = SDL_GetDisplays(&num_displays);
         if (displays) {
@@ -2097,11 +2144,9 @@ Removed SDL_GL_CONTEXT_EGL from OpenGL configuration attributes. You can instead
 
 SDL_GL_GetProcAddress() and SDL_EGL_GetProcAddress() now return `SDL_FunctionPointer` instead of `void *`, and should be cast to the appropriate function type. You can define SDL_FUNCTION_POINTER_IS_VOID_POINTER in your project to restore the previous behavior.
 
-SDL_GL_SwapWindow() returns 0 if the function succeeds or a negative error code if there was an error.
+SDL_GL_DeleteContext() has been renamed to SDL_GL_DestroyContext to match SDL naming conventions (and glX/EGL!).
 
-SDL_GL_DeleteContext() has been renamed to SDL_GL_DestroyContext to match SDL naming conventions (and glX!). It also now returns 0 if the function succeeds or a negative error code if there was an error (it returned void in SDL2).
-
-SDL_GL_GetSwapInterval() takes the interval as an output parameter and returns 0 if the function succeeds or a negative error code if there was an error.
+SDL_GL_GetSwapInterval() takes the interval as an output parameter and returns SDL_TRUE if the function succeeds or SDL_FALSE if there was an error.
 
 SDL_GL_GetDrawableSize() has been removed. SDL_GetWindowSizeInPixels() can be used in its place.
 
@@ -2112,8 +2157,8 @@ SDL_WindowFlags is used instead of Uint32 for API functions that refer to window
 SDL_GetWindowOpacity() directly returns the opacity instead of using an out parameter.
 
 The following functions have been renamed:
-* SDL_GL_DeleteContext() => SDL_GL_DestroyContext()
-* SDL_GetClosestDisplayMode() => SDL_GetClosestFullscreenDisplayMode()
+* SDL_GL_DeleteContext() => SDL_GL_DestroyContext(), returns SDL_bool
+* SDL_GetClosestDisplayMode() => SDL_GetClosestFullscreenDisplayMode(), returns SDL_bool
 * SDL_GetDisplayOrientation() => SDL_GetCurrentDisplayOrientation()
 * SDL_GetPointDisplayIndex() => SDL_GetDisplayForPoint()
 * SDL_GetRectDisplayIndex() => SDL_GetDisplayForRect()
@@ -2121,7 +2166,7 @@ The following functions have been renamed:
 * SDL_GetWindowDisplayMode() => SDL_GetWindowFullscreenMode()
 * SDL_HasWindowSurface() => SDL_WindowHasSurface()
 * SDL_IsScreenSaverEnabled() => SDL_ScreenSaverEnabled()
-* SDL_SetWindowDisplayMode() => SDL_SetWindowFullscreenMode()
+* SDL_SetWindowDisplayMode() => SDL_SetWindowFullscreenMode(), returns SDL_bool
 
 The following functions have been removed:
 * SDL_GetClosestFullscreenDisplayMode()
@@ -2135,6 +2180,7 @@ The following functions have been removed:
 * SDL_SetWindowData() - use SDL_GetWindowProperties() instead
 * SDL_CreateWindowFrom() - use SDL_CreateWindowWithProperties() with the properties that allow you to wrap an existing window
 * SDL_SetWindowInputFocus() - use SDL_RaiseWindow() instead
+* SDL_SetWindowModalFor() - use SDL_SetWindowParent() with SDL_SetWindowModal() instead
 
 The SDL_Window id type is named SDL_WindowID
 
@@ -2187,8 +2233,6 @@ or not contain the expected values.
 SDL_Vulkan_GetInstanceExtensions() no longer takes a window parameter, and no longer makes the app allocate query/allocate space for the result, instead returning a static const internal string.
 
 SDL_Vulkan_GetVkGetInstanceProcAddr() now returns `SDL_FunctionPointer` instead of `void *`, and should be cast to PFN_vkGetInstanceProcAddr.
-
-SDL_Vulkan_CreateSurface() now returns an int (0=success, -1=error) instead of an SDL_bool (true=success, false=error).
 
 SDL_Vulkan_CreateSurface() now takes a VkAllocationCallbacks pointer as its third parameter. If you don't have an allocator to supply, pass a NULL here to use the system default allocator (SDL2 always used the system default allocator here).
 

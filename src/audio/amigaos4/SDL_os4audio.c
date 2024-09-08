@@ -213,10 +213,9 @@ OS4_DetectDevices(SDL_AudioDevice **default_output, SDL_AudioDevice **default_ca
     dprintf("Default_output device %p, default_capture device %p\n", *default_output, *default_capture);
 }
 
-static int
+static bool
 OS4_OpenDevice(SDL_AudioDevice *_this)
 {
-    int result = 0;
     OS4AudioData *os4data = NULL;
 
     dprintf("Called for device %p\n", _this);
@@ -274,7 +273,7 @@ OS4_OpenDevice(SDL_AudioDevice *_this)
         OS4_CloseDevice(_this);
         dprintf("No memory for audio buffer\n");
         SDL_SetError("No memory for audio buffer");
-        return -1;
+        return false;
     }
 
     SDL_memset(os4data->audioBuffer[0], SDL_GetSilenceValueForFormat(_this->spec.format), os4data->audioBufferSize);
@@ -316,7 +315,7 @@ OS4_OpenDevice(SDL_AudioDevice *_this)
 
     dprintf("AHI format 0x%X\n", os4data->ahiType);
 
-    return result;
+    return true;
 }
 
 static void
@@ -345,12 +344,12 @@ OS4_ThreadDeinit(SDL_AudioDevice *_this)
     dprintf("Called for device %p\n", _this);
 }
 
-static int
+static bool
 OS4_WaitDevice(SDL_AudioDevice *_this)
 {
     /* Dummy - OS4_PlayDevice handles the waiting */
     //dprintf("Called\n");
-    return 0;
+    return true;
 }
 
 #define SDL_FC  2
@@ -392,7 +391,7 @@ OS4_RemapSurround(Sint32* buffer, int samples)
     }
 }
 
-static int
+static bool
 OS4_PlayDevice(SDL_AudioDevice *_this, const Uint8 *buffer, int buflen)
 {
     struct AHIRequest  *ahiRequest;
@@ -404,7 +403,7 @@ OS4_PlayDevice(SDL_AudioDevice *_this, const Uint8 *buffer, int buflen)
 
     if (!os4data->deviceOpen) {
         dprintf("Device is not open\n");
-        return -1;
+        return false;
     }
 
     ahiRequest = os4data->ahiRequest[current];
@@ -436,7 +435,7 @@ OS4_PlayDevice(SDL_AudioDevice *_this, const Uint8 *buffer, int buflen)
     os4data->link = ahiRequest;
     os4data->currentBuffer = OS4_SwapBuffer(current);
 
-    return 0;
+    return true;
 }
 
 static Uint8 *
@@ -453,11 +452,11 @@ OS4_GetDeviceBuf(SDL_AudioDevice *_this, int *buffer_size)
     return _this->hidden->audioBuffer[_this->hidden->currentBuffer];
 }
 
-static int
+static bool
 OS4_WaitRecordingDevice(SDL_AudioDevice *device)
 {
     dprintf("Called for device %p\n", device);
-    return 0;
+    return true;
 }
 
 #ifndef MIN

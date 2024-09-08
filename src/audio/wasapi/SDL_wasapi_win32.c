@@ -20,13 +20,14 @@
 */
 #include "SDL_internal.h"
 
-/* This is code that Windows uses to talk to WASAPI-related system APIs.
+/* !!! FIXME: merge this all into SDL_wasapi.c, now that WinRT is gone.
+   This is code that Windows uses to talk to WASAPI-related system APIs.
    This is for non-WinRT desktop apps. The C++/CX implementation of these
    functions, exclusive to WinRT, are in SDL_wasapi_winrt.cpp.
    The code in SDL_wasapi.c is used by both standard Windows and WinRT builds
    to deal with audio and calls into these functions. */
 
-#if defined(SDL_AUDIO_DRIVER_WASAPI) && !defined(SDL_PLATFORM_WINRT)
+#if defined(SDL_AUDIO_DRIVER_WASAPI)
 
 #include "../../core/windows/SDL_windows.h"
 #include "../../core/windows/SDL_immdevice.h"
@@ -48,12 +49,12 @@ static bool immdevice_initialized = false;
 // Some GUIDs we need to know without linking to libraries that aren't available before Vista.
 static const IID SDL_IID_IAudioClient = { 0x1cb9ad4c, 0xdbfa, 0x4c32, { 0xb1, 0x78, 0xc2, 0xf5, 0x68, 0xa7, 0x03, 0xb2 } };
 
-static int mgmtthrtask_AudioDeviceDisconnected(void *userdata)
+static bool mgmtthrtask_AudioDeviceDisconnected(void *userdata)
 {
     SDL_AudioDevice *device = (SDL_AudioDevice *) userdata;
     SDL_AudioDeviceDisconnected(device);
     UnrefPhysicalAudioDevice(device);  // make sure this lived until the task completes.
-    return 0;
+    return true;
 }
 
 static void WASAPI_AudioDeviceDisconnected(SDL_AudioDevice *device)
@@ -65,12 +66,12 @@ static void WASAPI_AudioDeviceDisconnected(SDL_AudioDevice *device)
     }
 }
 
-static int mgmtthrtask_DefaultAudioDeviceChanged(void *userdata)
+static bool mgmtthrtask_DefaultAudioDeviceChanged(void *userdata)
 {
     SDL_AudioDevice *device = (SDL_AudioDevice *) userdata;
     SDL_DefaultAudioDeviceChanged(device);
     UnrefPhysicalAudioDevice(device);  // make sure this lived until the task completes.
-    return 0;
+    return true;
 }
 
 static void WASAPI_DefaultAudioDeviceChanged(SDL_AudioDevice *new_default_device)
@@ -82,13 +83,13 @@ static void WASAPI_DefaultAudioDeviceChanged(SDL_AudioDevice *new_default_device
     }
 }
 
-int WASAPI_PlatformInit(void)
+bool WASAPI_PlatformInit(void)
 {
     const SDL_IMMDevice_callbacks callbacks = { WASAPI_AudioDeviceDisconnected, WASAPI_DefaultAudioDeviceChanged };
     if (FAILED(WIN_CoInitialize())) {
         return SDL_SetError("CoInitialize() failed");
-    } else if (SDL_IMMDevice_Init(&callbacks) < 0) {
-        return -1; // Error string is set by SDL_IMMDevice_Init
+    } else if (!SDL_IMMDevice_Init(&callbacks)) {
+        return false; // Error string is set by SDL_IMMDevice_Init
     }
 
     immdevice_initialized = true;
@@ -99,7 +100,7 @@ int WASAPI_PlatformInit(void)
         pAvRevertMmThreadCharacteristics = (pfnAvRevertMmThreadCharacteristics)GetProcAddress(libavrt, "AvRevertMmThreadCharacteristics");
     }
 
-    return 0;
+    return true;
 }
 
 static void StopWasapiHotplug(void)
@@ -161,12 +162,12 @@ void WASAPI_PlatformThreadDeinit(SDL_AudioDevice *device)
     }
 }
 
-int WASAPI_ActivateDevice(SDL_AudioDevice *device)
+bool WASAPI_ActivateDevice(SDL_AudioDevice *device)
 {
     IMMDevice *immdevice = NULL;
-    if (SDL_IMMDevice_Get(device, &immdevice, device->recording) < 0) {
+    if (!SDL_IMMDevice_Get(device, &immdevice, device->recording)) {
         device->hidden->client = NULL;
-        return -1; // This is already set by SDL_IMMDevice_Get
+        return false; // This is already set by SDL_IMMDevice_Get
     }
 
     // this is _not_ async in standard win32, yay!
@@ -179,11 +180,11 @@ int WASAPI_ActivateDevice(SDL_AudioDevice *device)
     }
 
     SDL_assert(device->hidden->client != NULL);
-    if (WASAPI_PrepDevice(device) < 0) { // not async, fire it right away.
-        return -1;
+    if (!WASAPI_PrepDevice(device)) { // not async, fire it right away.
+        return false;
     }
 
-    return 0; // good to go.
+    return true; // good to go.
 }
 
 void WASAPI_EnumerateEndpoints(SDL_AudioDevice **default_playback, SDL_AudioDevice **default_recording)
@@ -191,15 +192,9 @@ void WASAPI_EnumerateEndpoints(SDL_AudioDevice **default_playback, SDL_AudioDevi
     SDL_IMMDevice_EnumerateEndpoints(default_playback, default_recording);
 }
 
-void WASAPI_PlatformDeleteActivationHandler(void *handler)
-{
-    // not asynchronous.
-    SDL_assert(!"This function should have only been called on WinRT.");
-}
-
 void WASAPI_PlatformFreeDeviceHandle(SDL_AudioDevice *device)
 {
     SDL_IMMDevice_FreeDeviceHandle(device);
 }
 
-#endif // SDL_AUDIO_DRIVER_WASAPI && !defined(SDL_PLATFORM_WINRT)
+#endif // SDL_AUDIO_DRIVER_WASAPI

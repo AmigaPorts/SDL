@@ -71,9 +71,6 @@ static SDL_GetPowerInfo_Impl implementations[] = {
 #ifdef SDL_POWER_N3DS // handles N3DS.
     SDL_GetPowerInfo_N3DS,
 #endif
-#ifdef SDL_POWER_WINRT // handles WinRT
-    SDL_GetPowerInfo_WinRT,
-#endif
 #ifdef SDL_POWER_EMSCRIPTEN // handles Emscripten
     SDL_GetPowerInfo_Emscripten,
 #endif
@@ -88,7 +85,7 @@ SDL_PowerState SDL_GetPowerInfo(int *seconds, int *percent)
 {
 #ifndef SDL_POWER_DISABLED
     const int total = sizeof(implementations) / sizeof(implementations[0]);
-    SDL_PowerState retval = SDL_POWERSTATE_UNKNOWN;
+    SDL_PowerState result = SDL_POWERSTATE_UNKNOWN;
     int i;
 #endif
 
@@ -103,8 +100,8 @@ SDL_PowerState SDL_GetPowerInfo(int *seconds, int *percent)
 
 #ifndef SDL_POWER_DISABLED
     for (i = 0; i < total; i++) {
-        if (implementations[i](&retval, seconds, percent)) {
-            return retval;
+        if (implementations[i](&result, seconds, percent)) {
+            return result;
         }
     }
 #endif

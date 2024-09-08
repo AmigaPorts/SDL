@@ -180,7 +180,7 @@ OS4_ExitThread(int32 returnCode, int32 finalData)
     IExec->MutexRelease(control.children.mutex);
 }
 
-int
+bool
 SDL_SYS_CreateThread(SDL_Thread * thread,
                      SDL_FunctionPointer pfnBeginThread,
                      SDL_FunctionPointer pfnEndThread)
@@ -242,7 +242,7 @@ SDL_SYS_CreateThread(SDL_Thread * thread,
 
     dprintf("Created new thread '%s' (task %p)\n", thread->name, child);
 
-    return 0;
+    return true;
 }
 
 void
@@ -257,7 +257,7 @@ SDL_GetCurrentThreadID(void)
     return (SDL_ThreadID)(Uint32)IExec->FindTask(NULL);
 }
 
-int
+bool
 SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 {
     int value;
@@ -285,7 +285,7 @@ SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 
     dprintf("Changed task %p priority from %d to %d\n", task, old, value);
 
-    return 0;
+    return true;
 }
 
 static BOOL

@@ -30,11 +30,13 @@ LOCAL_SRC_FILES := \
 	$(wildcard $(LOCAL_PATH)/src/core/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/core/android/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/cpuinfo/*.c) \
-    $(LOCAL_PATH)/src/dialog/SDL_dialog_utils.c \
-    $(LOCAL_PATH)/src/dialog/android/SDL_androiddialog.c \
+	$(LOCAL_PATH)/src/dialog/SDL_dialog_utils.c \
+	$(LOCAL_PATH)/src/dialog/android/SDL_androiddialog.c \
 	$(wildcard $(LOCAL_PATH)/src/dynapi/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/events/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/file/*.c) \
+	$(wildcard $(LOCAL_PATH)/src/gpu/*.c) \
+	$(wildcard $(LOCAL_PATH)/src/gpu/vulkan/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/haptic/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/haptic/android/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/haptic/dummy/*.c) \
@@ -44,6 +46,7 @@ LOCAL_SRC_FILES := \
 	$(wildcard $(LOCAL_PATH)/src/joystick/android/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/joystick/dummy/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/joystick/hidapi/*.c) \
+	$(wildcard $(LOCAL_PATH)/src/joystick/steam/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/joystick/virtual/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/loadso/dlopen/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/locale/*.c) \
@@ -63,6 +66,8 @@ LOCAL_SRC_FILES := \
 	$(wildcard $(LOCAL_PATH)/src/render/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/render/*/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/stdlib/*.c) \
+	$(wildcard $(LOCAL_PATH)/src/storage/*.c) \
+	$(wildcard $(LOCAL_PATH)/src/storage/generic/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/thread/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/thread/pthread/*.c) \
 	$(wildcard $(LOCAL_PATH)/src/time/*.c) \
@@ -94,7 +99,7 @@ LOCAL_CXXFLAGS += -std=gnu++11
 
 LOCAL_LDLIBS := -ldl -lGLESv1_CM -lGLESv2 -lOpenSLES -llog -landroid
 
-LOCAL_LDFLAGS := -Wl,--no-undefined -Wl,--version-script=$(LOCAL_PATH)/src/dynapi/SDL_dynapi.sym
+LOCAL_LDFLAGS := -Wl,--no-undefined -Wl,--no-undefined-version -Wl,--version-script=$(LOCAL_PATH)/src/dynapi/SDL_dynapi.sym
 
 ifeq ($(NDK_DEBUG),1)
     cmd-strip :=

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -26,7 +26,7 @@
 //#include <proto/exec.h>
 //#include <proto/locale.h>
 
-int
+bool
 SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
 {
     snprintf(buf, buflen, "en_GB, en");
@@ -47,22 +47,22 @@ SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
                 }
             } else {
                 dprintf("Failed to open locale\n");
-		return -1;
+		return false;
             }
 
             IExec->DropInterface((struct Interface*)ILocale);
         } else {
             dprintf("Failed to get locale interface\n");
-	    return -1;
+	    return false;
         }
 
         IExec->CloseLibrary(LocaleBase);
     } else {
         dprintf("Failed to open locale.library\n");
-	return -1;
+	return false;
     }
 #endif
-    return 0;
+    return true;
 }
 
 /* vi: set ts=4 sw=4 expandtab: */

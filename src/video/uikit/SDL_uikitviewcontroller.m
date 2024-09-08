@@ -126,13 +126,13 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 #endif
 
 #ifdef SDL_PLATFORM_TVOS
-    SDL_DelHintCallback(SDL_HINT_APPLE_TV_CONTROLLER_UI_EVENTS,
+    SDL_RemoveHintCallback(SDL_HINT_APPLE_TV_CONTROLLER_UI_EVENTS,
                         SDL_AppleTVControllerUIHintChanged,
                         (__bridge void *)self);
 #endif
 
 #ifndef SDL_PLATFORM_TVOS
-    SDL_DelHintCallback(SDL_HINT_IOS_HIDE_HOME_INDICATOR,
+    SDL_RemoveHintCallback(SDL_HINT_IOS_HIDE_HOME_INDICATOR,
                         SDL_HideHomeIndicatorHintChanged,
                         (__bridge void *)self);
 #endif
@@ -712,7 +712,7 @@ bool UIKit_IsScreenKeyboardShown(SDL_VideoDevice *_this, SDL_Window *window)
     }
 }
 
-int UIKit_UpdateTextInputArea(SDL_VideoDevice *_this, SDL_Window *window)
+bool UIKit_UpdateTextInputArea(SDL_VideoDevice *_this, SDL_Window *window)
 {
     @autoreleasepool {
         SDL_uikitviewcontroller *vc = GetWindowViewController(window);
@@ -724,7 +724,7 @@ int UIKit_UpdateTextInputArea(SDL_VideoDevice *_this, SDL_Window *window)
             }
         }
     }
-    return 0;
+    return true;
 }
 
 #endif // SDL_IPHONE_KEYBOARD

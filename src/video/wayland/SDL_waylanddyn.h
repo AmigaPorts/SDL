@@ -46,7 +46,6 @@ enum libdecor_resize_edge;
 enum libdecor_capabilities;
 enum libdecor_window_state;
 
-#include <stdint.h>
 #include "wayland-cursor.h"
 #include "wayland-util.h"
 #include "xkbcommon/xkbcommon.h"
@@ -71,8 +70,8 @@ enum libdecor_window_state;
 extern "C" {
 #endif
 
-int SDL_WAYLAND_LoadSymbols(void);
-void SDL_WAYLAND_UnloadSymbols(void);
+extern bool SDL_WAYLAND_LoadSymbols(void);
+extern void SDL_WAYLAND_UnloadSymbols(void);
 
 #define SDL_WAYLAND_MODULE(modname) extern int SDL_WAYLAND_HAVE_##modname;
 #define SDL_WAYLAND_SYM(rc, fn, params)        \

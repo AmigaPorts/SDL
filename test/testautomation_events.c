@@ -45,7 +45,7 @@ static SDL_bool SDLCALL events_sampleNullEventFilter(void *userdata, SDL_Event *
  * \sa SDL_PumpEvents
  * \sa SDL_PollEvent
  */
-static int events_pushPumpAndPollUserevent(void *arg)
+static int SDLCALL events_pushPumpAndPollUserevent(void *arg)
 {
     SDL_Event event_in;
     SDL_Event event_out;
@@ -106,10 +106,10 @@ static int events_pushPumpAndPollUserevent(void *arg)
  * Adds and deletes an event watch function with NULL userdata
  *
  * \sa SDL_AddEventWatch
- * \sa SDL_DelEventWatch
+ * \sa SDL_RemoveEventWatch
  *
  */
-static int events_addDelEventWatch(void *arg)
+static int SDLCALL events_addDelEventWatch(void *arg)
 {
     SDL_Event event;
 
@@ -138,8 +138,8 @@ static int events_addDelEventWatch(void *arg)
     SDLTest_AssertCheck(g_eventFilterCalled == 1, "Check that event filter was called");
 
     /* Delete watch */
-    SDL_DelEventWatch(events_sampleNullEventFilter, NULL);
-    SDLTest_AssertPass("Call to SDL_DelEventWatch()");
+    SDL_RemoveEventWatch(events_sampleNullEventFilter, NULL);
+    SDLTest_AssertPass("Call to SDL_RemoveEventWatch()");
 
     /* Push a user event onto the queue and force queue update */
     g_eventFilterCalled = 0;
@@ -156,10 +156,10 @@ static int events_addDelEventWatch(void *arg)
  * Adds and deletes an event watch function with userdata
  *
  * \sa SDL_AddEventWatch
- * \sa SDL_DelEventWatch
+ * \sa SDL_RemoveEventWatch
  *
  */
-static int events_addDelEventWatchWithUserdata(void *arg)
+static int SDLCALL events_addDelEventWatchWithUserdata(void *arg)
 {
     SDL_Event event;
 
@@ -189,8 +189,8 @@ static int events_addDelEventWatchWithUserdata(void *arg)
     SDLTest_AssertCheck(g_eventFilterCalled == 1, "Check that event filter was called");
 
     /* Delete watch */
-    SDL_DelEventWatch(events_sampleNullEventFilter, (void *)&g_userdataValue);
-    SDLTest_AssertPass("Call to SDL_DelEventWatch()");
+    SDL_RemoveEventWatch(events_sampleNullEventFilter, (void *)&g_userdataValue);
+    SDLTest_AssertPass("Call to SDL_RemoveEventWatch()");
 
     /* Push a user event onto the queue and force queue update */
     g_eventFilterCalled = 0;

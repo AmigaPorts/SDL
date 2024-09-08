@@ -21,9 +21,9 @@
 #include "SDL_internal.h"
 #include "SDL3/SDL_revision.h"
 
-#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK)
+#if defined(SDL_PLATFORM_WINDOWS)
 #include "core/windows/SDL_windows.h"
-#elif !defined(SDL_PLATFORM_WINRT)
+#else
 #include <unistd.h> // _exit(), etc.
 #endif
 #if defined(SDL_PLATFORM_AMIGAOS4)
@@ -62,8 +62,8 @@
 // Initialization/Cleanup routines
 #include "timer/SDL_timer_c.h"
 #ifdef SDL_VIDEO_DRIVER_WINDOWS
-extern int SDL_HelperWindowCreate(void);
-extern int SDL_HelperWindowDestroy(void);
+extern bool SDL_HelperWindowCreate(void);
+extern void SDL_HelperWindowDestroy(void);
 #endif
 
 #ifdef SDL_BUILD_MAJOR_VERSION
@@ -89,7 +89,7 @@ SDL_COMPILE_TIME_ASSERT(SDL_MICRO_VERSION_max, SDL_MICRO_VERSION <= 999);
 extern SDL_NORETURN void SDL_ExitProcess(int exitcode);
 SDL_NORETURN void SDL_ExitProcess(int exitcode)
 {
-#if defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK)
+#if defined(SDL_PLATFORM_WINDOWS)
     /* "if you do not know the state of all threads in your process, it is
        better to call TerminateProcess than ExitProcess"
        https://msdn.microsoft.com/en-us/library/windows/desktop/ms682658(v=vs.85).aspx */
@@ -112,12 +112,12 @@ SDL_NORETURN void SDL_ExitProcess(int exitcode)
 
 // App metadata
 
-int SDL_SetAppMetadata(const char *appname, const char *appversion, const char *appidentifier)
+SDL_bool SDL_SetAppMetadata(const char *appname, const char *appversion, const char *appidentifier)
 {
     SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_NAME_STRING, appname);
     SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_VERSION_STRING, appversion);
     SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_IDENTIFIER_STRING, appidentifier);
-    return 0;
+    return true;
 }
 
 static bool SDL_ValidMetadataProperty(const char *name)
@@ -138,7 +138,7 @@ static bool SDL_ValidMetadataProperty(const char *name)
     return false;
 }
 
-int SDL_SetAppMetadataProperty(const char *name, const char *value)
+SDL_bool SDL_SetAppMetadataProperty(const char *name, const char *value)
 {
     if (!SDL_ValidMetadataProperty(name)) {
         return SDL_InvalidParamError("name");
@@ -241,7 +241,7 @@ static bool SDL_InitOrIncrementSubsystem(Uint32 subsystem)
         ++SDL_SubsystemRefCount[subsystem_index];
         return true;
     }
-    return SDL_InitSubSystem(subsystem) == 0;
+    return SDL_InitSubSystem(subsystem);
 }
 
 void SDL_SetMainReady(void)
@@ -271,7 +271,7 @@ static void SDL_QuitMainThread(void)
     SDL_QuitTLSData();
 }
 
-int SDL_InitSubSystem(SDL_InitFlags flags)
+SDL_bool SDL_InitSubSystem(SDL_InitFlags flags)
 {
     Uint32 flags_initialized = 0;
 
@@ -291,7 +291,7 @@ int SDL_InitSubSystem(SDL_InitFlags flags)
 
 #ifdef SDL_VIDEO_DRIVER_WINDOWS
     if (flags & (SDL_INIT_HAPTIC | SDL_INIT_JOYSTICK)) {
-        if (SDL_HelperWindowCreate() < 0) {
+        if (!SDL_HelperWindowCreate()) {
             goto quit_and_error;
         }
     }
@@ -301,7 +301,7 @@ int SDL_InitSubSystem(SDL_InitFlags flags)
     if (flags & SDL_INIT_EVENTS) {
         if (SDL_ShouldInitSubsystem(SDL_INIT_EVENTS)) {
             SDL_IncrementSubsystemRefCount(SDL_INIT_EVENTS);
-            if (SDL_InitEvents() < 0) {
+            if (!SDL_InitEvents()) {
                 SDL_DecrementSubsystemRefCount(SDL_INIT_EVENTS);
                 goto quit_and_error;
             }
@@ -315,7 +315,7 @@ int SDL_InitSubSystem(SDL_InitFlags flags)
     if (flags & SDL_INIT_TIMER) {
         if (SDL_ShouldInitSubsystem(SDL_INIT_TIMER)) {
             SDL_IncrementSubsystemRefCount(SDL_INIT_TIMER);
-            if (SDL_InitTimers() < 0) {
+            if (!SDL_InitTimers()) {
                 SDL_DecrementSubsystemRefCount(SDL_INIT_TIMER);
                 goto quit_and_error;
             }
@@ -335,7 +335,7 @@ int SDL_InitSubSystem(SDL_InitFlags flags)
             }
 
             SDL_IncrementSubsystemRefCount(SDL_INIT_VIDEO);
-            if (SDL_VideoInit(NULL) < 0) {
+            if (!SDL_VideoInit(NULL)) {
                 SDL_DecrementSubsystemRefCount(SDL_INIT_VIDEO);
                 goto quit_and_error;
             }
@@ -359,7 +359,7 @@ int SDL_InitSubSystem(SDL_InitFlags flags)
             }
 
             SDL_IncrementSubsystemRefCount(SDL_INIT_AUDIO);
-            if (SDL_InitAudio(NULL) < 0) {
+            if (!SDL_InitAudio(NULL)) {
                 SDL_DecrementSubsystemRefCount(SDL_INIT_AUDIO);
                 goto quit_and_error;
             }
@@ -383,7 +383,7 @@ int SDL_InitSubSystem(SDL_InitFlags flags)
             }
 
             SDL_IncrementSubsystemRefCount(SDL_INIT_JOYSTICK);
-            if (SDL_InitJoysticks() < 0) {
+            if (!SDL_InitJoysticks()) {
                 SDL_DecrementSubsystemRefCount(SDL_INIT_JOYSTICK);
                 goto quit_and_error;
             }
@@ -406,7 +406,7 @@ int SDL_InitSubSystem(SDL_InitFlags flags)
             }
 
             SDL_IncrementSubsystemRefCount(SDL_INIT_GAMEPAD);
-            if (SDL_InitGamepads() < 0) {
+            if (!SDL_InitGamepads()) {
                 SDL_DecrementSubsystemRefCount(SDL_INIT_GAMEPAD);
                 goto quit_and_error;
             }
@@ -425,7 +425,7 @@ int SDL_InitSubSystem(SDL_InitFlags flags)
 #ifndef SDL_HAPTIC_DISABLED
         if (SDL_ShouldInitSubsystem(SDL_INIT_HAPTIC)) {
             SDL_IncrementSubsystemRefCount(SDL_INIT_HAPTIC);
-            if (SDL_InitHaptics() < 0) {
+            if (!SDL_InitHaptics()) {
                 SDL_DecrementSubsystemRefCount(SDL_INIT_HAPTIC);
                 goto quit_and_error;
             }
@@ -444,7 +444,7 @@ int SDL_InitSubSystem(SDL_InitFlags flags)
 #ifndef SDL_SENSOR_DISABLED
         if (SDL_ShouldInitSubsystem(SDL_INIT_SENSOR)) {
             SDL_IncrementSubsystemRefCount(SDL_INIT_SENSOR);
-            if (SDL_InitSensors() < 0) {
+            if (!SDL_InitSensors()) {
                 SDL_DecrementSubsystemRefCount(SDL_INIT_SENSOR);
                 goto quit_and_error;
             }
@@ -468,7 +468,7 @@ int SDL_InitSubSystem(SDL_InitFlags flags)
             }
 
             SDL_IncrementSubsystemRefCount(SDL_INIT_CAMERA);
-            if (SDL_CameraInit(NULL) < 0) {
+            if (!SDL_CameraInit(NULL)) {
                 SDL_DecrementSubsystemRefCount(SDL_INIT_CAMERA);
                 goto quit_and_error;
             }
@@ -488,10 +488,10 @@ int SDL_InitSubSystem(SDL_InitFlags flags)
 
 quit_and_error:
     SDL_QuitSubSystem(flags_initialized);
-    return -1;
+    return false;
 }
 
-int SDL_Init(SDL_InitFlags flags)
+SDL_bool SDL_Init(SDL_InitFlags flags)
 {
     return SDL_InitSubSystem(flags);
 }
@@ -707,8 +707,6 @@ const char *SDL_GetPlatform(void)
     return "Solaris";
 #elif defined(SDL_PLATFORM_WIN32)
     return "Windows";
-#elif defined(SDL_PLATFORM_WINRT)
-    return "WinRT";
 #elif defined(SDL_PLATFORM_WINGDK)
     return "WinGDK";
 #elif defined(SDL_PLATFORM_XBOXONE)
@@ -769,4 +767,4 @@ BOOL APIENTRY MINGW32_FORCEALIGN _DllMainCRTStartup(HANDLE hModule, DWORD ul_rea
 }
 #endif // Building DLL
 
-#endif // defined(SDL_PLATFORM_WIN32) || defined(SDL_PLATFORM_GDK)
+#endif // defined(SDL_PLATFORM_WIN32)

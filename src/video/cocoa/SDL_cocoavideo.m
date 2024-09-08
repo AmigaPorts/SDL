@@ -41,7 +41,7 @@
 @end
 
 // Initialization/Query functions
-static int Cocoa_VideoInit(SDL_VideoDevice *_this);
+static bool Cocoa_VideoInit(SDL_VideoDevice *_this);
 static void Cocoa_VideoQuit(SDL_VideoDevice *_this);
 
 // Cocoa driver bootstrap functions
@@ -122,7 +122,8 @@ static SDL_VideoDevice *Cocoa_CreateDevice(void)
         device->UpdateWindowShape = Cocoa_UpdateWindowShape;
         device->FlashWindow = Cocoa_FlashWindow;
         device->SetWindowFocusable = Cocoa_SetWindowFocusable;
-        device->SetWindowModalFor = Cocoa_SetWindowModalFor;
+        device->SetWindowParent = Cocoa_SetWindowParent;
+        device->SetWindowModal = Cocoa_SetWindowModal;
         device->SyncWindow = Cocoa_SyncWindow;
 
 #ifdef SDL_VIDEO_OPENGL_CGL
@@ -134,7 +135,7 @@ static SDL_VideoDevice *Cocoa_CreateDevice(void)
         device->GL_SetSwapInterval = Cocoa_GL_SetSwapInterval;
         device->GL_GetSwapInterval = Cocoa_GL_GetSwapInterval;
         device->GL_SwapWindow = Cocoa_GL_SwapWindow;
-        device->GL_DeleteContext = Cocoa_GL_DeleteContext;
+        device->GL_DestroyContext = Cocoa_GL_DestroyContext;
         device->GL_GetEGLSurface = NULL;
 #endif
 #ifdef SDL_VIDEO_OPENGL_EGL
@@ -149,7 +150,7 @@ static SDL_VideoDevice *Cocoa_CreateDevice(void)
             device->GL_SetSwapInterval = Cocoa_GLES_SetSwapInterval;
             device->GL_GetSwapInterval = Cocoa_GLES_GetSwapInterval;
             device->GL_SwapWindow = Cocoa_GLES_SwapWindow;
-            device->GL_DeleteContext = Cocoa_GLES_DeleteContext;
+            device->GL_DestroyContext = Cocoa_GLES_DestroyContext;
             device->GL_GetEGLSurface = Cocoa_GLES_GetEGLSurface;
 #ifdef SDL_VIDEO_OPENGL_CGL
         }
@@ -192,17 +193,18 @@ VideoBootStrap COCOA_bootstrap = {
     Cocoa_ShowMessageBox
 };
 
-int Cocoa_VideoInit(SDL_VideoDevice *_this)
+static bool Cocoa_VideoInit(SDL_VideoDevice *_this)
 {
     @autoreleasepool {
         SDL_CocoaVideoData *data = (__bridge SDL_CocoaVideoData *)_this->internal;
 
         Cocoa_InitModes(_this);
         Cocoa_InitKeyboard(_this);
-        if (Cocoa_InitMouse(_this) < 0) {
-            return -1;
-        } else if (Cocoa_InitPen(_this) < 0) {
-            return -1;
+        if (!Cocoa_InitMouse(_this)) {
+            return false;
+        }
+        if (!Cocoa_InitPen(_this)) {
+            return false;
         }
 
         // Assume we have a mouse and keyboard
@@ -215,10 +217,10 @@ int Cocoa_VideoInit(SDL_VideoDevice *_this)
 
         data.swaplock = SDL_CreateMutex();
         if (!data.swaplock) {
-            return -1;
+            return false;
         }
 
-        return 0;
+        return true;
     }
 }
 

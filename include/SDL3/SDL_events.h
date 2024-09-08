@@ -28,17 +28,21 @@
 #ifndef SDL_events_h_
 #define SDL_events_h_
 
+#include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_audio.h>
+#include <SDL3/SDL_camera.h>
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_gamepad.h>
 #include <SDL3/SDL_joystick.h>
 #include <SDL3/SDL_keyboard.h>
+#include <SDL3/SDL_keycode.h>
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_pen.h>
-#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_power.h>
+#include <SDL3/SDL_sensor.h>
+#include <SDL3/SDL_scancode.h>
 #include <SDL3/SDL_touch.h>
 #include <SDL3/SDL_video.h>
-#include <SDL3/SDL_camera.h>
 
 #include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
@@ -381,6 +385,9 @@ typedef struct SDL_TextEditingCandidatesEvent
     Sint32 num_candidates;      /**< The number of strings in `candidates` */
     Sint32 selected_candidate;  /**< The index of the selected candidate, or -1 if no candidate is selected */
     SDL_bool horizontal;          /**< SDL_TRUE if the list is horizontal, SDL_FALSE if it's vertical */
+    Uint8 padding1;
+    Uint8 padding2;
+    Uint8 padding3;
 } SDL_TextEditingCandidatesEvent;
 
 /**
@@ -1039,8 +1046,8 @@ typedef enum SDL_EventAction
  *                SDL_EVENT_FIRST is a safe choice.
  * \param maxType maximum value of the event type to be considered;
  *                SDL_EVENT_LAST is a safe choice.
- * \returns the number of events actually stored or a negative error code on
- *          failure; call SDL_GetError() for more information.
+ * \returns the number of events actually stored or -1 on failure; call
+ *          SDL_GetError() for more information.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1254,9 +1261,9 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_WaitEventTimeout(SDL_Event *event, Sint
  * its own custom event types.
  *
  * \param event the SDL_Event to be added to the queue.
- * \returns 1 on success, 0 if the event was filtered, or a negative error
- *          code on failure; call SDL_GetError() for more information. A
- *          common reason for error is the event queue being full.
+ * \returns SDL_TRUE on success, SDL_FALSE if the event was filtered or on
+ *          failure; call SDL_GetError() for more information. A common reason
+ *          for error is the event queue being full.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1264,7 +1271,7 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_WaitEventTimeout(SDL_Event *event, Sint
  * \sa SDL_PollEvent
  * \sa SDL_RegisterEvents
  */
-extern SDL_DECLSPEC int SDLCALL SDL_PushEvent(SDL_Event *event);
+extern SDL_DECLSPEC SDL_bool SDLCALL SDL_PushEvent(SDL_Event *event);
 
 /**
  * A function pointer used for callbacks that watch the event queue.
@@ -1372,17 +1379,17 @@ extern SDL_DECLSPEC SDL_bool SDLCALL SDL_GetEventFilter(SDL_EventFilter *filter,
  *
  * \param filter an SDL_EventFilter function to call when an event happens.
  * \param userdata a pointer that is passed to `filter`.
- * \returns 0 on success or a negative error code on failure; call
- *          SDL_GetError() for more information.
+ * \returns SDL_TRUE on success or SDL_FALSE on failure; call SDL_GetError()
+ *          for more information.
  *
  * \threadsafety It is safe to call this function from any thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
- * \sa SDL_DelEventWatch
+ * \sa SDL_RemoveEventWatch
  * \sa SDL_SetEventFilter
  */
-extern SDL_DECLSPEC int SDLCALL SDL_AddEventWatch(SDL_EventFilter filter, void *userdata);
+extern SDL_DECLSPEC SDL_bool SDLCALL SDL_AddEventWatch(SDL_EventFilter filter, void *userdata);
 
 /**
  * Remove an event watch callback added with SDL_AddEventWatch().
@@ -1397,7 +1404,7 @@ extern SDL_DECLSPEC int SDLCALL SDL_AddEventWatch(SDL_EventFilter filter, void *
  *
  * \sa SDL_AddEventWatch
  */
-extern SDL_DECLSPEC void SDLCALL SDL_DelEventWatch(SDL_EventFilter filter, void *userdata);
+extern SDL_DECLSPEC void SDLCALL SDL_RemoveEventWatch(SDL_EventFilter filter, void *userdata);
 
 /**
  * Run a specific filter function on the current event queue, removing any

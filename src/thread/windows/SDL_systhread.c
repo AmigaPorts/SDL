@@ -58,9 +58,9 @@ static unsigned __stdcall MINGW32_FORCEALIGN RunThreadViaBeginThreadEx(void *dat
     return (unsigned)RunThread(data);
 }
 
-int SDL_SYS_CreateThread(SDL_Thread *thread,
-                         SDL_FunctionPointer vpfnBeginThread,
-                         SDL_FunctionPointer vpfnEndThread)
+bool SDL_SYS_CreateThread(SDL_Thread *thread,
+                          SDL_FunctionPointer vpfnBeginThread,
+                          SDL_FunctionPointer vpfnEndThread)
 {
     SDL_BeginThreadExCallback pfnBeginThread = (SDL_BeginThreadExCallback) vpfnBeginThread;
 
@@ -84,7 +84,7 @@ int SDL_SYS_CreateThread(SDL_Thread *thread,
     if (!thread->handle) {
         return SDL_SetError("Not enough resources to create thread");
     }
-    return 0;
+    return true;
 }
 
 #pragma pack(push, 8)
@@ -109,7 +109,6 @@ void SDL_SYS_SetupThread(const char *name)
 {
     if (name) {
         PVOID exceptionHandlerHandle;
-#ifndef SDL_PLATFORM_WINRT // !!! FIXME: There's no LoadLibrary() in WinRT; don't know if SetThreadDescription is available there at all at the moment.
         static pfnSetThreadDescription pSetThreadDescription = NULL;
         static HMODULE kernel32 = NULL;
 
@@ -133,7 +132,6 @@ void SDL_SYS_SetupThread(const char *name)
                 SDL_free(strw);
             }
         }
-#endif
 
         /* Presumably some version of Visual Studio will understand SetThreadDescription(),
            but we still need to deal with older OSes and debuggers. Set it with the arcane
@@ -161,7 +159,7 @@ SDL_ThreadID SDL_GetCurrentThreadID(void)
     return (SDL_ThreadID)GetCurrentThreadId();
 }
 
-int SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
+bool SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 {
     int value;
 
@@ -177,7 +175,7 @@ int SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
     if (!SetThreadPriority(GetCurrentThread(), value)) {
         return WIN_SetError("SetThreadPriority()");
     }
-    return 0;
+    return true;
 }
 
 void SDL_SYS_WaitThread(SDL_Thread *thread)

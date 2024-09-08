@@ -136,16 +136,16 @@ SDL_bool SDL_AtomicCompareAndSwap(SDL_AtomicInt *a, int oldval, int newval)
 #elif defined(SDL_PLATFORM_SOLARIS)
     return ((int)atomic_cas_uint((volatile uint_t *)&a->value, (uint_t)oldval, (uint_t)newval) == oldval);
 #elif defined(EMULATE_CAS)
-    bool retval = false;
+    bool result = false;
 
     enterLock(a);
     if (a->value == oldval) {
         a->value = newval;
-        retval = true;
+        result = true;
     }
     leaveLock(a);
 
-    return retval;
+    return result;
 #else
 #error Please define your platform.
 #endif
@@ -166,16 +166,16 @@ SDL_bool SDL_AtomicCompareAndSwapPointer(void **a, void *oldval, void *newval)
 #elif defined(SDL_PLATFORM_SOLARIS)
     return (atomic_cas_ptr(a, oldval, newval) == oldval);
 #elif defined(EMULATE_CAS)
-    bool retval = false;
+    bool result = false;
 
     enterLock(a);
     if (*a == oldval) {
         *a = newval;
-        retval = true;
+        result = true;
     }
     leaveLock(a);
 
-    return retval;
+    return result;
 #else
 #error Please define your platform.
 #endif
@@ -201,7 +201,7 @@ int SDL_AtomicSet(SDL_AtomicInt *a, int v)
 #endif
 }
 
-void *SDL_AtomicSetPtr(void **a, void *v)
+void *SDL_AtomicSetPointer(void **a, void *v)
 {
 #ifdef HAVE_MSC_ATOMICS
     return _InterlockedExchangePointer(a, v);
@@ -267,7 +267,7 @@ int SDL_AtomicGet(SDL_AtomicInt *a)
 #endif
 }
 
-void *SDL_AtomicGetPtr(void **a)
+void *SDL_AtomicGetPointer(void **a)
 {
 #ifdef HAVE_ATOMIC_LOAD_N
     return __atomic_load_n(a, __ATOMIC_SEQ_CST);

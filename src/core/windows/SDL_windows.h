@@ -117,15 +117,13 @@ extern "C" {
 #endif
 
 // Sets an error message based on a given HRESULT
-extern int WIN_SetErrorFromHRESULT(const char *prefix, HRESULT hr);
+extern bool WIN_SetErrorFromHRESULT(const char *prefix, HRESULT hr);
 
 // Sets an error message based on GetLastError(). Always return -1.
-extern int WIN_SetError(const char *prefix);
+extern bool WIN_SetError(const char *prefix);
 
-#ifndef SDL_PLATFORM_WINRT
 // Load a function from combase.dll
 FARPROC WIN_LoadComBaseFunction(const char *name);
-#endif
 
 // Wrap up the oddities of CoInitialize() into a common function.
 extern HRESULT WIN_CoInitialize(void);

@@ -53,6 +53,27 @@ typedef Uint32 SDLTest_VerboseFlags;
 #define VERBOSE_AUDIO   0x00000010
 #define VERBOSE_MOTION  0x00000020
 
+/* !< Function pointer parsing one argument at argv[index], returning the number of parsed arguments,
+ *    or a negative value when the argument is invalid */
+typedef int (SDLCALL *SDLTest_ParseArgumentsFp)(void *data, char **argv, int index);
+
+/* !< Finalize the argument parser. */
+typedef void (SDLCALL *SDLTest_FinalizeArgumentParserFp)(void *arg);
+
+typedef struct SDLTest_ArgumentParser
+{
+    /* !< Parse an argument. */
+    SDLTest_ParseArgumentsFp parse_arguments;
+    /* !< Finalize this argument parser. Called once before parsing the first argument. */
+    SDLTest_FinalizeArgumentParserFp finalize;
+    /* !< Null-terminated array of arguments. Printed when running with --help. */
+    const char **usage;
+    /* !< User data, passed to all callbacks. */
+    void *data;
+    /* !< Next argument parser. */
+    struct SDLTest_ArgumentParser *next;
+} SDLTest_ArgumentParser;
+
 typedef struct
 {
     /* SDL init flags */
@@ -91,6 +112,7 @@ typedef struct
     SDL_DisplayMode fullscreen_mode;
     int num_windows;
     SDL_Window **windows;
+    const char *gpudriver;
 
     /* Renderer info */
     const char *renderdriver;
@@ -133,6 +155,12 @@ typedef struct
     SDL_Rect confine;
     SDL_bool hide_cursor;
 
+    /* Options info */
+    SDLTest_ArgumentParser common_argparser;
+    SDLTest_ArgumentParser video_argparser;
+    SDLTest_ArgumentParser audio_argparser;
+
+    SDLTest_ArgumentParser *argparser;
 } SDLTest_CommonState;
 
 #include <SDL3/SDL_begin_code.h>
@@ -151,7 +179,7 @@ extern "C" {
  *
  * \returns a newly allocated common state object.
  */
-SDLTest_CommonState *SDLTest_CommonCreateState(char **argv, SDL_InitFlags flags);
+SDLTest_CommonState *SDLCALL SDLTest_CommonCreateState(char **argv, SDL_InitFlags flags);
 
 /**
  * Free the common state object.
@@ -160,7 +188,7 @@ SDLTest_CommonState *SDLTest_CommonCreateState(char **argv, SDL_InitFlags flags)
  *
  * \param state The common state object to destroy
  */
-void SDLTest_CommonDestroyState(SDLTest_CommonState *state);
+void SDLCALL SDLTest_CommonDestroyState(SDLTest_CommonState *state);
 
 /**
  * Process one common argument.
@@ -170,7 +198,7 @@ void SDLTest_CommonDestroyState(SDLTest_CommonState *state);
  *
  * \returns the number of arguments processed (i.e. 1 for --fullscreen, 2 for --video [videodriver], or -1 on error.
  */
-int SDLTest_CommonArg(SDLTest_CommonState *state, int index);
+int SDLCALL SDLTest_CommonArg(SDLTest_CommonState *state, int index);
 
 
 /**
@@ -185,7 +213,7 @@ int SDLTest_CommonArg(SDLTest_CommonState *state, int index);
  * \param argv0 argv[0], as passed to main/SDL_main.
  * \param options an array of strings for application specific options. The last element of the array should be NULL.
  */
-void SDLTest_CommonLogUsage(SDLTest_CommonState *state, const char *argv0, const char **options);
+void SDLCALL SDLTest_CommonLogUsage(SDLTest_CommonState *state, const char *argv0, const char **options);
 
 /**
  * Open test window.
@@ -194,7 +222,7 @@ void SDLTest_CommonLogUsage(SDLTest_CommonState *state, const char *argv0, const
  *
  * \returns SDL_TRUE if initialization succeeded, false otherwise
  */
-SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state);
+SDL_bool SDLCALL SDLTest_CommonInit(SDLTest_CommonState *state);
 
 /**
  * Easy argument handling when test app doesn't need any custom args.
@@ -205,7 +233,7 @@ SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state);
  *
  * \returns SDL_FALSE if app should quit, true otherwise.
  */
-SDL_bool SDLTest_CommonDefaultArgs(SDLTest_CommonState *state, const int argc, char **argv);
+SDL_bool SDLCALL SDLTest_CommonDefaultArgs(SDLTest_CommonState *state, const int argc, char **argv);
 
 /**
  * Print the details of an event.
@@ -214,7 +242,7 @@ SDL_bool SDLTest_CommonDefaultArgs(SDLTest_CommonState *state, const int argc, c
  *
  * \param event The event to print.
  */
-void SDLTest_PrintEvent(const SDL_Event *event);
+void SDLCALL SDLTest_PrintEvent(const SDL_Event *event);
 
 /**
  * Common event handler for test windows if you use a standard SDL_main.
@@ -223,7 +251,7 @@ void SDLTest_PrintEvent(const SDL_Event *event);
  * \param event The event to handle.
  * \param done Flag indicating we are done.
  */
-void SDLTest_CommonEvent(SDLTest_CommonState *state, SDL_Event *event, int *done);
+void SDLCALL SDLTest_CommonEvent(SDLTest_CommonState *state, SDL_Event *event, int *done);
 
 /**
  * Common event handler for test windows if you use SDL_AppEvent.
@@ -234,7 +262,7 @@ void SDLTest_CommonEvent(SDLTest_CommonState *state, SDL_Event *event, int *done
  * \param event The event to handle.
  * \returns Value suitable for returning from SDL_AppEvent().
  */
-SDL_AppResult SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event *event);
+SDL_AppResult SDLCALL SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const SDL_Event *event);
 
 /**
  * Close test window.
@@ -242,7 +270,7 @@ SDL_AppResult SDLTest_CommonEventMainCallbacks(SDLTest_CommonState *state, const
  * \param state The common state used to create test window.
  *
  */
-void SDLTest_CommonQuit(SDLTest_CommonState *state);
+void SDLCALL SDLTest_CommonQuit(SDLTest_CommonState *state);
 
 /**
  * Draws various window information (position, size, etc.) to the renderer.
@@ -252,7 +280,7 @@ void SDLTest_CommonQuit(SDLTest_CommonState *state);
  * \param usedHeight Returns the height used, so the caller can draw more below.
  *
  */
-void SDLTest_CommonDrawWindowInfo(SDL_Renderer *renderer, SDL_Window *window, float *usedHeight);
+void SDLCALL SDLTest_CommonDrawWindowInfo(SDL_Renderer *renderer, SDL_Window *window, float *usedHeight);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

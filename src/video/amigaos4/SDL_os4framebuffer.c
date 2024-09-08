@@ -31,7 +31,7 @@
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
-int
+bool
 OS4_CreateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, Uint32 * format, void ** pixels, int * pitch)
 {
     APTR lock;
@@ -112,7 +112,7 @@ OS4_CreateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, Uint32 
         return SDL_SetError("Failed to lock framebuffer bitmap");
     }
 
-    return 0;
+    return true;
 }
 
 static int
@@ -121,7 +121,7 @@ min(int a, int b)
     return (a < b) ? a : b;
 }
 
-int
+bool
 OS4_UpdateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, const SDL_Rect * rects, int numrects)
 {
     SDL_WindowData * data = window->internal;
@@ -130,8 +130,6 @@ OS4_UpdateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, const S
     //dprintf("Called\n");
 
     if (data->bitmap && data->syswin) {
-        int i;
-
         struct Window *syswin = data->syswin;
 
         const struct IBox windowBox = {
@@ -144,7 +142,7 @@ OS4_UpdateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, const S
 
         ILayers->LockLayer(0, syswin->WLayer);
 
-        for (i = 0; i < numrects; ++i) {
+        for (int i = 0; i < numrects; ++i) {
             const SDL_Rect * r = &rects[i];
 
             ret = IGraphics->BltBitMapTags(
@@ -172,7 +170,7 @@ OS4_UpdateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, const S
         return SDL_SetError("BltBitMapTags failed");
     }
 
-    return 0;
+    return true;
 }
 
 void
