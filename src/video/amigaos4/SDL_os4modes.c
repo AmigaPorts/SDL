@@ -239,14 +239,6 @@ OS4_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_Displ
     ULONG openError = 0;
     int bpp = SDL_BITSPERPIXEL(mode->format);
 
-    if (SDL_memcmp(mode, &display->desktop_mode, sizeof(SDL_DisplayMode)) == 0) {
-        // Don't create another "Workbench"
-        dprintf("Desktop mode passed\n");
-
-        //TODO: should we check the current display ID and reopen the screen when needed?
-        return true;
-    }
-
     displaydata->screen = IIntuition->OpenScreenTags(NULL,
         SA_Width,       mode->w,
         SA_Height,      mode->h,

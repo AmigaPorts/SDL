@@ -1458,9 +1458,13 @@ bool SDL_SetDisplayModeForDisplay(SDL_VideoDisplay *display, SDL_DisplayMode *mo
         mode = &display->desktop_mode;
     }
 
+#if defined(SDL_PLATFORM_AMIGAOS4)
+    // Allow opening another screen with Workbench resolution
+#else
     if (mode == display->current_mode) {
         return true;
     }
+#endif
 
     // Actually change the display mode
     if (_this->SetDisplayMode) {
@@ -1969,10 +1973,18 @@ bool SDL_UpdateFullscreenMode(SDL_Window *window, SDL_FullscreenOp fullscreen, b
     } else {
         bool resized = false;
 
+#if defined(SDL_PLATFORM_AMIGAOS4)
+        if (window->is_destroying) {
+            // Avoid creation of another screen when exiting
+            dprintf("Window is destroying, ignore mode change\n");
+            goto done;
+        }
+#else
         // Restore the desktop mode
         if (display) {
             SDL_SetDisplayModeForDisplay(display, NULL);
         }
+#endif
         if (commit) {
             SDL_FullscreenResult ret = SDL_FULLSCREEN_SUCCEEDED;
             if (_this->SetWindowFullscreen) {
