@@ -53,28 +53,28 @@ SDL_SYS_GetBasePath(void)
     return buffer;
 }
 
-static BOOL
+static SDL_bool
 OS4_CreateDirTree(const char* path)
 {
-    BOOL success = FALSE;
+    SDL_bool success = SDL_FALSE;
 
     if (!IDOS) {
         dprintf("IDOS nullptr\n");
-        return FALSE;
+        return SDL_FALSE;
     }
 
     char* temp = SDL_strdup(path);
 
     if (!temp) {
         dprintf("Failed to create temporary path\n");
-        return FALSE;
+        return SDL_FALSE;
     }
 
     const size_t len = SDL_strlen(temp);
 
     if (len < 1) {
         dprintf("Empty string\n");
-        return FALSE;
+        return SDL_FALSE;
     }
 
     if (temp[len - 1] == '/') {
@@ -83,14 +83,14 @@ OS4_CreateDirTree(const char* path)
 
     BPTR lock = IDOS->CreateDirTree(temp);
     if (lock) {
-        success = TRUE;
+        success = SDL_TRUE;
         IDOS->UnLock(lock);
     } else {
         const int32 err = IDOS->IoErr();
         dprintf("Failed to create dir tree '%s' (err %d)\n", temp, err);
         if (err == ERROR_OBJECT_EXISTS) {
             dprintf("Object already exists -> success\n");
-            success = TRUE;
+            success = SDL_TRUE;
         }
     }
 
@@ -214,11 +214,11 @@ int SDL_SYS_EnumerateDirectory(const char *path, const char *dirname, SDL_Enumer
     return success;
 }
 
-int SDL_SYS_RemovePath(const char *path)
+SDL_bool SDL_SYS_RemovePath(const char *path)
 {
     if (!IDOS) {
         dprintf("IDOS nullptr\n");
-        return -1;
+        return SDL_FALSE;
     }
 
     const int32 success = IDOS->Delete(path);
@@ -232,18 +232,18 @@ int SDL_SYS_RemovePath(const char *path)
             dprintf("Object doesn't exist -> success\n");
         } else {
             SDL_SetError("Failed to delete path");
-            return -1;
+            return SDL_FALSE;
         }
     }
 
-    return 0;
+    return SDL_TRUE;
 }
 
-int SDL_SYS_RenamePath(const char *oldpath, const char *newpath)
+SDL_bool SDL_SYS_RenamePath(const char *oldpath, const char *newpath)
 {
     if (!IDOS) {
         dprintf("IDOS nullptr\n");
-        return -1;
+        return SDL_FALSE;
     }
 
     const int32 success = IDOS->Rename(oldpath, newpath);
@@ -253,28 +253,43 @@ int SDL_SYS_RenamePath(const char *oldpath, const char *newpath)
     } else {
         dprintf("Failed to rename '%s' to '%s' (err %d)\n", oldpath, newpath, IDOS->IoErr());
         SDL_SetError("Failed to rename path");
-        return -1;
+        return SDL_FALSE;
     }
 
-    return 0;
+    return SDL_TRUE;
 }
 
-int SDL_SYS_CopyFile(const char *oldpath, const char *newpath)
+SDL_bool SDL_SYS_CopyFile(const char *oldpath, const char *newpath)
 {
-    // TODO: implement me
-    return SDL_Unsupported();
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return SDL_FALSE;
+    }
+
+    char buffer[1024];
+    snprintf(buffer, sizeof(buffer), "Copy CLONE BUFFER=32768 %s %s", oldpath, newpath);
+
+    const int32 result = IDOS->SystemTags(buffer, TAG_DONE);
+
+    if (result == 0) {
+        dprintf("File %s copied to %s\n", oldpath, newpath);
+        return SDL_TRUE;
+    }
+
+    dprintf("System(%s) failed with %d\n", buffer, result);
+    return SDL_FALSE;
 }
 
-int SDL_SYS_CreateDirectory(const char *path)
+SDL_bool SDL_SYS_CreateDirectory(const char *path)
 {
     return OS4_CreateDirTree(path);
 }
 
-int SDL_SYS_GetPathInfo(const char *path, SDL_PathInfo *info)
+SDL_bool SDL_SYS_GetPathInfo(const char *path, SDL_PathInfo *info)
 {
     if (!IDOS) {
         dprintf("IDOS nullptr\n");
-        return -1;
+        return SDL_FALSE;
     }
 
     struct ExamineData *data = IDOS->ExamineObjectTags(EX_StringNameInput, path, TAG_DONE);
@@ -296,12 +311,11 @@ int SDL_SYS_GetPathInfo(const char *path, SDL_PathInfo *info)
         dprintf("Failed to examine object '%s' (err %d)\n", path, IDOS->IoErr());
         SDL_SetError("Failed to examine object");
         info->type = SDL_PATHTYPE_NONE;
-        return -1;
+        return SDL_FALSE;
     }
 
-    return 0;
+    return SDL_TRUE;
 }
-
 
 #endif /* SDL_FILESYSTEM_AMIGAOS4 */
 
