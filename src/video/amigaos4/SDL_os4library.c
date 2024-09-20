@@ -416,7 +416,7 @@ OS4_CloseLibrary(struct Library ** library)
     }
 }
 
-SDL_bool
+bool
 OS4_CheckInterfaces(void)
 {
     dprintf("Checking interfaces\n");
@@ -427,13 +427,13 @@ OS4_CheckInterfaces(void)
 
         dprintf("All library interfaces OK\n");
 
-        return SDL_TRUE;
+        return true;
 
     }
 
     dprintf("Library interface check failed\n");
 
-    return SDL_FALSE;
+    return false;
 }
 
 

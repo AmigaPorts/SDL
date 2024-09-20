@@ -34,7 +34,7 @@ typedef struct {
     Uint32 (*blendfp)(Uint32, Uint8, Uint8, Uint8, Uint8);
     Uint32 *baseaddress;
     Uint32 width;
-    SDL_bool last;
+    bool last;
     Uint8 sr;
     Uint8 sg;
     Uint8 sb;
@@ -546,7 +546,7 @@ OS4_RenderDrawLines(SDL_Renderer * renderer, const SDL_Point * points,
             OS4_LineData ld;
             ld.baseaddress = baseaddress;
             ld.width = bytesperrow / 4;
-            ld.last = SDL_FALSE;
+            ld.last = false;
 
             switch (mode) {
                 case SDL_BLENDMODE_BLEND:
@@ -593,7 +593,7 @@ OS4_RenderDrawLines(SDL_Renderer * renderer, const SDL_Point * points,
                 }
 
                 if (i == count - 2) {
-                    ld.last = SDL_TRUE;
+                    ld.last = true;
                 }
 
                 OS4_BlendLine(&ld);

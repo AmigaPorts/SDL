@@ -52,7 +52,7 @@
 #define CATCOMP_NUMBERS
 #include "../../amiga-extra/locale_generated.h"
 
-extern SDL_bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window);
+extern bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window);
 
 struct MyIntuiMessage
 {
@@ -114,7 +114,7 @@ OS4_SyncKeyModifiers(SDL_VideoDevice *_this)
     }
 }
 
-static SDL_bool
+static bool
 OS4_IsModifier(SDL_Scancode code)
 {
     switch (code) {
@@ -127,9 +127,9 @@ OS4_IsModifier(SDL_Scancode code)
         case SDL_SCANCODE_RALT:
         case SDL_SCANCODE_LGUI:
         case SDL_SCANCODE_RGUI:
-            return SDL_TRUE;
+            return true;
         default:
-            return SDL_FALSE;
+            return false;
     }
 }
 
@@ -138,7 +138,7 @@ OS4_ResetNormalKeys(void)
 {
     SDL_Scancode i = 0;
     int count = 0;
-    const Uint8* state = SDL_GetKeyboardState(&count);
+    const bool* state = SDL_GetKeyboardState(&count);
 
     dprintf("Resetting keyboard\n");
 
@@ -148,11 +148,11 @@ OS4_ResetNormalKeys(void)
     // when user released the key.
 
     while (i < count) {
-        if (state[i] == SDL_PRESSED) {
+        if (state[i] == true) {
             if (OS4_IsModifier(i)) {
                 dprintf("Ignore pressed modifier key %d\n", i);
             } else {
-                SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, 0, i, SDL_RELEASED);
+                SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, 0, i, false);
             }
         }
         i++;
@@ -184,8 +184,8 @@ OS4_FindWindow(SDL_VideoDevice *_this, struct Window * syswin)
 static void
 OS4_DetectNumLock(const SDL_Scancode s)
 {
-    static SDL_bool oldState = SDL_FALSE;
-    SDL_bool currentState = SDL_FALSE;
+    static bool oldState = false;
+    bool currentState = false;
 
     // This function tries to determine whether NumLock is enabled or not,
     // based on the reported scancodes
@@ -201,7 +201,7 @@ OS4_DetectNumLock(const SDL_Scancode s)
         case SDL_SCANCODE_KP_8:
         case SDL_SCANCODE_KP_9:
         case SDL_SCANCODE_KP_COMMA:
-            currentState = SDL_TRUE;
+            currentState = true;
             dprintf("Numlock on\n");
             break;
         case SDL_SCANCODE_HOME:
@@ -222,7 +222,7 @@ OS4_DetectNumLock(const SDL_Scancode s)
     if (currentState != oldState) {
         oldState = currentState;
         dprintf("Toggling numlock state\n");
-        SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, 0, SDL_SCANCODE_NUMLOCKCLEAR, SDL_PRESSED);
+        SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, 0, SDL_SCANCODE_NUMLOCKCLEAR, true);
     }
 }
 
@@ -238,7 +238,7 @@ OS4_HandleKeyboard(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
             char text[5] = { 0 };
 
             OS4_DetectNumLock(s);
-            SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, 0, s, SDL_PRESSED);
+            SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, 0, s, true);
 
             const uint32 unicode = OS4_TranslateUnicode(_this, imsg->Code, imsg->Qualifier, (APTR)*((ULONG*)imsg->IAddress));
 
@@ -251,7 +251,7 @@ OS4_HandleKeyboard(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
                 SDL_SendKeyboardText(text);
             }
         } else {
-            SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, 0, s, SDL_RELEASED);
+            SDL_SendKeyboardKey(0, SDL_GLOBAL_KEYBOARD_ID, 0, s, false);
         }
     }
 }
@@ -350,7 +350,7 @@ OS4_HandleHitTestMotion(SDL_VideoDevice *_this, SDL_Window * sdlwin, struct MyIn
     OS4_SetWindowBox(_this, sdlwin, &rect);
 }
 
-static SDL_bool
+static bool
 OS4_IsHitTestResize(HitTestInfo * hti)
 {
     switch (hti->htr) {
@@ -362,10 +362,10 @@ OS4_IsHitTestResize(HitTestInfo * hti)
         case SDL_HITTEST_RESIZE_BOTTOM:
         case SDL_HITTEST_RESIZE_BOTTOMLEFT:
         case SDL_HITTEST_RESIZE_LEFT:
-            return SDL_TRUE;
+            return true;
 
         default:
-            return SDL_FALSE;
+            return false;
     }
 }
 
@@ -419,7 +419,7 @@ OS4_HandleMouseMotion(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
     }
 }
 
-static SDL_bool
+static bool
 OS4_HandleHitTest(SDL_VideoDevice *_this, SDL_Window * sdlwin, struct MyIntuiMessage * imsg)
 {
     if (sdlwin->hit_test) {
@@ -442,20 +442,20 @@ OS4_HandleHitTest(SDL_VideoDevice *_this, SDL_Window * sdlwin, struct MyIntuiMes
                 hti->htr = rc;
                 hti->point.x = imsg->ScreenMouseX;
                 hti->point.y = imsg->ScreenMouseY;
-                return SDL_TRUE;
+                return true;
 
             default:
-                return SDL_FALSE;
+                return false;
         }
     }
 
-    return SDL_FALSE;
+    return false;
 }
 
 static int
 OS4_GetButtonState(uint16 code)
 {
-    return (code & IECODE_UP_PREFIX) ? SDL_RELEASED : SDL_PRESSED;
+    return (code & IECODE_UP_PREFIX) ? false : true;
 }
 
 static int
@@ -488,7 +488,7 @@ OS4_HandleMouseButtons(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
             imsg->WindowMouseX, imsg->WindowMouseY, button, state);
 
         if (button == SDL_BUTTON_LEFT) {
-            if (state == SDL_PRESSED) {
+            if (state == true) {
                 if (OS4_HandleHitTest(_this, sdlwin, imsg)) {
                     return;
                 }
@@ -575,7 +575,7 @@ OS4_HandleMove(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
 }
 
 static void
-OS4_HandleActivation(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg, SDL_bool activated)
+OS4_HandleActivation(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg, bool activated)
 {
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
@@ -829,11 +829,11 @@ OS4_HandleIdcmpMessages(SDL_VideoDevice *_this, struct MsgPort * msgPort)
                 break;
 
             case IDCMP_ACTIVEWINDOW:
-                OS4_HandleActivation(_this, &msg, SDL_TRUE);
+                OS4_HandleActivation(_this, &msg, true);
                 break;
 
             case IDCMP_INACTIVEWINDOW:
-                OS4_HandleActivation(_this, &msg, SDL_FALSE);
+                OS4_HandleActivation(_this, &msg, false);
                 break;
 
             case IDCMP_CLOSEWINDOW:

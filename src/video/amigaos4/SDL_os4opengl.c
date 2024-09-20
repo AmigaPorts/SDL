@@ -110,7 +110,7 @@ OS4_GL_UnloadLibrary(SDL_VideoDevice *_this)
     OS4_CloseLibrary(&MiniGLBase);
 }
 
-SDL_bool
+bool
 OS4_GL_AllocateBuffers(SDL_VideoDevice *_this, int width, int height, int depth, SDL_WindowData * data)
 {
     dprintf("Allocate double buffer bitmaps %d*%d*%d\n", width, height, depth);
@@ -131,7 +131,7 @@ OS4_GL_AllocateBuffers(SDL_VideoDevice *_this, int width, int height, int depth,
                                     TAG_DONE))) {
 
         dprintf("Failed to allocate front buffer\n");
-        return SDL_FALSE;
+        return false;
     }
 
     if (!(data->glBackBuffer = IGraphics->AllocBitMapTags(
@@ -147,7 +147,7 @@ OS4_GL_AllocateBuffers(SDL_VideoDevice *_this, int width, int height, int depth,
         IGraphics->FreeBitMap(data->glFrontBuffer);
         data->glFrontBuffer = NULL;
 
-        return SDL_FALSE;
+        return false;
     }
 
 #ifdef DEBUG
@@ -167,7 +167,7 @@ OS4_GL_AllocateBuffers(SDL_VideoDevice *_this, int width, int height, int depth,
 
     dprintf("SRC FMT %u, SRC2 FMT %u, DST FMT %u\n", srcFmt, src2Fmt, dstFmt);
 
-    return SDL_TRUE;
+    return true;
 }
 
 void
@@ -420,7 +420,7 @@ OS4_GL_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
     return true;
 }
 
-SDL_bool
+bool
 OS4_GL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
 {
     if (IMiniGL) {
@@ -438,7 +438,7 @@ OS4_GL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
 
             ((struct GLContextIFace *)data->glContext)->GLViewport(0, 0, window->floating.w, window->floating.h);
 
-            return SDL_TRUE;
+            return true;
         } else {
             dprintf("Failed to re-allocate MiniGL buffers\n");
             //SDL_Quit();
@@ -447,7 +447,7 @@ OS4_GL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
         OS4_GL_LogLibraryError();
     }
 
-    return SDL_FALSE;
+    return false;
 }
 
 void

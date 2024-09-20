@@ -36,6 +36,6 @@ extern struct Interface * OS4_GetInterface(struct Library * lib);
 extern void OS4_DropInterface(struct Interface ** interface);
 extern void OS4_CloseLibrary(struct Library ** library);
 
-extern SDL_bool OS4_CheckInterfaces(void);
+extern bool OS4_CheckInterfaces(void);
 
 #endif

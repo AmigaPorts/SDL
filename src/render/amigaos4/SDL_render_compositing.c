@@ -71,15 +71,15 @@ typedef struct {
     uint32 flags;
 } OS4_CompositingParams;
 
-SDL_bool
+bool
 OS4_IsColorModEnabled(SDL_Texture * texture)
 {
     if (texture->color.r != 1.0f || texture->color.g != 1.0f || texture->color.b != 1.0f) {
         //dprintf("Color mod enabled (%f, %f, %f)\n", texture->color.r, texture->color.g, texture->color.b);
-        return SDL_TRUE;
+        return true;
     }
 
-    return SDL_FALSE;
+    return false;
 }
 
 struct BitMap *
@@ -198,7 +198,7 @@ OS4_GetOutputSize(SDL_Renderer * renderer, int *w, int *h)
 }
 
 /* Special function to set our 1 * 1 * 32 bitmap */
-static SDL_bool
+static bool
 OS4_SetSolidColor(SDL_Renderer * renderer, Uint32 color)
 {
     OS4_RenderData *data = (OS4_RenderData *) renderer->internal;
@@ -216,13 +216,13 @@ OS4_SetSolidColor(SDL_Renderer * renderer, Uint32 color)
 
             IGraphics->UnlockBitMap(data->solidcolor);
 
-            return SDL_TRUE;
+            return true;
         } else {
             dprintf("Lock failed\n");
         }
     }
 
-    return SDL_FALSE;
+    return false;
 }
 
 static uint32

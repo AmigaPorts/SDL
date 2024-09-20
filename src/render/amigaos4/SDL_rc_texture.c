@@ -29,7 +29,7 @@
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
-static SDL_bool
+static bool
 OS4_IsBlendModeSupported(SDL_BlendMode mode)
 {
     switch (mode) {
@@ -37,10 +37,10 @@ OS4_IsBlendModeSupported(SDL_BlendMode mode)
         case SDL_BLENDMODE_BLEND:
         case SDL_BLENDMODE_ADD:
             //dprintf("Texture blend mode: %d\n", mode);
-            return SDL_TRUE;
+            return true;
         default:
             dprintf("Not supported blend mode %d\n", mode);
-            return SDL_FALSE;
+            return false;
     }
 }
 
@@ -85,10 +85,10 @@ OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture, SDL_Properties
     return true;
 }
 
-static SDL_bool
+static bool
 OS4_ModulateRGB(SDL_Renderer * renderer, SDL_Texture * texture, Uint8 * src, int pitch)
 {
-    SDL_bool result = SDL_FALSE;
+    bool result = false;
 
     OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
 
@@ -126,7 +126,7 @@ OS4_ModulateRGB(SDL_Renderer * renderer, SDL_Texture * texture, Uint8 * src, int
 
             IGraphics->UnlockBitMap(texturedata->finalbitmap);
 
-            result = SDL_TRUE;
+            result = true;
         } else {
             dprintf("Lock failed\n");
         }
@@ -135,7 +135,7 @@ OS4_ModulateRGB(SDL_Renderer * renderer, SDL_Texture * texture, Uint8 * src, int
     return result;
 }
 
-static SDL_bool
+static bool
 OS4_NeedRemodulation(SDL_Texture * texture)
 {
     OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
@@ -145,10 +145,10 @@ OS4_NeedRemodulation(SDL_Texture * texture)
         texture->color.b != texturedata->b ||
         texturedata->finalbitmap == NULL) {
 
-        return SDL_TRUE;
+        return true;
     }
 
-    return SDL_FALSE;
+    return false;
 }
 
 bool

@@ -100,14 +100,14 @@ OS4_UpdateKeymap(SDL_VideoDevice *_this)
         /* Make sure this scancode is a valid character scancode */
         const SDL_Scancode scancode = amiga_scancode_table[i];
         if (scancode == SDL_SCANCODE_UNKNOWN ||
-            (SDL_GetKeyFromScancode(scancode, SDL_KMOD_NONE, SDL_FALSE) & SDLK_SCANCODE_MASK)) {
+            (SDL_GetKeyFromScancode(scancode, SDL_KMOD_NONE, false) & SDLK_SCANCODE_MASK)) {
             continue;
         }
 
         SDL_SetKeymapEntry(keymap, scancode, 0, OS4_MapRawKey(_this, i)); // TODO: test me
     }
 
-    SDL_SetKeymap(keymap, SDL_FALSE);
+    SDL_SetKeymap(keymap, false);
 }
 
 bool
@@ -150,7 +150,7 @@ OS4_GetClipboardText(SDL_VideoDevice *_this)
     return to;
 }
 
-SDL_bool
+bool
 OS4_HasClipboardText(SDL_VideoDevice *_this)
 {
     /* This is silly but is there a better way to check? */
@@ -162,11 +162,11 @@ OS4_HasClipboardText(SDL_VideoDevice *_this)
         SDL_free(to);
 
         if (len > 0) {
-            return SDL_TRUE;
+            return true;
         }
     }
 
-    return SDL_FALSE;
+    return false;
 }
 
 void

@@ -217,11 +217,11 @@ AMIGAINPUT_Detect(void)
     //dprintf("Called\n");
 }
 
-static SDL_bool
+static bool
 AMIGAINPUT_IsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
 {
     dprintf("Called\n");
-    return SDL_TRUE; // TODO
+    return true; // TODO
 }
 
 /* Function to get the device-dependent name of a joystick */
@@ -413,7 +413,7 @@ AMIGAINPUT_Update(SDL_Joystick * joystick)
             const int buttondata = BUFFER_OFFSET(buffer, hwdata->buttonBufferOffset[i]);
 
             if (buttondata != hwdata->buttonData[i]) {
-                SDL_SendJoystickButton(timestamp, joystick, i, buttondata ? SDL_PRESSED : SDL_RELEASED);
+                SDL_SendJoystickButton(timestamp, joystick, i, buttondata ? true : false);
                 hwdata->buttonData[i] = buttondata;
                 //dprintf("Send button %d\n", i);
             }
@@ -513,13 +513,13 @@ AMIGAINPUT_SendEffect(SDL_Joystick *joystick, const void *data, int size)
 }
 
 static bool
-AMIGAINPUT_SetSensorsEnabled(SDL_Joystick * joystick, SDL_bool enabled)
+AMIGAINPUT_SetSensorsEnabled(SDL_Joystick * joystick, bool enabled)
 {
     dprintf("Called\n");
     return SDL_Unsupported();
 }
 
-static SDL_bool
+static bool
 AMIGAINPUT_GetGamepadMapping(int device_index, SDL_GamepadMapping * out)
 {
     dprintf("Called\n");

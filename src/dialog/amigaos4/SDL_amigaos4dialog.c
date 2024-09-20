@@ -32,9 +32,9 @@ typedef struct
     const char* default_file;
     const char* default_dir;
     SDL_Window* window;
-    SDL_bool allow_many;
-    SDL_bool save;
-    SDL_bool dir_only;
+    bool allow_many;
+    bool save;
+    bool dir_only;
     SDL_DialogFileCallback callback;
     void* userdata;
 } OS4_DialogArgs;
@@ -192,7 +192,7 @@ static int OS4_DialogThread(void* ptr)
     return 0;
 }
 
-void SDL_ShowOpenFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window, const SDL_DialogFileFilter *filters, int nfilters, const char* default_location, SDL_bool allow_many)
+void SDL_ShowOpenFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window, const SDL_DialogFileFilter *filters, int nfilters, const char* default_location, bool allow_many)
 {
     OS4_DialogArgs *args = SDL_calloc(sizeof(OS4_DialogArgs), 1);
 
@@ -208,8 +208,8 @@ void SDL_ShowOpenFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL
     args->default_dir = NULL;
     args->window = window;
     args->allow_many = allow_many;
-    args->save = SDL_FALSE;
-    args->dir_only = SDL_FALSE;
+    args->save = false;
+    args->dir_only = false;
     args->callback = callback;
     args->userdata = userdata;
 
@@ -235,9 +235,9 @@ void SDL_ShowSaveFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL
     args->default_file = default_location;
     args->default_dir = NULL;
     args->window = window;
-    args->allow_many = SDL_FALSE;
-    args->save = SDL_TRUE;
-    args->dir_only = SDL_FALSE;
+    args->allow_many = false;
+    args->save = true;
+    args->dir_only = false;
     args->callback = callback;
     args->userdata = userdata;
 
@@ -248,7 +248,7 @@ void SDL_ShowSaveFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL
     }
 }
 
-void SDL_ShowOpenFolderDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window, const char* default_location, SDL_bool allow_many)
+void SDL_ShowOpenFolderDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window, const char* default_location, bool allow_many)
 {
     OS4_DialogArgs *args = SDL_calloc(sizeof(OS4_DialogArgs), 1);
 
@@ -264,8 +264,8 @@ void SDL_ShowOpenFolderDialog(SDL_DialogFileCallback callback, void* userdata, S
     args->default_dir = default_location;
     args->window = window;
     args->allow_many = allow_many; // Multi-selection doesn't seem to work in DrawersOnly mode.
-    args->save = SDL_TRUE;
-    args->dir_only = SDL_TRUE;
+    args->save = true;
+    args->dir_only = true;
     args->callback = callback;
     args->userdata = userdata;
 

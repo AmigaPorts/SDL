@@ -31,20 +31,20 @@ NativeWindowFactory AmigaOS4WindowFactory = {
     DestroyWindowAmigaOS4
 };
 
-static SDL_bool
+static bool
 OS4_OpenIntuition()
 {
-    SDL_bool result = SDL_FALSE;
+    bool result = false;
 
     if (MyIIntuition) {
-        result = SDL_TRUE;
+        result = true;
     } else {
         MyIntuitionBase = IExec->OpenLibrary("intuition.library", 50);
 
         if (MyIntuitionBase) {
             MyIIntuition = (struct IntuitionIFace *) IExec->GetInterface(MyIntuitionBase, "main", 1, NULL);
             if (MyIIntuition) {
-                result = SDL_TRUE;
+                result = true;
             }
         }
     }

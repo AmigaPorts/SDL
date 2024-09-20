@@ -478,7 +478,7 @@ OS4_WarpMouse(SDL_Window * window, float x, float y)
     SDL_WindowData *winData = window->internal;
     struct Window *syswin = winData->syswin;
 
-    SDL_bool relativeMouseMode = SDL_GetRelativeMouseMode();
+    bool relativeMouseMode = SDL_GetRelativeMouseMode();
 
     /* If the host mouse pointer is outside of the SDL window or the SDL
      * window is inactive then we just need to warp SDL's notion of where
@@ -507,7 +507,7 @@ OS4_WarpMouse(SDL_Window * window, float x, float y)
 }
 
 static bool
-OS4_SetRelativeMouseMode(SDL_bool enabled)
+OS4_SetRelativeMouseMode(bool enabled)
 {
     return true;
 }

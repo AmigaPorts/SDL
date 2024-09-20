@@ -35,14 +35,14 @@
 
 #define AHI_AUDIO_BUFFER_SIZE 4096
 
-static SDL_bool
+static bool
 OS4_OpenAhiDevice(OS4AudioData * os4data)
 {
     if (os4data->deviceOpen) {
         dprintf("Device already open\n");
     }
 
-    os4data->deviceOpen = SDL_FALSE;
+    os4data->deviceOpen = false;
 
     os4data->ahiReplyPort = (struct MsgPort *)IExec->AllocSysObjectTags(ASOT_PORT, TAG_DONE);
 
@@ -73,7 +73,7 @@ OS4_OpenAhiDevice(OS4AudioData * os4data)
 
                     dprintf("IO requests created\n");
 
-                    os4data->deviceOpen = SDL_TRUE;
+                    os4data->deviceOpen = true;
                     os4data->currentBuffer = 0;
                     os4data->link = NULL;
                 } else {
@@ -123,15 +123,15 @@ OS4_CloseAhiDevice(OS4AudioData * os4data)
         os4data->ahiReplyPort = NULL;
     }
 
-    os4data->deviceOpen = SDL_FALSE;
+    os4data->deviceOpen = false;
 
     dprintf("Device closed\n");
 }
 
-static SDL_bool
+static bool
 OS4_AudioAvailable(void)
 {
-    SDL_bool isAvailable = SDL_FALSE;
+    bool isAvailable = false;
 
     OS4AudioData *tempData = SDL_calloc(1, sizeof(OS4AudioData));
 
@@ -207,8 +207,8 @@ OS4_DetectDevices(SDL_AudioDevice **default_output, SDL_AudioDevice **default_ca
     capture.format = output.format;
     capture.channels = 1;
 
-    *default_output = SDL_AddAudioDevice(/*iscapture=*/SDL_FALSE, "AHI default output device", &output, SDL_strdup("default"));
-    *default_capture = SDL_AddAudioDevice(/*iscapture=*/SDL_TRUE, "AHI default capture device", &capture, SDL_strdup("default"));
+    *default_output = SDL_AddAudioDevice(/*iscapture=*/false, "AHI default output device", &output, SDL_strdup("default"));
+    *default_capture = SDL_AddAudioDevice(/*iscapture=*/true, "AHI default capture device", &capture, SDL_strdup("default"));
 
     dprintf("Default_output device %p, default_capture device %p\n", *default_output, *default_capture);
 }
@@ -505,7 +505,7 @@ OS4_RecordDevice(SDL_AudioDevice *_this, void * buffer, int buflen)
         dprintf("Start recording\n");
 
         IExec->DoIO((struct IORequest *)request);
-        os4data->requestSent = SDL_FALSE;
+        os4data->requestSent = false;
 
         current = OS4_SwapBuffer(current);
     } else {
@@ -523,7 +523,7 @@ OS4_RecordDevice(SDL_AudioDevice *_this, void * buffer, int buflen)
         os4data->ahiType);
 
     IExec->SendIO((struct IORequest *)request);
-    os4data->requestSent = SDL_TRUE;
+    os4data->requestSent = true;
 
     current = OS4_SwapBuffer(current);
 
@@ -568,12 +568,12 @@ OS4_Deinitialize(void)
 /* ------------------------------------------ */
 /* Audio driver init functions implementation */
 /* ------------------------------------------ */
-static SDL_bool
+static bool
 OS4_Init(SDL_AudioDriverImpl * impl)
 {
     if (!OS4_AudioAvailable()) {
         SDL_SetError("Failed to open AHI device");
-        return SDL_FALSE;
+        return false;
     }
 
     impl->DetectDevices = OS4_DetectDevices;
@@ -591,15 +591,15 @@ OS4_Init(SDL_AudioDriverImpl * impl)
     impl->DeinitializeStart = OS4_DeinitializeStart;
     impl->Deinitialize = OS4_Deinitialize;
 
-    impl->ProvidesOwnCallbackThread = SDL_FALSE;
-    impl->HasRecordingSupport = SDL_TRUE;
-    impl->OnlyHasDefaultPlaybackDevice = SDL_TRUE;
-    impl->OnlyHasDefaultRecordingDevice = SDL_TRUE;
+    impl->ProvidesOwnCallbackThread = false;
+    impl->HasRecordingSupport = true;
+    impl->OnlyHasDefaultPlaybackDevice = true;
+    impl->OnlyHasDefaultRecordingDevice = true;
 
-    return SDL_TRUE;
+    return true;
 }
 
 AudioBootStrap AMIGAOS4AUDIO_bootstrap = {
-    "amigaos4", "AmigaOS 4 AHI audio", OS4_Init, SDL_FALSE
+    "amigaos4", "AmigaOS 4 AHI audio", OS4_Init, false
 };
 #endif
