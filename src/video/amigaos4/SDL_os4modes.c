@@ -30,7 +30,7 @@
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
-static SDL_bool
+static bool
 OS4_GetDisplayMode(ULONG id, SDL_DisplayMode * mode)
 {
     SDL_DisplayModeData *data;
@@ -40,22 +40,22 @@ OS4_GetDisplayMode(ULONG id, SDL_DisplayMode * mode)
 
     handle = IGraphics->FindDisplayInfo(id);
     if (!handle) {
-        return SDL_FALSE;
+        return false;
     }
 
     if (!IGraphics->GetDisplayInfoData(handle, (UBYTE *)&diminfo, sizeof(diminfo), DTAG_DIMS, 0)) {
         dprintf("Failed to get dim info\n");
-        return SDL_FALSE;
+        return false;
     }
 
     if (!IGraphics->GetDisplayInfoData(handle, (UBYTE *)&dispinfo, sizeof(dispinfo), DTAG_DISP, 0)) {
         dprintf("Failed to get disp info\n");
-        return SDL_FALSE;
+        return false;
     }
 
     data = (SDL_DisplayModeData *) SDL_malloc(sizeof(*data));
     if (!data) {
-        return SDL_FALSE;
+        return false;
     }
 
     SDL_zero(*mode);
@@ -93,10 +93,10 @@ OS4_GetDisplayMode(ULONG id, SDL_DisplayMode * mode)
 
     mode->internal = data;
 
-    return SDL_TRUE;
+    return true;
 }
 
-static SDL_bool
+static bool
 OS4_LockPubScreen(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->internal;
@@ -107,10 +107,10 @@ OS4_LockPubScreen(SDL_VideoDevice *_this)
 
     if (data->publicScreen) {
         dprintf("Public screen %p locked\n", data->publicScreen);
-        return SDL_TRUE;
+        return true;
     } else {
         dprintf("Failed to lock Workbench screen\n");
-        return SDL_FALSE;
+        return false;
     }
 }
 
@@ -162,7 +162,7 @@ OS4_InitModes(SDL_VideoDevice *_this)
     display.internal = displaydata;
     displaydata->screen = NULL;
 
-    SDL_AddVideoDisplay(&display, SDL_FALSE);
+    SDL_AddVideoDisplay(&display, false);
 
     return true;
 }

@@ -31,7 +31,7 @@ extern bool OS4_GLES_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SD
 extern bool OS4_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window);
 extern bool OS4_GLES_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context);
 
-extern SDL_bool OS4_GLES_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window);
+extern bool OS4_GLES_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window);
 extern void OS4_GLES_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window);
 
 #endif /* _SDL_os4opengles_h */

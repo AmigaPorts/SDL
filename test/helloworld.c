@@ -27,16 +27,16 @@ static void ToggleFullscreen(SDL_Window* w)
     t ^= 1;
 }
 
-static SDL_bool eventLoopInner(void)
+static bool eventLoopInner(void)
 {
-    SDL_bool running = SDL_TRUE;
+    bool running = true;
     SDL_Event e;
 
     while(SDL_PollEvent(&e)) {
         switch (e.type) {
             case SDL_EVENT_QUIT:
                 puts("Quit");
-                running = SDL_FALSE;
+                running = false;
                 break;
 #if 0
             case SDL_WINDOWEVENT:
@@ -83,7 +83,7 @@ static SDL_bool eventLoopInner(void)
                     printf("Text input '%s'\n", te->text);
 
                     if (strcmp("q", te->text) == 0) {
-                        running = SDL_FALSE;
+                        running = false;
                     } else if (strcmp("w", te->text) == 0) {
                         SDL_WarpMouseInWindow(w, 50, 50);
                     } else if (strcmp("f", te->text) == 0) {
@@ -130,14 +130,14 @@ static SDL_bool eventLoopInner(void)
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 {
                     SDL_MouseButtonEvent * me = (SDL_MouseButtonEvent *)&me;
-                    printf("Mouse button down %d, state %d\n", (int)me->button, (int)me->state);
+                    printf("Mouse button down %d, state %d\n", (int)me->button, (int)me->down);
                 }
                 break;
 
             case SDL_EVENT_MOUSE_BUTTON_UP:
                 {
                     SDL_MouseButtonEvent * me = (SDL_MouseButtonEvent *)&me;
-                    printf("Mouse button up %d, state %d\n", (int)me->button, (int)me->state);
+                    printf("Mouse button up %d, state %d\n", (int)me->button, (int)me->down);
                 }
                 break;
 
@@ -201,11 +201,11 @@ static void testWindow()
         SDL_MinimizeWindow(w);
         SDL_Delay(1000);
 
-        SDL_SetWindowAlwaysOnTop(w, SDL_FALSE);
+        SDL_SetWindowAlwaysOnTop(w, false);
 
         SDL_Delay(1000);
 
-        SDL_SetWindowAlwaysOnTop(w, SDL_TRUE);
+        SDL_SetWindowAlwaysOnTop(w, true);
 #endif
         //SDL_FlashWindow(w, SDL_FLASH_UNTIL_FOCUSED);
 
@@ -236,7 +236,7 @@ static void testManyWindows()
     SDL_Window * w2 = SDL_CreateWindow("blah2", 100, 100, 0/*SDL_WINDOW_FULLSCREEN*/);
 
     if (w && w2) {
-        SDL_SetWindowMouseGrab(w, SDL_TRUE);
+        SDL_SetWindowMouseGrab(w, true);
 
         eventLoop();
 
@@ -250,8 +250,8 @@ static void testRelativeMouse()
     SDL_Window * w = SDL_CreateWindow("relative", 100, 100, 0);
 
     if (w) {
-        //SDL_SetRelativeMouseMode(SDL_FALSE);
-        //SDL_SetRelativeMouseMode(SDL_TRUE);
+        //SDL_SetRelativeMouseMode(false);
+        //SDL_SetRelativeMouseMode(true);
 
         eventLoop();
 
@@ -654,7 +654,7 @@ static void testSystemCursors()
 
             SDL_Delay(1000);
 
-            if (++c == SDL_NUM_SYSTEM_CURSORS) {
+            if (++c == SDL_SYSTEM_CURSOR_COUNT) {
                 c = 0;
                 SDL_HideCursor();
                 SDL_SetWindowTitle(w, "Hidden");

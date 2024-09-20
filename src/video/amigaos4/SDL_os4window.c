@@ -54,7 +54,7 @@
 
 #define MIN_WINDOW_SIZE 100
 
-extern SDL_bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window);
+extern bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window);
 extern void (*OS4_UpdateGlWindowPointer)(SDL_VideoDevice *_this, SDL_Window * window);
 
 static void OS4_CloseSystemWindow(SDL_VideoDevice *_this, struct Window * window);
@@ -106,7 +106,7 @@ OS4_WaitForResize(SDL_Window * window, int * width, int * height)
     }
 }
 
-static SDL_bool
+static bool
 OS4_IsFullscreen(SDL_Window * window)
 {
     return window->flags & SDL_WINDOW_FULLSCREEN;
@@ -216,7 +216,7 @@ OS4_SetupWindowData(SDL_Window * sdlwin, struct Window * syswin)
 }
 
 static uint32
-OS4_GetIDCMPFlags(SDL_Window * window, SDL_bool fullscreen)
+OS4_GetIDCMPFlags(SDL_Window * window, bool fullscreen)
 {
     uint32 IDCMPFlags = IDCMP_MOUSEBUTTONS | IDCMP_MOUSEMOVE
                       | IDCMP_DELTAMOVE | IDCMP_RAWKEY | IDCMP_ACTIVEWINDOW
@@ -240,7 +240,7 @@ OS4_GetIDCMPFlags(SDL_Window * window, SDL_bool fullscreen)
 }
 
 static uint32
-OS4_GetWindowFlags(SDL_Window * window, SDL_bool fullscreen)
+OS4_GetWindowFlags(SDL_Window * window, bool fullscreen)
 {
     uint32 windowFlags = WFLG_REPORTMOUSE | WFLG_RMBTRAP | WFLG_SMART_REFRESH | WFLG_NOCAREREFRESH;
 
@@ -323,7 +323,7 @@ OS4_CenterWindow(struct Screen * screen, SDL_Window * window)
 }
 
 static void
-OS4_DefineWindowBox(SDL_Window * window, struct Screen * screen, SDL_bool fullscreen, SDL_Rect * box)
+OS4_DefineWindowBox(SDL_Window * window, struct Screen * screen, bool fullscreen, SDL_Rect * box)
 {
     //dprintf("windowed %d, %d, w %d, h %d\n", window->windowed.x, window->windowed.y, window->windowed.w, window->windowed.h);
     //dprintf("floating %d, %d, w %d, h %d\n", window->floating.x, window->floating.y, window->floating.w, window->floating.h);
@@ -507,7 +507,7 @@ OS4_CreateSystemWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDis
 
     struct Window *syswin;
 
-    const SDL_bool fullscreen = display ? SDL_TRUE : SDL_FALSE;
+    const bool fullscreen = display ? true : false;
 
     const uint32 IDCMPFlags = OS4_GetIDCMPFlags(window, fullscreen);
     const uint32 windowFlags = OS4_GetWindowFlags(window, fullscreen);
@@ -914,7 +914,7 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
 
 // This may be called from os4events.c
 bool
-OS4_SetWindowGrabPrivate(SDL_VideoDevice *_this, struct Window * w, SDL_bool activate)
+OS4_SetWindowGrabPrivate(SDL_VideoDevice *_this, struct Window * w, bool activate)
 {
     if (w) {
         struct IBox grabBox = {
@@ -955,7 +955,7 @@ OS4_SetWindowGrabPrivate(SDL_VideoDevice *_this, struct Window * w, SDL_bool act
 }
 
 bool
-OS4_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window * window, SDL_bool grabbed)
+OS4_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window * window, bool grabbed)
 {
     SDL_WindowData *data = window->internal;
 
@@ -992,7 +992,7 @@ OS4_DestroyWindow(SDL_VideoDevice *_this, SDL_Window * window)
 }
 
 bool
-OS4_SetWindowHitTest(SDL_Window * window, SDL_bool enabled)
+OS4_SetWindowHitTest(SDL_Window * window, bool enabled)
 {
     return true; // just succeed, the real work is done elsewhere
 }
@@ -1232,19 +1232,19 @@ OS4_RecreateWindow(SDL_VideoDevice *_this, SDL_Window * window)
 }
 
 void
-OS4_SetWindowResizable (SDL_VideoDevice *_this, SDL_Window * window, SDL_bool resizable)
+OS4_SetWindowResizable (SDL_VideoDevice *_this, SDL_Window * window, bool resizable)
 {
     OS4_RecreateWindow(_this, window);
 }
 
 void
-OS4_SetWindowBordered(SDL_VideoDevice *_this, SDL_Window * window, SDL_bool bordered)
+OS4_SetWindowBordered(SDL_VideoDevice *_this, SDL_Window * window, bool bordered)
 {
     OS4_RecreateWindow(_this, window);
 }
 
 void
-OS4_SetWindowAlwaysOnTop(SDL_VideoDevice *_this, SDL_Window * window, SDL_bool on_top)
+OS4_SetWindowAlwaysOnTop(SDL_VideoDevice *_this, SDL_Window * window, bool on_top)
 {
     SDL_WindowData *data = window->internal;
 

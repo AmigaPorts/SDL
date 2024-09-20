@@ -86,17 +86,17 @@ extern void OS4_MaximizeWindow(SDL_VideoDevice *this, SDL_Window * window);
 extern void OS4_MinimizeWindow(SDL_VideoDevice *this, SDL_Window * window);
 extern void OS4_RestoreWindow(SDL_VideoDevice *this, SDL_Window * window);
 
-extern void OS4_SetWindowResizable(SDL_VideoDevice *this, SDL_Window * window, SDL_bool resizable);
-extern void OS4_SetWindowAlwaysOnTop(SDL_VideoDevice *this, SDL_Window * window, SDL_bool on_top);
+extern void OS4_SetWindowResizable(SDL_VideoDevice *this, SDL_Window * window, bool resizable);
+extern void OS4_SetWindowAlwaysOnTop(SDL_VideoDevice *this, SDL_Window * window, bool on_top);
 
-extern void OS4_SetWindowBordered(SDL_VideoDevice *this, SDL_Window * window, SDL_bool bordered);
+extern void OS4_SetWindowBordered(SDL_VideoDevice *this, SDL_Window * window, bool bordered);
 extern SDL_FullscreenResult OS4_SetWindowFullscreen(SDL_VideoDevice *this, SDL_Window * window, SDL_VideoDisplay * display, SDL_FullscreenOp fullscreen);
 //extern bool OS4_SetWindowGammaRamp(SDL_VideoDevice *this, SDL_Window * window, const Uint16 * ramp);
 //extern bool OS4_GetWindowGammaRamp(SDL_VideoDevice *this, SDL_Window * window, Uint16 * ramp);
 
-extern bool OS4_SetWindowGrabPrivate(SDL_VideoDevice *this, struct Window * w, SDL_bool activate);
-extern bool OS4_SetWindowMouseGrab(SDL_VideoDevice *this, SDL_Window * window, SDL_bool grabbed);
-//extern void OS4_SetWindowKeyboardGrab(SDL_VideoDevice *this, SDL_Window * window, SDL_bool grabbed);
+extern bool OS4_SetWindowGrabPrivate(SDL_VideoDevice *this, struct Window * w, bool activate);
+extern bool OS4_SetWindowMouseGrab(SDL_VideoDevice *this, SDL_Window * window, bool grabbed);
+//extern void OS4_SetWindowKeyboardGrab(SDL_VideoDevice *this, SDL_Window * window, bool grabbed);
 
 extern void OS4_DestroyWindow(SDL_VideoDevice *this, SDL_Window * window);
 
@@ -105,7 +105,7 @@ extern bool OS4_FlashWindow(SDL_VideoDevice *this, SDL_Window * window, SDL_Flas
 
 //extern void OS4_UpdateClipCursor(SDL_Window *window);
 
-extern bool OS4_SetWindowHitTest(SDL_Window * window, SDL_bool enabled);
+extern bool OS4_SetWindowHitTest(SDL_Window * window, bool enabled);
 
 extern bool OS4_SetWindowOpacity(SDL_VideoDevice *this, SDL_Window * window, float opacity);
 extern bool OS4_GetWindowBordersSize(SDL_VideoDevice *this, SDL_Window * window, int * top, int * left, int * bottom, int * right);

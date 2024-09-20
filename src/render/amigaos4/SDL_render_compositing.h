@@ -35,7 +35,7 @@ typedef struct
     struct RastPort rastport;
 
     SDL_Rect cliprect;
-    SDL_bool cliprect_enabled;
+    bool cliprect_enabled;
 
     SDL_Rect viewport;
 
@@ -44,7 +44,7 @@ typedef struct
 
 extern struct BitMap * OS4_ActivateRenderer(SDL_Renderer * renderer);
 extern struct BitMap * OS4_AllocBitMap(SDL_Renderer * renderer, int width, int height, int depth, const char* const reason);
-extern SDL_bool OS4_IsColorModEnabled(SDL_Texture * texture);
+extern bool OS4_IsColorModEnabled(SDL_Texture * texture);
 
 #endif
 

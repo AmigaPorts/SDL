@@ -37,9 +37,9 @@ extern bool OS4_GL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window);
 extern bool OS4_GL_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context);
 
 /* Non-SDL functions */
-extern SDL_bool OS4_GL_AllocateBuffers(SDL_VideoDevice *_this, int width, int height, int depth, SDL_WindowData * data);
+extern bool OS4_GL_AllocateBuffers(SDL_VideoDevice *_this, int width, int height, int depth, SDL_WindowData * data);
 extern void OS4_GL_FreeBuffers(SDL_VideoDevice *_this, SDL_WindowData * data);
-extern SDL_bool OS4_GL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window);
+extern bool OS4_GL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window);
 extern void OS4_GL_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window);
 
 #endif /* _SDL_os4opengl_h */

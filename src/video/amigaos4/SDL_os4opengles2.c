@@ -301,7 +301,7 @@ OS4_GLES_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
     return true;
 }
 
-SDL_bool
+bool
 OS4_GLES_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
 {
     if (IOGLES2) {
@@ -316,18 +316,18 @@ OS4_GLES_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
             aglSetBitmap(data->glBackBuffer);
 
             glViewport(0, 0, window->floating.w, window->floating.h);
-            return SDL_TRUE;
+            return true;
         } else {
             dprintf("Failed to re-allocate OpenGL ES 2 buffers\n");
             //SDL_Quit();
         }
 #endif
-        return SDL_TRUE;
+        return true;
     } else {
         OS4_GLES_LogLibraryError();
     }
 
-    return SDL_FALSE;
+    return false;
 }
 
 void

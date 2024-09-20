@@ -50,7 +50,7 @@
 static bool OS4_VideoInit(SDL_VideoDevice *_this);
 static void OS4_VideoQuit(SDL_VideoDevice *_this);
 
-SDL_bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window) = NULL;
+bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window) = NULL;
 void (*OS4_UpdateGlWindowPointer)(SDL_VideoDevice *_this, SDL_Window * window) = NULL;
 
 static void
@@ -88,7 +88,7 @@ OS4_SuspendScreenSaver(SDL_VideoDevice *_this)
     SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
     if (data->appId) {
-        const BOOL state = (_this->suspend_screensaver == SDL_FALSE);
+        const BOOL state = (_this->suspend_screensaver == false);
         const BOOL result = IApplication->SetApplicationAttrs(data->appId,
                                                               APPATTR_AllowsBlanker, state,
                                                               TAG_DONE);
@@ -135,7 +135,7 @@ OS4_UnregisterApplication(SDL_VideoDevice *_this)
     }
 }
 
-static SDL_bool
+static bool
 OS4_AllocSystemResources(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->internal;
@@ -143,7 +143,7 @@ OS4_AllocSystemResources(SDL_VideoDevice *_this)
     dprintf("Called\n");
 
     if (!OS4_CheckInterfaces()) {
-        return SDL_FALSE;
+        return false;
     }
 
     OS4_FindApplicationName(_this);
@@ -151,12 +151,12 @@ OS4_AllocSystemResources(SDL_VideoDevice *_this)
 
     if (!(data->userPort = IExec->AllocSysObjectTags(ASOT_PORT, TAG_DONE))) {
         SDL_SetError("Couldn't allocate message port");
-        return SDL_FALSE;
+        return false;
     }
 
     if (!(data->appMsgPort = IExec->AllocSysObjectTags(ASOT_PORT, TAG_DONE))) {
         SDL_SetError("Couldn't allocate AppMsg port");
-        return SDL_FALSE;
+        return false;
     }
 
     /* Create the pool we'll be using (Shared, might be used from threads) */
@@ -168,7 +168,7 @@ OS4_AllocSystemResources(SDL_VideoDevice *_this)
         TAG_DONE))) {
 
         SDL_SetError("Couldn't allocate pool");
-        return SDL_FALSE;
+        return false;
     }
 
     /* inputPort, inputReq and and input.device are created for WarpMouse functionality. (In SDL1
@@ -176,7 +176,7 @@ OS4_AllocSystemResources(SDL_VideoDevice *_this)
     if (!(data->inputPort = IExec->AllocSysObjectTags(ASOT_PORT, TAG_DONE))) {
 
         SDL_SetError("Couldn't allocate input port");
-        return SDL_FALSE;
+        return false;
     }
 
     if (!(data->inputReq = IExec->AllocSysObjectTags(ASOT_IOREQUEST,
@@ -185,22 +185,22 @@ OS4_AllocSystemResources(SDL_VideoDevice *_this)
                                              TAG_DONE))) {
 
         SDL_SetError("Couldn't allocate input request");
-        return SDL_FALSE;
+        return false;
     }
 
     if (IExec->OpenDevice("input.device", 0, (struct IORequest *)data->inputReq, 0))
     {
         SDL_SetError("Couldn't open input.device");
-        return SDL_FALSE;
+        return false;
     }
 
     IInput = (struct InputIFace *)OS4_GetInterface((struct Library *)data->inputReq->io_Device);
     if (!IInput) {
         SDL_SetError("Failed to get IInput interface");
-        return SDL_FALSE;
+        return false;
     }
 
-    return SDL_TRUE;
+    return true;
 }
 
 static void
@@ -310,31 +310,31 @@ OS4_SetGLESFunctions(SDL_VideoDevice * device)
 }
 #endif
 
-static SDL_bool
+static bool
 OS4_IsMiniGL(SDL_VideoDevice *_this)
 {
     if ((_this->gl_config.profile_mask == 0) &&
         (_this->gl_config.major_version == 1) &&
         (_this->gl_config.minor_version == 3)) {
             dprintf("OpenGL 1.3 requested\n");
-            return SDL_TRUE;
+            return true;
     }
 
-    return SDL_FALSE;
+    return false;
 }
 
 #if SDL_VIDEO_OPENGL_ES2
-static SDL_bool
+static bool
 OS4_IsOpenGLES2(SDL_VideoDevice *_this)
 {
     if ((_this->gl_config.profile_mask == SDL_GL_CONTEXT_PROFILE_ES) &&
         (_this->gl_config.major_version == 2) &&
         (_this->gl_config.minor_version == 0)) {
             dprintf("OpenGL ES 2.0 requested\n");
-            return SDL_TRUE;
+            return true;
     }
 
-    return SDL_FALSE;
+    return false;
 }
 #endif
 

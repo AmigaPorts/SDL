@@ -27,7 +27,7 @@ extern uint32 OS4_TranslateUnicode(SDL_VideoDevice *_this, uint16 code, uint32 q
 
 extern bool OS4_SetClipboardText(SDL_VideoDevice *_this, const char *text);
 extern char * OS4_GetClipboardText(SDL_VideoDevice *_this);
-extern SDL_bool OS4_HasClipboardText(SDL_VideoDevice *_this);
+extern bool OS4_HasClipboardText(SDL_VideoDevice *_this);
 
 extern void OS4_InitKeyboard(SDL_VideoDevice *_this);
 extern void OS4_QuitKeyboard(SDL_VideoDevice *_this);
