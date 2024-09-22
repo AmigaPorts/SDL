@@ -185,6 +185,12 @@ SDL_SYS_CreateThread(SDL_Thread * thread,
                      SDL_FunctionPointer pfnBeginThread,
                      SDL_FunctionPointer pfnEndThread)
 {
+    if (!control.children.mutex) {
+        // Workaround for potential calls after SDL_Quit() (testautomation_subsystems)
+        dprintf("Thread subsystem not initialized\n");
+        return SDL_SetError("Thread subsystem not initialized");
+    }
+
     char nameBuffer[128];
     struct Task* thisTask = IExec->FindTask(NULL);
 
