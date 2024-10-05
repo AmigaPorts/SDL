@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,12 +33,12 @@
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
-typedef struct {
+typedef struct SDL_SharedObject {
     Elf32_Handle elf_handle;
     APTR shared_object;
-} OS4_ObjectHandle;
+} SDL_SharedObject;
 
-void *
+SDL_SharedObject *
 SDL_LoadObject(const char *sofile)
 {        
     if (!IElf) {
@@ -46,7 +46,7 @@ SDL_LoadObject(const char *sofile)
         return NULL;
     }
 
-    OS4_ObjectHandle *handle = SDL_malloc(sizeof(OS4_ObjectHandle));
+    SDL_SharedObject *handle = SDL_malloc(sizeof(SDL_SharedObject));
 
     if (handle) {
         BPTR seglist = IDOS->GetProcSegList(NULL, GPSLF_RUN);
@@ -88,7 +88,7 @@ SDL_LoadObject(const char *sofile)
 }
 
 SDL_FunctionPointer
-SDL_LoadFunction(void *handle, const char *name)
+SDL_LoadFunction(SDL_SharedObject *handle, const char *name)
 {
     void *symbol = NULL;
 
@@ -99,9 +99,7 @@ SDL_LoadFunction(void *handle, const char *name)
 
     if (handle) {
         APTR address = NULL;
-        OS4_ObjectHandle *oh = handle;
-
-        Elf32_Error result = IElf->DLSym(oh->elf_handle, oh->shared_object, name, &address);
+        Elf32_Error result = IElf->DLSym(handle->elf_handle, handle->shared_object, name, &address);
 
         if (result == ELF32_NO_ERROR) {
             symbol = address;
@@ -116,7 +114,7 @@ SDL_LoadFunction(void *handle, const char *name)
 }
 
 void
-SDL_UnloadObject(void *handle)
+SDL_UnloadObject(SDL_SharedObject *handle)
 {
     if (!IElf) {
         dprintf("IElf nullptr\n");
@@ -124,12 +122,10 @@ SDL_UnloadObject(void *handle)
     }
 
     if (handle) {
-        OS4_ObjectHandle *oh = handle;
-
 #ifdef DEBUG
         Elf32_Error result =
 #endif
-        IElf->DLClose(oh->elf_handle, oh->shared_object);
+        IElf->DLClose(handle->elf_handle, handle->shared_object);
 
         dprintf("DLClose %s\n", (result == ELF32_NO_ERROR) ? "OK" : "failed" );
 

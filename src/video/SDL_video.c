@@ -25,7 +25,7 @@
 
 #include "SDL_sysvideo.h"
 #include "SDL_egl_c.h"
-#include "SDL_blit.h"
+#include "SDL_surface_c.h"
 #include "SDL_pixels_c.h"
 #include "SDL_rect_c.h"
 #include "SDL_video_c.h"
@@ -3485,7 +3485,7 @@ SDL_Surface *SDL_GetWindowSurface(SDL_Window *window)
 
     if (!window->surface_valid) {
         if (window->surface) {
-            window->surface->internal->flags &= ~SDL_INTERNAL_SURFACE_DONTFREE;
+            window->surface->internal_flags &= ~SDL_INTERNAL_SURFACE_DONTFREE;
             SDL_DestroySurface(window->surface);
             window->surface = NULL;
         }
@@ -3493,7 +3493,7 @@ SDL_Surface *SDL_GetWindowSurface(SDL_Window *window)
         window->surface = SDL_CreateWindowFramebuffer(window);
         if (window->surface) {
             window->surface_valid = true;
-            window->surface->internal->flags |= SDL_INTERNAL_SURFACE_DONTFREE;
+            window->surface->internal_flags |= SDL_INTERNAL_SURFACE_DONTFREE;
         }
     }
     return window->surface;
@@ -3551,7 +3551,7 @@ bool SDL_DestroyWindowSurface(SDL_Window *window)
     CHECK_WINDOW_MAGIC(window, false);
 
     if (window->surface) {
-        window->surface->internal->flags &= ~SDL_INTERNAL_SURFACE_DONTFREE;
+        window->surface->internal_flags &= ~SDL_INTERNAL_SURFACE_DONTFREE;
         SDL_DestroySurface(window->surface);
         window->surface = NULL;
         window->surface_valid = false;
@@ -3582,7 +3582,7 @@ bool SDL_SetWindowOpacity(SDL_Window *window, float opacity)
     }
 
     result = _this->SetWindowOpacity(_this, window, opacity);
-    if (result == 0) {
+    if (result) {
         window->opacity = opacity;
     }
 
@@ -4519,8 +4519,9 @@ void SDL_GL_DeduceMaxSupportedESProfile(int *major, int *minor)
 }
 
 void SDL_EGL_SetAttributeCallbacks(SDL_EGLAttribArrayCallback platformAttribCallback,
-                                      SDL_EGLIntArrayCallback surfaceAttribCallback,
-                                      SDL_EGLIntArrayCallback contextAttribCallback)
+                                   SDL_EGLIntArrayCallback surfaceAttribCallback,
+                                   SDL_EGLIntArrayCallback contextAttribCallback,
+                                   void *userdata)
 {
     if (!_this) {
         return;
@@ -4528,6 +4529,7 @@ void SDL_EGL_SetAttributeCallbacks(SDL_EGLAttribArrayCallback platformAttribCall
     _this->egl_platformattrib_callback = platformAttribCallback;
     _this->egl_surfaceattrib_callback = surfaceAttribCallback;
     _this->egl_contextattrib_callback = contextAttribCallback;
+    _this->egl_attrib_callback_userdata = userdata;
 }
 
 void SDL_GL_ResetAttributes(void)
@@ -4539,6 +4541,7 @@ void SDL_GL_ResetAttributes(void)
     _this->egl_platformattrib_callback = NULL;
     _this->egl_surfaceattrib_callback = NULL;
     _this->egl_contextattrib_callback = NULL;
+    _this->egl_attrib_callback_userdata = NULL;
 
     _this->gl_config.red_size = 8;
     _this->gl_config.green_size = 8;
@@ -5124,13 +5127,13 @@ bool SDL_GL_GetSwapInterval(int *interval)
     *interval = 0;
 
     if (!_this) {
-        return SDL_SetError("no video driver");;
+        return SDL_SetError("no video driver");
     } else if (SDL_GL_GetCurrentContext() == NULL) {
-        return SDL_SetError("no current context");;
+        return SDL_SetError("no current context");
     } else if (_this->GL_GetSwapInterval) {
         return _this->GL_GetSwapInterval(_this, interval);
     } else {
-        return SDL_SetError("not implemented");;
+        return SDL_SetError("not implemented");
     }
 }
 

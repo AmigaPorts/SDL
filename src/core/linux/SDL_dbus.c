@@ -26,7 +26,7 @@
 #ifdef SDL_USE_LIBDBUS
 // we never link directly to libdbus.
 static const char *dbus_library = "libdbus-1.so.3";
-static void *dbus_handle = NULL;
+static SDL_SharedObject *dbus_handle = NULL;
 static char *inhibit_handle = NULL;
 static unsigned int screensaver_cookie = 0;
 static SDL_DBusContext dbus;
@@ -341,7 +341,7 @@ bool SDL_DBus_CallVoidMethod(const char *node, const char *path, const char *int
     return result;
 }
 
-bool SDL_DBus_QueryPropertyOnConnection(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *property, const int expectedtype, void *result)
+bool SDL_DBus_QueryPropertyOnConnection(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *property, int expectedtype, void *result)
 {
     bool retval = false;
 
@@ -358,7 +358,7 @@ bool SDL_DBus_QueryPropertyOnConnection(DBusConnection *conn, const char *node, 
     return retval;
 }
 
-bool SDL_DBus_QueryProperty(const char *node, const char *path, const char *interface, const char *property, const int expectedtype, void *result)
+bool SDL_DBus_QueryProperty(const char *node, const char *path, const char *interface, const char *property, int expectedtype, void *result)
 {
     return SDL_DBus_QueryPropertyOnConnection(dbus.session_conn, node, path, interface, property, expectedtype, result);
 }

@@ -1,5 +1,5 @@
 /*
-  Simple DiretMedia Layer
+  Simple DirectMedia Layer
   Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
@@ -19,7 +19,7 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 #include "SDL_internal.h"
-#include "SDL_hashtable.h"
+
 #include "SDL_hints_c.h"
 #include "SDL_properties_c.h"
 

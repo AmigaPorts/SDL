@@ -26,8 +26,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         return SDL_APP_FAILURE;
     }
 
-    SDL_srand(0);  /* seed the random number generator */
-
     return SDL_APP_CONTINUE;  /* carry on with the program! */
 }
 
@@ -56,7 +54,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
     };
 
     /* as you can see from this, rendering draws over whatever was drawn before it. */
-    SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);  /* black, full alpha */
+    SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);  /* grey, full alpha */
     SDL_RenderClear(renderer);  /* start with a blank canvas. */
 
     /* You can draw lines, one at a time, like these brown ones... */
@@ -86,7 +84,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
 }
 
 /* This function runs once at shutdown. */
-void SDL_AppQuit(void *appstate)
+void SDL_AppQuit(void *appstate, SDL_AppResult result)
 {
     /* SDL will clean up the window/renderer for us. */
 }

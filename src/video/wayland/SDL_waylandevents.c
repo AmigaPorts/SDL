@@ -740,9 +740,9 @@ static void pointer_handle_button_common(struct SDL_WaylandInput *input, uint32_
          * long as any button is still down, the capture remains).
          */
         if (state) { // update our mask of currently-pressed buttons
-            input->buttons_pressed |= SDL_BUTTON(sdl_button);
+            input->buttons_pressed |= SDL_BUTTON_MASK(sdl_button);
         } else {
-            input->buttons_pressed &= ~(SDL_BUTTON(sdl_button));
+            input->buttons_pressed &= ~(SDL_BUTTON_MASK(sdl_button));
         }
 
         // Don't modify the capture flag in relative mode.
@@ -1086,6 +1086,41 @@ static void touch_handler_frame(void *data, struct wl_touch *touch)
 
 static void touch_handler_cancel(void *data, struct wl_touch *touch)
 {
+    struct SDL_WaylandInput *input = (struct SDL_WaylandInput *)data;
+    struct SDL_WaylandTouchPoint *tp, *temp;
+
+    wl_list_for_each_safe (tp, temp, &touch_points, link) {
+        bool removed = false;
+
+        if (tp->surface) {
+            SDL_WindowData *window_data = (SDL_WindowData *)wl_surface_get_user_data(tp->surface);
+
+            if (window_data) {
+                const float x = (float)(wl_fixed_to_double(tp->fx) / window_data->current.logical_width);
+                const float y = (float)(wl_fixed_to_double(tp->fy) / window_data->current.logical_height);
+
+                SDL_SendTouch(0, (SDL_TouchID)(uintptr_t)touch,
+                              (SDL_FingerID)(tp->id + 1), window_data->sdlwindow, false, x, y, 0.0f);
+
+                // Remove the touch from the list before checking for still-active touches on the surface.
+                WAYLAND_wl_list_remove(&tp->link);
+                removed = true;
+
+                /* If the seat lacks pointer focus, the seat's keyboard focus is another window or NULL, this window currently
+                 * has mouse focus, and the surface has no active touch events, consider mouse focus to be lost.
+                 */
+                if (!input->pointer_focus && input->keyboard_focus != window_data &&
+                    SDL_GetMouseFocus() == window_data->sdlwindow && !Wayland_SurfaceHasActiveTouches(tp->surface)) {
+                    SDL_SetMouseFocus(NULL);
+                }
+            }
+        }
+
+        if (!removed) {
+            WAYLAND_wl_list_remove(&tp->link);
+        }
+        SDL_free(tp);
+    }
 }
 
 static const struct wl_touch_listener touch_listener = {

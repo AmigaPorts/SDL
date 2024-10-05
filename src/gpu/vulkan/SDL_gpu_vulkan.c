@@ -29,7 +29,6 @@
 #define VK_NO_PROTOTYPES
 #include "../../video/khronos/vulkan/vulkan.h"
 
-#include "SDL_hashtable.h"
 #include <SDL3/SDL_vulkan.h>
 
 #include "../SDL_sysgpu.h"
@@ -69,7 +68,7 @@ typedef struct VulkanExtensions
 #define SMALL_ALLOCATION_SIZE         16777216 // 16  MiB
 #define LARGE_ALLOCATION_INCREMENT    67108864 // 64  MiB
 #define MAX_UBO_SECTION_SIZE          4096     // 4   KiB
-#define DESCRIPTOR_POOL_STARTING_SIZE 128
+#define DESCRIPTOR_POOL_SIZE          128
 #define WINDOW_PROPERTY_DATA          "SDL_GPUVulkanWindowPropertyData"
 
 #define IDENTITY_SWIZZLE               \
@@ -176,12 +175,18 @@ static VkFormat SDLToVK_TextureFormat[] = {
     VK_FORMAT_R16_UINT,                 // R16_UINT
     VK_FORMAT_R16G16_UINT,              // R16G16_UINT
     VK_FORMAT_R16G16B16A16_UINT,        // R16G16B16A16_UINT
+    VK_FORMAT_R32_UINT,                 // R32_UINT
+    VK_FORMAT_R32G32_UINT,              // R32G32_UINT
+    VK_FORMAT_R32G32B32A32_UINT,        // R32G32B32A32_UINT
     VK_FORMAT_R8_SINT,                  // R8_INT
     VK_FORMAT_R8G8_SINT,                // R8G8_INT
     VK_FORMAT_R8G8B8A8_SINT,            // R8G8B8A8_INT
     VK_FORMAT_R16_SINT,                 // R16_INT
     VK_FORMAT_R16G16_SINT,              // R16G16_INT
     VK_FORMAT_R16G16B16A16_SINT,        // R16G16B16A16_INT
+    VK_FORMAT_R32_SINT,                 // R32_INT
+    VK_FORMAT_R32G32_SINT,              // R32G32_INT
+    VK_FORMAT_R32G32B32A32_SINT,        // R32G32B32A32_INT
     VK_FORMAT_R8G8B8A8_SRGB,            // R8G8B8A8_UNORM_SRGB
     VK_FORMAT_B8G8R8A8_SRGB,            // B8G8R8A8_UNORM_SRGB
     VK_FORMAT_BC1_RGBA_SRGB_BLOCK,      // BC1_UNORM_SRGB
@@ -659,8 +664,13 @@ typedef struct VulkanFramebuffer
     SDL_AtomicInt referenceCount;
 } VulkanFramebuffer;
 
-typedef struct VulkanSwapchainData
+typedef struct WindowData
 {
+    SDL_Window *window;
+    SDL_GPUSwapchainComposition swapchainComposition;
+    SDL_GPUPresentMode presentMode;
+    bool needsSwapchainRecreate;
+
     // Window surface
     VkSurfaceKHR surface;
 
@@ -669,12 +679,13 @@ typedef struct VulkanSwapchainData
     VkFormat format;
     VkColorSpaceKHR colorSpace;
     VkComponentMapping swapchainSwizzle;
-    VkPresentModeKHR presentMode;
     bool usingFallbackFormat;
 
     // Swapchain images
     VulkanTextureContainer *textureContainers; // use containers so that swapchain textures can use the same API as other textures
     Uint32 imageCount;
+    Uint32 width;
+    Uint32 height;
 
     // Synchronization primitives
     VkSemaphore imageAvailableSemaphore[MAX_FRAMES_IN_FLIGHT];
@@ -682,15 +693,6 @@ typedef struct VulkanSwapchainData
     SDL_GPUFence *inFlightFences[MAX_FRAMES_IN_FLIGHT];
 
     Uint32 frameCounter;
-} VulkanSwapchainData;
-
-typedef struct WindowData
-{
-    SDL_Window *window;
-    SDL_GPUSwapchainComposition swapchainComposition;
-    SDL_GPUPresentMode presentMode;
-    VulkanSwapchainData *swapchainData;
-    bool needsSwapchainRecreate;
 } WindowData;
 
 typedef struct SwapchainSupportDetails
@@ -723,23 +725,69 @@ typedef struct VulkanDescriptorInfo
 
 typedef struct DescriptorSetPool
 {
-    SDL_SpinLock lock;
+    // It's a pool... of pools!!!
+    Uint32 poolCount;
+    VkDescriptorPool *descriptorPools;
 
+    // We'll just manage the descriptor sets ourselves instead of freeing the sets
+    VkDescriptorSet *descriptorSets;
+    Uint32 descriptorSetCount;
+    Uint32 descriptorSetIndex;
+} DescriptorSetPool;
+
+// A command buffer acquires a cache at command buffer acquisition time
+typedef struct DescriptorSetCache
+{
+    // Pools are indexed by DescriptorSetLayoutID which increases monotonically
+    // There's only a certain number of maximum layouts possible since we de-duplicate them.
+    DescriptorSetPool *pools;
+    Uint32 poolCount;
+} DescriptorSetCache;
+
+typedef struct DescriptorSetLayoutHashTableKey
+{
+    VkShaderStageFlagBits shaderStage;
+    // Category 1: read resources
+    Uint32 samplerCount;
+    Uint32 storageBufferCount;
+    Uint32 storageTextureCount;
+    // Category 2: write resources
+    Uint32 writeStorageBufferCount;
+    Uint32 writeStorageTextureCount;
+    // Category 3: uniform buffers
+    Uint32 uniformBufferCount;
+} DescriptorSetLayoutHashTableKey;
+
+typedef uint32_t DescriptorSetLayoutID;
+
+typedef struct DescriptorSetLayout
+{
+    DescriptorSetLayoutID ID;
     VkDescriptorSetLayout descriptorSetLayout;
 
-    VulkanDescriptorInfo *descriptorInfos;
-    Uint32 descriptorInfoCount;
+    // Category 1: read resources
+    Uint32 samplerCount;
+    Uint32 storageBufferCount;
+    Uint32 storageTextureCount;
+    // Category 2: write resources
+    Uint32 writeStorageBufferCount;
+    Uint32 writeStorageTextureCount;
+    // Category 3: uniform buffers
+    Uint32 uniformBufferCount;
+} DescriptorSetLayout;
 
-    // This is actually a descriptor set and descriptor pool simultaneously
-    VkDescriptorPool *descriptorPools;
-    Uint32 descriptorPoolCount;
-    Uint32 nextPoolSize;
+typedef struct GraphicsPipelineResourceLayoutHashTableKey
+{
+    Uint32 vertexSamplerCount;
+    Uint32 vertexStorageBufferCount;
+    Uint32 vertexStorageTextureCount;
+    Uint32 vertexUniformBufferCount;
 
-    // We just manage a pool ourselves instead of freeing the sets
-    VkDescriptorSet *inactiveDescriptorSets;
-    Uint32 inactiveDescriptorSetCount;
-    Uint32 inactiveDescriptorSetCapacity;
-} DescriptorSetPool;
+    Uint32 fragmentSamplerCount;
+    Uint32 fragmentStorageBufferCount;
+    Uint32 fragmentStorageTextureCount;
+    Uint32 fragmentUniformBufferCount;
+} GraphicsPipelineResourceLayoutHashTableKey;
 
 typedef struct VulkanGraphicsPipelineResourceLayout
 {
@@ -752,7 +800,7 @@ typedef struct VulkanGraphicsPipelineResourceLayout
      * 2: fragment resources
      * 3: fragment uniform buffers
      */
-    DescriptorSetPool descriptorSetPools[4];
+    DescriptorSetLayout *descriptorSetLayouts[4];
 
     Uint32 vertexSamplerCount;
     Uint32 vertexStorageBufferCount;
@@ -770,13 +818,23 @@ typedef struct VulkanGraphicsPipeline
     VkPipeline pipeline;
     SDL_GPUPrimitiveType primitiveType;
 
-    VulkanGraphicsPipelineResourceLayout resourceLayout;
+    VulkanGraphicsPipelineResourceLayout *resourceLayout;
 
     VulkanShader *vertexShader;
     VulkanShader *fragmentShader;
 
     SDL_AtomicInt referenceCount;
 } VulkanGraphicsPipeline;
+
+typedef struct ComputePipelineResourceLayoutHashTableKey
+{
+    Uint32 samplerCount;
+    Uint32 readonlyStorageTextureCount;
+    Uint32 readonlyStorageBufferCount;
+    Uint32 readWriteStorageTextureCount;
+    Uint32 readWriteStorageBufferCount;
+    Uint32 uniformBufferCount;
+} ComputePipelineResourceLayoutHashTableKey;
 
 typedef struct VulkanComputePipelineResourceLayout
 {
@@ -788,13 +846,13 @@ typedef struct VulkanComputePipelineResourceLayout
      * 1: write-only textures, then write-only buffers
      * 2: uniform buffers
      */
-    DescriptorSetPool descriptorSetPools[3];
+    DescriptorSetLayout *descriptorSetLayouts[3];
 
     Uint32 numSamplers;
     Uint32 numReadonlyStorageTextures;
     Uint32 numReadonlyStorageBuffers;
-    Uint32 numWriteonlyStorageTextures;
-    Uint32 numWriteonlyStorageBuffers;
+    Uint32 numReadWriteStorageTextures;
+    Uint32 numReadWriteStorageBuffers;
     Uint32 numUniformBuffers;
 } VulkanComputePipelineResourceLayout;
 
@@ -802,7 +860,7 @@ typedef struct VulkanComputePipeline
 {
     VkShaderModule shaderModule;
     VkPipeline pipeline;
-    VulkanComputePipelineResourceLayout resourceLayout;
+    VulkanComputePipelineResourceLayout *resourceLayout;
     SDL_AtomicInt referenceCount;
 } VulkanComputePipeline;
 
@@ -831,6 +889,8 @@ typedef struct RenderPassHashTableKey
 {
     RenderPassColorTargetDescription colorTargetDescriptions[MAX_COLOR_TARGET_BINDINGS];
     Uint32 numColorTargets;
+    VkFormat resolveTargetFormats[MAX_COLOR_TARGET_BINDINGS];
+    Uint32 numResolveTargets;
     RenderPassDepthStencilTargetDescription depthStencilTargetDescription;
     VkSampleCountFlagBits sampleCount;
 } RenderPassHashTableKey;
@@ -844,18 +904,14 @@ typedef struct FramebufferHashTableKey
 {
     VkImageView colorAttachmentViews[MAX_COLOR_TARGET_BINDINGS];
     Uint32 numColorTargets;
+    VkImageView resolveAttachmentViews[MAX_COLOR_TARGET_BINDINGS];
+    Uint32 numResolveAttachments;
     VkImageView depthStencilAttachmentView;
     Uint32 width;
     Uint32 height;
 } FramebufferHashTableKey;
 
 // Command structures
-
-typedef struct DescriptorSetData
-{
-    DescriptorSetPool *descriptorSetPool;
-    VkDescriptorSet descriptorSet;
-} DescriptorSetData;
 
 typedef struct VulkanFencePool
 {
@@ -911,6 +967,8 @@ typedef struct VulkanCommandBuffer
 
     // Resource bind state
 
+    DescriptorSetCache *descriptorSetCache; // acquired when command buffer is acquired
+
     bool needNewVertexResourceDescriptorSet;
     bool needNewVertexUniformDescriptorSet;
     bool needNewVertexUniformOffsets;
@@ -919,7 +977,7 @@ typedef struct VulkanCommandBuffer
     bool needNewFragmentUniformOffsets;
 
     bool needNewComputeReadOnlyDescriptorSet;
-    bool needNewComputeWriteOnlyDescriptorSet;
+    bool needNewComputeReadWriteDescriptorSet;
     bool needNewComputeUniformDescriptorSet;
     bool needNewComputeUniformOffsets;
 
@@ -929,12 +987,8 @@ typedef struct VulkanCommandBuffer
     VkDescriptorSet fragmentUniformDescriptorSet;
 
     VkDescriptorSet computeReadOnlyDescriptorSet;
-    VkDescriptorSet computeWriteOnlyDescriptorSet;
+    VkDescriptorSet computeReadWriteDescriptorSet;
     VkDescriptorSet computeUniformDescriptorSet;
-
-    DescriptorSetData *boundDescriptorSetDatas;
-    Uint32 boundDescriptorSetDataCount;
-    Uint32 boundDescriptorSetDataCapacity;
 
     VulkanTexture *vertexSamplerTextures[MAX_TEXTURE_SAMPLERS_PER_STAGE];
     VulkanSampler *vertexSamplers[MAX_TEXTURE_SAMPLERS_PER_STAGE];
@@ -946,9 +1000,9 @@ typedef struct VulkanCommandBuffer
     VulkanTexture *fragmentStorageTextures[MAX_STORAGE_TEXTURES_PER_STAGE];
     VulkanBuffer *fragmentStorageBuffers[MAX_STORAGE_BUFFERS_PER_STAGE];
 
-    VulkanTextureSubresource *writeOnlyComputeStorageTextureSubresources[MAX_COMPUTE_WRITE_TEXTURES];
-    Uint32 writeOnlyComputeStorageTextureSubresourceCount;
-    VulkanBuffer *writeOnlyComputeStorageBuffers[MAX_COMPUTE_WRITE_BUFFERS];
+    VulkanTextureSubresource *readWriteComputeStorageTextureSubresources[MAX_COMPUTE_WRITE_TEXTURES];
+    Uint32 readWriteComputeStorageTextureSubresourceCount;
+    VulkanBuffer *readWriteComputeStorageBuffers[MAX_COMPUTE_WRITE_BUFFERS];
 
     VulkanTexture *computeSamplerTextures[MAX_TEXTURE_SAMPLERS_PER_STAGE];
     VulkanSampler *computeSamplers[MAX_TEXTURE_SAMPLERS_PER_STAGE];
@@ -964,32 +1018,32 @@ typedef struct VulkanCommandBuffer
     // Track used resources
 
     VulkanBuffer **usedBuffers;
-    Uint32 usedBufferCount;
-    Uint32 usedBufferCapacity;
+    Sint32 usedBufferCount;
+    Sint32 usedBufferCapacity;
 
     VulkanTexture **usedTextures;
-    Uint32 usedTextureCount;
-    Uint32 usedTextureCapacity;
+    Sint32 usedTextureCount;
+    Sint32 usedTextureCapacity;
 
     VulkanSampler **usedSamplers;
-    Uint32 usedSamplerCount;
-    Uint32 usedSamplerCapacity;
+    Sint32 usedSamplerCount;
+    Sint32 usedSamplerCapacity;
 
     VulkanGraphicsPipeline **usedGraphicsPipelines;
-    Uint32 usedGraphicsPipelineCount;
-    Uint32 usedGraphicsPipelineCapacity;
+    Sint32 usedGraphicsPipelineCount;
+    Sint32 usedGraphicsPipelineCapacity;
 
     VulkanComputePipeline **usedComputePipelines;
-    Uint32 usedComputePipelineCount;
-    Uint32 usedComputePipelineCapacity;
+    Sint32 usedComputePipelineCount;
+    Sint32 usedComputePipelineCapacity;
 
     VulkanFramebuffer **usedFramebuffers;
-    Uint32 usedFramebufferCount;
-    Uint32 usedFramebufferCapacity;
+    Sint32 usedFramebufferCount;
+    Sint32 usedFramebufferCapacity;
 
     VulkanUniformBuffer **usedUniformBuffers;
-    Uint32 usedUniformBufferCount;
-    Uint32 usedUniformBufferCapacity;
+    Sint32 usedUniformBufferCount;
+    Sint32 usedUniformBufferCapacity;
 
     VulkanFenceHandle *inFlightFence;
     Uint8 autoReleaseFence;
@@ -1048,10 +1102,19 @@ struct VulkanRenderer
     SDL_HashTable *commandPoolHashTable;
     SDL_HashTable *renderPassHashTable;
     SDL_HashTable *framebufferHashTable;
+    SDL_HashTable *graphicsPipelineResourceLayoutHashTable;
+    SDL_HashTable *computePipelineResourceLayoutHashTable;
+    SDL_HashTable *descriptorSetLayoutHashTable;
 
     VulkanUniformBuffer **uniformBufferPool;
     Uint32 uniformBufferPoolCount;
     Uint32 uniformBufferPoolCapacity;
+
+    DescriptorSetCache **descriptorSetCachePool;
+    Uint32 descriptorSetCachePoolCount;
+    Uint32 descriptorSetCachePoolCapacity;
+
+    SDL_AtomicInt layoutResourceID;
 
     Uint32 minUBOAlignment;
 
@@ -1092,6 +1155,7 @@ struct VulkanRenderer
     SDL_Mutex *acquireUniformBufferLock;
     SDL_Mutex *renderPassFetchLock;
     SDL_Mutex *framebufferFetchLock;
+    SDL_Mutex *windowLock;
 
     Uint8 defragInProgress;
 
@@ -1108,12 +1172,12 @@ struct VulkanRenderer
 
 // Forward declarations
 
-static Uint8 VULKAN_INTERNAL_DefragmentMemory(VulkanRenderer *renderer);
-static void VULKAN_INTERNAL_BeginCommandBuffer(VulkanRenderer *renderer, VulkanCommandBuffer *commandBuffer);
+static bool VULKAN_INTERNAL_DefragmentMemory(VulkanRenderer *renderer);
+static bool VULKAN_INTERNAL_BeginCommandBuffer(VulkanRenderer *renderer, VulkanCommandBuffer *commandBuffer);
 static void VULKAN_ReleaseWindow(SDL_GPURenderer *driverData, SDL_Window *window);
-static void VULKAN_Wait(SDL_GPURenderer *driverData);
-static void VULKAN_WaitForFences(SDL_GPURenderer *driverData, bool waitAll, SDL_GPUFence *const *fences, Uint32 numFences);
-static void VULKAN_Submit(SDL_GPUCommandBuffer *commandBuffer);
+static bool VULKAN_Wait(SDL_GPURenderer *driverData);
+static bool VULKAN_WaitForFences(SDL_GPURenderer *driverData, bool waitAll, SDL_GPUFence *const *fences, Uint32 numFences);
+static bool VULKAN_Submit(SDL_GPUCommandBuffer *commandBuffer);
 
 // Error Handling
 
@@ -1144,23 +1208,21 @@ static inline const char *VkErrorMessages(VkResult code)
 #undef ERR_TO_STR
 }
 
-static inline void LogVulkanResultAsError(
-    const char *vulkanFunctionName,
-    VkResult result)
-{
-    if (result != VK_SUCCESS) {
-        SDL_LogError(
-            SDL_LOG_CATEGORY_GPU,
-            "%s: %s",
-            vulkanFunctionName,
-            VkErrorMessages(result));
-    }
-}
+#define SET_ERROR_AND_RETURN(fmt, msg, ret)           \
+    if (renderer->debugMode) {                        \
+        SDL_LogError(SDL_LOG_CATEGORY_GPU, fmt, msg); \
+    }                                                 \
+    SDL_SetError(fmt, msg);                           \
+    return ret;                                       \
 
-#define VULKAN_ERROR_CHECK(res, fn, ret)                                        \
-    if (res != VK_SUCCESS) {                                                    \
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s %s", #fn, VkErrorMessages(res)); \
-        return ret;                                                             \
+#define SET_STRING_ERROR_AND_RETURN(msg, ret) SET_ERROR_AND_RETURN("%s", msg, ret)
+
+#define CHECK_VULKAN_ERROR_AND_RETURN(res, fn, ret)                                 \
+    if (res != VK_SUCCESS) {                                                        \
+        if (renderer->debugMode) {                                                  \
+            SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s %s", #fn, VkErrorMessages(res)); \
+        }                                                                           \
+        SDL_SetError("%s %s", #fn, VkErrorMessages(res));                           \
     }
 
 // Utility
@@ -1741,7 +1803,7 @@ static Uint8 VULKAN_INTERNAL_AllocateMemory(
             VK_WHOLE_SIZE,
             0,
             (void **)&allocation->mapPointer);
-        VULKAN_ERROR_CHECK(result, vkMapMemory, 0)
+        CHECK_VULKAN_ERROR_AND_RETURN(result, vkMapMemory, 0)
     } else {
         allocation->mapPointer = NULL;
     }
@@ -1774,7 +1836,7 @@ static Uint8 VULKAN_INTERNAL_BindBufferMemory(
 
     SDL_UnlockMutex(usedRegion->allocation->memoryLock);
 
-    VULKAN_ERROR_CHECK(vulkanResult, vkBindBufferMemory, 0)
+    CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkBindBufferMemory, 0)
 
     return 1;
 }
@@ -1797,7 +1859,7 @@ static Uint8 VULKAN_INTERNAL_BindImageMemory(
 
     SDL_UnlockMutex(usedRegion->allocation->memoryLock);
 
-    VULKAN_ERROR_CHECK(vulkanResult, vkBindBufferMemory, 0)
+    CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkBindImageMemory, 0)
 
     return 1;
 }
@@ -2257,23 +2319,21 @@ static Uint8 VULKAN_INTERNAL_BindMemoryForBuffer(
     commandBuffer->array[commandBuffer->count] = resource;          \
     commandBuffer->count += 1;
 
-#define TRACK_RESOURCE(resource, type, array, count, capacity) \
-    Uint32 i;                                                  \
-                                                               \
-    for (i = 0; i < commandBuffer->count; i += 1) {            \
-        if (commandBuffer->array[i] == resource) {             \
-            return;                                            \
-        }                                                      \
-    }                                                          \
-                                                               \
-    if (commandBuffer->count == commandBuffer->capacity) {     \
-        commandBuffer->capacity += 1;                          \
-        commandBuffer->array = SDL_realloc(                    \
-            commandBuffer->array,                              \
-            commandBuffer->capacity * sizeof(type));           \
-    }                                                          \
-    commandBuffer->array[commandBuffer->count] = resource;     \
-    commandBuffer->count += 1;                                 \
+#define TRACK_RESOURCE(resource, type, array, count, capacity)  \
+    for (Sint32 i = commandBuffer->count - 1; i >= 0; i -= 1) { \
+        if (commandBuffer->array[i] == resource) {              \
+            return;                                             \
+        }                                                       \
+    }                                                           \
+                                                                \
+    if (commandBuffer->count == commandBuffer->capacity) {      \
+        commandBuffer->capacity += 1;                           \
+        commandBuffer->array = SDL_realloc(                     \
+            commandBuffer->array,                               \
+            commandBuffer->capacity * sizeof(type));            \
+    }                                                           \
+    commandBuffer->array[commandBuffer->count] = resource;      \
+    commandBuffer->count += 1;                                  \
     SDL_AtomicIncRef(&resource->referenceCount);
 
 static void VULKAN_INTERNAL_TrackBuffer(
@@ -2353,8 +2413,7 @@ static void VULKAN_INTERNAL_TrackUniformBuffer(
     VulkanCommandBuffer *commandBuffer,
     VulkanUniformBuffer *uniformBuffer)
 {
-    Uint32 i;
-    for (i = 0; i < commandBuffer->usedUniformBufferCount; i += 1) {
+    for (Sint32 i = commandBuffer->usedUniformBufferCount - 1; i >= 0; i -= 1) {
         if (commandBuffer->usedUniformBuffers[i] == uniformBuffer) {
             return;
         }
@@ -2671,6 +2730,8 @@ static VulkanTextureUsageMode VULKAN_INTERNAL_DefaultTextureUsageMode(
         return VULKAN_TEXTURE_USAGE_MODE_COMPUTE_STORAGE_READ;
     } else if (texture->usage & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE) {
         return VULKAN_TEXTURE_USAGE_MODE_COMPUTE_STORAGE_READ_WRITE;
+    } else if (texture->usage & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE) {
+        return VULKAN_TEXTURE_USAGE_MODE_COMPUTE_STORAGE_READ_WRITE;
     } else {
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "Texture has no default usage mode!");
         return VULKAN_TEXTURE_USAGE_MODE_SAMPLER;
@@ -2819,6 +2880,11 @@ static void VULKAN_INTERNAL_RemoveFramebuffersContainingView(
                 remove = true;
             }
         }
+        for (Uint32 i = 0; i < key->numResolveAttachments; i += 1) {
+            if (key->resolveAttachmentViews[i] == view) {
+                remove = true;
+            }
+        }
         if (key->depthStencilAttachmentView == view) {
             remove = true;
         }
@@ -2884,19 +2950,25 @@ static void VULKAN_INTERNAL_DestroyTexture(
 
     SDL_free(texture->subresources);
 
-    renderer->vkDestroyImageView(
-        renderer->logicalDevice,
-        texture->fullView,
-        NULL);
+    if (texture->fullView) {
+        renderer->vkDestroyImageView(
+            renderer->logicalDevice,
+            texture->fullView,
+            NULL);
+    }
 
-    renderer->vkDestroyImage(
-        renderer->logicalDevice,
-        texture->image,
-        NULL);
+    if (texture->image) {
+        renderer->vkDestroyImage(
+            renderer->logicalDevice,
+            texture->image,
+            NULL);
+    }
 
-    VULKAN_INTERNAL_RemoveMemoryUsedRegion(
-        renderer,
-        texture->usedRegion);
+    if (texture->usedRegion) {
+        VULKAN_INTERNAL_RemoveMemoryUsedRegion(
+            renderer,
+            texture->usedRegion);
+    }
 
     SDL_free(texture);
 }
@@ -2935,7 +3007,6 @@ static void VULKAN_INTERNAL_DestroyCommandPool(
         SDL_free(commandBuffer->presentDatas);
         SDL_free(commandBuffer->waitSemaphores);
         SDL_free(commandBuffer->signalSemaphores);
-        SDL_free(commandBuffer->boundDescriptorSetDatas);
         SDL_free(commandBuffer->usedBuffers);
         SDL_free(commandBuffer->usedTextures);
         SDL_free(commandBuffer->usedSamplers);
@@ -2951,54 +3022,32 @@ static void VULKAN_INTERNAL_DestroyCommandPool(
     SDL_free(commandPool);
 }
 
-static void VULKAN_INTERNAL_DestroyDescriptorSetPool(
+static void VULKAN_INTERNAL_DestroyDescriptorSetLayout(
     VulkanRenderer *renderer,
-    DescriptorSetPool *pool)
+    DescriptorSetLayout *layout)
 {
-    Uint32 i;
-
-    if (pool == NULL) {
+    if (layout == NULL) {
         return;
     }
 
-    for (i = 0; i < pool->descriptorPoolCount; i += 1) {
-        renderer->vkDestroyDescriptorPool(
+    if (layout->descriptorSetLayout != VK_NULL_HANDLE) {
+        renderer->vkDestroyDescriptorSetLayout(
             renderer->logicalDevice,
-            pool->descriptorPools[i],
+            layout->descriptorSetLayout,
             NULL);
     }
 
-    renderer->vkDestroyDescriptorSetLayout(
-        renderer->logicalDevice,
-        pool->descriptorSetLayout,
-        NULL);
-
-    SDL_free(pool->descriptorInfos);
-    SDL_free(pool->descriptorPools);
-    SDL_free(pool->inactiveDescriptorSets);
+    SDL_free(layout);
 }
 
 static void VULKAN_INTERNAL_DestroyGraphicsPipeline(
     VulkanRenderer *renderer,
     VulkanGraphicsPipeline *graphicsPipeline)
 {
-    Uint32 i;
-
     renderer->vkDestroyPipeline(
         renderer->logicalDevice,
         graphicsPipeline->pipeline,
         NULL);
-
-    renderer->vkDestroyPipelineLayout(
-        renderer->logicalDevice,
-        graphicsPipeline->resourceLayout.pipelineLayout,
-        NULL);
-
-    for (i = 0; i < 4; i += 1) {
-        VULKAN_INTERNAL_DestroyDescriptorSetPool(
-            renderer,
-            &graphicsPipeline->resourceLayout.descriptorSetPools[i]);
-    }
 
     (void)SDL_AtomicDecRef(&graphicsPipeline->vertexShader->referenceCount);
     (void)SDL_AtomicDecRef(&graphicsPipeline->fragmentShader->referenceCount);
@@ -3010,28 +3059,19 @@ static void VULKAN_INTERNAL_DestroyComputePipeline(
     VulkanRenderer *renderer,
     VulkanComputePipeline *computePipeline)
 {
-    Uint32 i;
-
-    renderer->vkDestroyPipeline(
-        renderer->logicalDevice,
-        computePipeline->pipeline,
-        NULL);
-
-    renderer->vkDestroyPipelineLayout(
-        renderer->logicalDevice,
-        computePipeline->resourceLayout.pipelineLayout,
-        NULL);
-
-    for (i = 0; i < 3; i += 1) {
-        VULKAN_INTERNAL_DestroyDescriptorSetPool(
-            renderer,
-            &computePipeline->resourceLayout.descriptorSetPools[i]);
+    if (computePipeline->pipeline != VK_NULL_HANDLE) {
+        renderer->vkDestroyPipeline(
+            renderer->logicalDevice,
+            computePipeline->pipeline,
+            NULL);
     }
 
-    renderer->vkDestroyShaderModule(
-        renderer->logicalDevice,
-        computePipeline->shaderModule,
-        NULL);
+    if (computePipeline->shaderModule != VK_NULL_HANDLE) {
+        renderer->vkDestroyShaderModule(
+            renderer->logicalDevice,
+            computePipeline->shaderModule,
+            NULL);
+    }
 
     SDL_free(computePipeline);
 }
@@ -3066,60 +3106,205 @@ static void VULKAN_INTERNAL_DestroySwapchain(
     WindowData *windowData)
 {
     Uint32 i;
-    VulkanSwapchainData *swapchainData;
 
     if (windowData == NULL) {
         return;
     }
 
-    swapchainData = windowData->swapchainData;
-
-    if (swapchainData == NULL) {
-        return;
-    }
-
-    for (i = 0; i < swapchainData->imageCount; i += 1) {
+    for (i = 0; i < windowData->imageCount; i += 1) {
         VULKAN_INTERNAL_RemoveFramebuffersContainingView(
             renderer,
-            swapchainData->textureContainers[i].activeTexture->subresources[0].renderTargetViews[0]);
+            windowData->textureContainers[i].activeTexture->subresources[0].renderTargetViews[0]);
         renderer->vkDestroyImageView(
             renderer->logicalDevice,
-            swapchainData->textureContainers[i].activeTexture->subresources[0].renderTargetViews[0],
+            windowData->textureContainers[i].activeTexture->subresources[0].renderTargetViews[0],
             NULL);
-        SDL_free(swapchainData->textureContainers[i].activeTexture->subresources[0].renderTargetViews);
-        SDL_free(swapchainData->textureContainers[i].activeTexture->subresources);
-        SDL_free(swapchainData->textureContainers[i].activeTexture);
+        SDL_free(windowData->textureContainers[i].activeTexture->subresources[0].renderTargetViews);
+        SDL_free(windowData->textureContainers[i].activeTexture->subresources);
+        SDL_free(windowData->textureContainers[i].activeTexture);
+    }
+    windowData->imageCount = 0;
+
+    SDL_free(windowData->textureContainers);
+    windowData->textureContainers = NULL;
+
+    if (windowData->swapchain) {
+        renderer->vkDestroySwapchainKHR(
+            renderer->logicalDevice,
+            windowData->swapchain,
+            NULL);
+        windowData->swapchain = VK_NULL_HANDLE;
     }
 
-    SDL_free(swapchainData->textureContainers);
-
-    renderer->vkDestroySwapchainKHR(
-        renderer->logicalDevice,
-        swapchainData->swapchain,
-        NULL);
-
-    renderer->vkDestroySurfaceKHR(
-        renderer->instance,
-        swapchainData->surface,
-        NULL);
+    if (windowData->surface) {
+        renderer->vkDestroySurfaceKHR(
+            renderer->instance,
+            windowData->surface,
+            NULL);
+        windowData->surface = VK_NULL_HANDLE;
+    }
 
     for (i = 0; i < MAX_FRAMES_IN_FLIGHT; i += 1) {
-        renderer->vkDestroySemaphore(
-            renderer->logicalDevice,
-            swapchainData->imageAvailableSemaphore[i],
-            NULL);
+        if (windowData->imageAvailableSemaphore[i]) {
+            renderer->vkDestroySemaphore(
+                renderer->logicalDevice,
+                windowData->imageAvailableSemaphore[i],
+                NULL);
+            windowData->imageAvailableSemaphore[i] = VK_NULL_HANDLE;
+        }
 
-        renderer->vkDestroySemaphore(
+        if (windowData->renderFinishedSemaphore[i]) {
+            renderer->vkDestroySemaphore(
+                renderer->logicalDevice,
+                windowData->renderFinishedSemaphore[i],
+                NULL);
+            windowData->renderFinishedSemaphore[i] = VK_NULL_HANDLE;
+        }
+    }
+}
+
+static void VULKAN_INTERNAL_DestroyGraphicsPipelineResourceLayout(
+    VulkanRenderer *renderer,
+    VulkanGraphicsPipelineResourceLayout *resourceLayout)
+{
+    if (resourceLayout->pipelineLayout != VK_NULL_HANDLE) {
+        renderer->vkDestroyPipelineLayout(
             renderer->logicalDevice,
-            swapchainData->renderFinishedSemaphore[i],
+            resourceLayout->pipelineLayout,
             NULL);
     }
 
-    windowData->swapchainData = NULL;
-    SDL_free(swapchainData);
+    SDL_free(resourceLayout);
+}
+
+static void VULKAN_INTERNAL_DestroyComputePipelineResourceLayout(
+    VulkanRenderer *renderer,
+    VulkanComputePipelineResourceLayout *resourceLayout)
+{
+    if (resourceLayout->pipelineLayout != VK_NULL_HANDLE) {
+        renderer->vkDestroyPipelineLayout(
+            renderer->logicalDevice,
+            resourceLayout->pipelineLayout,
+            NULL);
+    }
+
+    SDL_free(resourceLayout);
+}
+
+static void VULKAN_INTERNAL_DestroyDescriptorSetCache(
+    VulkanRenderer *renderer,
+    DescriptorSetCache *descriptorSetCache)
+{
+    for (Uint32 i = 0; i < descriptorSetCache->poolCount; i += 1) {
+        for (Uint32 j = 0; j < descriptorSetCache->pools[i].poolCount; j += 1) {
+            renderer->vkDestroyDescriptorPool(
+                renderer->logicalDevice,
+                descriptorSetCache->pools[i].descriptorPools[j],
+                NULL);
+        }
+        SDL_free(descriptorSetCache->pools[i].descriptorSets);
+        SDL_free(descriptorSetCache->pools[i].descriptorPools);
+    }
+    SDL_free(descriptorSetCache->pools);
+    SDL_free(descriptorSetCache);
 }
 
 // Hashtable functions
+
+static Uint32 VULKAN_INTERNAL_GraphicsPipelineResourceLayoutHashFunction(const void *key, void *data)
+{
+    GraphicsPipelineResourceLayoutHashTableKey *hashTableKey = (GraphicsPipelineResourceLayoutHashTableKey *)key;
+    /* The algorithm for this hashing function
+     * is taken from Josh Bloch's "Effective Java".
+     * (https://stackoverflow.com/a/113600/12492383)
+     */
+    const Uint32 hashFactor = 31;
+    Uint32 result = 1;
+    result = result * hashFactor + hashTableKey->vertexSamplerCount;
+    result = result * hashFactor + hashTableKey->vertexStorageBufferCount;
+    result = result * hashFactor + hashTableKey->vertexStorageTextureCount;
+    result = result * hashFactor + hashTableKey->vertexUniformBufferCount;
+    result = result * hashFactor + hashTableKey->fragmentSamplerCount;
+    result = result * hashFactor + hashTableKey->fragmentStorageBufferCount;
+    result = result * hashFactor + hashTableKey->fragmentStorageTextureCount;
+    result = result * hashFactor + hashTableKey->fragmentUniformBufferCount;
+    return result;
+}
+static bool VULKAN_INTERNAL_GraphicsPipelineResourceLayoutHashKeyMatch(const void *aKey, const void *bKey, void *data)
+{
+    return SDL_memcmp(aKey, bKey, sizeof(GraphicsPipelineResourceLayoutHashTableKey)) == 0;
+}
+static void VULKAN_INTERNAL_GraphicsPipelineResourceLayoutHashNuke(const void *key, const void *value, void *data)
+{
+    VulkanRenderer *renderer = (VulkanRenderer *)data;
+    VulkanGraphicsPipelineResourceLayout *resourceLayout = (VulkanGraphicsPipelineResourceLayout *)value;
+    VULKAN_INTERNAL_DestroyGraphicsPipelineResourceLayout(renderer, resourceLayout);
+    SDL_free((void*)key);
+}
+
+static Uint32 VULKAN_INTERNAL_ComputePipelineResourceLayoutHashFunction(const void *key, void *data)
+{
+    ComputePipelineResourceLayoutHashTableKey *hashTableKey = (ComputePipelineResourceLayoutHashTableKey *)key;
+    /* The algorithm for this hashing function
+     * is taken from Josh Bloch's "Effective Java".
+     * (https://stackoverflow.com/a/113600/12492383)
+     */
+    const Uint32 hashFactor = 31;
+    Uint32 result = 1;
+    result = result * hashFactor + hashTableKey->samplerCount;
+    result = result * hashFactor + hashTableKey->readonlyStorageTextureCount;
+    result = result * hashFactor + hashTableKey->readonlyStorageBufferCount;
+    result = result * hashFactor + hashTableKey->readWriteStorageTextureCount;
+    result = result * hashFactor + hashTableKey->readWriteStorageBufferCount;
+    result = result * hashFactor + hashTableKey->uniformBufferCount;
+    return result;
+}
+
+static bool VULKAN_INTERNAL_ComputePipelineResourceLayoutHashKeyMatch(const void *aKey, const void *bKey, void *data)
+{
+    return SDL_memcmp(aKey, bKey, sizeof(ComputePipelineResourceLayoutHashTableKey)) == 0;
+}
+
+static void VULKAN_INTERNAL_ComputePipelineResourceLayoutHashNuke(const void *key, const void *value, void *data)
+{
+    VulkanRenderer *renderer = (VulkanRenderer *)data;
+    VulkanComputePipelineResourceLayout *resourceLayout = (VulkanComputePipelineResourceLayout *)value;
+    VULKAN_INTERNAL_DestroyComputePipelineResourceLayout(renderer, resourceLayout);
+    SDL_free((void*)key);
+}
+
+static Uint32 VULKAN_INTERNAL_DescriptorSetLayoutHashFunction(const void *key, void *data)
+{
+    DescriptorSetLayoutHashTableKey *hashTableKey = (DescriptorSetLayoutHashTableKey *)key;
+
+    /* The algorithm for this hashing function
+     * is taken from Josh Bloch's "Effective Java".
+     * (https://stackoverflow.com/a/113600/12492383)
+     */
+    const Uint32 hashFactor = 31;
+    Uint32 result = 1;
+    result = result * hashFactor + hashTableKey->shaderStage;
+    result = result * hashFactor + hashTableKey->samplerCount;
+    result = result * hashFactor + hashTableKey->storageTextureCount;
+    result = result * hashFactor + hashTableKey->storageBufferCount;
+    result = result * hashFactor + hashTableKey->writeStorageTextureCount;
+    result = result * hashFactor + hashTableKey->writeStorageBufferCount;
+    result = result * hashFactor + hashTableKey->uniformBufferCount;
+    return result;
+}
+
+static bool VULKAN_INTERNAL_DescriptorSetLayoutHashKeyMatch(const void *aKey, const void *bKey, void *data)
+{
+    return SDL_memcmp(aKey, bKey, sizeof(DescriptorSetLayoutHashTableKey)) == 0;
+}
+
+static void VULKAN_INTERNAL_DescriptorSetLayoutHashNuke(const void *key, const void *value, void *data)
+{
+    VulkanRenderer *renderer = (VulkanRenderer *)data;
+    DescriptorSetLayout *layout = (DescriptorSetLayout *)value;
+    VULKAN_INTERNAL_DestroyDescriptorSetLayout(renderer, layout);
+    SDL_free((void*)key);
+}
 
 static Uint32 VULKAN_INTERNAL_CommandPoolHashFunction(const void *key, void *data)
 {
@@ -3160,6 +3345,10 @@ static Uint32 VULKAN_INTERNAL_RenderPassHashFunction(
         result = result * hashFactor + hashTableKey->colorTargetDescriptions[i].format;
     }
 
+    for (Uint32 i = 0; i < hashTableKey->numResolveTargets; i += 1) {
+        result = result * hashFactor + hashTableKey->resolveTargetFormats[i];
+    }
+
     result = result * hashFactor + hashTableKey->depthStencilTargetDescription.loadOp;
     result = result * hashFactor + hashTableKey->depthStencilTargetDescription.storeOp;
     result = result * hashFactor + hashTableKey->depthStencilTargetDescription.stencilLoadOp;
@@ -3183,6 +3372,10 @@ static bool VULKAN_INTERNAL_RenderPassHashKeyMatch(
         return 0;
     }
 
+    if (a->numResolveTargets != b->numResolveTargets) {
+        return 0;
+    }
+
     if (a->sampleCount != b->sampleCount) {
         return 0;
     }
@@ -3197,6 +3390,12 @@ static bool VULKAN_INTERNAL_RenderPassHashKeyMatch(
         }
 
         if (a->colorTargetDescriptions[i].storeOp != b->colorTargetDescriptions[i].storeOp) {
+            return 0;
+        }
+    }
+
+    for (Uint32 i = 0; i < a->numResolveTargets; i += 1) {
+        if (a->resolveTargetFormats[i] != b->resolveTargetFormats[i]) {
             return 0;
         }
     }
@@ -3252,6 +3451,9 @@ static Uint32 VULKAN_INTERNAL_FramebufferHashFunction(
     for (Uint32 i = 0; i < hashTableKey->numColorTargets; i += 1) {
         result = result * hashFactor + (Uint32)(uintptr_t)hashTableKey->colorAttachmentViews[i];
     }
+    for (Uint32 i = 0; i < hashTableKey->numResolveAttachments; i += 1) {
+        result = result * hashFactor + (Uint32)(uintptr_t)hashTableKey->resolveAttachmentViews[i];
+    }
 
     result = result * hashFactor + (Uint32)(uintptr_t)hashTableKey->depthStencilAttachmentView;
     result = result * hashFactor + hashTableKey->width;
@@ -3272,8 +3474,18 @@ static bool VULKAN_INTERNAL_FramebufferHashKeyMatch(
         return 0;
     }
 
+    if (a->numResolveAttachments != b->numResolveAttachments) {
+        return 0;
+    }
+
     for (Uint32 i = 0; i < a->numColorTargets; i += 1) {
         if (a->colorAttachmentViews[i] != b->colorAttachmentViews[i]) {
+            return 0;
+        }
+    }
+
+    for (Uint32 i = 0; i < a->numResolveAttachments; i += 1) {
+        if (a->resolveAttachmentViews[i] != b->resolveAttachmentViews[i]) {
             return 0;
         }
     }
@@ -3301,53 +3513,7 @@ static void VULKAN_INTERNAL_FramebufferHashNuke(const void *key, const void *val
     SDL_free((void *)key);
 }
 
-// Descriptor pool stuff
-
-static bool VULKAN_INTERNAL_CreateDescriptorPool(
-    VulkanRenderer *renderer,
-    VulkanDescriptorInfo *descriptorInfos,
-    Uint32 descriptorInfoCount,
-    Uint32 descriptorSetPoolSize,
-    VkDescriptorPool *pDescriptorPool)
-{
-    VkDescriptorPoolSize *descriptorPoolSizes;
-    VkDescriptorPoolCreateInfo descriptorPoolInfo;
-    VkResult vulkanResult;
-    Uint32 i;
-
-    descriptorPoolSizes = NULL;
-
-    if (descriptorInfoCount > 0) {
-        descriptorPoolSizes = SDL_stack_alloc(VkDescriptorPoolSize, descriptorInfoCount);
-
-        for (i = 0; i < descriptorInfoCount; i += 1) {
-            descriptorPoolSizes[i].type = descriptorInfos[i].descriptorType;
-            descriptorPoolSizes[i].descriptorCount = descriptorSetPoolSize;
-        }
-    }
-
-    descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    descriptorPoolInfo.pNext = NULL;
-    descriptorPoolInfo.flags = 0;
-    descriptorPoolInfo.maxSets = descriptorSetPoolSize;
-    descriptorPoolInfo.poolSizeCount = descriptorInfoCount;
-    descriptorPoolInfo.pPoolSizes = descriptorPoolSizes;
-
-    vulkanResult = renderer->vkCreateDescriptorPool(
-        renderer->logicalDevice,
-        &descriptorPoolInfo,
-        NULL,
-        pDescriptorPool);
-
-    SDL_stack_free(descriptorPoolSizes);
-
-    if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError("vkCreateDescriptorPool", vulkanResult);
-        return false;
-    }
-
-    return true;
-}
+// Descriptor pools
 
 static bool VULKAN_INTERNAL_AllocateDescriptorSets(
     VulkanRenderer *renderer,
@@ -3376,61 +3542,319 @@ static bool VULKAN_INTERNAL_AllocateDescriptorSets(
         &descriptorSetAllocateInfo,
         descriptorSetArray);
 
-    if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError("vkAllocateDescriptorSets", vulkanResult);
-        SDL_stack_free(descriptorSetLayouts);
-        return false;
-    }
-
     SDL_stack_free(descriptorSetLayouts);
+
+    CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkAllocateDescriptorSets, false)
+
     return true;
 }
 
-static void VULKAN_INTERNAL_InitializeDescriptorSetPool(
+static bool VULKAN_INTERNAL_AllocateDescriptorsFromPool(
     VulkanRenderer *renderer,
+    DescriptorSetLayout *descriptorSetLayout,
     DescriptorSetPool *descriptorSetPool)
 {
-    descriptorSetPool->lock = 0;
+    VkDescriptorPoolSize descriptorPoolSizes[
+        MAX_TEXTURE_SAMPLERS_PER_STAGE +
+        MAX_STORAGE_TEXTURES_PER_STAGE +
+        MAX_STORAGE_BUFFERS_PER_STAGE +
+        MAX_COMPUTE_WRITE_TEXTURES +
+        MAX_COMPUTE_WRITE_BUFFERS +
+        MAX_UNIFORM_BUFFERS_PER_STAGE];
+    VkDescriptorPoolCreateInfo descriptorPoolInfo;
+    VkDescriptorPool pool;
+    VkResult vulkanResult;
 
-    // Descriptor set layout and descriptor infos are already set when this function is called
+    // Category 1
+    for (Uint32 i = 0; i < descriptorSetLayout->samplerCount; i += 1) {
+        descriptorPoolSizes[i].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorPoolSizes[i].descriptorCount = DESCRIPTOR_POOL_SIZE;
+    }
 
-    descriptorSetPool->descriptorPoolCount = 1;
-    descriptorSetPool->descriptorPools = SDL_malloc(sizeof(VkDescriptorPool));
-    descriptorSetPool->nextPoolSize = DESCRIPTOR_POOL_STARTING_SIZE * 2;
+    for (Uint32 i = descriptorSetLayout->samplerCount; i < descriptorSetLayout->samplerCount + descriptorSetLayout->storageTextureCount; i += 1) {
+        descriptorPoolSizes[i].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptorPoolSizes[i].descriptorCount = DESCRIPTOR_POOL_SIZE;
+    }
 
-    VULKAN_INTERNAL_CreateDescriptorPool(
+    for (Uint32 i = descriptorSetLayout->samplerCount + descriptorSetLayout->storageTextureCount; i < descriptorSetLayout->samplerCount + descriptorSetLayout->storageTextureCount + descriptorSetLayout->storageBufferCount; i += 1) {
+        descriptorPoolSizes[i].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorPoolSizes[i].descriptorCount = DESCRIPTOR_POOL_SIZE;
+    }
+
+    // Category 2
+    for (Uint32 i = 0; i < descriptorSetLayout->writeStorageTextureCount; i += 1) {
+        descriptorPoolSizes[i].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptorPoolSizes[i].descriptorCount = DESCRIPTOR_POOL_SIZE;
+    }
+
+    for (Uint32 i = descriptorSetLayout->writeStorageTextureCount; i < descriptorSetLayout->writeStorageTextureCount + descriptorSetLayout->writeStorageBufferCount; i += 1) {
+        descriptorPoolSizes[i].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorPoolSizes[i].descriptorCount = DESCRIPTOR_POOL_SIZE;
+    }
+
+    // Category 3
+    for (Uint32 i = 0; i < descriptorSetLayout->uniformBufferCount; i += 1) {
+        descriptorPoolSizes[i].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        descriptorPoolSizes[i].descriptorCount = DESCRIPTOR_POOL_SIZE;
+    }
+
+    descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    descriptorPoolInfo.pNext = NULL;
+    descriptorPoolInfo.flags = 0;
+    descriptorPoolInfo.maxSets = DESCRIPTOR_POOL_SIZE;
+    descriptorPoolInfo.poolSizeCount =
+        descriptorSetLayout->samplerCount +
+        descriptorSetLayout->storageTextureCount +
+        descriptorSetLayout->storageBufferCount +
+        descriptorSetLayout->writeStorageTextureCount +
+        descriptorSetLayout->writeStorageBufferCount +
+        descriptorSetLayout->uniformBufferCount;
+    descriptorPoolInfo.pPoolSizes = descriptorPoolSizes;
+
+    vulkanResult = renderer->vkCreateDescriptorPool(
+        renderer->logicalDevice,
+        &descriptorPoolInfo,
+        NULL,
+        &pool);
+
+    CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateDescriptorPool, false)
+
+    descriptorSetPool->poolCount += 1;
+    descriptorSetPool->descriptorPools = SDL_realloc(
+        descriptorSetPool->descriptorPools,
+        sizeof(VkDescriptorPool) * descriptorSetPool->poolCount);
+
+    descriptorSetPool->descriptorPools[descriptorSetPool->poolCount - 1] = pool;
+
+    descriptorSetPool->descriptorSets = SDL_realloc(
+        descriptorSetPool->descriptorSets,
+        sizeof(VkDescriptorSet) * descriptorSetPool->poolCount * DESCRIPTOR_POOL_SIZE);
+
+    if (!VULKAN_INTERNAL_AllocateDescriptorSets(
         renderer,
-        descriptorSetPool->descriptorInfos,
-        descriptorSetPool->descriptorInfoCount,
-        DESCRIPTOR_POOL_STARTING_SIZE,
-        &descriptorSetPool->descriptorPools[0]);
+        pool,
+        descriptorSetLayout->descriptorSetLayout,
+        DESCRIPTOR_POOL_SIZE,
+        &descriptorSetPool->descriptorSets[descriptorSetPool->descriptorSetCount])) {
+        return false;
+    }
 
-    descriptorSetPool->inactiveDescriptorSetCapacity = DESCRIPTOR_POOL_STARTING_SIZE;
-    descriptorSetPool->inactiveDescriptorSetCount = DESCRIPTOR_POOL_STARTING_SIZE;
-    descriptorSetPool->inactiveDescriptorSets = SDL_malloc(
-        sizeof(VkDescriptorSet) * DESCRIPTOR_POOL_STARTING_SIZE);
+    descriptorSetPool->descriptorSetCount += DESCRIPTOR_POOL_SIZE;
 
-    VULKAN_INTERNAL_AllocateDescriptorSets(
-        renderer,
-        descriptorSetPool->descriptorPools[0],
-        descriptorSetPool->descriptorSetLayout,
-        DESCRIPTOR_POOL_STARTING_SIZE,
-        descriptorSetPool->inactiveDescriptorSets);
+    return true;
 }
 
-static bool VULKAN_INTERNAL_InitializeGraphicsPipelineResourceLayout(
+// NOTE: these categories should be mutually exclusive
+static DescriptorSetLayout *VULKAN_INTERNAL_FetchDescriptorSetLayout(
+    VulkanRenderer *renderer,
+    VkShaderStageFlagBits shaderStage,
+    // Category 1: read resources
+    Uint32 samplerCount,
+    Uint32 storageTextureCount,
+    Uint32 storageBufferCount,
+    // Category 2: write resources
+    Uint32 writeStorageTextureCount,
+    Uint32 writeStorageBufferCount,
+    // Category 3: uniform buffers
+    Uint32 uniformBufferCount)
+{
+    DescriptorSetLayoutHashTableKey key;
+    SDL_zero(key);
+    DescriptorSetLayout *layout = NULL;
+
+    key.shaderStage = shaderStage;
+    key.samplerCount = samplerCount;
+    key.storageTextureCount = storageTextureCount;
+    key.storageBufferCount = storageBufferCount;
+    key.writeStorageTextureCount = writeStorageTextureCount;
+    key.writeStorageBufferCount = writeStorageBufferCount;
+    key.uniformBufferCount = uniformBufferCount;
+
+    if (SDL_FindInHashTable(
+        renderer->descriptorSetLayoutHashTable,
+        (const void *)&key,
+        (const void **)&layout)) {
+        return layout;
+    }
+
+    VkDescriptorSetLayout descriptorSetLayout;
+    VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[
+        MAX_TEXTURE_SAMPLERS_PER_STAGE +
+        MAX_STORAGE_TEXTURES_PER_STAGE +
+        MAX_STORAGE_BUFFERS_PER_STAGE +
+        MAX_COMPUTE_WRITE_TEXTURES +
+        MAX_COMPUTE_WRITE_BUFFERS];
+
+    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo;
+    descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptorSetLayoutCreateInfo.pNext = NULL;
+    descriptorSetLayoutCreateInfo.flags = 0;
+
+    // Category 1
+    for (Uint32 i = 0; i < samplerCount; i += 1) {
+        descriptorSetLayoutBindings[i].binding = i;
+        descriptorSetLayoutBindings[i].descriptorCount = 1;
+        descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorSetLayoutBindings[i].stageFlags = shaderStage;
+        descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
+    }
+
+    for (Uint32 i = samplerCount; i < samplerCount + storageTextureCount; i += 1) {
+        descriptorSetLayoutBindings[i].binding = i;
+        descriptorSetLayoutBindings[i].descriptorCount = 1;
+        descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptorSetLayoutBindings[i].stageFlags = shaderStage;
+        descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
+    }
+
+    for (Uint32 i = samplerCount + storageTextureCount; i < samplerCount + storageTextureCount + storageBufferCount; i += 1) {
+        descriptorSetLayoutBindings[i].binding = i;
+        descriptorSetLayoutBindings[i].descriptorCount = 1;
+        descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorSetLayoutBindings[i].stageFlags = shaderStage;
+        descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
+    }
+
+    // Category 2
+    for (Uint32 i = 0; i < writeStorageTextureCount; i += 1) {
+        descriptorSetLayoutBindings[i].binding = i;
+        descriptorSetLayoutBindings[i].descriptorCount = 1;
+        descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptorSetLayoutBindings[i].stageFlags = shaderStage;
+        descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
+    }
+
+    for (Uint32 i = writeStorageTextureCount; i < writeStorageTextureCount + writeStorageBufferCount; i += 1) {
+        descriptorSetLayoutBindings[i].binding = i;
+        descriptorSetLayoutBindings[i].descriptorCount = 1;
+        descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorSetLayoutBindings[i].stageFlags = shaderStage;
+        descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
+    }
+
+    // Category 3
+    for (Uint32 i = 0; i < uniformBufferCount; i += 1) {
+        descriptorSetLayoutBindings[i].binding = i;
+        descriptorSetLayoutBindings[i].descriptorCount = 1;
+        descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        descriptorSetLayoutBindings[i].stageFlags = shaderStage;
+        descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
+    }
+
+    descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings;
+    descriptorSetLayoutCreateInfo.bindingCount =
+        samplerCount +
+        storageTextureCount +
+        storageBufferCount +
+        writeStorageTextureCount +
+        writeStorageBufferCount +
+        uniformBufferCount;
+
+    VkResult vulkanResult = renderer->vkCreateDescriptorSetLayout(
+        renderer->logicalDevice,
+        &descriptorSetLayoutCreateInfo,
+        NULL,
+        &descriptorSetLayout);
+
+    CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateDescriptorSetLayout, NULL)
+
+    layout = SDL_malloc(sizeof(DescriptorSetLayout));
+    layout->descriptorSetLayout = descriptorSetLayout;
+
+    layout->samplerCount = samplerCount;
+    layout->storageBufferCount = storageBufferCount;
+    layout->storageTextureCount = storageTextureCount;
+    layout->writeStorageBufferCount = writeStorageBufferCount;
+    layout->writeStorageTextureCount = writeStorageTextureCount;
+    layout->uniformBufferCount = uniformBufferCount;
+
+    layout->ID = SDL_AtomicIncRef(&renderer->layoutResourceID);
+
+    DescriptorSetLayoutHashTableKey *allocedKey = SDL_malloc(sizeof(DescriptorSetLayoutHashTableKey));
+    SDL_memcpy(allocedKey, &key, sizeof(DescriptorSetLayoutHashTableKey));
+
+    SDL_InsertIntoHashTable(
+        renderer->descriptorSetLayoutHashTable,
+        (const void *)allocedKey,
+        (const void *)layout);
+
+    return layout;
+}
+
+static VulkanGraphicsPipelineResourceLayout *VULKAN_INTERNAL_FetchGraphicsPipelineResourceLayout(
     VulkanRenderer *renderer,
     VulkanShader *vertexShader,
-    VulkanShader *fragmentShader,
-    VulkanGraphicsPipelineResourceLayout *pipelineResourceLayout)
+    VulkanShader *fragmentShader)
 {
-    VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[MAX_TEXTURE_SAMPLERS_PER_STAGE + MAX_STORAGE_TEXTURES_PER_STAGE + MAX_STORAGE_BUFFERS_PER_STAGE];
-    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo;
-    VkDescriptorSetLayout descriptorSetLayouts[4];
+    GraphicsPipelineResourceLayoutHashTableKey key;
+    SDL_zero(key);
+    VulkanGraphicsPipelineResourceLayout *pipelineResourceLayout = NULL;
+
+    key.vertexSamplerCount = vertexShader->numSamplers;
+    key.vertexStorageTextureCount = vertexShader->numStorageTextures;
+    key.vertexStorageBufferCount = vertexShader->numStorageBuffers;
+    key.vertexUniformBufferCount = vertexShader->numUniformBuffers;
+    key.fragmentSamplerCount = fragmentShader->numSamplers;
+    key.fragmentStorageTextureCount = fragmentShader->numStorageTextures;
+    key.fragmentStorageBufferCount = fragmentShader->numStorageBuffers;
+    key.fragmentUniformBufferCount = fragmentShader->numUniformBuffers;
+    if (SDL_FindInHashTable(
+        renderer->graphicsPipelineResourceLayoutHashTable,
+        (const void *)&key,
+        (const void **)&pipelineResourceLayout)) {
+        return pipelineResourceLayout;
+    }
+
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo;
-    DescriptorSetPool *descriptorSetPool;
+    VkDescriptorSetLayout descriptorSetLayouts[4];
     VkResult vulkanResult;
-    Uint32 i;
+
+    pipelineResourceLayout = SDL_calloc(1, sizeof(VulkanGraphicsPipelineResourceLayout));
+
+    pipelineResourceLayout->descriptorSetLayouts[0] = VULKAN_INTERNAL_FetchDescriptorSetLayout(
+        renderer,
+        VK_SHADER_STAGE_VERTEX_BIT,
+        vertexShader->numSamplers,
+        vertexShader->numStorageTextures,
+        vertexShader->numStorageBuffers,
+        0,
+        0,
+        0);
+
+    pipelineResourceLayout->descriptorSetLayouts[1] = VULKAN_INTERNAL_FetchDescriptorSetLayout(
+        renderer,
+        VK_SHADER_STAGE_VERTEX_BIT,
+        0,
+        0,
+        0,
+        0,
+        0,
+        vertexShader->numUniformBuffers);
+
+    pipelineResourceLayout->descriptorSetLayouts[2] = VULKAN_INTERNAL_FetchDescriptorSetLayout(
+        renderer,
+        VK_SHADER_STAGE_FRAGMENT_BIT,
+        fragmentShader->numSamplers,
+        fragmentShader->numStorageTextures,
+        fragmentShader->numStorageBuffers,
+        0,
+        0,
+        0);
+
+    pipelineResourceLayout->descriptorSetLayouts[3] = VULKAN_INTERNAL_FetchDescriptorSetLayout(
+        renderer,
+        VK_SHADER_STAGE_FRAGMENT_BIT,
+        0,
+        0,
+        0,
+        0,
+        0,
+        fragmentShader->numUniformBuffers);
+
+    descriptorSetLayouts[0] = pipelineResourceLayout->descriptorSetLayouts[0]->descriptorSetLayout;
+    descriptorSetLayouts[1] = pipelineResourceLayout->descriptorSetLayouts[1]->descriptorSetLayout;
+    descriptorSetLayouts[2] = pipelineResourceLayout->descriptorSetLayouts[2]->descriptorSetLayout;
+    descriptorSetLayouts[3] = pipelineResourceLayout->descriptorSetLayouts[3]->descriptorSetLayout;
 
     pipelineResourceLayout->vertexSamplerCount = vertexShader->numSamplers;
     pipelineResourceLayout->vertexStorageTextureCount = vertexShader->numStorageTextures;
@@ -3441,226 +3865,6 @@ static bool VULKAN_INTERNAL_InitializeGraphicsPipelineResourceLayout(
     pipelineResourceLayout->fragmentStorageTextureCount = fragmentShader->numStorageTextures;
     pipelineResourceLayout->fragmentStorageBufferCount = fragmentShader->numStorageBuffers;
     pipelineResourceLayout->fragmentUniformBufferCount = fragmentShader->numUniformBuffers;
-
-    // Vertex Resources
-
-    descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    descriptorSetLayoutCreateInfo.pNext = NULL;
-    descriptorSetLayoutCreateInfo.flags = 0;
-    descriptorSetLayoutCreateInfo.pBindings = NULL;
-    descriptorSetLayoutCreateInfo.bindingCount =
-        vertexShader->numSamplers +
-        vertexShader->numStorageTextures +
-        vertexShader->numStorageBuffers;
-
-    descriptorSetPool = &pipelineResourceLayout->descriptorSetPools[0];
-
-    descriptorSetPool->descriptorInfoCount = descriptorSetLayoutCreateInfo.bindingCount;
-    descriptorSetPool->descriptorInfos = NULL;
-
-    if (descriptorSetLayoutCreateInfo.bindingCount > 0) {
-        descriptorSetPool->descriptorInfos = SDL_malloc(
-            descriptorSetPool->descriptorInfoCount * sizeof(VulkanDescriptorInfo));
-
-        for (i = 0; i < vertexShader->numSamplers; i += 1) {
-            descriptorSetLayoutBindings[i].binding = i;
-            descriptorSetLayoutBindings[i].descriptorCount = 1;
-            descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorSetLayoutBindings[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-            descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
-
-            descriptorSetPool->descriptorInfos[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorSetPool->descriptorInfos[i].stageFlag = VK_SHADER_STAGE_VERTEX_BIT;
-        }
-
-        for (i = vertexShader->numSamplers; i < vertexShader->numSamplers + vertexShader->numStorageTextures; i += 1) {
-            descriptorSetLayoutBindings[i].binding = i;
-            descriptorSetLayoutBindings[i].descriptorCount = 1;
-            descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            descriptorSetLayoutBindings[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-            descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
-
-            descriptorSetPool->descriptorInfos[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            descriptorSetPool->descriptorInfos[i].stageFlag = VK_SHADER_STAGE_VERTEX_BIT;
-        }
-
-        for (i = vertexShader->numSamplers + vertexShader->numStorageTextures; i < descriptorSetLayoutCreateInfo.bindingCount; i += 1) {
-            descriptorSetLayoutBindings[i].binding = i;
-            descriptorSetLayoutBindings[i].descriptorCount = 1;
-            descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            descriptorSetLayoutBindings[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-            descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
-
-            descriptorSetPool->descriptorInfos[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            descriptorSetPool->descriptorInfos[i].stageFlag = VK_SHADER_STAGE_VERTEX_BIT;
-        }
-
-        descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings;
-    }
-
-    vulkanResult = renderer->vkCreateDescriptorSetLayout(
-        renderer->logicalDevice,
-        &descriptorSetLayoutCreateInfo,
-        NULL,
-        &descriptorSetPool->descriptorSetLayout);
-
-    descriptorSetLayouts[0] = descriptorSetPool->descriptorSetLayout;
-
-    if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError("vkCreateDescriptorSetLayout", vulkanResult);
-        return false;
-    }
-
-    // Vertex UBOs
-
-    descriptorSetPool = &pipelineResourceLayout->descriptorSetPools[1];
-
-    descriptorSetLayoutCreateInfo.bindingCount = pipelineResourceLayout->vertexUniformBufferCount;
-    descriptorSetLayoutCreateInfo.pBindings = NULL;
-
-    descriptorSetPool->descriptorInfoCount = descriptorSetLayoutCreateInfo.bindingCount;
-    descriptorSetPool->descriptorInfos = NULL;
-
-    if (descriptorSetLayoutCreateInfo.bindingCount > 0) {
-        descriptorSetPool->descriptorInfos = SDL_malloc(
-            descriptorSetPool->descriptorInfoCount * sizeof(VulkanDescriptorInfo));
-
-        for (i = 0; i < vertexShader->numUniformBuffers; i += 1) {
-            descriptorSetLayoutBindings[i].binding = i;
-            descriptorSetLayoutBindings[i].descriptorCount = 1;
-            descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-            descriptorSetLayoutBindings[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-            descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
-
-            descriptorSetPool->descriptorInfos[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-            descriptorSetPool->descriptorInfos[i].stageFlag = VK_SHADER_STAGE_VERTEX_BIT;
-        }
-
-        descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings;
-    }
-
-    vulkanResult = renderer->vkCreateDescriptorSetLayout(
-        renderer->logicalDevice,
-        &descriptorSetLayoutCreateInfo,
-        NULL,
-        &descriptorSetPool->descriptorSetLayout);
-
-    descriptorSetLayouts[1] = descriptorSetPool->descriptorSetLayout;
-
-    if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError("vkCreateDescriptorSetLayout", vulkanResult);
-        return false;
-    }
-
-    // Fragment resources
-
-    descriptorSetPool = &pipelineResourceLayout->descriptorSetPools[2];
-
-    descriptorSetLayoutCreateInfo.bindingCount =
-        fragmentShader->numSamplers +
-        fragmentShader->numStorageTextures +
-        fragmentShader->numStorageBuffers;
-
-    descriptorSetLayoutCreateInfo.pBindings = NULL;
-
-    descriptorSetPool->descriptorInfoCount = descriptorSetLayoutCreateInfo.bindingCount;
-    descriptorSetPool->descriptorInfos = NULL;
-
-    if (descriptorSetLayoutCreateInfo.bindingCount > 0) {
-        descriptorSetPool->descriptorInfos = SDL_malloc(
-            descriptorSetPool->descriptorInfoCount * sizeof(VulkanDescriptorInfo));
-
-        for (i = 0; i < fragmentShader->numSamplers; i += 1) {
-            descriptorSetLayoutBindings[i].binding = i;
-            descriptorSetLayoutBindings[i].descriptorCount = 1;
-            descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorSetLayoutBindings[i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-            descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
-
-            descriptorSetPool->descriptorInfos[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorSetPool->descriptorInfos[i].stageFlag = VK_SHADER_STAGE_FRAGMENT_BIT;
-        }
-
-        for (i = fragmentShader->numSamplers; i < fragmentShader->numSamplers + fragmentShader->numStorageTextures; i += 1) {
-            descriptorSetLayoutBindings[i].binding = i;
-            descriptorSetLayoutBindings[i].descriptorCount = 1;
-            descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            descriptorSetLayoutBindings[i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-            descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
-
-            descriptorSetPool->descriptorInfos[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            descriptorSetPool->descriptorInfos[i].stageFlag = VK_SHADER_STAGE_FRAGMENT_BIT;
-        }
-
-        for (i = fragmentShader->numSamplers + fragmentShader->numStorageTextures; i < descriptorSetLayoutCreateInfo.bindingCount; i += 1) {
-            descriptorSetLayoutBindings[i].binding = i;
-            descriptorSetLayoutBindings[i].descriptorCount = 1;
-            descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            descriptorSetLayoutBindings[i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-            descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
-
-            descriptorSetPool->descriptorInfos[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            descriptorSetPool->descriptorInfos[i].stageFlag = VK_SHADER_STAGE_FRAGMENT_BIT;
-        }
-
-        descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings;
-    }
-
-    vulkanResult = renderer->vkCreateDescriptorSetLayout(
-        renderer->logicalDevice,
-        &descriptorSetLayoutCreateInfo,
-        NULL,
-        &descriptorSetPool->descriptorSetLayout);
-
-    descriptorSetLayouts[2] = descriptorSetPool->descriptorSetLayout;
-
-    if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError("vkCreateDescriptorSetLayout", vulkanResult);
-        return false;
-    }
-
-    // Fragment UBOs
-
-    descriptorSetPool = &pipelineResourceLayout->descriptorSetPools[3];
-
-    descriptorSetLayoutCreateInfo.bindingCount =
-        pipelineResourceLayout->fragmentUniformBufferCount;
-
-    descriptorSetLayoutCreateInfo.pBindings = NULL;
-
-    descriptorSetPool->descriptorInfoCount = descriptorSetLayoutCreateInfo.bindingCount;
-    descriptorSetPool->descriptorInfos = NULL;
-
-    if (descriptorSetLayoutCreateInfo.bindingCount > 0) {
-        descriptorSetPool->descriptorInfos = SDL_malloc(
-            descriptorSetPool->descriptorInfoCount * sizeof(VulkanDescriptorInfo));
-
-        for (i = 0; i < fragmentShader->numUniformBuffers; i += 1) {
-            descriptorSetLayoutBindings[i].binding = i;
-            descriptorSetLayoutBindings[i].descriptorCount = 1;
-            descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-            descriptorSetLayoutBindings[i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-            descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
-
-            descriptorSetPool->descriptorInfos[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-            descriptorSetPool->descriptorInfos[i].stageFlag = VK_SHADER_STAGE_FRAGMENT_BIT;
-        }
-
-        descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings;
-    }
-
-    vulkanResult = renderer->vkCreateDescriptorSetLayout(
-        renderer->logicalDevice,
-        &descriptorSetLayoutCreateInfo,
-        NULL,
-        &descriptorSetPool->descriptorSetLayout);
-
-    descriptorSetLayouts[3] = descriptorSetPool->descriptorSetLayout;
-
-    if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError("vkCreateDescriptorSetLayout", vulkanResult);
-        return false;
-    }
 
     // Create the pipeline layout
 
@@ -3679,203 +3883,89 @@ static bool VULKAN_INTERNAL_InitializeGraphicsPipelineResourceLayout(
         &pipelineResourceLayout->pipelineLayout);
 
     if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError("vkCreatePipelineLayout", vulkanResult);
-        return false;
+        VULKAN_INTERNAL_DestroyGraphicsPipelineResourceLayout(renderer, pipelineResourceLayout);
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreatePipelineLayout, NULL)
     }
 
-    for (i = 0; i < 4; i += 1) {
-        VULKAN_INTERNAL_InitializeDescriptorSetPool(
-            renderer,
-            &pipelineResourceLayout->descriptorSetPools[i]);
-    }
+    GraphicsPipelineResourceLayoutHashTableKey *allocedKey = SDL_malloc(sizeof(GraphicsPipelineResourceLayoutHashTableKey));
+    SDL_memcpy(allocedKey, &key, sizeof(GraphicsPipelineResourceLayoutHashTableKey));
 
-    return true;
+    SDL_InsertIntoHashTable(
+        renderer->graphicsPipelineResourceLayoutHashTable,
+        (const void *)allocedKey,
+        (const void *)pipelineResourceLayout);
+
+    return pipelineResourceLayout;
 }
 
-static bool VULKAN_INTERNAL_InitializeComputePipelineResourceLayout(
+static VulkanComputePipelineResourceLayout *VULKAN_INTERNAL_FetchComputePipelineResourceLayout(
     VulkanRenderer *renderer,
-    const SDL_GPUComputePipelineCreateInfo *createinfo,
-    VulkanComputePipelineResourceLayout *pipelineResourceLayout)
+    const SDL_GPUComputePipelineCreateInfo *createinfo)
 {
-    VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[MAX_UNIFORM_BUFFERS_PER_STAGE];
-    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo;
+    ComputePipelineResourceLayoutHashTableKey key;
+    SDL_zero(key);
+    VulkanComputePipelineResourceLayout *pipelineResourceLayout = NULL;
+
+    key.samplerCount = createinfo->num_samplers;
+    key.readonlyStorageTextureCount = createinfo->num_readonly_storage_textures;
+    key.readonlyStorageBufferCount = createinfo->num_readonly_storage_buffers;
+    key.readWriteStorageTextureCount = createinfo->num_readwrite_storage_textures;
+    key.readWriteStorageBufferCount = createinfo->num_readwrite_storage_buffers;
+    key.uniformBufferCount = createinfo->num_uniform_buffers;
+
+    if (SDL_FindInHashTable(
+        renderer->computePipelineResourceLayoutHashTable,
+        (const void *)&key,
+        (const void **)&pipelineResourceLayout)) {
+        return pipelineResourceLayout;
+    }
+
     VkDescriptorSetLayout descriptorSetLayouts[3];
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo;
-    DescriptorSetPool *descriptorSetPool;
     VkResult vulkanResult;
-    Uint32 i;
+
+    pipelineResourceLayout = SDL_calloc(1, sizeof(VulkanComputePipelineResourceLayout));
+
+    pipelineResourceLayout->descriptorSetLayouts[0] = VULKAN_INTERNAL_FetchDescriptorSetLayout(
+        renderer,
+        VK_SHADER_STAGE_COMPUTE_BIT,
+        createinfo->num_samplers,
+        createinfo->num_readonly_storage_textures,
+        createinfo->num_readonly_storage_buffers,
+        0,
+        0,
+        0);
+
+    pipelineResourceLayout->descriptorSetLayouts[1] = VULKAN_INTERNAL_FetchDescriptorSetLayout(
+        renderer,
+        VK_SHADER_STAGE_COMPUTE_BIT,
+        0,
+        0,
+        0,
+        createinfo->num_readwrite_storage_textures,
+        createinfo->num_readwrite_storage_buffers,
+        0);
+
+    pipelineResourceLayout->descriptorSetLayouts[2] = VULKAN_INTERNAL_FetchDescriptorSetLayout(
+        renderer,
+        VK_SHADER_STAGE_COMPUTE_BIT,
+        0,
+        0,
+        0,
+        0,
+        0,
+        createinfo->num_uniform_buffers);
+
+    descriptorSetLayouts[0] = pipelineResourceLayout->descriptorSetLayouts[0]->descriptorSetLayout;
+    descriptorSetLayouts[1] = pipelineResourceLayout->descriptorSetLayouts[1]->descriptorSetLayout;
+    descriptorSetLayouts[2] = pipelineResourceLayout->descriptorSetLayouts[2]->descriptorSetLayout;
 
     pipelineResourceLayout->numSamplers = createinfo->num_samplers;
     pipelineResourceLayout->numReadonlyStorageTextures = createinfo->num_readonly_storage_textures;
     pipelineResourceLayout->numReadonlyStorageBuffers = createinfo->num_readonly_storage_buffers;
-    pipelineResourceLayout->numWriteonlyStorageTextures = createinfo->num_writeonly_storage_textures;
-    pipelineResourceLayout->numWriteonlyStorageBuffers = createinfo->num_writeonly_storage_buffers;
+    pipelineResourceLayout->numReadWriteStorageTextures = createinfo->num_readwrite_storage_textures;
+    pipelineResourceLayout->numReadWriteStorageBuffers = createinfo->num_readwrite_storage_buffers;
     pipelineResourceLayout->numUniformBuffers = createinfo->num_uniform_buffers;
-
-    // Read-only resources
-
-    descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    descriptorSetLayoutCreateInfo.pNext = NULL;
-    descriptorSetLayoutCreateInfo.flags = 0;
-    descriptorSetLayoutCreateInfo.pBindings = NULL;
-    descriptorSetLayoutCreateInfo.bindingCount =
-        createinfo->num_samplers +
-        createinfo->num_readonly_storage_textures +
-        createinfo->num_readonly_storage_buffers;
-
-    descriptorSetPool = &pipelineResourceLayout->descriptorSetPools[0];
-
-    descriptorSetPool->descriptorInfoCount = descriptorSetLayoutCreateInfo.bindingCount;
-    descriptorSetPool->descriptorInfos = NULL;
-
-    if (descriptorSetLayoutCreateInfo.bindingCount > 0) {
-        descriptorSetPool->descriptorInfos = SDL_malloc(
-            descriptorSetPool->descriptorInfoCount * sizeof(VulkanDescriptorInfo));
-
-        for (i = 0; i < createinfo->num_samplers; i += 1) {
-            descriptorSetLayoutBindings[i].binding = i;
-            descriptorSetLayoutBindings[i].descriptorCount = 1;
-            descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorSetLayoutBindings[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-            descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
-
-            descriptorSetPool->descriptorInfos[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorSetPool->descriptorInfos[i].stageFlag = VK_SHADER_STAGE_COMPUTE_BIT;
-        }
-
-        for (i = createinfo->num_samplers; i < createinfo->num_samplers + createinfo->num_readonly_storage_textures; i += 1) {
-            descriptorSetLayoutBindings[i].binding = i;
-            descriptorSetLayoutBindings[i].descriptorCount = 1;
-            descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            descriptorSetLayoutBindings[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-            descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
-
-            descriptorSetPool->descriptorInfos[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            descriptorSetPool->descriptorInfos[i].stageFlag = VK_SHADER_STAGE_COMPUTE_BIT;
-        }
-
-        for (i = createinfo->num_samplers + createinfo->num_readonly_storage_textures; i < descriptorSetLayoutCreateInfo.bindingCount; i += 1) {
-            descriptorSetLayoutBindings[i].binding = i;
-            descriptorSetLayoutBindings[i].descriptorCount = 1;
-            descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            descriptorSetLayoutBindings[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-            descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
-
-            descriptorSetPool->descriptorInfos[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            descriptorSetPool->descriptorInfos[i].stageFlag = VK_SHADER_STAGE_COMPUTE_BIT;
-        }
-
-        descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings;
-    }
-
-    vulkanResult = renderer->vkCreateDescriptorSetLayout(
-        renderer->logicalDevice,
-        &descriptorSetLayoutCreateInfo,
-        NULL,
-        &descriptorSetPool->descriptorSetLayout);
-
-    descriptorSetLayouts[0] = descriptorSetPool->descriptorSetLayout;
-
-    if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError("vkCreateDescriptorSetLayout", vulkanResult);
-        return false;
-    }
-
-    // Write-only resources
-
-    descriptorSetLayoutCreateInfo.bindingCount =
-        createinfo->num_writeonly_storage_textures +
-        createinfo->num_writeonly_storage_buffers;
-
-    descriptorSetLayoutCreateInfo.pBindings = NULL;
-
-    descriptorSetPool = &pipelineResourceLayout->descriptorSetPools[1];
-
-    descriptorSetPool->descriptorInfoCount = descriptorSetLayoutCreateInfo.bindingCount;
-    descriptorSetPool->descriptorInfos = NULL;
-
-    if (descriptorSetLayoutCreateInfo.bindingCount > 0) {
-        descriptorSetPool->descriptorInfos = SDL_malloc(
-            descriptorSetPool->descriptorInfoCount * sizeof(VulkanDescriptorInfo));
-
-        for (i = 0; i < createinfo->num_writeonly_storage_textures; i += 1) {
-            descriptorSetLayoutBindings[i].binding = i;
-            descriptorSetLayoutBindings[i].descriptorCount = 1;
-            descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            descriptorSetLayoutBindings[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-            descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
-
-            descriptorSetPool->descriptorInfos[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            descriptorSetPool->descriptorInfos[i].stageFlag = VK_SHADER_STAGE_COMPUTE_BIT;
-        }
-
-        for (i = createinfo->num_writeonly_storage_textures; i < descriptorSetLayoutCreateInfo.bindingCount; i += 1) {
-            descriptorSetLayoutBindings[i].binding = i;
-            descriptorSetLayoutBindings[i].descriptorCount = 1;
-            descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            descriptorSetLayoutBindings[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-            descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
-
-            descriptorSetPool->descriptorInfos[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            descriptorSetPool->descriptorInfos[i].stageFlag = VK_SHADER_STAGE_COMPUTE_BIT;
-        }
-
-        descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings;
-    }
-
-    vulkanResult = renderer->vkCreateDescriptorSetLayout(
-        renderer->logicalDevice,
-        &descriptorSetLayoutCreateInfo,
-        NULL,
-        &descriptorSetPool->descriptorSetLayout);
-
-    descriptorSetLayouts[1] = descriptorSetPool->descriptorSetLayout;
-
-    if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError("vkCreateDescriptorSetLayout", vulkanResult);
-        return false;
-    }
-
-    // Uniform buffers
-
-    descriptorSetPool = &pipelineResourceLayout->descriptorSetPools[2];
-
-    descriptorSetLayoutCreateInfo.bindingCount = createinfo->num_uniform_buffers;
-    descriptorSetLayoutCreateInfo.pBindings = NULL;
-
-    descriptorSetPool->descriptorInfoCount = descriptorSetLayoutCreateInfo.bindingCount;
-    descriptorSetPool->descriptorInfos = NULL;
-
-    if (descriptorSetLayoutCreateInfo.bindingCount > 0) {
-        descriptorSetPool->descriptorInfos = SDL_malloc(
-            descriptorSetPool->descriptorInfoCount * sizeof(VulkanDescriptorInfo));
-
-        for (i = 0; i < createinfo->num_uniform_buffers; i += 1) {
-            descriptorSetLayoutBindings[i].binding = i;
-            descriptorSetLayoutBindings[i].descriptorCount = 1;
-            descriptorSetLayoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-            descriptorSetLayoutBindings[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-            descriptorSetLayoutBindings[i].pImmutableSamplers = NULL;
-
-            descriptorSetPool->descriptorInfos[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-            descriptorSetPool->descriptorInfos[i].stageFlag = VK_SHADER_STAGE_COMPUTE_BIT;
-        }
-
-        descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings;
-    }
-
-    vulkanResult = renderer->vkCreateDescriptorSetLayout(
-        renderer->logicalDevice,
-        &descriptorSetLayoutCreateInfo,
-        NULL,
-        &descriptorSetPool->descriptorSetLayout);
-
-    descriptorSetLayouts[2] = descriptorSetPool->descriptorSetLayout;
-
-    if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError("vkCreateDescriptorSetLayout", vulkanResult);
-        return false;
-    }
 
     // Create the pipeline layout
 
@@ -3894,17 +3984,19 @@ static bool VULKAN_INTERNAL_InitializeComputePipelineResourceLayout(
         &pipelineResourceLayout->pipelineLayout);
 
     if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError("vkCreatePipelineLayout", vulkanResult);
-        return false;
+        VULKAN_INTERNAL_DestroyComputePipelineResourceLayout(renderer, pipelineResourceLayout);
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreatePipelineLayout, NULL)
     }
 
-    for (i = 0; i < 3; i += 1) {
-        VULKAN_INTERNAL_InitializeDescriptorSetPool(
-            renderer,
-            &pipelineResourceLayout->descriptorSetPools[i]);
-    }
+    ComputePipelineResourceLayoutHashTableKey *allocedKey = SDL_malloc(sizeof(ComputePipelineResourceLayoutHashTableKey));
+    SDL_memcpy(allocedKey, &key, sizeof(ComputePipelineResourceLayoutHashTableKey));
 
-    return true;
+    SDL_InsertIntoHashTable(
+        renderer->computePipelineResourceLayoutHashTable,
+        (const void *)allocedKey,
+        (const void *)pipelineResourceLayout);
+
+    return pipelineResourceLayout;
 }
 
 // Data Buffer
@@ -3971,7 +4063,11 @@ static VulkanBuffer *VULKAN_INTERNAL_CreateBuffer(
         &createinfo,
         NULL,
         &buffer->buffer);
-    VULKAN_ERROR_CHECK(vulkanResult, vkCreateBuffer, 0)
+
+    if (vulkanResult != VK_SUCCESS) {
+        SDL_free(buffer);
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateBuffer, 0)
+    }
 
     bindResult = VULKAN_INTERNAL_BindMemoryForBuffer(
         renderer,
@@ -3986,6 +4082,7 @@ static VulkanBuffer *VULKAN_INTERNAL_CreateBuffer(
             buffer->buffer,
             NULL);
 
+        SDL_free(buffer);
         return NULL;
     }
 
@@ -4012,7 +4109,6 @@ static VulkanBufferContainer *VULKAN_INTERNAL_CreateBufferContainer(
         type);
 
     if (buffer == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create buffer container!");
         return NULL;
     }
 
@@ -4055,7 +4151,7 @@ static VulkanTextureSubresource *VULKAN_INTERNAL_FetchTextureSubresource(
     return &textureContainer->activeTexture->subresources[index];
 }
 
-static void VULKAN_INTERNAL_CreateRenderTargetView(
+static bool VULKAN_INTERNAL_CreateRenderTargetView(
     VulkanRenderer *renderer,
     VulkanTexture *texture,
     Uint32 layerOrDepth,
@@ -4088,16 +4184,14 @@ static void VULKAN_INTERNAL_CreateRenderTargetView(
         pView);
 
     if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError(
-            "vkCreateImageView",
-            vulkanResult);
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create color attachment image view");
         *pView = (VkImageView)VK_NULL_HANDLE;
-        return;
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateImageView, false)
     }
+
+    return true;
 }
 
-static void VULKAN_INTERNAL_CreateSubresourceView(
+static bool VULKAN_INTERNAL_CreateSubresourceView(
     VulkanRenderer *renderer,
     const SDL_GPUTextureCreateInfo *createinfo,
     VulkanTexture *texture,
@@ -4130,18 +4224,16 @@ static void VULKAN_INTERNAL_CreateSubresourceView(
         pView);
 
     if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError(
-            "vkCreateImageView",
-            vulkanResult);
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create color attachment image view");
         *pView = (VkImageView)VK_NULL_HANDLE;
-        return;
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateImageView, false)
     }
+
+    return true;
 }
 
 // Swapchain
 
-static Uint8 VULKAN_INTERNAL_QuerySwapchainSupport(
+static bool VULKAN_INTERNAL_QuerySwapchainSupport(
     VulkanRenderer *renderer,
     VkPhysicalDevice physicalDevice,
     VkSurfaceKHR surface,
@@ -4162,7 +4254,7 @@ static Uint8 VULKAN_INTERNAL_QuerySwapchainSupport(
 
     if (!supportsPresent) {
         SDL_LogWarn(SDL_LOG_CATEGORY_GPU, "This surface does not support presenting!");
-        return 0;
+        return false;
     }
 
     // Run the device surface queries
@@ -4170,7 +4262,7 @@ static Uint8 VULKAN_INTERNAL_QuerySwapchainSupport(
         physicalDevice,
         surface,
         &outputDetails->capabilities);
-    VULKAN_ERROR_CHECK(result, vkGetPhysicalDeviceSurfaceCapabilitiesKHR, 0)
+    CHECK_VULKAN_ERROR_AND_RETURN(result, vkGetPhysicalDeviceSurfaceCapabilitiesKHR, false)
 
     if (!(outputDetails->capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)) {
         SDL_LogWarn(SDL_LOG_CATEGORY_GPU, "Opaque presentation unsupported! Expect weird transparency bugs!");
@@ -4181,13 +4273,13 @@ static Uint8 VULKAN_INTERNAL_QuerySwapchainSupport(
         surface,
         &outputDetails->formatsLength,
         NULL);
-    VULKAN_ERROR_CHECK(result, vkGetPhysicalDeviceSurfaceFormatsKHR, 0)
+    CHECK_VULKAN_ERROR_AND_RETURN(result, vkGetPhysicalDeviceSurfaceFormatsKHR, false)
     result = renderer->vkGetPhysicalDeviceSurfacePresentModesKHR(
         physicalDevice,
         surface,
         &outputDetails->presentModesLength,
         NULL);
-    VULKAN_ERROR_CHECK(result, vkGetPhysicalDeviceSurfacePresentModesKHR, 0)
+    CHECK_VULKAN_ERROR_AND_RETURN(result, vkGetPhysicalDeviceSurfacePresentModesKHR, false)
 
     // Generate the arrays, if applicable
 
@@ -4206,13 +4298,8 @@ static Uint8 VULKAN_INTERNAL_QuerySwapchainSupport(
             &outputDetails->formatsLength,
             outputDetails->formats);
         if (result != VK_SUCCESS) {
-            SDL_LogError(
-                SDL_LOG_CATEGORY_GPU,
-                "vkGetPhysicalDeviceSurfaceFormatsKHR: %s",
-                VkErrorMessages(result));
-
             SDL_free(outputDetails->formats);
-            return 0;
+            CHECK_VULKAN_ERROR_AND_RETURN(result, vkGetPhysicalDeviceSurfaceFormatsKHR, false)
         }
     }
 
@@ -4223,7 +4310,7 @@ static Uint8 VULKAN_INTERNAL_QuerySwapchainSupport(
 
         if (!outputDetails->presentModes) {
             SDL_free(outputDetails->formats);
-            return 0;
+            return false;
         }
 
         result = renderer->vkGetPhysicalDeviceSurfacePresentModesKHR(
@@ -4232,21 +4319,16 @@ static Uint8 VULKAN_INTERNAL_QuerySwapchainSupport(
             &outputDetails->presentModesLength,
             outputDetails->presentModes);
         if (result != VK_SUCCESS) {
-            SDL_LogError(
-                SDL_LOG_CATEGORY_GPU,
-                "vkGetPhysicalDeviceSurfacePresentModesKHR: %s",
-                VkErrorMessages(result));
-
             SDL_free(outputDetails->formats);
             SDL_free(outputDetails->presentModes);
-            return 0;
+            CHECK_VULKAN_ERROR_AND_RETURN(result, vkGetPhysicalDeviceSurfacePresentModesKHR, false)
         }
     }
 
     /* If we made it here, all the queries were successful. This does NOT
      * necessarily mean there are any supported formats or present modes!
      */
-    return 1;
+    return true;
 }
 
 static bool VULKAN_INTERNAL_VerifySwapSurfaceFormat(
@@ -4279,12 +4361,21 @@ static bool VULKAN_INTERNAL_VerifySwapPresentMode(
     return false;
 }
 
-static bool VULKAN_INTERNAL_CreateSwapchain(
+/* It would be nice if VULKAN_INTERNAL_CreateSwapchain could return a bool.
+ * Unfortunately, some Win32 NVIDIA drivers are stupid
+ * and will return surface extents of (0, 0)
+ * in certain edge cases, and the swapchain extents are not allowed to be 0.
+ * In this case, the client probably still wants to claim the window
+ * or recreate the swapchain, so we should return 2 to indicate retry.
+ * -cosmonaut
+ */
+#define VULKAN_INTERNAL_TRY_AGAIN 2
+
+static Uint32 VULKAN_INTERNAL_CreateSwapchain(
     VulkanRenderer *renderer,
     WindowData *windowData)
 {
     VkResult vulkanResult;
-    VulkanSwapchainData *swapchainData;
     VkSwapchainCreateInfoKHR swapchainCreateInfo;
     VkImage *swapchainImages;
     VkSemaphoreCreateInfo semaphoreCreateInfo;
@@ -4296,18 +4387,15 @@ static bool VULKAN_INTERNAL_CreateSwapchain(
 
     SDL_assert(_this && _this->Vulkan_CreateSurface);
 
-    swapchainData = SDL_malloc(sizeof(VulkanSwapchainData));
-    swapchainData->frameCounter = 0;
+    windowData->frameCounter = 0;
 
     // Each swapchain must have its own surface.
-
     if (!_this->Vulkan_CreateSurface(
             _this,
             windowData->window,
             renderer->instance,
             NULL, // FIXME: VAllocationCallbacks
-            &swapchainData->surface)) {
-        SDL_free(swapchainData);
+            &windowData->surface)) {
         SDL_LogError(
             SDL_LOG_CATEGORY_GPU,
             "Vulkan_CreateSurface failed: %s",
@@ -4318,75 +4406,56 @@ static bool VULKAN_INTERNAL_CreateSwapchain(
     if (!VULKAN_INTERNAL_QuerySwapchainSupport(
             renderer,
             renderer->physicalDevice,
-            swapchainData->surface,
+            windowData->surface,
             &swapchainSupportDetails)) {
         renderer->vkDestroySurfaceKHR(
             renderer->instance,
-            swapchainData->surface,
+            windowData->surface,
             NULL);
+        windowData->surface = VK_NULL_HANDLE;
         if (swapchainSupportDetails.formatsLength > 0) {
             SDL_free(swapchainSupportDetails.formats);
         }
         if (swapchainSupportDetails.presentModesLength > 0) {
             SDL_free(swapchainSupportDetails.presentModes);
         }
-        SDL_free(swapchainData);
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Device does not support swap chain creation");
-        return false;
-    }
-
-    if (swapchainSupportDetails.capabilities.currentExtent.width == 0 ||
-        swapchainSupportDetails.capabilities.currentExtent.height == 0) {
-        // Not an error, just minimize behavior!
-        renderer->vkDestroySurfaceKHR(
-            renderer->instance,
-            swapchainData->surface,
-            NULL);
-        if (swapchainSupportDetails.formatsLength > 0) {
-            SDL_free(swapchainSupportDetails.formats);
-        }
-        if (swapchainSupportDetails.presentModesLength > 0) {
-            SDL_free(swapchainSupportDetails.presentModes);
-        }
-        SDL_free(swapchainData);
         return false;
     }
 
     // Verify that we can use the requested composition and present mode
-
-    swapchainData->format = SwapchainCompositionToFormat[windowData->swapchainComposition];
-    swapchainData->colorSpace = SwapchainCompositionToColorSpace[windowData->swapchainComposition];
-    swapchainData->swapchainSwizzle = SwapchainCompositionSwizzle[windowData->swapchainComposition];
-    swapchainData->usingFallbackFormat = false;
+    windowData->format = SwapchainCompositionToFormat[windowData->swapchainComposition];
+    windowData->colorSpace = SwapchainCompositionToColorSpace[windowData->swapchainComposition];
+    windowData->swapchainSwizzle = SwapchainCompositionSwizzle[windowData->swapchainComposition];
+    windowData->usingFallbackFormat = false;
 
     hasValidSwapchainComposition = VULKAN_INTERNAL_VerifySwapSurfaceFormat(
-        swapchainData->format,
-        swapchainData->colorSpace,
+        windowData->format,
+        windowData->colorSpace,
         swapchainSupportDetails.formats,
         swapchainSupportDetails.formatsLength);
 
     if (!hasValidSwapchainComposition) {
         // Let's try again with the fallback format...
-        swapchainData->format = SwapchainCompositionToFallbackFormat[windowData->swapchainComposition];
-        swapchainData->usingFallbackFormat = true;
+        windowData->format = SwapchainCompositionToFallbackFormat[windowData->swapchainComposition];
+        windowData->usingFallbackFormat = true;
         hasValidSwapchainComposition = VULKAN_INTERNAL_VerifySwapSurfaceFormat(
-            swapchainData->format,
-            swapchainData->colorSpace,
+            windowData->format,
+            windowData->colorSpace,
             swapchainSupportDetails.formats,
             swapchainSupportDetails.formatsLength);
     }
 
-    swapchainData->presentMode = SDLToVK_PresentMode[windowData->presentMode];
     hasValidPresentMode = VULKAN_INTERNAL_VerifySwapPresentMode(
-        swapchainData->presentMode,
+        SDLToVK_PresentMode[windowData->presentMode],
         swapchainSupportDetails.presentModes,
         swapchainSupportDetails.presentModesLength);
 
     if (!hasValidSwapchainComposition || !hasValidPresentMode) {
         renderer->vkDestroySurfaceKHR(
             renderer->instance,
-            swapchainData->surface,
+            windowData->surface,
             NULL);
+        windowData->surface = VK_NULL_HANDLE;
 
         if (swapchainSupportDetails.formatsLength > 0) {
             SDL_free(swapchainSupportDetails.formats);
@@ -4396,15 +4465,30 @@ static bool VULKAN_INTERNAL_CreateSwapchain(
             SDL_free(swapchainSupportDetails.presentModes);
         }
 
-        SDL_free(swapchainData);
-
         if (!hasValidSwapchainComposition) {
-            SDL_LogError(SDL_LOG_CATEGORY_GPU, "Device does not support requested swapchain composition!");
+            SET_STRING_ERROR_AND_RETURN("Device does not support requested swapchain composition!", false);
         }
         if (!hasValidPresentMode) {
-            SDL_LogError(SDL_LOG_CATEGORY_GPU, "Device does not support requested present_mode!");
+            SET_STRING_ERROR_AND_RETURN("Device does not support requested present_mode!", false);
         }
         return false;
+    }
+
+    // NVIDIA + Win32 can return 0 extent when the window is minimized. Try again!
+    if (swapchainSupportDetails.capabilities.currentExtent.width == 0 ||
+        swapchainSupportDetails.capabilities.currentExtent.height == 0) {
+        renderer->vkDestroySurfaceKHR(
+            renderer->instance,
+            windowData->surface,
+            NULL);
+        windowData->surface = VK_NULL_HANDLE;
+        if (swapchainSupportDetails.formatsLength > 0) {
+            SDL_free(swapchainSupportDetails.formats);
+        }
+        if (swapchainSupportDetails.presentModesLength > 0) {
+            SDL_free(swapchainSupportDetails.presentModes);
+        }
+        return VULKAN_INTERNAL_TRY_AGAIN;
     }
 
     // Sync now to be sure that our swapchain size is correct
@@ -4414,64 +4498,36 @@ static bool VULKAN_INTERNAL_CreateSwapchain(
         &drawableWidth,
         &drawableHeight);
 
-    if (drawableWidth < (Sint32)swapchainSupportDetails.capabilities.minImageExtent.width ||
-        drawableWidth > (Sint32)swapchainSupportDetails.capabilities.maxImageExtent.width ||
-        drawableHeight < (Sint32)swapchainSupportDetails.capabilities.minImageExtent.height ||
-        drawableHeight > (Sint32)swapchainSupportDetails.capabilities.maxImageExtent.height) {
-        if (swapchainSupportDetails.capabilities.currentExtent.width != UINT32_MAX) {
-            drawableWidth = VULKAN_INTERNAL_clamp(
-                drawableWidth,
-                (Sint32)swapchainSupportDetails.capabilities.minImageExtent.width,
-                (Sint32)swapchainSupportDetails.capabilities.maxImageExtent.width);
-            drawableHeight = VULKAN_INTERNAL_clamp(
-                drawableHeight,
-                (Sint32)swapchainSupportDetails.capabilities.minImageExtent.height,
-                (Sint32)swapchainSupportDetails.capabilities.maxImageExtent.height);
-        } else {
-            renderer->vkDestroySurfaceKHR(
-                renderer->instance,
-                swapchainData->surface,
-                NULL);
-            if (swapchainSupportDetails.formatsLength > 0) {
-                SDL_free(swapchainSupportDetails.formats);
-            }
-            if (swapchainSupportDetails.presentModesLength > 0) {
-                SDL_free(swapchainSupportDetails.presentModes);
-            }
-            SDL_free(swapchainData);
-            SDL_LogError(SDL_LOG_CATEGORY_GPU, "No fallback swapchain size available!");
-            return false;
-        }
-    }
-
-    swapchainData->imageCount = MAX_FRAMES_IN_FLIGHT;
+    windowData->imageCount = MAX_FRAMES_IN_FLIGHT;
+    windowData->width = drawableWidth;
+    windowData->height = drawableHeight;
 
     if (swapchainSupportDetails.capabilities.maxImageCount > 0 &&
-        swapchainData->imageCount > swapchainSupportDetails.capabilities.maxImageCount) {
-        swapchainData->imageCount = swapchainSupportDetails.capabilities.maxImageCount;
+        windowData->imageCount > swapchainSupportDetails.capabilities.maxImageCount) {
+        windowData->imageCount = swapchainSupportDetails.capabilities.maxImageCount;
     }
 
-    if (swapchainData->imageCount < swapchainSupportDetails.capabilities.minImageCount) {
-        swapchainData->imageCount = swapchainSupportDetails.capabilities.minImageCount;
+    if (windowData->imageCount < swapchainSupportDetails.capabilities.minImageCount) {
+        windowData->imageCount = swapchainSupportDetails.capabilities.minImageCount;
     }
 
-    if (swapchainData->presentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+    if (windowData->presentMode == SDL_GPU_PRESENTMODE_MAILBOX) {
         /* Required for proper triple-buffering.
          * Note that this is below the above maxImageCount check!
          * If the driver advertises MAILBOX but does not support 3 swap
          * images, it's not real mailbox support, so let it fail hard.
          * -flibit
          */
-        swapchainData->imageCount = SDL_max(swapchainData->imageCount, 3);
+        windowData->imageCount = SDL_max(windowData->imageCount, 3);
     }
 
     swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     swapchainCreateInfo.pNext = NULL;
     swapchainCreateInfo.flags = 0;
-    swapchainCreateInfo.surface = swapchainData->surface;
-    swapchainCreateInfo.minImageCount = swapchainData->imageCount;
-    swapchainCreateInfo.imageFormat = swapchainData->format;
-    swapchainCreateInfo.imageColorSpace = swapchainData->colorSpace;
+    swapchainCreateInfo.surface = windowData->surface;
+    swapchainCreateInfo.minImageCount = windowData->imageCount;
+    swapchainCreateInfo.imageFormat = windowData->format;
+    swapchainCreateInfo.imageColorSpace = windowData->colorSpace;
     swapchainCreateInfo.imageExtent.width = drawableWidth;
     swapchainCreateInfo.imageExtent.height = drawableHeight;
     swapchainCreateInfo.imageArrayLayers = 1;
@@ -4483,7 +4539,7 @@ static bool VULKAN_INTERNAL_CreateSwapchain(
     swapchainCreateInfo.pQueueFamilyIndices = NULL;
     swapchainCreateInfo.preTransform = swapchainSupportDetails.capabilities.currentTransform;
     swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    swapchainCreateInfo.presentMode = swapchainData->presentMode;
+    swapchainCreateInfo.presentMode = SDLToVK_PresentMode[windowData->presentMode];
     swapchainCreateInfo.clipped = VK_TRUE;
     swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
 
@@ -4491,7 +4547,7 @@ static bool VULKAN_INTERNAL_CreateSwapchain(
         renderer->logicalDevice,
         &swapchainCreateInfo,
         NULL,
-        &swapchainData->swapchain);
+        &windowData->swapchain);
 
     if (swapchainSupportDetails.formatsLength > 0) {
         SDL_free(swapchainSupportDetails.formats);
@@ -4503,84 +4559,102 @@ static bool VULKAN_INTERNAL_CreateSwapchain(
     if (vulkanResult != VK_SUCCESS) {
         renderer->vkDestroySurfaceKHR(
             renderer->instance,
-            swapchainData->surface,
+            windowData->surface,
             NULL);
-        SDL_free(swapchainData);
-        LogVulkanResultAsError("vkCreateSwapchainKHR", vulkanResult);
-        return false;
+        windowData->surface = VK_NULL_HANDLE;
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateSwapchainKHR, false)
     }
 
-    renderer->vkGetSwapchainImagesKHR(
+    vulkanResult = renderer->vkGetSwapchainImagesKHR(
         renderer->logicalDevice,
-        swapchainData->swapchain,
-        &swapchainData->imageCount,
+        windowData->swapchain,
+        &windowData->imageCount,
         NULL);
+    CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkGetSwapchainImagesKHR, false)
 
-    swapchainData->textureContainers = SDL_malloc(
-        sizeof(VulkanTextureContainer) * swapchainData->imageCount);
+    windowData->textureContainers = SDL_malloc(
+        sizeof(VulkanTextureContainer) * windowData->imageCount);
 
-    if (!swapchainData->textureContainers) {
+    if (!windowData->textureContainers) {
         renderer->vkDestroySurfaceKHR(
             renderer->instance,
-            swapchainData->surface,
+            windowData->surface,
             NULL);
-        SDL_free(swapchainData);
+        renderer->vkDestroySwapchainKHR(
+            renderer->logicalDevice,
+            windowData->swapchain,
+            NULL);
+        windowData->surface = VK_NULL_HANDLE;
+        windowData->swapchain = VK_NULL_HANDLE;
         return false;
     }
 
-    swapchainImages = SDL_stack_alloc(VkImage, swapchainData->imageCount);
+    swapchainImages = SDL_stack_alloc(VkImage, windowData->imageCount);
 
-    renderer->vkGetSwapchainImagesKHR(
+    vulkanResult = renderer->vkGetSwapchainImagesKHR(
         renderer->logicalDevice,
-        swapchainData->swapchain,
-        &swapchainData->imageCount,
+        windowData->swapchain,
+        &windowData->imageCount,
         swapchainImages);
+    CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkGetSwapchainImagesKHR, false)
 
-    for (i = 0; i < swapchainData->imageCount; i += 1) {
+    for (i = 0; i < windowData->imageCount; i += 1) {
 
         // Initialize dummy container
-        SDL_zero(swapchainData->textureContainers[i]);
-        swapchainData->textureContainers[i].canBeCycled = false;
-        swapchainData->textureContainers[i].header.info.width = drawableWidth;
-        swapchainData->textureContainers[i].header.info.height = drawableHeight;
-        swapchainData->textureContainers[i].header.info.layer_count_or_depth = 1;
-        swapchainData->textureContainers[i].header.info.format = SwapchainCompositionToSDLFormat(
+        SDL_zero(windowData->textureContainers[i]);
+        windowData->textureContainers[i].canBeCycled = false;
+        windowData->textureContainers[i].header.info.width = drawableWidth;
+        windowData->textureContainers[i].header.info.height = drawableHeight;
+        windowData->textureContainers[i].header.info.layer_count_or_depth = 1;
+        windowData->textureContainers[i].header.info.format = SwapchainCompositionToSDLFormat(
             windowData->swapchainComposition,
-            swapchainData->usingFallbackFormat);
-        swapchainData->textureContainers[i].header.info.type = SDL_GPU_TEXTURETYPE_2D;
-        swapchainData->textureContainers[i].header.info.num_levels = 1;
-        swapchainData->textureContainers[i].header.info.sample_count = SDL_GPU_SAMPLECOUNT_1;
-        swapchainData->textureContainers[i].header.info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
+            windowData->usingFallbackFormat);
+        windowData->textureContainers[i].header.info.type = SDL_GPU_TEXTURETYPE_2D;
+        windowData->textureContainers[i].header.info.num_levels = 1;
+        windowData->textureContainers[i].header.info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+        windowData->textureContainers[i].header.info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
 
-        swapchainData->textureContainers[i].activeTexture = SDL_malloc(sizeof(VulkanTexture));
-        swapchainData->textureContainers[i].activeTexture->image = swapchainImages[i];
+        windowData->textureContainers[i].activeTexture = SDL_malloc(sizeof(VulkanTexture));
+        windowData->textureContainers[i].activeTexture->image = swapchainImages[i];
 
         // Swapchain memory is managed by the driver
-        swapchainData->textureContainers[i].activeTexture->usedRegion = NULL;
+        windowData->textureContainers[i].activeTexture->usedRegion = NULL;
 
-        swapchainData->textureContainers[i].activeTexture->swizzle = swapchainData->swapchainSwizzle;
-        swapchainData->textureContainers[i].activeTexture->aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-        swapchainData->textureContainers[i].activeTexture->depth = 1;
-        swapchainData->textureContainers[i].activeTexture->usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
-        swapchainData->textureContainers[i].activeTexture->container = &swapchainData->textureContainers[i];
-        SDL_SetAtomicInt(&swapchainData->textureContainers[i].activeTexture->referenceCount, 0);
+        windowData->textureContainers[i].activeTexture->swizzle = windowData->swapchainSwizzle;
+        windowData->textureContainers[i].activeTexture->aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+        windowData->textureContainers[i].activeTexture->depth = 1;
+        windowData->textureContainers[i].activeTexture->usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
+        windowData->textureContainers[i].activeTexture->container = &windowData->textureContainers[i];
+        SDL_SetAtomicInt(&windowData->textureContainers[i].activeTexture->referenceCount, 0);
 
         // Create slice
-        swapchainData->textureContainers[i].activeTexture->subresourceCount = 1;
-        swapchainData->textureContainers[i].activeTexture->subresources = SDL_malloc(sizeof(VulkanTextureSubresource));
-        swapchainData->textureContainers[i].activeTexture->subresources[0].parent = swapchainData->textureContainers[i].activeTexture;
-        swapchainData->textureContainers[i].activeTexture->subresources[0].layer = 0;
-        swapchainData->textureContainers[i].activeTexture->subresources[0].level = 0;
-        swapchainData->textureContainers[i].activeTexture->subresources[0].transitioned = true;
-        swapchainData->textureContainers[i].activeTexture->subresources[0].renderTargetViews = SDL_malloc(sizeof(VkImageView));
-        VULKAN_INTERNAL_CreateRenderTargetView(
+        windowData->textureContainers[i].activeTexture->subresourceCount = 1;
+        windowData->textureContainers[i].activeTexture->subresources = SDL_malloc(sizeof(VulkanTextureSubresource));
+        windowData->textureContainers[i].activeTexture->subresources[0].parent = windowData->textureContainers[i].activeTexture;
+        windowData->textureContainers[i].activeTexture->subresources[0].layer = 0;
+        windowData->textureContainers[i].activeTexture->subresources[0].level = 0;
+        windowData->textureContainers[i].activeTexture->subresources[0].transitioned = true;
+        windowData->textureContainers[i].activeTexture->subresources[0].renderTargetViews = SDL_malloc(sizeof(VkImageView));
+        if (!VULKAN_INTERNAL_CreateRenderTargetView(
             renderer,
-            swapchainData->textureContainers[i].activeTexture,
+            windowData->textureContainers[i].activeTexture,
             0,
             0,
-            swapchainData->format,
-            swapchainData->swapchainSwizzle,
-            &swapchainData->textureContainers[i].activeTexture->subresources[0].renderTargetViews[0]);
+            windowData->format,
+            windowData->swapchainSwizzle,
+            &windowData->textureContainers[i].activeTexture->subresources[0].renderTargetViews[0])) {
+            renderer->vkDestroySurfaceKHR(
+                renderer->instance,
+                windowData->surface,
+                NULL);
+            renderer->vkDestroySwapchainKHR(
+                renderer->logicalDevice,
+                windowData->swapchain,
+                NULL);
+            windowData->surface = VK_NULL_HANDLE;
+            windowData->swapchain = VK_NULL_HANDLE;
+            return false;
+        }
     }
 
     SDL_stack_free(swapchainImages);
@@ -4590,29 +4664,56 @@ static bool VULKAN_INTERNAL_CreateSwapchain(
     semaphoreCreateInfo.flags = 0;
 
     for (i = 0; i < MAX_FRAMES_IN_FLIGHT; i += 1) {
-        renderer->vkCreateSemaphore(
+        vulkanResult = renderer->vkCreateSemaphore(
             renderer->logicalDevice,
             &semaphoreCreateInfo,
             NULL,
-            &swapchainData->imageAvailableSemaphore[i]);
+            &windowData->imageAvailableSemaphore[i]);
+
+        if (vulkanResult != VK_SUCCESS) {
+            renderer->vkDestroySurfaceKHR(
+                renderer->instance,
+                windowData->surface,
+                NULL);
+            renderer->vkDestroySwapchainKHR(
+                renderer->logicalDevice,
+                windowData->swapchain,
+                NULL);
+            windowData->surface = VK_NULL_HANDLE;
+            windowData->swapchain = VK_NULL_HANDLE;
+            CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateSemaphore, false)
+        }
 
         renderer->vkCreateSemaphore(
             renderer->logicalDevice,
             &semaphoreCreateInfo,
             NULL,
-            &swapchainData->renderFinishedSemaphore[i]);
+            &windowData->renderFinishedSemaphore[i]);
 
-        swapchainData->inFlightFences[i] = NULL;
+        if (vulkanResult != VK_SUCCESS) {
+            renderer->vkDestroySurfaceKHR(
+                renderer->instance,
+                windowData->surface,
+                NULL);
+            renderer->vkDestroySwapchainKHR(
+                renderer->logicalDevice,
+                windowData->swapchain,
+                NULL);
+            windowData->surface = VK_NULL_HANDLE;
+            windowData->swapchain = VK_NULL_HANDLE;
+            CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateSemaphore, false)
+        }
+
+        windowData->inFlightFences[i] = NULL;
     }
 
-    windowData->swapchainData = swapchainData;
     windowData->needsSwapchainRecreate = false;
     return true;
 }
 
 // Command Buffers
 
-static void VULKAN_INTERNAL_BeginCommandBuffer(
+static bool VULKAN_INTERNAL_BeginCommandBuffer(
     VulkanRenderer *renderer,
     VulkanCommandBuffer *commandBuffer)
 {
@@ -4629,23 +4730,21 @@ static void VULKAN_INTERNAL_BeginCommandBuffer(
         commandBuffer->commandBuffer,
         &beginInfo);
 
-    if (result != VK_SUCCESS) {
-        LogVulkanResultAsError("vkBeginCommandBuffer", result);
-    }
+    CHECK_VULKAN_ERROR_AND_RETURN(result, vkBeginCommandBuffer, false)
+
+    return true;
 }
 
-static void VULKAN_INTERNAL_EndCommandBuffer(
+static bool VULKAN_INTERNAL_EndCommandBuffer(
     VulkanRenderer *renderer,
     VulkanCommandBuffer *commandBuffer)
 {
-    VkResult result;
-
-    result = renderer->vkEndCommandBuffer(
+    VkResult result = renderer->vkEndCommandBuffer(
         commandBuffer->commandBuffer);
 
-    if (result != VK_SUCCESS) {
-        LogVulkanResultAsError("vkEndCommandBuffer", result);
-    }
+    CHECK_VULKAN_ERROR_AND_RETURN(result, vkEndCommandBuffer, false)
+
+    return true;
 }
 
 static void VULKAN_DestroyDevice(
@@ -4674,6 +4773,13 @@ static void VULKAN_DestroyDevice(
     }
     SDL_free(renderer->uniformBufferPool);
 
+    for (Uint32 i = 0; i < renderer->descriptorSetCachePoolCount; i += 1) {
+        VULKAN_INTERNAL_DestroyDescriptorSetCache(
+            renderer,
+            renderer->descriptorSetCachePool[i]);
+    }
+    SDL_free(renderer->descriptorSetCachePool);
+
     for (Uint32 i = 0; i < renderer->fencePool.availableFenceCount; i += 1) {
         renderer->vkDestroyFence(
             renderer->logicalDevice,
@@ -4689,6 +4795,9 @@ static void VULKAN_DestroyDevice(
     SDL_DestroyHashTable(renderer->commandPoolHashTable);
     SDL_DestroyHashTable(renderer->renderPassHashTable);
     SDL_DestroyHashTable(renderer->framebufferHashTable);
+    SDL_DestroyHashTable(renderer->graphicsPipelineResourceLayoutHashTable);
+    SDL_DestroyHashTable(renderer->computePipelineResourceLayoutHashTable);
+    SDL_DestroyHashTable(renderer->descriptorSetLayoutHashTable);
 
     for (Uint32 i = 0; i < VK_MAX_MEMORY_TYPES; i += 1) {
         allocator = &renderer->memoryAllocator->subAllocators[i];
@@ -4731,6 +4840,7 @@ static void VULKAN_DestroyDevice(
     SDL_DestroyMutex(renderer->acquireUniformBufferLock);
     SDL_DestroyMutex(renderer->renderPassFetchLock);
     SDL_DestroyMutex(renderer->framebufferFetchLock);
+    SDL_DestroyMutex(renderer->windowLock);
 
     renderer->vkDestroyDevice(renderer->logicalDevice, NULL);
     renderer->vkDestroyInstance(renderer->instance, NULL);
@@ -4740,71 +4850,74 @@ static void VULKAN_DestroyDevice(
     SDL_Vulkan_UnloadLibrary();
 }
 
+static DescriptorSetCache *VULKAN_INTERNAL_AcquireDescriptorSetCache(
+    VulkanRenderer *renderer)
+{
+    DescriptorSetCache *cache;
+
+    if (renderer->descriptorSetCachePoolCount == 0) {
+        cache = SDL_malloc(sizeof(DescriptorSetCache));
+        cache->poolCount = 0;
+        cache->pools = NULL;
+    } else {
+        cache = renderer->descriptorSetCachePool[renderer->descriptorSetCachePoolCount - 1];
+        renderer->descriptorSetCachePoolCount -= 1;
+    }
+
+    return cache;
+}
+
+static void VULKAN_INTERNAL_ReturnDescriptorSetCacheToPool(
+    VulkanRenderer *renderer,
+    DescriptorSetCache *descriptorSetCache)
+{
+    EXPAND_ARRAY_IF_NEEDED(
+        renderer->descriptorSetCachePool,
+        DescriptorSetCache *,
+        renderer->descriptorSetCachePoolCount + 1,
+        renderer->descriptorSetCachePoolCapacity,
+        renderer->descriptorSetCachePoolCapacity * 2)
+
+    renderer->descriptorSetCachePool[renderer->descriptorSetCachePoolCount] = descriptorSetCache;
+    renderer->descriptorSetCachePoolCount += 1;
+
+    for (Uint32 i = 0; i < descriptorSetCache->poolCount; i += 1) {
+        descriptorSetCache->pools[i].descriptorSetIndex = 0;
+    }
+}
+
 static VkDescriptorSet VULKAN_INTERNAL_FetchDescriptorSet(
     VulkanRenderer *renderer,
     VulkanCommandBuffer *vulkanCommandBuffer,
-    DescriptorSetPool *descriptorSetPool)
+    DescriptorSetLayout *descriptorSetLayout)
 {
-    VkDescriptorSet descriptorSet;
+    // Grow the pool to meet the descriptor set layout ID
+    if (descriptorSetLayout->ID >= vulkanCommandBuffer->descriptorSetCache->poolCount) {
+        vulkanCommandBuffer->descriptorSetCache->pools = SDL_realloc(
+            vulkanCommandBuffer->descriptorSetCache->pools,
+            sizeof(DescriptorSetPool) * (descriptorSetLayout->ID + 1));
 
-    SDL_LockSpinlock(&descriptorSetPool->lock);
-
-    // If no inactive descriptor sets remain, create a new pool and allocate new inactive sets
-
-    if (descriptorSetPool->inactiveDescriptorSetCount == 0) {
-        descriptorSetPool->descriptorPoolCount += 1;
-        descriptorSetPool->descriptorPools = SDL_realloc(
-            descriptorSetPool->descriptorPools,
-            sizeof(VkDescriptorPool) * descriptorSetPool->descriptorPoolCount);
-
-        if (!VULKAN_INTERNAL_CreateDescriptorPool(
-                renderer,
-                descriptorSetPool->descriptorInfos,
-                descriptorSetPool->descriptorInfoCount,
-                descriptorSetPool->nextPoolSize,
-                &descriptorSetPool->descriptorPools[descriptorSetPool->descriptorPoolCount - 1])) {
-            SDL_UnlockSpinlock(&descriptorSetPool->lock);
-            SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create descriptor pool!");
-            return VK_NULL_HANDLE;
+        for (Uint32 i = vulkanCommandBuffer->descriptorSetCache->poolCount; i < descriptorSetLayout->ID + 1; i += 1) {
+            SDL_zero(vulkanCommandBuffer->descriptorSetCache->pools[i]);
         }
 
-        descriptorSetPool->inactiveDescriptorSetCapacity += descriptorSetPool->nextPoolSize;
+        vulkanCommandBuffer->descriptorSetCache->poolCount = descriptorSetLayout->ID + 1;
+    }
 
-        descriptorSetPool->inactiveDescriptorSets = SDL_realloc(
-            descriptorSetPool->inactiveDescriptorSets,
-            sizeof(VkDescriptorSet) * descriptorSetPool->inactiveDescriptorSetCapacity);
+    DescriptorSetPool *pool =
+        &vulkanCommandBuffer->descriptorSetCache->pools[descriptorSetLayout->ID];
 
-        if (!VULKAN_INTERNAL_AllocateDescriptorSets(
-                renderer,
-                descriptorSetPool->descriptorPools[descriptorSetPool->descriptorPoolCount - 1],
-                descriptorSetPool->descriptorSetLayout,
-                descriptorSetPool->nextPoolSize,
-                descriptorSetPool->inactiveDescriptorSets)) {
-            SDL_UnlockSpinlock(&descriptorSetPool->lock);
-            SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to allocate descriptor sets!");
+    if (pool->descriptorSetIndex == pool->descriptorSetCount) {
+        if (!VULKAN_INTERNAL_AllocateDescriptorsFromPool(
+            renderer,
+            descriptorSetLayout,
+            pool)) {
             return VK_NULL_HANDLE;
         }
-
-        descriptorSetPool->inactiveDescriptorSetCount = descriptorSetPool->nextPoolSize;
-
-        descriptorSetPool->nextPoolSize *= 2;
     }
 
-    descriptorSet = descriptorSetPool->inactiveDescriptorSets[descriptorSetPool->inactiveDescriptorSetCount - 1];
-    descriptorSetPool->inactiveDescriptorSetCount -= 1;
-
-    SDL_UnlockSpinlock(&descriptorSetPool->lock);
-
-    if (vulkanCommandBuffer->boundDescriptorSetDataCount == vulkanCommandBuffer->boundDescriptorSetDataCapacity) {
-        vulkanCommandBuffer->boundDescriptorSetDataCapacity *= 2;
-        vulkanCommandBuffer->boundDescriptorSetDatas = SDL_realloc(
-            vulkanCommandBuffer->boundDescriptorSetDatas,
-            vulkanCommandBuffer->boundDescriptorSetDataCapacity * sizeof(DescriptorSetData));
-    }
-
-    vulkanCommandBuffer->boundDescriptorSetDatas[vulkanCommandBuffer->boundDescriptorSetDataCount].descriptorSet = descriptorSet;
-    vulkanCommandBuffer->boundDescriptorSetDatas[vulkanCommandBuffer->boundDescriptorSetDataCount].descriptorSetPool = descriptorSetPool;
-    vulkanCommandBuffer->boundDescriptorSetDataCount += 1;
+    VkDescriptorSet descriptorSet = pool->descriptorSets[pool->descriptorSetIndex];
+    pool->descriptorSetIndex += 1;
 
     return descriptorSet;
 }
@@ -4814,34 +4927,44 @@ static void VULKAN_INTERNAL_BindGraphicsDescriptorSets(
     VulkanCommandBuffer *commandBuffer)
 {
     VulkanGraphicsPipelineResourceLayout *resourceLayout;
-    VkWriteDescriptorSet *writeDescriptorSets;
-    VkWriteDescriptorSet *currentWriteDescriptorSet;
-    DescriptorSetPool *descriptorSetPool;
-    VkDescriptorBufferInfo bufferInfos[MAX_STORAGE_BUFFERS_PER_STAGE];
-    VkDescriptorImageInfo imageInfos[MAX_TEXTURE_SAMPLERS_PER_STAGE + MAX_STORAGE_TEXTURES_PER_STAGE];
-    Uint32 dynamicOffsets[MAX_UNIFORM_BUFFERS_PER_STAGE];
+    DescriptorSetLayout *descriptorSetLayout;
+    VkWriteDescriptorSet writeDescriptorSets[
+        (MAX_TEXTURE_SAMPLERS_PER_STAGE +
+        MAX_STORAGE_TEXTURES_PER_STAGE +
+        MAX_STORAGE_BUFFERS_PER_STAGE +
+        MAX_UNIFORM_BUFFERS_PER_STAGE) * 2];
+    VkDescriptorBufferInfo bufferInfos[MAX_STORAGE_BUFFERS_PER_STAGE * 2];
+    VkDescriptorImageInfo imageInfos[(MAX_TEXTURE_SAMPLERS_PER_STAGE + MAX_STORAGE_TEXTURES_PER_STAGE) * 2];
+    Uint32 dynamicOffsets[MAX_UNIFORM_BUFFERS_PER_STAGE * 2];
+    Uint32 writeCount = 0;
     Uint32 bufferInfoCount = 0;
     Uint32 imageInfoCount = 0;
-    Uint32 i;
+    Uint32 dynamicOffsetCount = 0;
 
-    resourceLayout = &commandBuffer->currentGraphicsPipeline->resourceLayout;
+    if (
+        !commandBuffer->needNewVertexResourceDescriptorSet &&
+        !commandBuffer->needNewVertexUniformDescriptorSet &&
+        !commandBuffer->needNewVertexUniformOffsets &&
+        !commandBuffer->needNewFragmentResourceDescriptorSet &&
+        !commandBuffer->needNewFragmentUniformDescriptorSet &&
+        !commandBuffer->needNewFragmentUniformOffsets
+    ) {
+        return;
+    }
+
+    resourceLayout = commandBuffer->currentGraphicsPipeline->resourceLayout;
 
     if (commandBuffer->needNewVertexResourceDescriptorSet) {
-        descriptorSetPool = &resourceLayout->descriptorSetPools[0];
+        descriptorSetLayout = resourceLayout->descriptorSetLayouts[0];
 
         commandBuffer->vertexResourceDescriptorSet = VULKAN_INTERNAL_FetchDescriptorSet(
             renderer,
             commandBuffer,
-            descriptorSetPool);
+            descriptorSetLayout);
 
-        writeDescriptorSets = SDL_stack_alloc(
-            VkWriteDescriptorSet,
-            resourceLayout->vertexSamplerCount +
-                resourceLayout->vertexStorageTextureCount +
-                resourceLayout->vertexStorageBufferCount);
+        for (Uint32 i = 0; i < resourceLayout->vertexSamplerCount; i += 1) {
+            VkWriteDescriptorSet *currentWriteDescriptorSet = &writeDescriptorSets[writeCount];
 
-        for (i = 0; i < resourceLayout->vertexSamplerCount; i += 1) {
-            currentWriteDescriptorSet = &writeDescriptorSets[i];
             currentWriteDescriptorSet->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             currentWriteDescriptorSet->pNext = NULL;
             currentWriteDescriptorSet->descriptorCount = 1;
@@ -4858,11 +4981,12 @@ static void VULKAN_INTERNAL_BindGraphicsDescriptorSets(
 
             currentWriteDescriptorSet->pImageInfo = &imageInfos[imageInfoCount];
 
+            writeCount += 1;
             imageInfoCount += 1;
         }
 
-        for (i = 0; i < resourceLayout->vertexStorageTextureCount; i += 1) {
-            currentWriteDescriptorSet = &writeDescriptorSets[resourceLayout->vertexSamplerCount + i];
+        for (Uint32 i = 0; i < resourceLayout->vertexStorageTextureCount; i += 1) {
+            VkWriteDescriptorSet *currentWriteDescriptorSet = &writeDescriptorSets[writeCount];
 
             currentWriteDescriptorSet->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             currentWriteDescriptorSet->pNext = NULL;
@@ -4880,11 +5004,12 @@ static void VULKAN_INTERNAL_BindGraphicsDescriptorSets(
 
             currentWriteDescriptorSet->pImageInfo = &imageInfos[imageInfoCount];
 
+            writeCount += 1;
             imageInfoCount += 1;
         }
 
-        for (i = 0; i < resourceLayout->vertexStorageBufferCount; i += 1) {
-            currentWriteDescriptorSet = &writeDescriptorSets[resourceLayout->vertexSamplerCount + resourceLayout->vertexStorageTextureCount + i];
+        for (Uint32 i = 0; i < resourceLayout->vertexStorageBufferCount; i += 1) {
+            VkWriteDescriptorSet *currentWriteDescriptorSet = &writeDescriptorSets[writeCount];
 
             currentWriteDescriptorSet->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             currentWriteDescriptorSet->pNext = NULL;
@@ -4902,47 +5027,23 @@ static void VULKAN_INTERNAL_BindGraphicsDescriptorSets(
 
             currentWriteDescriptorSet->pBufferInfo = &bufferInfos[bufferInfoCount];
 
+            writeCount += 1;
             bufferInfoCount += 1;
         }
-
-        renderer->vkUpdateDescriptorSets(
-            renderer->logicalDevice,
-            resourceLayout->vertexSamplerCount + resourceLayout->vertexStorageTextureCount + resourceLayout->vertexStorageBufferCount,
-            writeDescriptorSets,
-            0,
-            NULL);
-
-        renderer->vkCmdBindDescriptorSets(
-            commandBuffer->commandBuffer,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            resourceLayout->pipelineLayout,
-            0,
-            1,
-            &commandBuffer->vertexResourceDescriptorSet,
-            0,
-            NULL);
-
-        SDL_stack_free(writeDescriptorSets);
-        bufferInfoCount = 0;
-        imageInfoCount = 0;
 
         commandBuffer->needNewVertexResourceDescriptorSet = false;
     }
 
     if (commandBuffer->needNewVertexUniformDescriptorSet) {
-        descriptorSetPool = &resourceLayout->descriptorSetPools[1];
+        descriptorSetLayout = resourceLayout->descriptorSetLayouts[1];
 
         commandBuffer->vertexUniformDescriptorSet = VULKAN_INTERNAL_FetchDescriptorSet(
             renderer,
             commandBuffer,
-            descriptorSetPool);
+            descriptorSetLayout);
 
-        writeDescriptorSets = SDL_stack_alloc(
-            VkWriteDescriptorSet,
-            resourceLayout->vertexUniformBufferCount);
-
-        for (i = 0; i < resourceLayout->vertexUniformBufferCount; i += 1) {
-            currentWriteDescriptorSet = &writeDescriptorSets[i];
+        for (Uint32 i = 0; i < resourceLayout->vertexUniformBufferCount; i += 1) {
+            VkWriteDescriptorSet *currentWriteDescriptorSet = &writeDescriptorSets[writeCount];
 
             currentWriteDescriptorSet->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             currentWriteDescriptorSet->pNext = NULL;
@@ -4960,58 +5061,29 @@ static void VULKAN_INTERNAL_BindGraphicsDescriptorSets(
 
             currentWriteDescriptorSet->pBufferInfo = &bufferInfos[bufferInfoCount];
 
+            writeCount += 1;
             bufferInfoCount += 1;
         }
 
-        renderer->vkUpdateDescriptorSets(
-            renderer->logicalDevice,
-            resourceLayout->vertexUniformBufferCount,
-            writeDescriptorSets,
-            0,
-            NULL);
-
-        SDL_stack_free(writeDescriptorSets);
-        bufferInfoCount = 0;
-        imageInfoCount = 0;
-
         commandBuffer->needNewVertexUniformDescriptorSet = false;
-        commandBuffer->needNewVertexUniformOffsets = true;
     }
 
-    if (commandBuffer->needNewVertexUniformOffsets) {
-        for (i = 0; i < resourceLayout->vertexUniformBufferCount; i += 1) {
-            dynamicOffsets[i] = commandBuffer->vertexUniformBuffers[i]->drawOffset;
-        }
-
-        renderer->vkCmdBindDescriptorSets(
-            commandBuffer->commandBuffer,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            resourceLayout->pipelineLayout,
-            1,
-            1,
-            &commandBuffer->vertexUniformDescriptorSet,
-            resourceLayout->vertexUniformBufferCount,
-            dynamicOffsets);
-
-        commandBuffer->needNewVertexUniformOffsets = false;
+    for (Uint32 i = 0; i < resourceLayout->vertexUniformBufferCount; i += 1) {
+        dynamicOffsets[dynamicOffsetCount] = commandBuffer->vertexUniformBuffers[i]->drawOffset;
+        dynamicOffsetCount += 1;
     }
 
     if (commandBuffer->needNewFragmentResourceDescriptorSet) {
-        descriptorSetPool = &resourceLayout->descriptorSetPools[2];
+        descriptorSetLayout = resourceLayout->descriptorSetLayouts[2];
 
         commandBuffer->fragmentResourceDescriptorSet = VULKAN_INTERNAL_FetchDescriptorSet(
             renderer,
             commandBuffer,
-            descriptorSetPool);
+            descriptorSetLayout);
 
-        writeDescriptorSets = SDL_stack_alloc(
-            VkWriteDescriptorSet,
-            resourceLayout->fragmentSamplerCount +
-                resourceLayout->fragmentStorageTextureCount +
-                resourceLayout->fragmentStorageBufferCount);
+        for (Uint32 i = 0; i < resourceLayout->fragmentSamplerCount; i += 1) {
+            VkWriteDescriptorSet *currentWriteDescriptorSet = &writeDescriptorSets[writeCount];
 
-        for (i = 0; i < resourceLayout->fragmentSamplerCount; i += 1) {
-            currentWriteDescriptorSet = &writeDescriptorSets[i];
             currentWriteDescriptorSet->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             currentWriteDescriptorSet->pNext = NULL;
             currentWriteDescriptorSet->descriptorCount = 1;
@@ -5028,11 +5100,12 @@ static void VULKAN_INTERNAL_BindGraphicsDescriptorSets(
 
             currentWriteDescriptorSet->pImageInfo = &imageInfos[imageInfoCount];
 
+            writeCount += 1;
             imageInfoCount += 1;
         }
 
-        for (i = 0; i < resourceLayout->fragmentStorageTextureCount; i += 1) {
-            currentWriteDescriptorSet = &writeDescriptorSets[resourceLayout->fragmentSamplerCount + i];
+        for (Uint32 i = 0; i < resourceLayout->fragmentStorageTextureCount; i += 1) {
+            VkWriteDescriptorSet *currentWriteDescriptorSet = &writeDescriptorSets[writeCount];
 
             currentWriteDescriptorSet->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             currentWriteDescriptorSet->pNext = NULL;
@@ -5050,11 +5123,12 @@ static void VULKAN_INTERNAL_BindGraphicsDescriptorSets(
 
             currentWriteDescriptorSet->pImageInfo = &imageInfos[imageInfoCount];
 
+            writeCount += 1;
             imageInfoCount += 1;
         }
 
-        for (i = 0; i < resourceLayout->fragmentStorageBufferCount; i += 1) {
-            currentWriteDescriptorSet = &writeDescriptorSets[resourceLayout->fragmentSamplerCount + resourceLayout->fragmentStorageTextureCount + i];
+        for (Uint32 i = 0; i < resourceLayout->fragmentStorageBufferCount; i += 1) {
+            VkWriteDescriptorSet *currentWriteDescriptorSet = &writeDescriptorSets[writeCount];
 
             currentWriteDescriptorSet->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             currentWriteDescriptorSet->pNext = NULL;
@@ -5072,47 +5146,23 @@ static void VULKAN_INTERNAL_BindGraphicsDescriptorSets(
 
             currentWriteDescriptorSet->pBufferInfo = &bufferInfos[bufferInfoCount];
 
+            writeCount += 1;
             bufferInfoCount += 1;
         }
-
-        renderer->vkUpdateDescriptorSets(
-            renderer->logicalDevice,
-            resourceLayout->fragmentSamplerCount + resourceLayout->fragmentStorageTextureCount + resourceLayout->fragmentStorageBufferCount,
-            writeDescriptorSets,
-            0,
-            NULL);
-
-        renderer->vkCmdBindDescriptorSets(
-            commandBuffer->commandBuffer,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            resourceLayout->pipelineLayout,
-            2,
-            1,
-            &commandBuffer->fragmentResourceDescriptorSet,
-            0,
-            NULL);
-
-        SDL_stack_free(writeDescriptorSets);
-        bufferInfoCount = 0;
-        imageInfoCount = 0;
 
         commandBuffer->needNewFragmentResourceDescriptorSet = false;
     }
 
     if (commandBuffer->needNewFragmentUniformDescriptorSet) {
-        descriptorSetPool = &resourceLayout->descriptorSetPools[3];
+        descriptorSetLayout = resourceLayout->descriptorSetLayouts[3];
 
         commandBuffer->fragmentUniformDescriptorSet = VULKAN_INTERNAL_FetchDescriptorSet(
             renderer,
             commandBuffer,
-            descriptorSetPool);
+            descriptorSetLayout);
 
-        writeDescriptorSets = SDL_stack_alloc(
-            VkWriteDescriptorSet,
-            resourceLayout->fragmentUniformBufferCount);
-
-        for (i = 0; i < resourceLayout->fragmentUniformBufferCount; i += 1) {
-            currentWriteDescriptorSet = &writeDescriptorSets[i];
+        for (Uint32 i = 0; i < resourceLayout->fragmentUniformBufferCount; i += 1) {
+            VkWriteDescriptorSet *currentWriteDescriptorSet = &writeDescriptorSets[writeCount];
 
             currentWriteDescriptorSet->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             currentWriteDescriptorSet->pNext = NULL;
@@ -5130,41 +5180,43 @@ static void VULKAN_INTERNAL_BindGraphicsDescriptorSets(
 
             currentWriteDescriptorSet->pBufferInfo = &bufferInfos[bufferInfoCount];
 
+            writeCount += 1;
             bufferInfoCount += 1;
         }
 
-        renderer->vkUpdateDescriptorSets(
-            renderer->logicalDevice,
-            resourceLayout->fragmentUniformBufferCount,
-            writeDescriptorSets,
-            0,
-            NULL);
-
-        SDL_stack_free(writeDescriptorSets);
-        bufferInfoCount = 0;
-        imageInfoCount = 0;
-
         commandBuffer->needNewFragmentUniformDescriptorSet = false;
-        commandBuffer->needNewFragmentUniformOffsets = true;
     }
 
-    if (commandBuffer->needNewFragmentUniformOffsets) {
-        for (i = 0; i < resourceLayout->fragmentUniformBufferCount; i += 1) {
-            dynamicOffsets[i] = commandBuffer->fragmentUniformBuffers[i]->drawOffset;
-        }
-
-        renderer->vkCmdBindDescriptorSets(
-            commandBuffer->commandBuffer,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            resourceLayout->pipelineLayout,
-            3,
-            1,
-            &commandBuffer->fragmentUniformDescriptorSet,
-            resourceLayout->fragmentUniformBufferCount,
-            dynamicOffsets);
-
-        commandBuffer->needNewFragmentUniformOffsets = false;
+    for (Uint32 i = 0; i < resourceLayout->fragmentUniformBufferCount; i += 1) {
+        dynamicOffsets[dynamicOffsetCount] = commandBuffer->fragmentUniformBuffers[i]->drawOffset;
+        dynamicOffsetCount += 1;
     }
+
+    renderer->vkUpdateDescriptorSets(
+        renderer->logicalDevice,
+        writeCount,
+        writeDescriptorSets,
+        0,
+        NULL);
+
+    VkDescriptorSet sets[4];
+    sets[0] = commandBuffer->vertexResourceDescriptorSet;
+    sets[1] = commandBuffer->vertexUniformDescriptorSet;
+    sets[2] = commandBuffer->fragmentResourceDescriptorSet;
+    sets[3] = commandBuffer->fragmentUniformDescriptorSet;
+
+    renderer->vkCmdBindDescriptorSets(
+        commandBuffer->commandBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        resourceLayout->pipelineLayout,
+        0,
+        4,
+        sets,
+        dynamicOffsetCount,
+        dynamicOffsets);
+
+    commandBuffer->needNewVertexUniformOffsets = false;
+    commandBuffer->needNewFragmentUniformOffsets = false;
 }
 
 static void VULKAN_DrawIndexedPrimitives(
@@ -5443,13 +5495,10 @@ static VulkanTexture *VULKAN_INTERNAL_CreateTexture(
     Uint32 layerCount = (createinfo->type == SDL_GPU_TEXTURETYPE_3D) ? 1 : createinfo->layer_count_or_depth;
     Uint32 depth = (createinfo->type == SDL_GPU_TEXTURETYPE_3D) ? createinfo->layer_count_or_depth : 1;
 
-    // FIXME: We probably shouldn't alloc this until the actual image/memory creation have succeeded!
-    VulkanTexture *texture = SDL_malloc(sizeof(VulkanTexture));
-    texture->markedForDestroy = false;
+    VulkanTexture *texture = SDL_calloc(1, sizeof(VulkanTexture));
     texture->swizzle = SwizzleForSDLFormat(createinfo->format);
     texture->depth = depth;
     texture->usage = createinfo->usage;
-    texture->fullView = VK_NULL_HANDLE;
     SDL_SetAtomicInt(&texture->referenceCount, 0);
 
     if (IsDepthFormat(createinfo->format)) {
@@ -5479,7 +5528,8 @@ static VulkanTexture *VULKAN_INTERNAL_CreateTexture(
     }
     if (createinfo->usage & (SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ |
                              SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ |
-                             SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE)) {
+                             SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE |
+                             SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE)) {
         vkUsageFlags |= VK_IMAGE_USAGE_STORAGE_BIT;
     }
 
@@ -5506,7 +5556,11 @@ static VulkanTexture *VULKAN_INTERNAL_CreateTexture(
         &imageCreateInfo,
         NULL,
         &texture->image);
-    VULKAN_ERROR_CHECK(vulkanResult, vkCreateImage, 0)
+
+    if (vulkanResult != VK_SUCCESS) {
+        VULKAN_INTERNAL_DestroyTexture(renderer, texture);
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateImage, NULL)
+    }
 
     bindResult = VULKAN_INTERNAL_BindMemoryForImage(
         renderer,
@@ -5519,8 +5573,8 @@ static VulkanTexture *VULKAN_INTERNAL_CreateTexture(
             texture->image,
             NULL);
 
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Unable to bind memory for texture!");
-        return NULL;
+        VULKAN_INTERNAL_DestroyTexture(renderer, texture);
+        SET_STRING_ERROR_AND_RETURN("Unable to bind memory for texture!", NULL)
     }
 
     texture->usedRegion->vulkanTexture = texture; // lol
@@ -5558,16 +5612,16 @@ static VulkanTexture *VULKAN_INTERNAL_CreateTexture(
             &texture->fullView);
 
         if (vulkanResult != VK_SUCCESS) {
-            LogVulkanResultAsError("vkCreateImageView", vulkanResult);
-            SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create texture image view");
-            return NULL;
+            VULKAN_INTERNAL_DestroyTexture(renderer, texture);
+            CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, "vkCreateImageView", NULL)
         }
     }
 
     // Define slices
     texture->subresourceCount = layerCount * createinfo->num_levels;
-    texture->subresources = SDL_malloc(
-        texture->subresourceCount * sizeof(VulkanTextureSubresource));
+    texture->subresources = SDL_calloc(
+        texture->subresourceCount,
+        sizeof(VulkanTextureSubresource));
 
     for (Uint32 i = 0; i < layerCount; i += 1) {
         for (Uint32 j = 0; j < createinfo->num_levels; j += 1) {
@@ -5576,57 +5630,65 @@ static VulkanTexture *VULKAN_INTERNAL_CreateTexture(
                 i,
                 createinfo->num_levels);
 
-            texture->subresources[subresourceIndex].renderTargetViews = NULL;
-            texture->subresources[subresourceIndex].computeWriteView = VK_NULL_HANDLE;
-            texture->subresources[subresourceIndex].depthStencilView = VK_NULL_HANDLE;
-
             if (createinfo->usage & SDL_GPU_TEXTUREUSAGE_COLOR_TARGET) {
                 texture->subresources[subresourceIndex].renderTargetViews = SDL_malloc(
                     depth * sizeof(VkImageView));
 
                 if (depth > 1) {
                     for (Uint32 k = 0; k < depth; k += 1) {
-                        VULKAN_INTERNAL_CreateRenderTargetView(
+                        if (!VULKAN_INTERNAL_CreateRenderTargetView(
                             renderer,
                             texture,
                             k,
                             j,
                             SDLToVK_TextureFormat[createinfo->format],
                             texture->swizzle,
-                            &texture->subresources[subresourceIndex].renderTargetViews[k]);
+                            &texture->subresources[subresourceIndex].renderTargetViews[k])) {
+                            VULKAN_INTERNAL_DestroyTexture(renderer, texture);
+                            return NULL;
+                        }
                     }
                 } else {
-                    VULKAN_INTERNAL_CreateRenderTargetView(
+                    if (!VULKAN_INTERNAL_CreateRenderTargetView(
                         renderer,
                         texture,
                         i,
                         j,
                         SDLToVK_TextureFormat[createinfo->format],
                         texture->swizzle,
-                        &texture->subresources[subresourceIndex].renderTargetViews[0]);
+                        &texture->subresources[subresourceIndex].renderTargetViews[0])) {
+                        VULKAN_INTERNAL_DestroyTexture(renderer, texture);
+                        return NULL;
+                    }
                 }
             }
 
-            if (createinfo->usage & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE) {
-                VULKAN_INTERNAL_CreateSubresourceView(
+            if ((createinfo->usage & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE) || (createinfo->usage & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE)) {
+                if (!VULKAN_INTERNAL_CreateSubresourceView(
                     renderer,
                     createinfo,
                     texture,
                     i,
                     j,
                     texture->swizzle,
-                    &texture->subresources[subresourceIndex].computeWriteView);
+                    &texture->subresources[subresourceIndex].computeWriteView)) {
+                    VULKAN_INTERNAL_DestroyTexture(renderer, texture);
+                    return NULL;
+                }
             }
 
             if (createinfo->usage & SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET) {
-                VULKAN_INTERNAL_CreateSubresourceView(
+                if (!VULKAN_INTERNAL_CreateSubresourceView(
                     renderer,
                     createinfo,
                     texture,
                     i,
                     j,
                     texture->swizzle,
-                    &texture->subresources[subresourceIndex].depthStencilView);
+                    &texture->subresources[subresourceIndex].depthStencilView)) {
+                    VULKAN_INTERNAL_DestroyTexture(renderer, texture);
+                    return NULL;
+                }
             }
 
             texture->subresources[subresourceIndex].parent = texture;
@@ -5662,7 +5724,6 @@ static void VULKAN_INTERNAL_CycleActiveBuffer(
         container->activeBuffer->type);
 
     if (!buffer) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to cycle active buffer!");
         return;
     }
 
@@ -5710,7 +5771,6 @@ static void VULKAN_INTERNAL_CycleActiveTexture(
         &container->header.info);
 
     if (!texture) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to cycle active texture!");
         return;
     }
 
@@ -5912,10 +5972,7 @@ static VkRenderPass VULKAN_INTERNAL_CreateRenderPass(
         NULL,
         &renderPass);
 
-    if (vulkanResult != VK_SUCCESS) {
-        renderPass = VK_NULL_HANDLE;
-        LogVulkanResultAsError("vkCreateRenderPass", vulkanResult);
-    }
+    CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateRenderPass, VK_NULL_HANDLE);
 
     return renderPass;
 }
@@ -6007,10 +6064,7 @@ static VkRenderPass VULKAN_INTERNAL_CreateTransientRenderPass(
         NULL,
         &renderPass);
 
-    if (result != VK_SUCCESS) {
-        renderPass = VK_NULL_HANDLE;
-        LogVulkanResultAsError("vkCreateRenderPass", result);
-    }
+    CHECK_VULKAN_ERROR_AND_RETURN(result, vkCreateRenderPass, VK_NULL_HANDLE)
 
     return renderPass;
 }
@@ -6174,7 +6228,7 @@ static SDL_GPUGraphicsPipeline *VULKAN_CreateGraphicsPipeline(
     rasterizationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizationStateCreateInfo.pNext = NULL;
     rasterizationStateCreateInfo.flags = 0;
-    rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
+    rasterizationStateCreateInfo.depthClampEnable = !createinfo->rasterizer_state.enable_depth_clip;
     rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;
     rasterizationStateCreateInfo.polygonMode = SDLToVK_PolygonMode(
         renderer,
@@ -6283,18 +6337,19 @@ static SDL_GPUGraphicsPipeline *VULKAN_CreateGraphicsPipeline(
 
     // Pipeline Layout
 
-    if (!VULKAN_INTERNAL_InitializeGraphicsPipelineResourceLayout(
+    graphicsPipeline->resourceLayout =
+        VULKAN_INTERNAL_FetchGraphicsPipelineResourceLayout(
             renderer,
             graphicsPipeline->vertexShader,
-            graphicsPipeline->fragmentShader,
-            &graphicsPipeline->resourceLayout)) {
+            graphicsPipeline->fragmentShader);
+
+    if (graphicsPipeline->resourceLayout == NULL) {
         SDL_stack_free(vertexInputBindingDescriptions);
         SDL_stack_free(vertexInputAttributeDescriptions);
         SDL_stack_free(colorBlendAttachmentStates);
         SDL_stack_free(divisorDescriptions);
         SDL_free(graphicsPipeline);
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to initialize pipeline resource layout!");
-        return NULL;
+        SET_STRING_ERROR_AND_RETURN("Failed to initialize pipeline resource layout!", NULL);
     }
 
     // Pipeline
@@ -6313,7 +6368,7 @@ static SDL_GPUGraphicsPipeline *VULKAN_CreateGraphicsPipeline(
     vkPipelineCreateInfo.pDepthStencilState = &depthStencilStateCreateInfo;
     vkPipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
     vkPipelineCreateInfo.pDynamicState = &dynamicStateCreateInfo;
-    vkPipelineCreateInfo.layout = graphicsPipeline->resourceLayout.pipelineLayout;
+    vkPipelineCreateInfo.layout = graphicsPipeline->resourceLayout->pipelineLayout;
     vkPipelineCreateInfo.renderPass = transientRenderPass;
     vkPipelineCreateInfo.subpass = 0;
     vkPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -6340,9 +6395,7 @@ static SDL_GPUGraphicsPipeline *VULKAN_CreateGraphicsPipeline(
 
     if (vulkanResult != VK_SUCCESS) {
         SDL_free(graphicsPipeline);
-        LogVulkanResultAsError("vkCreateGraphicsPipelines", vulkanResult);
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create graphics pipeline!");
-        return NULL;
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateGraphicsPipelines, NULL)
     }
 
     SDL_SetAtomicInt(&graphicsPipeline->referenceCount, 0);
@@ -6358,13 +6411,11 @@ static SDL_GPUComputePipeline *VULKAN_CreateComputePipeline(
     VkComputePipelineCreateInfo vkShaderCreateInfo;
     VkPipelineShaderStageCreateInfo pipelineShaderStageCreateInfo;
     VkResult vulkanResult;
-    Uint32 i;
     VulkanRenderer *renderer = (VulkanRenderer *)driverData;
     VulkanComputePipeline *vulkanComputePipeline;
 
     if (createinfo->format != SDL_GPU_SHADERFORMAT_SPIRV) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Incompatible shader format for Vulkan!");
-        return NULL;
+        SET_STRING_ERROR_AND_RETURN("Incompatible shader format for Vulkan!", NULL)
     }
 
     vulkanComputePipeline = SDL_malloc(sizeof(VulkanComputePipeline));
@@ -6382,9 +6433,7 @@ static SDL_GPUComputePipeline *VULKAN_CreateComputePipeline(
 
     if (vulkanResult != VK_SUCCESS) {
         SDL_free(vulkanComputePipeline);
-        LogVulkanResultAsError("vkCreateShaderModule", vulkanResult);
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create compute pipeline!");
-        return NULL;
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateShaderModule, NULL)
     }
 
     pipelineShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -6395,10 +6444,11 @@ static SDL_GPUComputePipeline *VULKAN_CreateComputePipeline(
     pipelineShaderStageCreateInfo.pName = createinfo->entrypoint;
     pipelineShaderStageCreateInfo.pSpecializationInfo = NULL;
 
-    if (!VULKAN_INTERNAL_InitializeComputePipelineResourceLayout(
-            renderer,
-            createinfo,
-            &vulkanComputePipeline->resourceLayout)) {
+    vulkanComputePipeline->resourceLayout = VULKAN_INTERNAL_FetchComputePipelineResourceLayout(
+        renderer,
+        createinfo);
+
+    if (vulkanComputePipeline->resourceLayout == NULL) {
         renderer->vkDestroyShaderModule(
             renderer->logicalDevice,
             vulkanComputePipeline->shaderModule,
@@ -6411,8 +6461,7 @@ static SDL_GPUComputePipeline *VULKAN_CreateComputePipeline(
     vkShaderCreateInfo.pNext = NULL;
     vkShaderCreateInfo.flags = 0;
     vkShaderCreateInfo.stage = pipelineShaderStageCreateInfo;
-    vkShaderCreateInfo.layout =
-        vulkanComputePipeline->resourceLayout.pipelineLayout;
+    vkShaderCreateInfo.layout = vulkanComputePipeline->resourceLayout->pipelineLayout;
     vkShaderCreateInfo.basePipelineHandle = (VkPipeline)VK_NULL_HANDLE;
     vkShaderCreateInfo.basePipelineIndex = 0;
 
@@ -6425,24 +6474,8 @@ static SDL_GPUComputePipeline *VULKAN_CreateComputePipeline(
         &vulkanComputePipeline->pipeline);
 
     if (vulkanResult != VK_SUCCESS) {
-        renderer->vkDestroyPipelineLayout(
-            renderer->logicalDevice,
-            vulkanComputePipeline->resourceLayout.pipelineLayout,
-            NULL);
-
-        for (i = 0; i < 3; i += 1) {
-            VULKAN_INTERNAL_DestroyDescriptorSetPool(
-                renderer,
-                &vulkanComputePipeline->resourceLayout.descriptorSetPools[i]);
-        }
-
-        renderer->vkDestroyShaderModule(
-            renderer->logicalDevice,
-            vulkanComputePipeline->shaderModule,
-            NULL);
-
-        LogVulkanResultAsError("vkCreateComputePipeline", vulkanResult);
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create compute pipeline!");
+        VULKAN_INTERNAL_DestroyComputePipeline(renderer, vulkanComputePipeline);
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateComputePipeline, NULL)
         return NULL;
     }
 
@@ -6487,8 +6520,7 @@ static SDL_GPUSampler *VULKAN_CreateSampler(
 
     if (vulkanResult != VK_SUCCESS) {
         SDL_free(vulkanSampler);
-        LogVulkanResultAsError("vkCreateSampler", vulkanResult);
-        return NULL;
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateSampler, NULL)
     }
 
     SDL_SetAtomicInt(&vulkanSampler->referenceCount, 0);
@@ -6521,9 +6553,7 @@ static SDL_GPUShader *VULKAN_CreateShader(
 
     if (vulkanResult != VK_SUCCESS) {
         SDL_free(vulkanShader);
-        LogVulkanResultAsError("vkCreateShaderModule", vulkanResult);
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create shader module!");
-        return NULL;
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateShaderModule, NULL)
     }
 
     entryPointNameLength = SDL_strlen(createinfo->entrypoint) + 1;
@@ -6564,7 +6594,6 @@ static SDL_GPUTexture *VULKAN_CreateTexture(
         createinfo);
 
     if (texture == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create texture!");
         return NULL;
     }
 
@@ -6850,10 +6879,17 @@ static VkRenderPass VULKAN_INTERNAL_FetchRenderPass(
     RenderPassHashTableKey key;
     Uint32 i;
 
+    SDL_zero(key);
+
     for (i = 0; i < numColorTargets; i += 1) {
         key.colorTargetDescriptions[i].format = SDLToVK_TextureFormat[((VulkanTextureContainer *)colorTargetInfos[i].texture)->header.info.format];
         key.colorTargetDescriptions[i].loadOp = colorTargetInfos[i].load_op;
         key.colorTargetDescriptions[i].storeOp = colorTargetInfos[i].store_op;
+
+        if (colorTargetInfos[i].resolve_texture != NULL) {
+            key.resolveTargetFormats[key.numResolveTargets] = SDLToVK_TextureFormat[((VulkanTextureContainer *)colorTargetInfos[i].resolve_texture)->header.info.format];
+            key.numResolveTargets += 1;
+        }
     }
 
     key.sampleCount = VK_SAMPLE_COUNT_1_BIT;
@@ -6898,7 +6934,6 @@ static VkRenderPass VULKAN_INTERNAL_FetchRenderPass(
         depthStencilTargetInfo);
 
     if (renderPassHandle == VK_NULL_HANDLE) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create VkRenderPass!");
         return VK_NULL_HANDLE;
     }
 
@@ -6937,9 +6972,8 @@ static VulkanFramebuffer *VULKAN_INTERNAL_FetchFramebuffer(
     Uint32 attachmentCount = 0;
     Uint32 i;
 
-    for (i = 0; i < MAX_COLOR_TARGET_BINDINGS; i += 1) {
-        key.colorAttachmentViews[i] = VK_NULL_HANDLE;
-    }
+    SDL_zero(imageViewAttachments);
+    SDL_zero(key);
 
     key.numColorTargets = numColorTargets;
 
@@ -6953,6 +6987,17 @@ static VulkanFramebuffer *VULKAN_INTERNAL_FetchFramebuffer(
         Uint32 rtvIndex =
             container->header.info.type == SDL_GPU_TEXTURETYPE_3D ? colorTargetInfos[i].layer_or_depth_plane : 0;
         key.colorAttachmentViews[i] = subresource->renderTargetViews[rtvIndex];
+
+        if (colorTargetInfos[i].resolve_texture != NULL) {
+            VulkanTextureContainer *resolveTextureContainer = (VulkanTextureContainer *)colorTargetInfos[i].resolve_texture;
+            VulkanTextureSubresource *resolveSubresource = VULKAN_INTERNAL_FetchTextureSubresource(
+                resolveTextureContainer,
+                colorTargetInfos[i].layer_or_depth_plane,
+                colorTargetInfos[i].mip_level);
+
+            key.resolveAttachmentViews[key.numResolveAttachments] = resolveSubresource->renderTargetViews[0];
+            key.numResolveAttachments += 1;
+        }
     }
 
     if (depthStencilTargetInfo == NULL) {
@@ -7054,9 +7099,8 @@ static VulkanFramebuffer *VULKAN_INTERNAL_FetchFramebuffer(
 
         SDL_UnlockMutex(renderer->framebufferFetchLock);
     } else {
-        LogVulkanResultAsError("vkCreateFramebuffer", result);
         SDL_free(vulkanFramebuffer);
-        vulkanFramebuffer = NULL;
+        CHECK_VULKAN_ERROR_AND_RETURN(result, vkCreateFramebuffer, NULL)
     }
 
     return vulkanFramebuffer;
@@ -7462,8 +7506,8 @@ static void VULKAN_BeginRenderPass(
     SDL_GPUViewport defaultViewport;
     SDL_Rect defaultScissor;
     SDL_FColor defaultBlendConstants;
-    Uint32 framebufferWidth = UINT32_MAX;
-    Uint32 framebufferHeight = UINT32_MAX;
+    Uint32 framebufferWidth = SDL_MAX_UINT32;
+    Uint32 framebufferHeight = SDL_MAX_UINT32;
 
     for (i = 0; i < numColorTargets; i += 1) {
         VulkanTextureContainer *textureContainer = (VulkanTextureContainer *)colorTargetInfos[i].texture;
@@ -7560,6 +7604,10 @@ static void VULKAN_BeginRenderPass(
         numColorTargets,
         depthStencilTargetInfo);
 
+    if (renderPass == VK_NULL_HANDLE) {
+        return;
+    }
+
     framebuffer = VULKAN_INTERNAL_FetchFramebuffer(
         renderer,
         renderPass,
@@ -7568,6 +7616,10 @@ static void VULKAN_BeginRenderPass(
         depthStencilTargetInfo,
         framebufferWidth,
         framebufferHeight);
+
+    if (framebuffer == NULL) {
+        return;
+    }
 
     VULKAN_INTERNAL_TrackFramebuffer(renderer, vulkanCommandBuffer, framebuffer);
 
@@ -7667,14 +7719,14 @@ static void VULKAN_BindGraphicsPipeline(
     VULKAN_INTERNAL_TrackGraphicsPipeline(vulkanCommandBuffer, pipeline);
 
     // Acquire uniform buffers if necessary
-    for (Uint32 i = 0; i < pipeline->resourceLayout.vertexUniformBufferCount; i += 1) {
+    for (Uint32 i = 0; i < pipeline->resourceLayout->vertexUniformBufferCount; i += 1) {
         if (vulkanCommandBuffer->vertexUniformBuffers[i] == NULL) {
             vulkanCommandBuffer->vertexUniformBuffers[i] = VULKAN_INTERNAL_AcquireUniformBufferFromPool(
                 vulkanCommandBuffer);
         }
     }
 
-    for (Uint32 i = 0; i < pipeline->resourceLayout.fragmentUniformBufferCount; i += 1) {
+    for (Uint32 i = 0; i < pipeline->resourceLayout->fragmentUniformBufferCount; i += 1) {
         if (vulkanCommandBuffer->fragmentUniformBuffers[i] == NULL) {
             vulkanCommandBuffer->fragmentUniformBuffers[i] = VULKAN_INTERNAL_AcquireUniformBufferFromPool(
                 vulkanCommandBuffer);
@@ -7833,9 +7885,9 @@ static void VULKAN_EndRenderPass(
 
 static void VULKAN_BeginComputePass(
     SDL_GPUCommandBuffer *commandBuffer,
-    const SDL_GPUStorageTextureWriteOnlyBinding *storageTextureBindings,
+    const SDL_GPUStorageTextureReadWriteBinding *storageTextureBindings,
     Uint32 numStorageTextureBindings,
-    const SDL_GPUStorageBufferWriteOnlyBinding *storageBufferBindings,
+    const SDL_GPUStorageBufferReadWriteBinding *storageBufferBindings,
     Uint32 numStorageBufferBindings)
 {
     VulkanCommandBuffer *vulkanCommandBuffer = (VulkanCommandBuffer *)commandBuffer;
@@ -7844,7 +7896,7 @@ static void VULKAN_BeginComputePass(
     VulkanBuffer *buffer;
     Uint32 i;
 
-    vulkanCommandBuffer->writeOnlyComputeStorageTextureSubresourceCount = numStorageTextureBindings;
+    vulkanCommandBuffer->readWriteComputeStorageTextureSubresourceCount = numStorageTextureBindings;
 
     for (i = 0; i < numStorageTextureBindings; i += 1) {
         VulkanTextureContainer *textureContainer = (VulkanTextureContainer *)storageTextureBindings[i].texture;
@@ -7857,7 +7909,7 @@ static void VULKAN_BeginComputePass(
             storageTextureBindings[i].cycle,
             VULKAN_TEXTURE_USAGE_MODE_COMPUTE_STORAGE_READ_WRITE);
 
-        vulkanCommandBuffer->writeOnlyComputeStorageTextureSubresources[i] = subresource;
+        vulkanCommandBuffer->readWriteComputeStorageTextureSubresources[i] = subresource;
 
         VULKAN_INTERNAL_TrackTexture(
             vulkanCommandBuffer,
@@ -7873,7 +7925,7 @@ static void VULKAN_BeginComputePass(
             storageBufferBindings[i].cycle,
             VULKAN_BUFFER_USAGE_MODE_COMPUTE_STORAGE_READ);
 
-        vulkanCommandBuffer->writeOnlyComputeStorageBuffers[i] = buffer;
+        vulkanCommandBuffer->readWriteComputeStorageBuffers[i] = buffer;
 
         VULKAN_INTERNAL_TrackBuffer(
             vulkanCommandBuffer,
@@ -7899,7 +7951,7 @@ static void VULKAN_BindComputePipeline(
     VULKAN_INTERNAL_TrackComputePipeline(vulkanCommandBuffer, vulkanComputePipeline);
 
     // Acquire uniform buffers if necessary
-    for (Uint32 i = 0; i < vulkanComputePipeline->resourceLayout.numUniformBuffers; i += 1) {
+    for (Uint32 i = 0; i < vulkanComputePipeline->resourceLayout->numUniformBuffers; i += 1) {
         if (vulkanCommandBuffer->computeUniformBuffers[i] == NULL) {
             vulkanCommandBuffer->computeUniformBuffers[i] = VULKAN_INTERNAL_AcquireUniformBufferFromPool(
                 vulkanCommandBuffer);
@@ -7907,7 +7959,7 @@ static void VULKAN_BindComputePipeline(
     }
 
     // Mark binding as needed
-    vulkanCommandBuffer->needNewComputeWriteOnlyDescriptorSet = true;
+    vulkanCommandBuffer->needNewComputeReadWriteDescriptorSet = true;
     vulkanCommandBuffer->needNewComputeReadOnlyDescriptorSet = true;
     vulkanCommandBuffer->needNewComputeUniformDescriptorSet = true;
     vulkanCommandBuffer->needNewComputeUniformOffsets = true;
@@ -8034,34 +8086,44 @@ static void VULKAN_INTERNAL_BindComputeDescriptorSets(
     VulkanCommandBuffer *commandBuffer)
 {
     VulkanComputePipelineResourceLayout *resourceLayout;
-    VkWriteDescriptorSet *writeDescriptorSets;
-    VkWriteDescriptorSet *currentWriteDescriptorSet;
-    DescriptorSetPool *descriptorSetPool;
-    VkDescriptorBufferInfo bufferInfos[MAX_STORAGE_BUFFERS_PER_STAGE]; // 8 is max for both read and write
-    VkDescriptorImageInfo imageInfos[MAX_TEXTURE_SAMPLERS_PER_STAGE + MAX_STORAGE_TEXTURES_PER_STAGE];
+    DescriptorSetLayout *descriptorSetLayout;
+    VkWriteDescriptorSet writeDescriptorSets[
+        MAX_TEXTURE_SAMPLERS_PER_STAGE +
+        MAX_STORAGE_TEXTURES_PER_STAGE +
+        MAX_STORAGE_BUFFERS_PER_STAGE +
+        MAX_COMPUTE_WRITE_TEXTURES +
+        MAX_COMPUTE_WRITE_BUFFERS +
+        MAX_UNIFORM_BUFFERS_PER_STAGE];
+    VkDescriptorBufferInfo bufferInfos[MAX_STORAGE_BUFFERS_PER_STAGE + MAX_COMPUTE_WRITE_BUFFERS + MAX_UNIFORM_BUFFERS_PER_STAGE];
+    VkDescriptorImageInfo imageInfos[MAX_TEXTURE_SAMPLERS_PER_STAGE + MAX_STORAGE_TEXTURES_PER_STAGE + MAX_COMPUTE_WRITE_TEXTURES];
     Uint32 dynamicOffsets[MAX_UNIFORM_BUFFERS_PER_STAGE];
+    Uint32 writeCount = 0;
     Uint32 bufferInfoCount = 0;
     Uint32 imageInfoCount = 0;
-    Uint32 i;
+    Uint32 dynamicOffsetCount = 0;
 
-    resourceLayout = &commandBuffer->currentComputePipeline->resourceLayout;
+    if (
+        !commandBuffer->needNewComputeReadOnlyDescriptorSet &&
+        !commandBuffer->needNewComputeReadWriteDescriptorSet &&
+        !commandBuffer->needNewComputeUniformDescriptorSet &&
+        !commandBuffer->needNewComputeUniformOffsets
+    ) {
+        return;
+    }
+
+    resourceLayout = commandBuffer->currentComputePipeline->resourceLayout;
 
     if (commandBuffer->needNewComputeReadOnlyDescriptorSet) {
-        descriptorSetPool = &resourceLayout->descriptorSetPools[0];
+        descriptorSetLayout = resourceLayout->descriptorSetLayouts[0];
 
         commandBuffer->computeReadOnlyDescriptorSet = VULKAN_INTERNAL_FetchDescriptorSet(
             renderer,
             commandBuffer,
-            descriptorSetPool);
+            descriptorSetLayout);
 
-        writeDescriptorSets = SDL_stack_alloc(
-            VkWriteDescriptorSet,
-            resourceLayout->numSamplers +
-                resourceLayout->numReadonlyStorageTextures +
-                resourceLayout->numReadonlyStorageBuffers);
+        for (Uint32 i = 0; i < resourceLayout->numSamplers; i += 1) {
+            VkWriteDescriptorSet *currentWriteDescriptorSet = &writeDescriptorSets[writeCount];
 
-        for (i = 0; i < resourceLayout->numSamplers; i += 1) {
-            currentWriteDescriptorSet = &writeDescriptorSets[i];
             currentWriteDescriptorSet->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             currentWriteDescriptorSet->pNext = NULL;
             currentWriteDescriptorSet->descriptorCount = 1;
@@ -8078,11 +8140,13 @@ static void VULKAN_INTERNAL_BindComputeDescriptorSets(
 
             currentWriteDescriptorSet->pImageInfo = &imageInfos[imageInfoCount];
 
+            writeCount += 1;
             imageInfoCount += 1;
         }
 
-        for (i = 0; i < resourceLayout->numReadonlyStorageTextures; i += 1) {
-            currentWriteDescriptorSet = &writeDescriptorSets[i];
+        for (Uint32 i = 0; i < resourceLayout->numReadonlyStorageTextures; i += 1) {
+            VkWriteDescriptorSet *currentWriteDescriptorSet = &writeDescriptorSets[writeCount];
+
             currentWriteDescriptorSet->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             currentWriteDescriptorSet->pNext = NULL;
             currentWriteDescriptorSet->descriptorCount = 1;
@@ -8099,11 +8163,12 @@ static void VULKAN_INTERNAL_BindComputeDescriptorSets(
 
             currentWriteDescriptorSet->pImageInfo = &imageInfos[imageInfoCount];
 
+            writeCount += 1;
             imageInfoCount += 1;
         }
 
-        for (i = 0; i < resourceLayout->numReadonlyStorageBuffers; i += 1) {
-            currentWriteDescriptorSet = &writeDescriptorSets[resourceLayout->numReadonlyStorageTextures + i];
+        for (Uint32 i = 0; i < resourceLayout->numReadonlyStorageBuffers; i += 1) {
+            VkWriteDescriptorSet *currentWriteDescriptorSet = &writeDescriptorSets[writeCount];
 
             currentWriteDescriptorSet->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             currentWriteDescriptorSet->pNext = NULL;
@@ -8121,48 +8186,23 @@ static void VULKAN_INTERNAL_BindComputeDescriptorSets(
 
             currentWriteDescriptorSet->pBufferInfo = &bufferInfos[bufferInfoCount];
 
+            writeCount += 1;
             bufferInfoCount += 1;
         }
-
-        renderer->vkUpdateDescriptorSets(
-            renderer->logicalDevice,
-            resourceLayout->numSamplers + resourceLayout->numReadonlyStorageTextures + resourceLayout->numReadonlyStorageBuffers,
-            writeDescriptorSets,
-            0,
-            NULL);
-
-        renderer->vkCmdBindDescriptorSets(
-            commandBuffer->commandBuffer,
-            VK_PIPELINE_BIND_POINT_COMPUTE,
-            resourceLayout->pipelineLayout,
-            0,
-            1,
-            &commandBuffer->computeReadOnlyDescriptorSet,
-            0,
-            NULL);
-
-        SDL_stack_free(writeDescriptorSets);
-        bufferInfoCount = 0;
-        imageInfoCount = 0;
 
         commandBuffer->needNewComputeReadOnlyDescriptorSet = false;
     }
 
-    if (commandBuffer->needNewComputeWriteOnlyDescriptorSet) {
-        descriptorSetPool = &resourceLayout->descriptorSetPools[1];
+    if (commandBuffer->needNewComputeReadWriteDescriptorSet) {
+        descriptorSetLayout = resourceLayout->descriptorSetLayouts[1];
 
-        commandBuffer->computeWriteOnlyDescriptorSet = VULKAN_INTERNAL_FetchDescriptorSet(
+        commandBuffer->computeReadWriteDescriptorSet = VULKAN_INTERNAL_FetchDescriptorSet(
             renderer,
             commandBuffer,
-            descriptorSetPool);
+            descriptorSetLayout);
 
-        writeDescriptorSets = SDL_stack_alloc(
-            VkWriteDescriptorSet,
-            resourceLayout->numWriteonlyStorageTextures +
-                resourceLayout->numWriteonlyStorageBuffers);
-
-        for (i = 0; i < resourceLayout->numWriteonlyStorageTextures; i += 1) {
-            currentWriteDescriptorSet = &writeDescriptorSets[i];
+        for (Uint32 i = 0; i < resourceLayout->numReadWriteStorageTextures; i += 1) {
+            VkWriteDescriptorSet *currentWriteDescriptorSet = &writeDescriptorSets[writeCount];
 
             currentWriteDescriptorSet->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             currentWriteDescriptorSet->pNext = NULL;
@@ -8170,79 +8210,57 @@ static void VULKAN_INTERNAL_BindComputeDescriptorSets(
             currentWriteDescriptorSet->descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
             currentWriteDescriptorSet->dstArrayElement = 0;
             currentWriteDescriptorSet->dstBinding = i;
-            currentWriteDescriptorSet->dstSet = commandBuffer->computeWriteOnlyDescriptorSet;
+            currentWriteDescriptorSet->dstSet = commandBuffer->computeReadWriteDescriptorSet;
             currentWriteDescriptorSet->pTexelBufferView = NULL;
             currentWriteDescriptorSet->pBufferInfo = NULL;
 
             imageInfos[imageInfoCount].sampler = VK_NULL_HANDLE;
-            imageInfos[imageInfoCount].imageView = commandBuffer->writeOnlyComputeStorageTextureSubresources[i]->computeWriteView;
+            imageInfos[imageInfoCount].imageView = commandBuffer->readWriteComputeStorageTextureSubresources[i]->computeWriteView;
             imageInfos[imageInfoCount].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
             currentWriteDescriptorSet->pImageInfo = &imageInfos[imageInfoCount];
 
+            writeCount += 1;
             imageInfoCount += 1;
         }
 
-        for (i = 0; i < resourceLayout->numWriteonlyStorageBuffers; i += 1) {
-            currentWriteDescriptorSet = &writeDescriptorSets[resourceLayout->numWriteonlyStorageTextures + i];
+        for (Uint32 i = 0; i < resourceLayout->numReadWriteStorageBuffers; i += 1) {
+            VkWriteDescriptorSet *currentWriteDescriptorSet = &writeDescriptorSets[writeCount];
 
             currentWriteDescriptorSet->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             currentWriteDescriptorSet->pNext = NULL;
             currentWriteDescriptorSet->descriptorCount = 1;
             currentWriteDescriptorSet->descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             currentWriteDescriptorSet->dstArrayElement = 0;
-            currentWriteDescriptorSet->dstBinding = resourceLayout->numWriteonlyStorageTextures + i;
-            currentWriteDescriptorSet->dstSet = commandBuffer->computeWriteOnlyDescriptorSet;
+            currentWriteDescriptorSet->dstBinding = resourceLayout->numReadWriteStorageTextures + i;
+            currentWriteDescriptorSet->dstSet = commandBuffer->computeReadWriteDescriptorSet;
             currentWriteDescriptorSet->pTexelBufferView = NULL;
             currentWriteDescriptorSet->pImageInfo = NULL;
 
-            bufferInfos[bufferInfoCount].buffer = commandBuffer->writeOnlyComputeStorageBuffers[i]->buffer;
+            bufferInfos[bufferInfoCount].buffer = commandBuffer->readWriteComputeStorageBuffers[i]->buffer;
             bufferInfos[bufferInfoCount].offset = 0;
             bufferInfos[bufferInfoCount].range = VK_WHOLE_SIZE;
 
             currentWriteDescriptorSet->pBufferInfo = &bufferInfos[bufferInfoCount];
 
+            writeCount += 1;
             bufferInfoCount += 1;
         }
 
-        renderer->vkUpdateDescriptorSets(
-            renderer->logicalDevice,
-            resourceLayout->numWriteonlyStorageTextures + resourceLayout->numWriteonlyStorageBuffers,
-            writeDescriptorSets,
-            0,
-            NULL);
-
-        renderer->vkCmdBindDescriptorSets(
-            commandBuffer->commandBuffer,
-            VK_PIPELINE_BIND_POINT_COMPUTE,
-            resourceLayout->pipelineLayout,
-            1,
-            1,
-            &commandBuffer->computeWriteOnlyDescriptorSet,
-            0,
-            NULL);
-
-        SDL_stack_free(writeDescriptorSets);
-        bufferInfoCount = 0;
-        imageInfoCount = 0;
-
-        commandBuffer->needNewComputeWriteOnlyDescriptorSet = false;
+        commandBuffer->needNewComputeReadWriteDescriptorSet = false;
     }
 
     if (commandBuffer->needNewComputeUniformDescriptorSet) {
-        descriptorSetPool = &resourceLayout->descriptorSetPools[2];
+        descriptorSetLayout = resourceLayout->descriptorSetLayouts[2];
 
         commandBuffer->computeUniformDescriptorSet = VULKAN_INTERNAL_FetchDescriptorSet(
             renderer,
             commandBuffer,
-            descriptorSetPool);
+            descriptorSetLayout);
 
-        writeDescriptorSets = SDL_stack_alloc(
-            VkWriteDescriptorSet,
-            resourceLayout->numUniformBuffers);
 
-        for (i = 0; i < resourceLayout->numUniformBuffers; i += 1) {
-            currentWriteDescriptorSet = &writeDescriptorSets[i];
+        for (Uint32 i = 0; i < resourceLayout->numUniformBuffers; i += 1) {
+            VkWriteDescriptorSet *currentWriteDescriptorSet = &writeDescriptorSets[writeCount];
 
             currentWriteDescriptorSet->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             currentWriteDescriptorSet->pNext = NULL;
@@ -8260,41 +8278,41 @@ static void VULKAN_INTERNAL_BindComputeDescriptorSets(
 
             currentWriteDescriptorSet->pBufferInfo = &bufferInfos[bufferInfoCount];
 
+            writeCount += 1;
             bufferInfoCount += 1;
         }
 
-        renderer->vkUpdateDescriptorSets(
-            renderer->logicalDevice,
-            resourceLayout->numUniformBuffers,
-            writeDescriptorSets,
-            0,
-            NULL);
-
-        SDL_stack_free(writeDescriptorSets);
-        bufferInfoCount = 0;
-        imageInfoCount = 0;
-
         commandBuffer->needNewComputeUniformDescriptorSet = false;
-        commandBuffer->needNewComputeUniformOffsets = true;
     }
 
-    if (commandBuffer->needNewComputeUniformOffsets) {
-        for (i = 0; i < resourceLayout->numUniformBuffers; i += 1) {
-            dynamicOffsets[i] = commandBuffer->computeUniformBuffers[i]->drawOffset;
-        }
-
-        renderer->vkCmdBindDescriptorSets(
-            commandBuffer->commandBuffer,
-            VK_PIPELINE_BIND_POINT_COMPUTE,
-            resourceLayout->pipelineLayout,
-            2,
-            1,
-            &commandBuffer->computeUniformDescriptorSet,
-            resourceLayout->numUniformBuffers,
-            dynamicOffsets);
-
-        commandBuffer->needNewComputeUniformOffsets = false;
+    for (Uint32 i = 0; i < resourceLayout->numUniformBuffers; i += 1) {
+        dynamicOffsets[i] = commandBuffer->computeUniformBuffers[i]->drawOffset;
+        dynamicOffsetCount += 1;
     }
+
+    renderer->vkUpdateDescriptorSets(
+        renderer->logicalDevice,
+        writeCount,
+        writeDescriptorSets,
+        0,
+        NULL);
+
+    VkDescriptorSet sets[3];
+    sets[0] = commandBuffer->computeReadOnlyDescriptorSet;
+    sets[1] = commandBuffer->computeReadWriteDescriptorSet;
+    sets[2] = commandBuffer->computeUniformDescriptorSet;
+
+    renderer->vkCmdBindDescriptorSets(
+        commandBuffer->commandBuffer,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        resourceLayout->pipelineLayout,
+        0,
+        3,
+        sets,
+        dynamicOffsetCount,
+        dynamicOffsets);
+
+    commandBuffer->needNewVertexUniformOffsets = false;
 }
 
 static void VULKAN_DispatchCompute(
@@ -8340,25 +8358,25 @@ static void VULKAN_EndComputePass(
     VulkanCommandBuffer *vulkanCommandBuffer = (VulkanCommandBuffer *)commandBuffer;
     Uint32 i;
 
-    for (i = 0; i < vulkanCommandBuffer->writeOnlyComputeStorageTextureSubresourceCount; i += 1) {
+    for (i = 0; i < vulkanCommandBuffer->readWriteComputeStorageTextureSubresourceCount; i += 1) {
         VULKAN_INTERNAL_TextureSubresourceTransitionToDefaultUsage(
             vulkanCommandBuffer->renderer,
             vulkanCommandBuffer,
             VULKAN_TEXTURE_USAGE_MODE_COMPUTE_STORAGE_READ_WRITE,
-            vulkanCommandBuffer->writeOnlyComputeStorageTextureSubresources[i]);
-        vulkanCommandBuffer->writeOnlyComputeStorageTextureSubresources[i] = NULL;
+            vulkanCommandBuffer->readWriteComputeStorageTextureSubresources[i]);
+        vulkanCommandBuffer->readWriteComputeStorageTextureSubresources[i] = NULL;
     }
-    vulkanCommandBuffer->writeOnlyComputeStorageTextureSubresourceCount = 0;
+    vulkanCommandBuffer->readWriteComputeStorageTextureSubresourceCount = 0;
 
     for (i = 0; i < MAX_COMPUTE_WRITE_BUFFERS; i += 1) {
-        if (vulkanCommandBuffer->writeOnlyComputeStorageBuffers[i] != NULL) {
+        if (vulkanCommandBuffer->readWriteComputeStorageBuffers[i] != NULL) {
             VULKAN_INTERNAL_BufferTransitionToDefaultUsage(
                 vulkanCommandBuffer->renderer,
                 vulkanCommandBuffer,
                 VULKAN_BUFFER_USAGE_MODE_COMPUTE_STORAGE_READ_WRITE,
-                vulkanCommandBuffer->writeOnlyComputeStorageBuffers[i]);
+                vulkanCommandBuffer->readWriteComputeStorageBuffers[i]);
 
-            vulkanCommandBuffer->writeOnlyComputeStorageBuffers[i] = NULL;
+            vulkanCommandBuffer->readWriteComputeStorageBuffers[i] = NULL;
         }
     }
 
@@ -8393,7 +8411,7 @@ static void VULKAN_EndComputePass(
     vulkanCommandBuffer->currentComputePipeline = NULL;
 
     vulkanCommandBuffer->computeReadOnlyDescriptorSet = VK_NULL_HANDLE;
-    vulkanCommandBuffer->computeWriteOnlyDescriptorSet = VK_NULL_HANDLE;
+    vulkanCommandBuffer->computeReadWriteDescriptorSet = VK_NULL_HANDLE;
     vulkanCommandBuffer->computeUniformDescriptorSet = VK_NULL_HANDLE;
 }
 
@@ -8979,18 +8997,16 @@ static void VULKAN_Blit(
     VULKAN_INTERNAL_TrackTexture(vulkanCommandBuffer, dstSubresource->parent);
 }
 
-static void VULKAN_INTERNAL_AllocateCommandBuffers(
+static bool VULKAN_INTERNAL_AllocateCommandBuffer(
     VulkanRenderer *renderer,
-    VulkanCommandPool *vulkanCommandPool,
-    Uint32 allocateCount)
+    VulkanCommandPool *vulkanCommandPool)
 {
     VkCommandBufferAllocateInfo allocateInfo;
     VkResult vulkanResult;
-    Uint32 i;
-    VkCommandBuffer *commandBuffers = SDL_stack_alloc(VkCommandBuffer, allocateCount);
+    VkCommandBuffer commandBufferHandle;
     VulkanCommandBuffer *commandBuffer;
 
-    vulkanCommandPool->inactiveCommandBufferCapacity += allocateCount;
+    vulkanCommandPool->inactiveCommandBufferCapacity += 1;
 
     vulkanCommandPool->inactiveCommandBuffers = SDL_realloc(
         vulkanCommandPool->inactiveCommandBuffers,
@@ -9000,119 +9016,106 @@ static void VULKAN_INTERNAL_AllocateCommandBuffers(
     allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocateInfo.pNext = NULL;
     allocateInfo.commandPool = vulkanCommandPool->commandPool;
-    allocateInfo.commandBufferCount = allocateCount;
+    allocateInfo.commandBufferCount = 1;
     allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
     vulkanResult = renderer->vkAllocateCommandBuffers(
         renderer->logicalDevice,
         &allocateInfo,
-        commandBuffers);
+        &commandBufferHandle);
 
-    if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError("vkAllocateCommandBuffers", vulkanResult);
-        SDL_stack_free(commandBuffers);
-        return;
-    }
+    CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkAllocateCommandBuffers, false)
 
-    for (i = 0; i < allocateCount; i += 1) {
-        commandBuffer = SDL_malloc(sizeof(VulkanCommandBuffer));
-        commandBuffer->renderer = renderer;
-        commandBuffer->commandPool = vulkanCommandPool;
-        commandBuffer->commandBuffer = commandBuffers[i];
+    commandBuffer = SDL_malloc(sizeof(VulkanCommandBuffer));
+    commandBuffer->renderer = renderer;
+    commandBuffer->commandPool = vulkanCommandPool;
+    commandBuffer->commandBuffer = commandBufferHandle;
 
-        commandBuffer->inFlightFence = VK_NULL_HANDLE;
+    commandBuffer->inFlightFence = VK_NULL_HANDLE;
 
-        // Presentation tracking
+    // Presentation tracking
 
-        commandBuffer->presentDataCapacity = 1;
-        commandBuffer->presentDataCount = 0;
-        commandBuffer->presentDatas = SDL_malloc(
-            commandBuffer->presentDataCapacity * sizeof(VulkanPresentData));
+    commandBuffer->presentDataCapacity = 1;
+    commandBuffer->presentDataCount = 0;
+    commandBuffer->presentDatas = SDL_malloc(
+        commandBuffer->presentDataCapacity * sizeof(VulkanPresentData));
 
-        commandBuffer->waitSemaphoreCapacity = 1;
-        commandBuffer->waitSemaphoreCount = 0;
-        commandBuffer->waitSemaphores = SDL_malloc(
-            commandBuffer->waitSemaphoreCapacity * sizeof(VkSemaphore));
+    commandBuffer->waitSemaphoreCapacity = 1;
+    commandBuffer->waitSemaphoreCount = 0;
+    commandBuffer->waitSemaphores = SDL_malloc(
+        commandBuffer->waitSemaphoreCapacity * sizeof(VkSemaphore));
 
-        commandBuffer->signalSemaphoreCapacity = 1;
-        commandBuffer->signalSemaphoreCount = 0;
-        commandBuffer->signalSemaphores = SDL_malloc(
-            commandBuffer->signalSemaphoreCapacity * sizeof(VkSemaphore));
+    commandBuffer->signalSemaphoreCapacity = 1;
+    commandBuffer->signalSemaphoreCount = 0;
+    commandBuffer->signalSemaphores = SDL_malloc(
+        commandBuffer->signalSemaphoreCapacity * sizeof(VkSemaphore));
 
-        // Descriptor set tracking
+    // Resource bind tracking
 
-        commandBuffer->boundDescriptorSetDataCapacity = 16;
-        commandBuffer->boundDescriptorSetDataCount = 0;
-        commandBuffer->boundDescriptorSetDatas = SDL_malloc(
-            commandBuffer->boundDescriptorSetDataCapacity * sizeof(DescriptorSetData));
+    commandBuffer->needNewVertexResourceDescriptorSet = true;
+    commandBuffer->needNewVertexUniformDescriptorSet = true;
+    commandBuffer->needNewVertexUniformOffsets = true;
+    commandBuffer->needNewFragmentResourceDescriptorSet = true;
+    commandBuffer->needNewFragmentUniformDescriptorSet = true;
+    commandBuffer->needNewFragmentUniformOffsets = true;
 
-        // Resource bind tracking
+    commandBuffer->needNewComputeReadWriteDescriptorSet = true;
+    commandBuffer->needNewComputeReadOnlyDescriptorSet = true;
+    commandBuffer->needNewComputeUniformDescriptorSet = true;
+    commandBuffer->needNewComputeUniformOffsets = true;
 
-        commandBuffer->needNewVertexResourceDescriptorSet = true;
-        commandBuffer->needNewVertexUniformDescriptorSet = true;
-        commandBuffer->needNewVertexUniformOffsets = true;
-        commandBuffer->needNewFragmentResourceDescriptorSet = true;
-        commandBuffer->needNewFragmentUniformDescriptorSet = true;
-        commandBuffer->needNewFragmentUniformOffsets = true;
+    commandBuffer->vertexResourceDescriptorSet = VK_NULL_HANDLE;
+    commandBuffer->vertexUniformDescriptorSet = VK_NULL_HANDLE;
+    commandBuffer->fragmentResourceDescriptorSet = VK_NULL_HANDLE;
+    commandBuffer->fragmentUniformDescriptorSet = VK_NULL_HANDLE;
 
-        commandBuffer->needNewComputeWriteOnlyDescriptorSet = true;
-        commandBuffer->needNewComputeReadOnlyDescriptorSet = true;
-        commandBuffer->needNewComputeUniformDescriptorSet = true;
-        commandBuffer->needNewComputeUniformOffsets = true;
+    commandBuffer->computeReadOnlyDescriptorSet = VK_NULL_HANDLE;
+    commandBuffer->computeReadWriteDescriptorSet = VK_NULL_HANDLE;
+    commandBuffer->computeUniformDescriptorSet = VK_NULL_HANDLE;
 
-        commandBuffer->vertexResourceDescriptorSet = VK_NULL_HANDLE;
-        commandBuffer->vertexUniformDescriptorSet = VK_NULL_HANDLE;
-        commandBuffer->fragmentResourceDescriptorSet = VK_NULL_HANDLE;
-        commandBuffer->fragmentUniformDescriptorSet = VK_NULL_HANDLE;
+    // Resource tracking
 
-        commandBuffer->computeReadOnlyDescriptorSet = VK_NULL_HANDLE;
-        commandBuffer->computeWriteOnlyDescriptorSet = VK_NULL_HANDLE;
-        commandBuffer->computeUniformDescriptorSet = VK_NULL_HANDLE;
+    commandBuffer->usedBufferCapacity = 4;
+    commandBuffer->usedBufferCount = 0;
+    commandBuffer->usedBuffers = SDL_malloc(
+        commandBuffer->usedBufferCapacity * sizeof(VulkanBuffer *));
 
-        // Resource tracking
+    commandBuffer->usedTextureCapacity = 4;
+    commandBuffer->usedTextureCount = 0;
+    commandBuffer->usedTextures = SDL_malloc(
+        commandBuffer->usedTextureCapacity * sizeof(VulkanTexture *));
 
-        commandBuffer->usedBufferCapacity = 4;
-        commandBuffer->usedBufferCount = 0;
-        commandBuffer->usedBuffers = SDL_malloc(
-            commandBuffer->usedBufferCapacity * sizeof(VulkanBuffer *));
+    commandBuffer->usedSamplerCapacity = 4;
+    commandBuffer->usedSamplerCount = 0;
+    commandBuffer->usedSamplers = SDL_malloc(
+        commandBuffer->usedSamplerCapacity * sizeof(VulkanSampler *));
 
-        commandBuffer->usedTextureCapacity = 4;
-        commandBuffer->usedTextureCount = 0;
-        commandBuffer->usedTextures = SDL_malloc(
-            commandBuffer->usedTextureCapacity * sizeof(VulkanTexture *));
+    commandBuffer->usedGraphicsPipelineCapacity = 4;
+    commandBuffer->usedGraphicsPipelineCount = 0;
+    commandBuffer->usedGraphicsPipelines = SDL_malloc(
+        commandBuffer->usedGraphicsPipelineCapacity * sizeof(VulkanGraphicsPipeline *));
 
-        commandBuffer->usedSamplerCapacity = 4;
-        commandBuffer->usedSamplerCount = 0;
-        commandBuffer->usedSamplers = SDL_malloc(
-            commandBuffer->usedSamplerCapacity * sizeof(VulkanSampler *));
+    commandBuffer->usedComputePipelineCapacity = 4;
+    commandBuffer->usedComputePipelineCount = 0;
+    commandBuffer->usedComputePipelines = SDL_malloc(
+        commandBuffer->usedComputePipelineCapacity * sizeof(VulkanComputePipeline *));
 
-        commandBuffer->usedGraphicsPipelineCapacity = 4;
-        commandBuffer->usedGraphicsPipelineCount = 0;
-        commandBuffer->usedGraphicsPipelines = SDL_malloc(
-            commandBuffer->usedGraphicsPipelineCapacity * sizeof(VulkanGraphicsPipeline *));
+    commandBuffer->usedFramebufferCapacity = 4;
+    commandBuffer->usedFramebufferCount = 0;
+    commandBuffer->usedFramebuffers = SDL_malloc(
+        commandBuffer->usedFramebufferCapacity * sizeof(VulkanFramebuffer *));
 
-        commandBuffer->usedComputePipelineCapacity = 4;
-        commandBuffer->usedComputePipelineCount = 0;
-        commandBuffer->usedComputePipelines = SDL_malloc(
-            commandBuffer->usedComputePipelineCapacity * sizeof(VulkanComputePipeline *));
+    commandBuffer->usedUniformBufferCapacity = 4;
+    commandBuffer->usedUniformBufferCount = 0;
+    commandBuffer->usedUniformBuffers = SDL_malloc(
+        commandBuffer->usedUniformBufferCapacity * sizeof(VulkanUniformBuffer *));
 
-        commandBuffer->usedFramebufferCapacity = 4;
-        commandBuffer->usedFramebufferCount = 0;
-        commandBuffer->usedFramebuffers = SDL_malloc(
-            commandBuffer->usedFramebufferCapacity * sizeof(VulkanFramebuffer *));
+    // Pool it!
 
-        commandBuffer->usedUniformBufferCapacity = 4;
-        commandBuffer->usedUniformBufferCount = 0;
-        commandBuffer->usedUniformBuffers = SDL_malloc(
-            commandBuffer->usedUniformBufferCapacity * sizeof(VulkanUniformBuffer *));
+    vulkanCommandPool->inactiveCommandBuffers[vulkanCommandPool->inactiveCommandBufferCount] = commandBuffer;
+    vulkanCommandPool->inactiveCommandBufferCount += 1;
 
-        // Pool it!
-
-        vulkanCommandPool->inactiveCommandBuffers[vulkanCommandPool->inactiveCommandBufferCount] = commandBuffer;
-        vulkanCommandPool->inactiveCommandBufferCount += 1;
-    }
-
-    SDL_stack_free(commandBuffers);
+    return true;
 }
 
 static VulkanCommandPool *VULKAN_INTERNAL_FetchCommandPool(
@@ -9148,8 +9151,8 @@ static VulkanCommandPool *VULKAN_INTERNAL_FetchCommandPool(
         &vulkanCommandPool->commandPool);
 
     if (vulkanResult != VK_SUCCESS) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create command pool!");
-        LogVulkanResultAsError("vkCreateCommandPool", vulkanResult);
+        SDL_free(vulkanCommandPool);
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateCommandPool, NULL)
         return NULL;
     }
 
@@ -9159,10 +9162,12 @@ static VulkanCommandPool *VULKAN_INTERNAL_FetchCommandPool(
     vulkanCommandPool->inactiveCommandBufferCount = 0;
     vulkanCommandPool->inactiveCommandBuffers = NULL;
 
-    VULKAN_INTERNAL_AllocateCommandBuffers(
+    if (!VULKAN_INTERNAL_AllocateCommandBuffer(
         renderer,
-        vulkanCommandPool,
-        2);
+        vulkanCommandPool)) {
+        VULKAN_INTERNAL_DestroyCommandPool(renderer, vulkanCommandPool);
+        return NULL;
+    }
 
     CommandPoolHashTableKey *allocedKey = SDL_malloc(sizeof(CommandPoolHashTableKey));
     allocedKey->threadID = threadID;
@@ -9184,15 +9189,15 @@ static VulkanCommandBuffer *VULKAN_INTERNAL_GetInactiveCommandBufferFromPool(
     VulkanCommandBuffer *commandBuffer;
 
     if (commandPool == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to fetch command pool!");
         return NULL;
     }
 
     if (commandPool->inactiveCommandBufferCount == 0) {
-        VULKAN_INTERNAL_AllocateCommandBuffers(
+        if (!VULKAN_INTERNAL_AllocateCommandBuffer(
             renderer,
-            commandPool,
-            commandPool->inactiveCommandBufferCapacity);
+            commandPool)) {
+            return NULL;
+        }
     }
 
     commandBuffer = commandPool->inactiveCommandBuffers[commandPool->inactiveCommandBufferCount - 1];
@@ -9215,10 +9220,11 @@ static SDL_GPUCommandBuffer *VULKAN_AcquireCommandBuffer(
     VulkanCommandBuffer *commandBuffer =
         VULKAN_INTERNAL_GetInactiveCommandBufferFromPool(renderer, threadID);
 
+    commandBuffer->descriptorSetCache = VULKAN_INTERNAL_AcquireDescriptorSetCache(renderer);
+
     SDL_UnlockMutex(renderer->acquireCommandBufferLock);
 
     if (commandBuffer == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to acquire command buffer!");
         return NULL;
     }
 
@@ -9256,7 +9262,7 @@ static SDL_GPUCommandBuffer *VULKAN_AcquireCommandBuffer(
     commandBuffer->fragmentUniformDescriptorSet = VK_NULL_HANDLE;
 
     commandBuffer->computeReadOnlyDescriptorSet = VK_NULL_HANDLE;
-    commandBuffer->computeWriteOnlyDescriptorSet = VK_NULL_HANDLE;
+    commandBuffer->computeReadWriteDescriptorSet = VK_NULL_HANDLE;
     commandBuffer->computeUniformDescriptorSet = VK_NULL_HANDLE;
 
     SDL_zeroa(commandBuffer->vertexSamplerTextures);
@@ -9269,9 +9275,9 @@ static SDL_GPUCommandBuffer *VULKAN_AcquireCommandBuffer(
     SDL_zeroa(commandBuffer->fragmentStorageTextures);
     SDL_zeroa(commandBuffer->fragmentStorageBuffers);
 
-    SDL_zeroa(commandBuffer->writeOnlyComputeStorageTextureSubresources);
-    commandBuffer->writeOnlyComputeStorageTextureSubresourceCount = 0;
-    SDL_zeroa(commandBuffer->writeOnlyComputeStorageBuffers);
+    SDL_zeroa(commandBuffer->readWriteComputeStorageTextureSubresources);
+    commandBuffer->readWriteComputeStorageTextureSubresourceCount = 0;
+    SDL_zeroa(commandBuffer->readWriteComputeStorageBuffers);
     SDL_zeroa(commandBuffer->computeSamplerTextures);
     SDL_zeroa(commandBuffer->computeSamplers);
     SDL_zeroa(commandBuffer->readOnlyComputeStorageTextures);
@@ -9288,11 +9294,11 @@ static SDL_GPUCommandBuffer *VULKAN_AcquireCommandBuffer(
         commandBuffer->commandBuffer,
         VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 
-    if (result != VK_SUCCESS) {
-        LogVulkanResultAsError("vkResetCommandBuffer", result);
-    }
+    CHECK_VULKAN_ERROR_AND_RETURN(result, vkResetCommandBuffer, NULL)
 
-    VULKAN_INTERNAL_BeginCommandBuffer(renderer, commandBuffer);
+    if (!VULKAN_INTERNAL_BeginCommandBuffer(renderer, commandBuffer)) {
+        return NULL;
+    }
 
     return (SDL_GPUCommandBuffer *)commandBuffer;
 }
@@ -9309,12 +9315,11 @@ static bool VULKAN_QueryFence(
         ((VulkanFenceHandle *)fence)->fence);
 
     if (result == VK_SUCCESS) {
-        return 1;
+        return true;
     } else if (result == VK_NOT_READY) {
-        return 0;
+        return false;
     } else {
-        LogVulkanResultAsError("vkGetFenceStatus", result);
-        return 0;
+        SET_ERROR_AND_RETURN("vkGetFenceStatus: %s", VkErrorMessages(result), false)
     }
 }
 
@@ -9359,7 +9364,7 @@ static bool VULKAN_INTERNAL_OnWindowResize(void *userdata, SDL_Event *e)
 {
     SDL_Window *w = (SDL_Window *)userdata;
     WindowData *data;
-    if (e->type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+    if (e->type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED && e->window.windowID == SDL_GetWindowID(w)) {
         data = VULKAN_INTERNAL_FetchWindowData(w);
         data->needsSwapchainRecreate = true;
     }
@@ -9378,12 +9383,11 @@ static bool VULKAN_SupportsSwapchainComposition(
     SwapchainSupportDetails supportDetails;
     bool result = false;
 
-    if (windowData == NULL || windowData->swapchainData == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Must claim window before querying swapchain composition support!");
-        return false;
+    if (windowData == NULL) {
+        SET_STRING_ERROR_AND_RETURN("Must claim window before querying swapchain composition support!", false)
     }
 
-    surface = windowData->swapchainData->surface;
+    surface = windowData->surface;
 
     if (VULKAN_INTERNAL_QuerySwapchainSupport(
             renderer,
@@ -9424,12 +9428,11 @@ static bool VULKAN_SupportsPresentMode(
     SwapchainSupportDetails supportDetails;
     bool result = false;
 
-    if (windowData == NULL || windowData->swapchainData == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Must claim window before querying present mode support!");
-        return false;
+    if (windowData == NULL) {
+        SET_STRING_ERROR_AND_RETURN("Must claim window before querying present mode support!", false)
     }
 
-    surface = windowData->swapchainData->surface;
+    surface = windowData->surface;
 
     if (VULKAN_INTERNAL_QuerySwapchainSupport(
             renderer,
@@ -9457,14 +9460,16 @@ static bool VULKAN_ClaimWindow(
     WindowData *windowData = VULKAN_INTERNAL_FetchWindowData(window);
 
     if (windowData == NULL) {
-        windowData = SDL_malloc(sizeof(WindowData));
+        windowData = SDL_calloc(1, sizeof(WindowData));
         windowData->window = window;
         windowData->presentMode = SDL_GPU_PRESENTMODE_VSYNC;
         windowData->swapchainComposition = SDL_GPU_SWAPCHAINCOMPOSITION_SDR;
 
-        if (VULKAN_INTERNAL_CreateSwapchain(renderer, windowData)) {
+        Uint32 createSwapchainResult = VULKAN_INTERNAL_CreateSwapchain(renderer, windowData);
+        if (createSwapchainResult == 1) {
             SDL_SetPointerProperty(SDL_GetWindowProperties(window), WINDOW_PROPERTY_DATA, windowData);
 
+            SDL_LockMutex(renderer->windowLock);
             if (renderer->claimedWindowCount >= renderer->claimedWindowCapacity) {
                 renderer->claimedWindowCapacity *= 2;
                 renderer->claimedWindows = SDL_realloc(
@@ -9474,18 +9479,21 @@ static bool VULKAN_ClaimWindow(
 
             renderer->claimedWindows[renderer->claimedWindowCount] = windowData;
             renderer->claimedWindowCount += 1;
+            SDL_UnlockMutex(renderer->windowLock);
 
             SDL_AddEventWatch(VULKAN_INTERNAL_OnWindowResize, window);
 
-            return 1;
+            return true;
+        } else if (createSwapchainResult == VULKAN_INTERNAL_TRY_AGAIN) {
+            windowData->needsSwapchainRecreate = true;
+            return true;
         } else {
-            SDL_LogError(SDL_LOG_CATEGORY_GPU, "Could not create swapchain, failed to claim window!");
             SDL_free(windowData);
-            return 0;
+            return false;
         }
     } else {
         SDL_LogWarn(SDL_LOG_CATEGORY_GPU, "Window already claimed!");
-        return 0;
+        return false;
     }
 }
 
@@ -9501,22 +9509,22 @@ static void VULKAN_ReleaseWindow(
         return;
     }
 
-    if (windowData->swapchainData != NULL) {
-        VULKAN_Wait(driverData);
+    VULKAN_Wait(driverData);
 
-        for (i = 0; i < MAX_FRAMES_IN_FLIGHT; i += 1) {
-            if (windowData->swapchainData->inFlightFences[i] != NULL) {
-                VULKAN_ReleaseFence(
-                    driverData,
-                    windowData->swapchainData->inFlightFences[i]);
-            }
+    for (i = 0; i < MAX_FRAMES_IN_FLIGHT; i += 1) {
+        if (windowData->inFlightFences[i] != NULL) {
+            VULKAN_ReleaseFence(
+                driverData,
+                windowData->inFlightFences[i]);
         }
-
-        VULKAN_INTERNAL_DestroySwapchain(
-            (VulkanRenderer *)driverData,
-            windowData);
     }
 
+    VULKAN_INTERNAL_DestroySwapchain(
+        (VulkanRenderer *)driverData,
+        windowData);
+
+
+    SDL_LockMutex(renderer->windowLock);
     for (i = 0; i < renderer->claimedWindowCount; i += 1) {
         if (renderer->claimedWindows[i]->window == window) {
             renderer->claimedWindows[i] = renderer->claimedWindows[renderer->claimedWindowCount - 1];
@@ -9524,6 +9532,7 @@ static void VULKAN_ReleaseWindow(
             break;
         }
     }
+    SDL_UnlockMutex(renderer->windowLock);
 
     SDL_free(windowData);
 
@@ -9531,21 +9540,22 @@ static void VULKAN_ReleaseWindow(
     SDL_RemoveEventWatch(VULKAN_INTERNAL_OnWindowResize, window);
 }
 
-static bool VULKAN_INTERNAL_RecreateSwapchain(
+static Uint32 VULKAN_INTERNAL_RecreateSwapchain(
     VulkanRenderer *renderer,
     WindowData *windowData)
 {
     Uint32 i;
 
-    if (windowData->swapchainData != NULL) {
-        VULKAN_Wait((SDL_GPURenderer *)renderer);
+    if (!VULKAN_Wait((SDL_GPURenderer *)renderer)) {
+        return false;
+    }
 
-        for (i = 0; i < MAX_FRAMES_IN_FLIGHT; i += 1) {
-            if (windowData->swapchainData->inFlightFences[i] != NULL) {
-                VULKAN_ReleaseFence(
-                    (SDL_GPURenderer *)renderer,
-                    windowData->swapchainData->inFlightFences[i]);
-            }
+    for (i = 0; i < MAX_FRAMES_IN_FLIGHT; i += 1) {
+        if (windowData->inFlightFences[i] != NULL) {
+            VULKAN_ReleaseFence(
+                (SDL_GPURenderer *)renderer,
+                windowData->inFlightFences[i]);
+            windowData->inFlightFences[i] = NULL;
         }
     }
 
@@ -9553,117 +9563,120 @@ static bool VULKAN_INTERNAL_RecreateSwapchain(
     return VULKAN_INTERNAL_CreateSwapchain(renderer, windowData);
 }
 
-static SDL_GPUTexture *VULKAN_AcquireSwapchainTexture(
+static bool VULKAN_AcquireSwapchainTexture(
     SDL_GPUCommandBuffer *commandBuffer,
     SDL_Window *window,
-    Uint32 *w,
-    Uint32 *h)
+    SDL_GPUTexture **swapchainTexture,
+    Uint32 *swapchainTextureWidth,
+    Uint32 *swapchainTextureHeight)
 {
     VulkanCommandBuffer *vulkanCommandBuffer = (VulkanCommandBuffer *)commandBuffer;
     VulkanRenderer *renderer = (VulkanRenderer *)vulkanCommandBuffer->renderer;
     Uint32 swapchainImageIndex;
     WindowData *windowData;
-    VulkanSwapchainData *swapchainData;
     VkResult acquireResult = VK_SUCCESS;
     VulkanTextureContainer *swapchainTextureContainer = NULL;
     VulkanPresentData *presentData;
 
+    *swapchainTexture = NULL;
+    if (swapchainTextureWidth) {
+        *swapchainTextureWidth = 0;
+    }
+    if (swapchainTextureHeight) {
+        *swapchainTextureHeight = 0;
+    }
+
     windowData = VULKAN_INTERNAL_FetchWindowData(window);
     if (windowData == NULL) {
-        return NULL;
+        SET_STRING_ERROR_AND_RETURN("Cannot acquire a swapchain texture from an unclaimed window!", false)
     }
 
-    swapchainData = windowData->swapchainData;
-
-    // Window is claimed but swapchain is invalid!
-    if (swapchainData == NULL) {
-        if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED) {
-            // Window is minimized, don't bother
-            return NULL;
-        }
-
-        // Let's try to recreate
-        VULKAN_INTERNAL_RecreateSwapchain(renderer, windowData);
-        swapchainData = windowData->swapchainData;
-
-        if (swapchainData == NULL) {
-            SDL_LogWarn(SDL_LOG_CATEGORY_GPU, "Failed to recreate swapchain!");
-            return NULL;
+    // If window data marked as needing swapchain recreate, try to recreate
+    if (windowData->needsSwapchainRecreate) {
+        Uint32 recreateSwapchainResult = VULKAN_INTERNAL_RecreateSwapchain(renderer, windowData);
+        if (!recreateSwapchainResult) {
+            return false;
+        } else if (recreateSwapchainResult == VULKAN_INTERNAL_TRY_AGAIN) {
+            // Edge case, texture is filled in with NULL but not an error
+            if (windowData->inFlightFences[windowData->frameCounter] != NULL) {
+                VULKAN_ReleaseFence(
+                    (SDL_GPURenderer *)renderer,
+                    windowData->inFlightFences[windowData->frameCounter]);
+                windowData->inFlightFences[windowData->frameCounter] = NULL;
+            }
+            return true;
         }
     }
 
-    if (swapchainData->inFlightFences[swapchainData->frameCounter] != NULL) {
-        if (swapchainData->presentMode == VK_PRESENT_MODE_FIFO_KHR) {
+    if (swapchainTextureWidth) {
+        *swapchainTextureWidth = windowData->width;
+    }
+    if (swapchainTextureHeight) {
+        *swapchainTextureHeight = windowData->height;
+    }
+
+    if (windowData->inFlightFences[windowData->frameCounter] != NULL) {
+        if (windowData->presentMode == SDL_GPU_PRESENTMODE_VSYNC) {
             // In VSYNC mode, block until the least recent presented frame is done
-            VULKAN_WaitForFences(
+            if (!VULKAN_WaitForFences(
                 (SDL_GPURenderer *)renderer,
                 true,
-                &swapchainData->inFlightFences[swapchainData->frameCounter],
-                1);
+                &windowData->inFlightFences[windowData->frameCounter],
+                1)) {
+                return false;
+            }
         } else {
             if (!VULKAN_QueryFence(
                     (SDL_GPURenderer *)renderer,
-                    swapchainData->inFlightFences[swapchainData->frameCounter])) {
+                    windowData->inFlightFences[windowData->frameCounter])) {
                 /*
                  * In MAILBOX or IMMEDIATE mode, if the least recent fence is not signaled,
-                 * return NULL to indicate that rendering should be skipped
+                 * return true to indicate that there is no error but rendering should be skipped
                  */
-                return NULL;
+                return true;
             }
         }
 
         VULKAN_ReleaseFence(
             (SDL_GPURenderer *)renderer,
-            swapchainData->inFlightFences[swapchainData->frameCounter]);
+            windowData->inFlightFences[windowData->frameCounter]);
 
-        swapchainData->inFlightFences[swapchainData->frameCounter] = NULL;
-    }
-
-    // If window data marked as needing swapchain recreate, try to recreate
-    if (windowData->needsSwapchainRecreate) {
-        VULKAN_INTERNAL_RecreateSwapchain(renderer, windowData);
-        swapchainData = windowData->swapchainData;
-
-        if (swapchainData == NULL) {
-            SDL_LogWarn(SDL_LOG_CATEGORY_GPU, "Failed to recreate swapchain!");
-            return NULL;
-        }
+        windowData->inFlightFences[windowData->frameCounter] = NULL;
     }
 
     // Finally, try to acquire!
     acquireResult = renderer->vkAcquireNextImageKHR(
         renderer->logicalDevice,
-        swapchainData->swapchain,
-        UINT64_MAX,
-        swapchainData->imageAvailableSemaphore[swapchainData->frameCounter],
+        windowData->swapchain,
+        SDL_MAX_UINT64,
+        windowData->imageAvailableSemaphore[windowData->frameCounter],
         VK_NULL_HANDLE,
         &swapchainImageIndex);
 
     // Acquisition is invalid, let's try to recreate
     if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR) {
-        VULKAN_INTERNAL_RecreateSwapchain(renderer, windowData);
-        swapchainData = windowData->swapchainData;
-
-        if (swapchainData == NULL) {
-            SDL_LogWarn(SDL_LOG_CATEGORY_GPU, "Failed to recreate swapchain!");
-            return NULL;
+        Uint32 recreateSwapchainResult = VULKAN_INTERNAL_RecreateSwapchain(renderer, windowData);
+        if (!recreateSwapchainResult) {
+            return false;
+        } else if (recreateSwapchainResult == VULKAN_INTERNAL_TRY_AGAIN) {
+            // Edge case, texture is filled in with NULL but not an error
+            return true;
         }
 
         acquireResult = renderer->vkAcquireNextImageKHR(
             renderer->logicalDevice,
-            swapchainData->swapchain,
-            UINT64_MAX,
-            swapchainData->imageAvailableSemaphore[swapchainData->frameCounter],
+            windowData->swapchain,
+            SDL_MAX_UINT64,
+            windowData->imageAvailableSemaphore[windowData->frameCounter],
             VK_NULL_HANDLE,
             &swapchainImageIndex);
 
         if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR) {
-            SDL_LogWarn(SDL_LOG_CATEGORY_GPU, "Failed to acquire swapchain texture!");
-            return NULL;
+            return false;
         }
     }
 
-    swapchainTextureContainer = &swapchainData->textureContainers[swapchainImageIndex];
+    swapchainTextureContainer = &windowData->textureContainers[swapchainImageIndex];
 
     // We need a special execution dependency with pWaitDstStageMask or image transition can start before acquire finishes
 
@@ -9720,7 +9733,7 @@ static SDL_GPUTexture *VULKAN_AcquireSwapchainTexture(
     }
 
     vulkanCommandBuffer->waitSemaphores[vulkanCommandBuffer->waitSemaphoreCount] =
-        swapchainData->imageAvailableSemaphore[swapchainData->frameCounter];
+        windowData->imageAvailableSemaphore[windowData->frameCounter];
     vulkanCommandBuffer->waitSemaphoreCount += 1;
 
     if (vulkanCommandBuffer->signalSemaphoreCount == vulkanCommandBuffer->signalSemaphoreCapacity) {
@@ -9731,34 +9744,27 @@ static SDL_GPUTexture *VULKAN_AcquireSwapchainTexture(
     }
 
     vulkanCommandBuffer->signalSemaphores[vulkanCommandBuffer->signalSemaphoreCount] =
-        swapchainData->renderFinishedSemaphore[swapchainData->frameCounter];
+        windowData->renderFinishedSemaphore[windowData->frameCounter];
     vulkanCommandBuffer->signalSemaphoreCount += 1;
 
-    *w = swapchainData->textureContainers[swapchainData->frameCounter].header.info.width;
-    *h = swapchainData->textureContainers[swapchainData->frameCounter].header.info.height;
-
-    return (SDL_GPUTexture *)swapchainTextureContainer;
+    *swapchainTexture = (SDL_GPUTexture *)swapchainTextureContainer;
+    return true;
 }
 
 static SDL_GPUTextureFormat VULKAN_GetSwapchainTextureFormat(
     SDL_GPURenderer *driverData,
     SDL_Window *window)
 {
+    VulkanRenderer *renderer = (VulkanRenderer*)driverData;
     WindowData *windowData = VULKAN_INTERNAL_FetchWindowData(window);
 
     if (windowData == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Cannot get swapchain format, window has not been claimed!");
-        return SDL_GPU_TEXTUREFORMAT_INVALID;
-    }
-
-    if (windowData->swapchainData == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Cannot get swapchain format, swapchain is currently invalid!");
-        return SDL_GPU_TEXTUREFORMAT_INVALID;
+        SET_STRING_ERROR_AND_RETURN("Cannot get swapchain format, window has not been claimed!", SDL_GPU_TEXTUREFORMAT_INVALID)
     }
 
     return SwapchainCompositionToSDLFormat(
         windowData->swapchainComposition,
-        windowData->swapchainData->usingFallbackFormat);
+        windowData->usingFallbackFormat);
 }
 
 static bool VULKAN_SetSwapchainParameters(
@@ -9767,29 +9773,34 @@ static bool VULKAN_SetSwapchainParameters(
     SDL_GPUSwapchainComposition swapchainComposition,
     SDL_GPUPresentMode presentMode)
 {
+    VulkanRenderer *renderer = (VulkanRenderer *)driverData;
     WindowData *windowData = VULKAN_INTERNAL_FetchWindowData(window);
 
     if (windowData == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Cannot set swapchain parameters on unclaimed window!");
-        return false;
+        SET_STRING_ERROR_AND_RETURN("Cannot set swapchain parameters on unclaimed window!", false)
     }
 
     if (!VULKAN_SupportsSwapchainComposition(driverData, window, swapchainComposition)) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Swapchain composition not supported!");
-        return false;
+        SET_STRING_ERROR_AND_RETURN("Swapchain composition not supported!", false)
     }
 
     if (!VULKAN_SupportsPresentMode(driverData, window, presentMode)) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Present mode not supported!");
-        return false;
+        SET_STRING_ERROR_AND_RETURN("Present mode not supported!", false)
     }
 
     windowData->presentMode = presentMode;
     windowData->swapchainComposition = swapchainComposition;
 
-    return VULKAN_INTERNAL_RecreateSwapchain(
-        (VulkanRenderer *)driverData,
-        windowData);
+    Uint32 recreateSwapchainResult = VULKAN_INTERNAL_RecreateSwapchain(renderer, windowData);
+    if (!recreateSwapchainResult) {
+        return false;
+    } else if (recreateSwapchainResult == VULKAN_INTERNAL_TRY_AGAIN) {
+        // Edge case, swapchain extent is (0, 0) but this is not an error
+        windowData->needsSwapchainRecreate = true;
+        return true;
+    }
+
+    return true;
 }
 
 // Submission structure
@@ -9814,10 +9825,7 @@ static VulkanFenceHandle *VULKAN_INTERNAL_AcquireFenceFromPool(
             NULL,
             &fence);
 
-        if (vulkanResult != VK_SUCCESS) {
-            LogVulkanResultAsError("vkCreateFence", vulkanResult);
-            return NULL;
-        }
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateFence, NULL)
 
         handle = SDL_malloc(sizeof(VulkanFenceHandle));
         handle->fence = fence;
@@ -9835,11 +9843,9 @@ static VulkanFenceHandle *VULKAN_INTERNAL_AcquireFenceFromPool(
         1,
         &handle->fence);
 
-    if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError("vkResetFences", vulkanResult);
-    }
-
     SDL_UnlockMutex(renderer->fencePool.lock);
+
+    CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkResetFences, NULL)
 
     return handle;
 }
@@ -9933,9 +9939,6 @@ static void VULKAN_INTERNAL_CleanCommandBuffer(
     VulkanRenderer *renderer,
     VulkanCommandBuffer *commandBuffer)
 {
-    Uint32 i;
-    DescriptorSetData *descriptorSetData;
-
     if (commandBuffer->autoReleaseFence) {
         VULKAN_ReleaseFence(
             (SDL_GPURenderer *)renderer,
@@ -9944,33 +9947,11 @@ static void VULKAN_INTERNAL_CleanCommandBuffer(
         commandBuffer->inFlightFence = NULL;
     }
 
-    // Bound descriptor sets are now available
-
-    for (i = 0; i < commandBuffer->boundDescriptorSetDataCount; i += 1) {
-        descriptorSetData = &commandBuffer->boundDescriptorSetDatas[i];
-
-        SDL_TryLockSpinlock(&descriptorSetData->descriptorSetPool->lock);
-
-        if (descriptorSetData->descriptorSetPool->inactiveDescriptorSetCount == descriptorSetData->descriptorSetPool->inactiveDescriptorSetCapacity) {
-            descriptorSetData->descriptorSetPool->inactiveDescriptorSetCapacity *= 2;
-            descriptorSetData->descriptorSetPool->inactiveDescriptorSets = SDL_realloc(
-                descriptorSetData->descriptorSetPool->inactiveDescriptorSets,
-                descriptorSetData->descriptorSetPool->inactiveDescriptorSetCapacity * sizeof(VkDescriptorSet));
-        }
-
-        descriptorSetData->descriptorSetPool->inactiveDescriptorSets[descriptorSetData->descriptorSetPool->inactiveDescriptorSetCount] = descriptorSetData->descriptorSet;
-        descriptorSetData->descriptorSetPool->inactiveDescriptorSetCount += 1;
-
-        SDL_UnlockSpinlock(&descriptorSetData->descriptorSetPool->lock);
-    }
-
-    commandBuffer->boundDescriptorSetDataCount = 0;
-
     // Uniform buffers are now available
 
     SDL_LockMutex(renderer->acquireUniformBufferLock);
 
-    for (i = 0; i < commandBuffer->usedUniformBufferCount; i += 1) {
+    for (Sint32 i = 0; i < commandBuffer->usedUniformBufferCount; i += 1) {
         VULKAN_INTERNAL_ReturnUniformBufferToPool(
             renderer,
             commandBuffer->usedUniformBuffers[i]);
@@ -9981,32 +9962,32 @@ static void VULKAN_INTERNAL_CleanCommandBuffer(
 
     // Decrement reference counts
 
-    for (i = 0; i < commandBuffer->usedBufferCount; i += 1) {
+    for (Sint32 i = 0; i < commandBuffer->usedBufferCount; i += 1) {
         (void)SDL_AtomicDecRef(&commandBuffer->usedBuffers[i]->referenceCount);
     }
     commandBuffer->usedBufferCount = 0;
 
-    for (i = 0; i < commandBuffer->usedTextureCount; i += 1) {
+    for (Sint32 i = 0; i < commandBuffer->usedTextureCount; i += 1) {
         (void)SDL_AtomicDecRef(&commandBuffer->usedTextures[i]->referenceCount);
     }
     commandBuffer->usedTextureCount = 0;
 
-    for (i = 0; i < commandBuffer->usedSamplerCount; i += 1) {
+    for (Sint32 i = 0; i < commandBuffer->usedSamplerCount; i += 1) {
         (void)SDL_AtomicDecRef(&commandBuffer->usedSamplers[i]->referenceCount);
     }
     commandBuffer->usedSamplerCount = 0;
 
-    for (i = 0; i < commandBuffer->usedGraphicsPipelineCount; i += 1) {
+    for (Sint32 i = 0; i < commandBuffer->usedGraphicsPipelineCount; i += 1) {
         (void)SDL_AtomicDecRef(&commandBuffer->usedGraphicsPipelines[i]->referenceCount);
     }
     commandBuffer->usedGraphicsPipelineCount = 0;
 
-    for (i = 0; i < commandBuffer->usedComputePipelineCount; i += 1) {
+    for (Sint32 i = 0; i < commandBuffer->usedComputePipelineCount; i += 1) {
         (void)SDL_AtomicDecRef(&commandBuffer->usedComputePipelines[i]->referenceCount);
     }
     commandBuffer->usedComputePipelineCount = 0;
 
-    for (i = 0; i < commandBuffer->usedFramebufferCount; i += 1) {
+    for (Sint32 i = 0; i < commandBuffer->usedFramebufferCount; i += 1) {
         (void)SDL_AtomicDecRef(&commandBuffer->usedFramebuffers[i]->referenceCount);
     }
     commandBuffer->usedFramebufferCount = 0;
@@ -10037,10 +10018,18 @@ static void VULKAN_INTERNAL_CleanCommandBuffer(
     commandBuffer->commandPool->inactiveCommandBuffers[commandBuffer->commandPool->inactiveCommandBufferCount] = commandBuffer;
     commandBuffer->commandPool->inactiveCommandBufferCount += 1;
 
+    // Release descriptor set cache
+
+    VULKAN_INTERNAL_ReturnDescriptorSetCacheToPool(
+        renderer,
+        commandBuffer->descriptorSetCache);
+
+    commandBuffer->descriptorSetCache = NULL;
+
     SDL_UnlockMutex(renderer->acquireCommandBufferLock);
 
     // Remove this command buffer from the submitted list
-    for (i = 0; i < renderer->submittedCommandBufferCount; i += 1) {
+    for (Uint32 i = 0; i < renderer->submittedCommandBufferCount; i += 1) {
         if (renderer->submittedCommandBuffers[i] == commandBuffer) {
             renderer->submittedCommandBuffers[i] = renderer->submittedCommandBuffers[renderer->submittedCommandBufferCount - 1];
             renderer->submittedCommandBufferCount -= 1;
@@ -10048,7 +10037,7 @@ static void VULKAN_INTERNAL_CleanCommandBuffer(
     }
 }
 
-static void VULKAN_WaitForFences(
+static bool VULKAN_WaitForFences(
     SDL_GPURenderer *driverData,
     bool waitAll,
     SDL_GPUFence *const *fences,
@@ -10067,11 +10056,9 @@ static void VULKAN_WaitForFences(
         numFences,
         vkFences,
         waitAll,
-        UINT64_MAX);
+        SDL_MAX_UINT64);
 
-    if (result != VK_SUCCESS) {
-        LogVulkanResultAsError("vkWaitForFences", result);
-    }
+    CHECK_VULKAN_ERROR_AND_RETURN(result, vkWaitForFences, false)
 
     SDL_stack_free(vkFences);
 
@@ -10092,9 +10079,11 @@ static void VULKAN_WaitForFences(
     VULKAN_INTERNAL_PerformPendingDestroys(renderer);
 
     SDL_UnlockMutex(renderer->submitLock);
+
+    return true;
 }
 
-static void VULKAN_Wait(
+static bool VULKAN_Wait(
     SDL_GPURenderer *driverData)
 {
     VulkanRenderer *renderer = (VulkanRenderer *)driverData;
@@ -10104,10 +10093,7 @@ static void VULKAN_Wait(
 
     result = renderer->vkDeviceWaitIdle(renderer->logicalDevice);
 
-    if (result != VK_SUCCESS) {
-        LogVulkanResultAsError("vkDeviceWaitIdle", result);
-        return;
-    }
+    CHECK_VULKAN_ERROR_AND_RETURN(result, vkDeviceWaitIdle, false)
 
     SDL_LockMutex(renderer->submitLock);
 
@@ -10119,6 +10105,8 @@ static void VULKAN_Wait(
     VULKAN_INTERNAL_PerformPendingDestroys(renderer);
 
     SDL_UnlockMutex(renderer->submitLock);
+
+    return true;
 }
 
 static SDL_GPUFence *VULKAN_SubmitAndAcquireFence(
@@ -10129,12 +10117,14 @@ static SDL_GPUFence *VULKAN_SubmitAndAcquireFence(
     vulkanCommandBuffer = (VulkanCommandBuffer *)commandBuffer;
     vulkanCommandBuffer->autoReleaseFence = 0;
 
-    VULKAN_Submit(commandBuffer);
+    if (!VULKAN_Submit(commandBuffer)) {
+        return NULL;
+    }
 
     return (SDL_GPUFence *)vulkanCommandBuffer->inFlightFence;
 }
 
-static void VULKAN_Submit(
+static bool VULKAN_Submit(
     SDL_GPUCommandBuffer *commandBuffer)
 {
     VulkanCommandBuffer *vulkanCommandBuffer = (VulkanCommandBuffer *)commandBuffer;
@@ -10160,7 +10150,7 @@ static void VULKAN_Submit(
     for (Uint32 j = 0; j < vulkanCommandBuffer->presentDataCount; j += 1) {
         swapchainImageIndex = vulkanCommandBuffer->presentDatas[j].swapchainImageIndex;
         swapchainTextureSubresource = VULKAN_INTERNAL_FetchTextureSubresource(
-            &vulkanCommandBuffer->presentDatas[j].windowData->swapchainData->textureContainers[swapchainImageIndex],
+            &vulkanCommandBuffer->presentDatas[j].windowData->textureContainers[swapchainImageIndex],
             0,
             0);
 
@@ -10171,9 +10161,16 @@ static void VULKAN_Submit(
             swapchainTextureSubresource);
     }
 
-    VULKAN_INTERNAL_EndCommandBuffer(renderer, vulkanCommandBuffer);
+    if (!VULKAN_INTERNAL_EndCommandBuffer(renderer, vulkanCommandBuffer)) {
+        SDL_UnlockMutex(renderer->submitLock);
+        return false;
+    }
 
     vulkanCommandBuffer->inFlightFence = VULKAN_INTERNAL_AcquireFenceFromPool(renderer);
+    if (vulkanCommandBuffer->inFlightFence == NULL) {
+        SDL_UnlockMutex(renderer->submitLock);
+        return false;
+    }
 
     // Command buffer has a reference to the in-flight fence
     (void)SDL_AtomicIncRef(&vulkanCommandBuffer->inFlightFence->referenceCount);
@@ -10196,7 +10193,8 @@ static void VULKAN_Submit(
         vulkanCommandBuffer->inFlightFence->fence);
 
     if (vulkanResult != VK_SUCCESS) {
-        LogVulkanResultAsError("vkQueueSubmit", vulkanResult);
+        SDL_UnlockMutex(renderer->submitLock);
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkQueueSubmit, false)
     }
 
     // Mark command buffers as submitted
@@ -10213,6 +10211,7 @@ static void VULKAN_Submit(
     renderer->submittedCommandBufferCount += 1;
 
     // Present, if applicable
+    bool result = true;
 
     for (Uint32 j = 0; j < vulkanCommandBuffer->presentDataCount; j += 1) {
         presenting = true;
@@ -10222,9 +10221,9 @@ static void VULKAN_Submit(
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pNext = NULL;
         presentInfo.pWaitSemaphores =
-            &presentData->windowData->swapchainData->renderFinishedSemaphore[presentData->windowData->swapchainData->frameCounter];
+            &presentData->windowData->renderFinishedSemaphore[presentData->windowData->frameCounter];
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pSwapchains = &presentData->windowData->swapchainData->swapchain;
+        presentInfo.pSwapchains = &presentData->windowData->swapchain;
         presentInfo.swapchainCount = 1;
         presentInfo.pImageIndices = &presentData->swapchainImageIndex;
         presentInfo.pResults = NULL;
@@ -10233,18 +10232,19 @@ static void VULKAN_Submit(
             renderer->unifiedQueue,
             &presentInfo);
 
-        presentData->windowData->swapchainData->frameCounter =
-            (presentData->windowData->swapchainData->frameCounter + 1) % MAX_FRAMES_IN_FLIGHT;
+        presentData->windowData->frameCounter =
+            (presentData->windowData->frameCounter + 1) % MAX_FRAMES_IN_FLIGHT;
 
-        if (presentResult != VK_SUCCESS) {
-            VULKAN_INTERNAL_RecreateSwapchain(
-                renderer,
-                presentData->windowData);
-        } else {
+        if (presentResult == VK_SUCCESS || presentResult == VK_ERROR_OUT_OF_DATE_KHR) {
             // If presenting, the swapchain is using the in-flight fence
-            presentData->windowData->swapchainData->inFlightFences[presentData->windowData->swapchainData->frameCounter] = (SDL_GPUFence*)vulkanCommandBuffer->inFlightFence;
-
+            presentData->windowData->inFlightFences[presentData->windowData->frameCounter] = (SDL_GPUFence*)vulkanCommandBuffer->inFlightFence;
             (void)SDL_AtomicIncRef(&vulkanCommandBuffer->inFlightFence->referenceCount);
+
+            if (presentResult == VK_ERROR_OUT_OF_DATE_KHR) {
+                presentData->windowData->needsSwapchainRecreate = true;
+            }
+        } else {
+            CHECK_VULKAN_ERROR_AND_RETURN(presentResult, vkQueuePresentKHR, false)
         }
     }
 
@@ -10291,13 +10291,15 @@ static void VULKAN_Submit(
         presenting &&
         renderer->allocationsToDefragCount > 0 &&
         !renderer->defragInProgress) {
-        VULKAN_INTERNAL_DefragmentMemory(renderer);
+        result = VULKAN_INTERNAL_DefragmentMemory(renderer);
     }
 
     SDL_UnlockMutex(renderer->submitLock);
+
+    return result;
 }
 
-static Uint8 VULKAN_INTERNAL_DefragmentMemory(
+static bool VULKAN_INTERNAL_DefragmentMemory(
     VulkanRenderer *renderer)
 {
     VulkanMemoryAllocation *allocation;
@@ -10311,16 +10313,15 @@ static Uint8 VULKAN_INTERNAL_DefragmentMemory(
     VulkanTextureSubresource *dstSubresource;
     Uint32 i, subresourceIndex;
 
-    SDL_LockMutex(renderer->allocatorLock);
-
     renderer->defragInProgress = 1;
 
     commandBuffer = (VulkanCommandBuffer *)VULKAN_AcquireCommandBuffer((SDL_GPURenderer *)renderer);
     if (commandBuffer == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create defrag command buffer!");
-        return 0;
+        return false;
     }
     commandBuffer->isDefrag = 1;
+
+    SDL_LockMutex(renderer->allocatorLock);
 
     allocation = renderer->allocationsToDefrag[renderer->allocationsToDefragCount - 1];
     renderer->allocationsToDefragCount -= 1;
@@ -10342,8 +10343,8 @@ static Uint8 VULKAN_INTERNAL_DefragmentMemory(
                 currentRegion->vulkanBuffer->type);
 
             if (newBuffer == NULL) {
-                SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create defrag buffer!");
-                return 0;
+                SDL_UnlockMutex(renderer->allocatorLock);
+                return false;
             }
 
             if (
@@ -10412,8 +10413,8 @@ static Uint8 VULKAN_INTERNAL_DefragmentMemory(
                 &currentRegion->vulkanTexture->container->header.info);
 
             if (newTexture == NULL) {
-                SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create defrag texture!");
-                return 0;
+                SDL_UnlockMutex(renderer->allocatorLock);
+                return false;
             }
 
             SDL_GPUTextureCreateInfo info = currentRegion->vulkanTexture->container->header.info;
@@ -10499,10 +10500,8 @@ static Uint8 VULKAN_INTERNAL_DefragmentMemory(
 
     SDL_UnlockMutex(renderer->allocatorLock);
 
-    VULKAN_Submit(
+    return VULKAN_Submit(
         (SDL_GPUCommandBuffer *)commandBuffer);
-
-    return 1;
 }
 
 // Format Info
@@ -10531,7 +10530,8 @@ static bool VULKAN_SupportsTextureFormat(
     }
     if (usage & (SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ |
                  SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ |
-                 SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE)) {
+                 SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE |
+                 SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE)) {
         vulkanUsage |= VK_IMAGE_USAGE_STORAGE_BIT;
     }
 
@@ -10785,12 +10785,8 @@ static Uint8 VULKAN_INTERNAL_CreateInstance(VulkanRenderer *renderer)
             instanceExtensionCount,
             &renderer->supportsDebugUtils,
             &renderer->supportsColorspace)) {
-        SDL_LogError(
-            SDL_LOG_CATEGORY_GPU,
-            "Required Vulkan instance extensions not supported");
-
         SDL_stack_free((char *)instanceExtensionNames);
-        return 0;
+        SET_STRING_ERROR_AND_RETURN("Required Vulkan instance extensions not supported", false)
     }
 
     if (renderer->supportsDebugUtils) {
@@ -10832,17 +10828,12 @@ static Uint8 VULKAN_INTERNAL_CreateInstance(VulkanRenderer *renderer)
     }
 
     vulkanResult = vkCreateInstance(&createInfo, NULL, &renderer->instance);
-    if (vulkanResult != VK_SUCCESS) {
-        SDL_LogError(
-            SDL_LOG_CATEGORY_GPU,
-            "vkCreateInstance failed: %s",
-            VkErrorMessages(vulkanResult));
+    SDL_stack_free((char *)instanceExtensionNames);
 
-        SDL_stack_free((char *)instanceExtensionNames);
-        return 0;
+    if (vulkanResult != VK_SUCCESS) {
+        CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateInstance, 0)
     }
 
-    SDL_stack_free((char *)instanceExtensionNames);
     return 1;
 }
 
@@ -10857,6 +10848,7 @@ static Uint8 VULKAN_INTERNAL_IsDeviceSuitable(
     VkQueueFamilyProperties *queueProps;
     bool supportsPresent;
     VkPhysicalDeviceProperties deviceProperties;
+    VkPhysicalDeviceFeatures deviceFeatures;
     Uint32 i;
 
     const Uint8 *devicePriority = renderer->preferLowPower ? DEVICE_PRIORITY_LOWPOWER : DEVICE_PRIORITY_HIGHPERFORMANCE;
@@ -10883,6 +10875,16 @@ static Uint8 VULKAN_INTERNAL_IsDeviceSuitable(
         return 0;
     }
 
+    renderer->vkGetPhysicalDeviceFeatures(
+        physicalDevice,
+        &deviceFeatures);
+    if (!deviceFeatures.independentBlend ||
+        !deviceFeatures.imageCubeArray ||
+        !deviceFeatures.depthClamp ||
+        !deviceFeatures.shaderClipDistance) {
+        return 0;
+    }
+
     if (!VULKAN_INTERNAL_CheckDeviceExtensions(
             renderer,
             physicalDevice,
@@ -10904,7 +10906,7 @@ static Uint8 VULKAN_INTERNAL_IsDeviceSuitable(
         queueProps);
 
     queueFamilyBest = 0;
-    *queueFamilyIndex = UINT32_MAX;
+    *queueFamilyIndex = SDL_MAX_UINT32;
     for (i = 0; i < queueFamilyCount; i += 1) {
         supportsPresent = SDL_Vulkan_GetPresentationSupport(
             renderer->instance,
@@ -10959,7 +10961,7 @@ static Uint8 VULKAN_INTERNAL_IsDeviceSuitable(
 
     SDL_stack_free(queueProps);
 
-    if (*queueFamilyIndex == UINT32_MAX) {
+    if (*queueFamilyIndex == SDL_MAX_UINT32) {
         // Somehow no graphics queues existed. Compute-only device?
         return 0;
     }
@@ -10982,10 +10984,10 @@ static Uint8 VULKAN_INTERNAL_DeterminePhysicalDevice(VulkanRenderer *renderer)
         renderer->instance,
         &physicalDeviceCount,
         NULL);
-    VULKAN_ERROR_CHECK(vulkanResult, vkEnumeratePhysicalDevices, 0)
+    CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkEnumeratePhysicalDevices, 0)
 
     if (physicalDeviceCount == 0) {
-        SDL_LogWarn(SDL_LOG_CATEGORY_GPU, "Failed to find any GPUs with Vulkan support");
+        SDL_LogInfo(SDL_LOG_CATEGORY_GPU, "Failed to find any GPUs with Vulkan support");
         return 0;
     }
 
@@ -11123,6 +11125,8 @@ static Uint8 VULKAN_INTERNAL_CreateLogicalDevice(
     desiredDeviceFeatures.independentBlend = VK_TRUE;
     desiredDeviceFeatures.samplerAnisotropy = VK_TRUE;
     desiredDeviceFeatures.imageCubeArray = VK_TRUE;
+    desiredDeviceFeatures.depthClamp = VK_TRUE;
+    desiredDeviceFeatures.shaderClipDistance = VK_TRUE;
 
     if (haveDeviceFeatures.fillModeNonSolid) {
         desiredDeviceFeatures.fillModeNonSolid = VK_TRUE;
@@ -11179,7 +11183,7 @@ static Uint8 VULKAN_INTERNAL_CreateLogicalDevice(
         NULL,
         &renderer->logicalDevice);
     SDL_stack_free((void *)deviceExtensions);
-    VULKAN_ERROR_CHECK(vulkanResult, vkCreateDevice, 0)
+    CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateDevice, 0)
 
     // Load vkDevice entry points
 
@@ -11301,10 +11305,9 @@ static SDL_GPUDevice *VULKAN_CreateDevice(bool debugMode, bool preferLowPower, S
     renderer->preferLowPower = preferLowPower;
 
     if (!VULKAN_INTERNAL_PrepareVulkan(renderer)) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to initialize Vulkan!");
         SDL_free(renderer);
         SDL_Vulkan_UnloadLibrary();
-        return NULL;
+        SET_STRING_ERROR_AND_RETURN("Failed to initialize Vulkan!", NULL)
     }
 
     SDL_LogInfo(SDL_LOG_CATEGORY_GPU, "SDL_GPU Driver: Vulkan");
@@ -11330,10 +11333,9 @@ static SDL_GPUDevice *VULKAN_CreateDevice(bool debugMode, bool preferLowPower, S
 
     if (!VULKAN_INTERNAL_CreateLogicalDevice(
             renderer)) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create logical device");
         SDL_free(renderer);
         SDL_Vulkan_UnloadLibrary();
-        return NULL;
+        SET_STRING_ERROR_AND_RETURN("Failed to create logical device!", NULL)
     }
 
     // FIXME: just move this into this function
@@ -11360,6 +11362,7 @@ static SDL_GPUDevice *VULKAN_CreateDevice(bool debugMode, bool preferLowPower, S
     renderer->acquireUniformBufferLock = SDL_CreateMutex();
     renderer->renderPassFetchLock = SDL_CreateMutex();
     renderer->framebufferFetchLock = SDL_CreateMutex();
+    renderer->windowLock = SDL_CreateMutex();
 
     /*
      * Create submitted command buffer list
@@ -11397,6 +11400,12 @@ static SDL_GPUDevice *VULKAN_CreateDevice(bool debugMode, bool preferLowPower, S
             UNIFORM_BUFFER_SIZE);
     }
 
+    renderer->descriptorSetCachePoolCapacity = 8;
+    renderer->descriptorSetCachePoolCount = 0;
+    renderer->descriptorSetCachePool = SDL_calloc(renderer->descriptorSetCachePoolCapacity, sizeof(DescriptorSetCache *));
+
+    SDL_SetAtomicInt(&renderer->layoutResourceID, 0);
+
     // Device limits
 
     renderer->minUBOAlignment = (Uint32)renderer->physicalDeviceProperties.properties.limits.minUniformBufferOffsetAlignment;
@@ -11425,6 +11434,30 @@ static SDL_GPUDevice *VULKAN_CreateDevice(bool debugMode, bool preferLowPower, S
         VULKAN_INTERNAL_FramebufferHashFunction,
         VULKAN_INTERNAL_FramebufferHashKeyMatch,
         VULKAN_INTERNAL_FramebufferHashNuke,
+        false);
+
+    renderer->graphicsPipelineResourceLayoutHashTable = SDL_CreateHashTable(
+        (void *)renderer,
+        64,
+        VULKAN_INTERNAL_GraphicsPipelineResourceLayoutHashFunction,
+        VULKAN_INTERNAL_GraphicsPipelineResourceLayoutHashKeyMatch,
+        VULKAN_INTERNAL_GraphicsPipelineResourceLayoutHashNuke,
+        false);
+
+    renderer->computePipelineResourceLayoutHashTable = SDL_CreateHashTable(
+        (void *)renderer,
+        64,
+        VULKAN_INTERNAL_ComputePipelineResourceLayoutHashFunction,
+        VULKAN_INTERNAL_ComputePipelineResourceLayoutHashKeyMatch,
+        VULKAN_INTERNAL_ComputePipelineResourceLayoutHashNuke,
+        false);
+
+    renderer->descriptorSetLayoutHashTable = SDL_CreateHashTable(
+        (void *)renderer,
+        64,
+        VULKAN_INTERNAL_DescriptorSetLayoutHashFunction,
+        VULKAN_INTERNAL_DescriptorSetLayoutHashKeyMatch,
+        VULKAN_INTERNAL_DescriptorSetLayoutHashNuke,
         false);
 
     // Initialize fence pool

@@ -1525,7 +1525,8 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(nativeSetenv)(
     const char *utfvalue = (*env)->GetStringUTFChars(env, value, NULL);
 
     // This is only called at startup, to initialize the environment
-    SDL_setenv_unsafe(utfname, utfvalue, 1);
+    // Note that we call setenv() directly to avoid affecting SDL environments
+    setenv(utfname, utfvalue, 1); // This should NOT be SDL_setenv()
 
     (*env)->ReleaseStringUTFChars(env, name, utfname);
     (*env)->ReleaseStringUTFChars(env, value, utfvalue);
@@ -2563,7 +2564,7 @@ bool Android_JNI_ShowToast(const char *message, int duration, int gravity, int x
     bool result;
     JNIEnv *env = Android_JNI_GetEnv();
     jstring jmessage = (*env)->NewStringUTF(env, message);
-    result = (*env)->CallStaticIntMethod(env, mActivityClass, midShowToast, jmessage, duration, gravity, xOffset, yOffset);
+    result = (*env)->CallStaticBooleanMethod(env, mActivityClass, midShowToast, jmessage, duration, gravity, xOffset, yOffset);
     (*env)->DeleteLocalRef(env, jmessage);
     return result;
 }
@@ -2631,7 +2632,7 @@ bool Android_JNI_OpenURL(const char *url)
     bool result;
     JNIEnv *env = Android_JNI_GetEnv();
     jstring jurl = (*env)->NewStringUTF(env, url);
-    result = (*env)->CallStaticIntMethod(env, mActivityClass, midOpenURL, jurl);
+    result = (*env)->CallStaticBooleanMethod(env, mActivityClass, midOpenURL, jurl);
     (*env)->DeleteLocalRef(env, jurl);
     return result;
 }

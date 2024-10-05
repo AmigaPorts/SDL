@@ -25,6 +25,8 @@
 
 #include <SDL3/SDL_vulkan.h>
 
+#include "SDL_surface_c.h"
+
 // The SDL video driver
 
 typedef struct SDL_VideoDisplay SDL_VideoDisplay;
@@ -435,12 +437,13 @@ struct SDL_VideoDevice
         int egl_platform;
         int driver_loaded;
         char driver_path[256];
-        void *dll_handle;
+        SDL_SharedObject *dll_handle;
     } gl_config;
 
     SDL_EGLAttribArrayCallback egl_platformattrib_callback;
     SDL_EGLIntArrayCallback egl_surfaceattrib_callback;
     SDL_EGLIntArrayCallback egl_contextattrib_callback;
+    void *egl_attrib_callback_userdata;
 
     /* * * */
     // Cache current GL context; don't call the OS when it hasn't changed.
@@ -465,7 +468,7 @@ struct SDL_VideoDevice
         SDL_FunctionPointer vkEnumerateInstanceExtensionProperties;
         int loader_loaded;
         char loader_path[256];
-        void *loader_handle;
+        SDL_SharedObject *loader_handle;
     } vulkan_config;
 
     /* * * */

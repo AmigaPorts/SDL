@@ -746,8 +746,8 @@ typedef struct SDL_PenMotionEvent
     SDL_WindowID windowID; /**< The window with mouse focus, if any */
     SDL_PenID which;        /**< The pen instance id */
     SDL_PenInputFlags pen_state;   /**< Complete pen input state at time of event */
-    float x;                /**< X position of pen on tablet */
-    float y;                /**< Y position of pen on tablet */
+    float x;                /**< X coordinate, relative to window */
+    float y;                /**< Y coordinate, relative to window */
 } SDL_PenMotionEvent;
 
 /**
@@ -766,8 +766,8 @@ typedef struct SDL_PenTouchEvent
     SDL_WindowID windowID;  /**< The window with pen focus, if any */
     SDL_PenID which;        /**< The pen instance id */
     SDL_PenInputFlags pen_state;   /**< Complete pen input state at time of event */
-    float x;                /**< X position of pen on tablet */
-    float y;                /**< Y position of pen on tablet */
+    float x;                /**< X coordinate, relative to window */
+    float y;                /**< Y coordinate, relative to window */
     bool eraser;        /**< true if eraser end is used (not all pens support this). */
     bool down;          /**< true if the pen is touching or false if the pen is lifted off */
 } SDL_PenTouchEvent;
@@ -788,8 +788,8 @@ typedef struct SDL_PenButtonEvent
     SDL_WindowID windowID; /**< The window with mouse focus, if any */
     SDL_PenID which;        /**< The pen instance id */
     SDL_PenInputFlags pen_state;   /**< Complete pen input state at time of event */
-    float x;                /**< X position of pen on tablet */
-    float y;                /**< Y position of pen on tablet */
+    float x;                /**< X coordinate, relative to window */
+    float y;                /**< Y coordinate, relative to window */
     Uint8 button;       /**< The pen button index (first button is 1). */
     bool down;      /**< true if the button is pressed */
 } SDL_PenButtonEvent;
@@ -810,8 +810,8 @@ typedef struct SDL_PenAxisEvent
     SDL_WindowID windowID;  /**< The window with pen focus, if any */
     SDL_PenID which;        /**< The pen instance id */
     SDL_PenInputFlags pen_state;   /**< Complete pen input state at time of event */
-    float x;                /**< X position of pen on tablet */
-    float y;                /**< Y position of pen on tablet */
+    float x;                /**< X coordinate, relative to window */
+    float y;                /**< Y coordinate, relative to window */
     SDL_PenAxis axis;       /**< Axis that has changed */
     float value;            /**< New value of axis */
 } SDL_PenAxisEvent;
@@ -1011,7 +1011,9 @@ typedef enum SDL_EventAction
  *   event queue.
  * - `SDL_PEEKEVENT`: `numevents` events at the front of the event queue,
  *   within the specified minimum and maximum type, will be returned to the
- *   caller and will _not_ be removed from the queue.
+ *   caller and will _not_ be removed from the queue. If you pass NULL for
+ *   `events`, then `numevents` is ignored and the total number of matching
+ *   events will be returned.
  * - `SDL_GETEVENT`: up to `numevents` events at the front of the event queue,
  *   within the specified minimum and maximum type, will be returned to the
  *   caller and will be removed from the queue.

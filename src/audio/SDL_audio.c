@@ -784,7 +784,7 @@ static void SDL_AudioFreeDeviceHandle_Default(SDL_AudioDevice *device) { /* no-o
 
 static void SDL_AudioThreadInit_Default(SDL_AudioDevice *device)
 {
-    SDL_SetThreadPriority(device->recording ? SDL_THREAD_PRIORITY_HIGH : SDL_THREAD_PRIORITY_TIME_CRITICAL);
+    SDL_SetCurrentThreadPriority(device->recording ? SDL_THREAD_PRIORITY_HIGH : SDL_THREAD_PRIORITY_TIME_CRITICAL);
 }
 
 static void SDL_AudioDetectDevices_Default(SDL_AudioDevice **default_playback, SDL_AudioDevice **default_recording)
@@ -1591,7 +1591,7 @@ static void PrepareAudioFormat(bool recording, SDL_AudioSpec *spec)
     }
 
     if (spec->channels == 0) {
-        spec->channels = recording ? DEFAULT_AUDIO_RECORDING_CHANNELS : DEFAULT_AUDIO_PLAYBACK_CHANNELS;;
+        spec->channels = recording ? DEFAULT_AUDIO_RECORDING_CHANNELS : DEFAULT_AUDIO_PLAYBACK_CHANNELS;
 
         const char *hint = SDL_GetHint(SDL_HINT_AUDIO_CHANNELS);
         if (hint) {
