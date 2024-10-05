@@ -248,6 +248,7 @@ SDL3_0.0.0 {
     SDL_GetCameraSupportedFormats;
     SDL_GetCameras;
     SDL_GetClipboardData;
+    SDL_GetClipboardMimeTypes;
     SDL_GetClipboardText;
     SDL_GetClosestFullscreenDisplayMode;
     SDL_GetCurrentAudioDriver;
@@ -593,13 +594,13 @@ SDL3_0.0.0 {
     SDL_InitHapticRumble;
     SDL_InitSubSystem;
     SDL_InsertGPUDebugLabel;
-    SDL_IsAndroidTV;
     SDL_IsChromebook;
     SDL_IsDeXMode;
     SDL_IsGamepad;
     SDL_IsJoystickHaptic;
     SDL_IsJoystickVirtual;
     SDL_IsMouseHaptic;
+    SDL_IsTV;
     SDL_IsTablet;
     SDL_JoystickConnected;
     SDL_JoystickEventsEnabled;
@@ -795,6 +796,7 @@ SDL3_0.0.0 {
     SDL_SetBooleanProperty;
     SDL_SetClipboardData;
     SDL_SetClipboardText;
+    SDL_SetCurrentThreadPriority;
     SDL_SetCursor;
     SDL_SetEnvironmentVariable;
     SDL_SetError;
@@ -817,6 +819,7 @@ SDL3_0.0.0 {
     SDL_SetHapticGain;
     SDL_SetHint;
     SDL_SetHintWithPriority;
+    SDL_SetInitialized;
     SDL_SetJoystickEventsEnabled;
     SDL_SetJoystickLED;
     SDL_SetJoystickPlayerIndex;
@@ -867,7 +870,6 @@ SDL3_0.0.0 {
     SDL_SetTextureColorMod;
     SDL_SetTextureColorModFloat;
     SDL_SetTextureScaleMode;
-    SDL_SetThreadPriority;
     SDL_SetWindowAlwaysOnTop;
     SDL_SetWindowAspectRatio;
     SDL_SetWindowBordered;
@@ -895,6 +897,8 @@ SDL3_0.0.0 {
     SDL_SetX11EventHook;
     SDL_SetiOSAnimationCallback;
     SDL_SetiOSEventPump;
+    SDL_ShouldInit;
+    SDL_ShouldQuit;
     SDL_ShowAndroidToast;
     SDL_ShowCursor;
     SDL_ShowMessageBox;
@@ -1093,6 +1097,7 @@ SDL3_0.0.0 {
     SDL_memset;
     SDL_modf;
     SDL_modff;
+    SDL_murmur3_32;
     SDL_pow;
     SDL_powf;
     SDL_qsort;

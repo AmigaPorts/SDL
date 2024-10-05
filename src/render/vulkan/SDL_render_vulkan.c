@@ -39,8 +39,6 @@
 #include "../../video/SDL_pixels_c.h"
 #include "SDL_shaders_vulkan.h"
 
-extern const char *SDL_Vulkan_GetResultString(VkResult result);
-
 #define VULKAN_FUNCTIONS()                                              \
     VULKAN_DEVICE_FUNCTION(vkAcquireNextImageKHR)                       \
     VULKAN_DEVICE_FUNCTION(vkAllocateCommandBuffers)                    \
@@ -688,7 +686,7 @@ static VkResult VULKAN_AllocateBuffer(VULKAN_RenderData *rendererData, VkDeviceS
     if (!VULKAN_FindMemoryTypeIndex(rendererData, memoryRequirements.memoryTypeBits, requiredMemoryProps, desiredMemoryProps, &memoryTypeIndex)) {
         VULKAN_DestroyBuffer(rendererData, bufferOut);
         SDL_LogError(SDL_LOG_CATEGORY_RENDER, "VULKAN_FindMemoryTypeIndex failed.\n");
-        return VK_ERROR_UNKNOWN;;
+        return VK_ERROR_UNKNOWN;
     }
 
     VkMemoryAllocateInfo memoryAllocateInfo = { 0 };

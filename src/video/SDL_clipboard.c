@@ -232,6 +232,46 @@ bool SDL_HasClipboardData(const char *mime_type)
     }
 }
 
+char **SDL_GetClipboardMimeTypes(size_t *num_mime_types)
+{
+    SDL_VideoDevice *_this = SDL_GetVideoDevice();
+
+    if (!_this) {
+        SDL_SetError("Video subsystem must be initialized to query clipboard mime types");
+        return NULL;
+    }
+
+    size_t allocSize = sizeof(char *);
+    for (size_t i = 0; i < _this->num_clipboard_mime_types; i++) {
+        allocSize += sizeof(char *) + SDL_strlen(_this->clipboard_mime_types[i]) + 1;
+    }
+
+    char *ret = (char *)SDL_malloc(allocSize);
+    if (!ret) {
+        return NULL;
+    }
+
+    char **result = (char **)ret;
+    ret += sizeof(char *) * (_this->num_clipboard_mime_types + 1);
+
+    for (size_t i = 0; i < _this->num_clipboard_mime_types; i++) {
+        result[i] = ret;
+
+        const char *mime_type = _this->clipboard_mime_types[i];
+        // Copy the whole string including the terminating null char
+        char c;
+        do {
+            c = *ret++ = *mime_type++;
+        } while (c != '\0');
+    }
+    result[_this->num_clipboard_mime_types] = NULL;
+
+    if (num_mime_types) {
+        *num_mime_types = _this->num_clipboard_mime_types;
+    }
+    return result;
+}
+
 // Clipboard text
 
 bool SDL_IsTextMimeType(const char *mime_type)

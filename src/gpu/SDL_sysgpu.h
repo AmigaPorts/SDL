@@ -503,9 +503,9 @@ struct SDL_GPUDevice
 
     void (*BeginComputePass)(
         SDL_GPUCommandBuffer *commandBuffer,
-        const SDL_GPUStorageTextureWriteOnlyBinding *storageTextureBindings,
+        const SDL_GPUStorageTextureReadWriteBinding *storageTextureBindings,
         Uint32 numStorageTextureBindings,
-        const SDL_GPUStorageBufferWriteOnlyBinding *storageBufferBindings,
+        const SDL_GPUStorageBufferReadWriteBinding *storageBufferBindings,
         Uint32 numStorageBufferBindings);
 
     void (*BindComputePipeline)(
@@ -648,22 +648,23 @@ struct SDL_GPUDevice
     SDL_GPUCommandBuffer *(*AcquireCommandBuffer)(
         SDL_GPURenderer *driverData);
 
-    SDL_GPUTexture *(*AcquireSwapchainTexture)(
+    bool (*AcquireSwapchainTexture)(
         SDL_GPUCommandBuffer *commandBuffer,
         SDL_Window *window,
-        Uint32 *w,
-        Uint32 *h);
+        SDL_GPUTexture **swapchainTexture,
+        Uint32 *swapchainTextureWidth,
+        Uint32 *swapchainTextureHeight);
 
-    void (*Submit)(
+    bool (*Submit)(
         SDL_GPUCommandBuffer *commandBuffer);
 
     SDL_GPUFence *(*SubmitAndAcquireFence)(
         SDL_GPUCommandBuffer *commandBuffer);
 
-    void (*Wait)(
+    bool (*Wait)(
         SDL_GPURenderer *driverData);
 
-    void (*WaitForFences)(
+    bool (*WaitForFences)(
         SDL_GPURenderer *driverData,
         bool waitAll,
         SDL_GPUFence *const *fences,

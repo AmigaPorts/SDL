@@ -40,8 +40,8 @@
  *
  * This API is designed to accelerate simple 2D operations. You may want more
  * functionality such as polygons and particle effects and in that case you
- * should use SDL's OpenGL/Direct3D support or one of the many good 3D
- * engines.
+ * should use SDL's OpenGL/Direct3D support, the SDL3 GPU API, or one of the
+ * many good 3D engines.
  *
  * These functions must be called from the main thread. See this bug for
  * details: https://github.com/libsdl-org/SDL/issues/986
@@ -118,11 +118,28 @@ typedef enum SDL_RendererLogicalPresentation
  */
 typedef struct SDL_Renderer SDL_Renderer;
 
+#ifndef SDL_INTERNAL
+
 /**
  * An efficient driver-specific representation of pixel data
  *
  * \since This struct is available since SDL 3.0.0.
+ *
+ * \sa SDL_CreateTexture
+ * \sa SDL_CreateTextureFromSurface
+ * \sa SDL_CreateTextureWithProperties
+ * \sa SDL_DestroyTexture
  */
+struct SDL_Texture
+{
+    SDL_PixelFormat format;     /**< The format of the texture, read-only */
+    int w;                      /**< The width of the texture, read-only. */
+    int h;                      /**< The height of the texture, read-only. */
+
+    int refcount;               /**< Application reference count, used when freeing texture */
+};
+#endif /* !SDL_INTERNAL */
+
 typedef struct SDL_Texture SDL_Texture;
 
 /* Function prototypes */
@@ -137,6 +154,8 @@ typedef struct SDL_Texture SDL_Texture;
  * There may be none if SDL was compiled without render support.
  *
  * \returns the number of built in render drivers.
+ *
+ * \threadsafety It is safe to call this function from any thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -161,6 +180,8 @@ extern SDL_DECLSPEC int SDLCALL SDL_GetNumRenderDrivers(void);
  * \returns the name of the rendering driver at the requested index, or NULL
  *          if an invalid index was specified.
  *
+ * \threadsafety It is safe to call this function from any thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetNumRenderDrivers
@@ -179,6 +200,8 @@ extern SDL_DECLSPEC const char * SDLCALL SDL_GetRenderDriver(int index);
  * \param renderer a pointer filled with the renderer, or NULL on error.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -205,6 +228,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_CreateWindowAndRenderer(const char *title, 
  *             initialize the first one supporting the requested flags.
  * \returns a valid rendering context or NULL if there was an error; call
  *          SDL_GetError() for more information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -258,6 +283,8 @@ extern SDL_DECLSPEC SDL_Renderer * SDLCALL SDL_CreateRenderer(SDL_Window *window
  * \returns a valid rendering context or NULL if there was an error; call
  *          SDL_GetError() for more information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_CreateProperties
@@ -293,6 +320,8 @@ extern SDL_DECLSPEC SDL_Renderer * SDLCALL SDL_CreateRendererWithProperties(SDL_
  * \returns a valid rendering context or NULL if there was an error; call
  *          SDL_GetError() for more information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_DestroyRenderer
@@ -306,6 +335,8 @@ extern SDL_DECLSPEC SDL_Renderer * SDLCALL SDL_CreateSoftwareRenderer(SDL_Surfac
  * \returns the rendering context on success or NULL on failure; call
  *          SDL_GetError() for more information.
  *
+ * \threadsafety It is safe to call this function from any thread.
+ *
  * \since This function is available since SDL 3.0.0.
  */
 extern SDL_DECLSPEC SDL_Renderer * SDLCALL SDL_GetRenderer(SDL_Window *window);
@@ -317,6 +348,8 @@ extern SDL_DECLSPEC SDL_Renderer * SDLCALL SDL_GetRenderer(SDL_Window *window);
  * \returns the window on success or NULL on failure; call SDL_GetError() for
  *          more information.
  *
+ * \threadsafety It is safe to call this function from any thread.
+ *
  * \since This function is available since SDL 3.0.0.
  */
 extern SDL_DECLSPEC SDL_Window * SDLCALL SDL_GetRenderWindow(SDL_Renderer *renderer);
@@ -327,6 +360,8 @@ extern SDL_DECLSPEC SDL_Window * SDLCALL SDL_GetRenderWindow(SDL_Renderer *rende
  * \param renderer the rendering context.
  * \returns the name of the selected renderer, or NULL on failure; call
  *          SDL_GetError() for more information.
+ *
+ * \threadsafety It is safe to call this function from any thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -410,6 +445,8 @@ extern SDL_DECLSPEC const char * SDLCALL SDL_GetRendererName(SDL_Renderer *rende
  * \returns a valid property ID on success or 0 on failure; call
  *          SDL_GetError() for more information.
  *
+ * \threadsafety It is safe to call this function from any thread.
+ *
  * \since This function is available since SDL 3.0.0.
  */
 extern SDL_DECLSPEC SDL_PropertiesID SDLCALL SDL_GetRendererProperties(SDL_Renderer *renderer);
@@ -450,6 +487,8 @@ extern SDL_DECLSPEC SDL_PropertiesID SDLCALL SDL_GetRendererProperties(SDL_Rende
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetCurrentRenderOutputSize
@@ -470,6 +509,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderOutputSize(SDL_Renderer *renderer,
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetRenderOutputSize
@@ -489,6 +530,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetCurrentRenderOutputSize(SDL_Renderer *re
  * \returns a pointer to the created texture or NULL if no rendering context
  *          was active, the format was unsupported, or the width or height
  *          were out of range; call SDL_GetError() for more information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -517,6 +560,8 @@ extern SDL_DECLSPEC SDL_Texture * SDLCALL SDL_CreateTexture(SDL_Renderer *render
  *                the texture.
  * \returns the created texture or NULL on failure; call SDL_GetError() for
  *          more information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -625,6 +670,8 @@ extern SDL_DECLSPEC SDL_Texture * SDLCALL SDL_CreateTextureFromSurface(SDL_Rende
  * \returns a pointer to the created texture or NULL if no rendering context
  *          was active, the format was unsupported, or the width or height
  *          were out of range; call SDL_GetError() for more information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -754,6 +801,8 @@ extern SDL_DECLSPEC SDL_Texture * SDLCALL SDL_CreateTextureWithProperties(SDL_Re
  * \returns a valid property ID on success or 0 on failure; call
  *          SDL_GetError() for more information.
  *
+ * \threadsafety It is safe to call this function from any thread.
+ *
  * \since This function is available since SDL 3.0.0.
  */
 extern SDL_DECLSPEC SDL_PropertiesID SDLCALL SDL_GetTextureProperties(SDL_Texture *texture);
@@ -809,6 +858,8 @@ extern SDL_DECLSPEC SDL_Renderer * SDLCALL SDL_GetRendererFromTexture(SDL_Textur
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_GetTextureSize(SDL_Texture *texture, float *w, float *h);
@@ -831,6 +882,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetTextureSize(SDL_Texture *texture, float 
  * \param b the blue color value multiplied into copy operations.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -860,6 +913,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetTextureColorMod(SDL_Texture *texture, Ui
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetTextureColorModFloat
@@ -879,6 +934,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetTextureColorModFloat(SDL_Texture *textur
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetTextureAlphaMod
@@ -896,6 +953,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetTextureColorMod(SDL_Texture *texture, Ui
  * \param b a pointer filled in with the current blue color value.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -921,6 +980,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetTextureColorModFloat(SDL_Texture *textur
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetTextureAlphaMod
@@ -945,6 +1006,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetTextureAlphaMod(SDL_Texture *texture, Ui
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetTextureAlphaModFloat
@@ -961,6 +1024,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetTextureAlphaModFloat(SDL_Texture *textur
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetTextureAlphaModFloat
@@ -976,6 +1041,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetTextureAlphaMod(SDL_Texture *texture, Ui
  * \param alpha a pointer filled in with the current alpha value.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -996,6 +1063,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetTextureAlphaModFloat(SDL_Texture *textur
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetTextureBlendMode
@@ -1009,6 +1078,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetTextureBlendMode(SDL_Texture *texture, S
  * \param blendMode a pointer filled in with the current SDL_BlendMode.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1028,6 +1099,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetTextureBlendMode(SDL_Texture *texture, S
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetTextureScaleMode
@@ -1041,6 +1114,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetTextureScaleMode(SDL_Texture *texture, S
  * \param scaleMode a pointer filled in with the current scale mode.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1070,6 +1145,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetTextureScaleMode(SDL_Texture *texture, S
  *              between lines.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1103,6 +1180,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_UpdateTexture(SDL_Texture *texture, const S
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_UpdateNVTexture
@@ -1132,6 +1211,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_UpdateYUVTexture(SDL_Texture *texture,
  *                plane.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1165,6 +1246,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_UpdateNVTexture(SDL_Texture *texture,
  * \returns true on success or false if the texture is not valid or was not
  *          created with `SDL_TEXTUREACCESS_STREAMING`; call SDL_GetError()
  *          for more information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1202,6 +1285,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_LockTexture(SDL_Texture *texture,
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_LockTexture
@@ -1221,6 +1306,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_LockTextureToSurface(SDL_Texture *texture, 
  * corrupted textures, depending on the renderer in use.
  *
  * \param texture a texture locked by SDL_LockTexture().
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1242,6 +1329,8 @@ extern SDL_DECLSPEC void SDLCALL SDL_UnlockTexture(SDL_Texture *texture);
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetRenderTarget
@@ -1257,6 +1346,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetRenderTarget(SDL_Renderer *renderer, SDL
  * \param renderer the rendering context.
  * \returns the current render target or NULL for the default render target.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_SetRenderTarget
@@ -1266,13 +1357,23 @@ extern SDL_DECLSPEC SDL_Texture * SDLCALL SDL_GetRenderTarget(SDL_Renderer *rend
 /**
  * Set a device independent resolution and presentation mode for rendering.
  *
- * This function sets the width and height of the logical rendering output. A
- * render target is created at the specified size and used for rendering and
- * then copied to the output during presentation.
+ * This function sets the width and height of the logical rendering output.
+ * The renderer will act as if the window is always the requested dimensions,
+ * scaling to the actual window resolution as necessary.
+ *
+ * This can be useful for games that expect a fixed size, but would like to
+ * scale the output to whatever is available, regardless of how a user resizes
+ * a window, or if the display is high DPI.
  *
  * You can disable logical coordinates by setting the mode to
  * SDL_LOGICAL_PRESENTATION_DISABLED, and in that case you get the full pixel
- * resolution of the output window.
+ * resolution of the output window; it is safe to toggle logical presentation
+ * during the rendering of a frame: perhaps most of the rendering is done to
+ * specific dimensions but to make fonts look sharp, the app turns off logical
+ * presentation while drawing text.
+ *
+ * Letterboxing will only happen if logical presentation is enabled during
+ * SDL_RenderPresent; be sure to reenable it first if you were using it.
  *
  * You can convert coordinates in an event into rendering coordinates using
  * SDL_ConvertEventToRenderCoordinates().
@@ -1281,9 +1382,10 @@ extern SDL_DECLSPEC SDL_Texture * SDLCALL SDL_GetRenderTarget(SDL_Renderer *rend
  * \param w the width of the logical resolution.
  * \param h the height of the logical resolution.
  * \param mode the presentation mode used.
- * \param scale_mode the scale mode used.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1291,7 +1393,7 @@ extern SDL_DECLSPEC SDL_Texture * SDLCALL SDL_GetRenderTarget(SDL_Renderer *rend
  * \sa SDL_GetRenderLogicalPresentation
  * \sa SDL_GetRenderLogicalPresentationRect
  */
-extern SDL_DECLSPEC bool SDLCALL SDL_SetRenderLogicalPresentation(SDL_Renderer *renderer, int w, int h, SDL_RendererLogicalPresentation mode, SDL_ScaleMode scale_mode);
+extern SDL_DECLSPEC bool SDLCALL SDL_SetRenderLogicalPresentation(SDL_Renderer *renderer, int w, int h, SDL_RendererLogicalPresentation mode);
 
 /**
  * Get device independent resolution and presentation mode for rendering.
@@ -1302,16 +1404,17 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetRenderLogicalPresentation(SDL_Renderer *
  * \param renderer the rendering context.
  * \param w an int to be filled with the width.
  * \param h an int to be filled with the height.
- * \param mode a pointer filled in with the presentation mode.
- * \param scale_mode a pointer filled in with the scale mode.
+ * \param mode the presentation mode used.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_SetRenderLogicalPresentation
  */
-extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderLogicalPresentation(SDL_Renderer *renderer, int *w, int *h, SDL_RendererLogicalPresentation *mode, SDL_ScaleMode *scale_mode);
+extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderLogicalPresentation(SDL_Renderer *renderer, int *w, int *h, SDL_RendererLogicalPresentation *mode);
 
 /**
  * Get the final presentation rectangle for rendering.
@@ -1327,6 +1430,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderLogicalPresentation(SDL_Renderer *
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_SetRenderLogicalPresentation
@@ -1336,6 +1441,13 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderLogicalPresentationRect(SDL_Render
 /**
  * Get a point in render coordinates when given a point in window coordinates.
  *
+ * This takes into account several states:
+ *
+ * - The window dimensions.
+ * - The logical presentation settings (SDL_SetRenderLogicalPresentation)
+ * - The scale (SDL_SetRenderScale)
+ * - The viewport (SDL_SetRenderViewport)
+ *
  * \param renderer the rendering context.
  * \param window_x the x coordinate in window coordinates.
  * \param window_y the y coordinate in window coordinates.
@@ -1343,6 +1455,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderLogicalPresentationRect(SDL_Render
  * \param y a pointer filled with the y coordinate in render coordinates.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1354,6 +1468,13 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderCoordinatesFromWindow(SDL_Renderer *r
 /**
  * Get a point in window coordinates when given a point in render coordinates.
  *
+ * This takes into account several states:
+ *
+ * - The window dimensions.
+ * - The logical presentation settings (SDL_SetRenderLogicalPresentation)
+ * - The scale (SDL_SetRenderScale)
+ * - The viewport (SDL_SetRenderViewport)
+ *
  * \param renderer the rendering context.
  * \param x the x coordinate in render coordinates.
  * \param y the y coordinate in render coordinates.
@@ -1364,15 +1485,25 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderCoordinatesFromWindow(SDL_Renderer *r
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_SetRenderLogicalPresentation
  * \sa SDL_SetRenderScale
+ * \sa SDL_SetRenderViewport
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_RenderCoordinatesToWindow(SDL_Renderer *renderer, float x, float y, float *window_x, float *window_y);
 
 /**
  * Convert the coordinates in an event to render coordinates.
+ *
+ * This takes into account several states:
+ *
+ * - The window dimensions.
+ * - The logical presentation settings (SDL_SetRenderLogicalPresentation)
+ * - The scale (SDL_SetRenderScale)
+ * - The viewport (SDL_SetRenderViewport)
  *
  * Touch coordinates are converted from normalized coordinates in the window
  * to non-normalized rendering coordinates.
@@ -1384,6 +1515,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderCoordinatesToWindow(SDL_Renderer *ren
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_RenderCoordinatesFromWindow
@@ -1393,11 +1526,19 @@ extern SDL_DECLSPEC bool SDLCALL SDL_ConvertEventToRenderCoordinates(SDL_Rendere
 /**
  * Set the drawing area for rendering on the current target.
  *
+ * Drawing will clip to this area (separately from any clipping done with
+ * SDL_SetRenderClipRect), and the top left of the area will become coordinate
+ * (0, 0) for future drawing commands.
+ *
+ * The area's width and height must be >= 0.
+ *
  * \param renderer the rendering context.
  * \param rect the SDL_Rect structure representing the drawing area, or NULL
  *             to set the viewport to the entire target.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1413,6 +1554,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetRenderViewport(SDL_Renderer *renderer, c
  * \param rect an SDL_Rect structure filled in with the current drawing area.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1431,6 +1574,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderViewport(SDL_Renderer *renderer, S
  * \param renderer the rendering context.
  * \returns true if the viewport was set to a specific rectangle, or false if
  *          it was set to NULL (the entire target).
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1455,6 +1600,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderViewportSet(SDL_Renderer *renderer);
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderSafeArea(SDL_Renderer *renderer, SDL_Rect *rect);
@@ -1467,6 +1614,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderSafeArea(SDL_Renderer *renderer, S
  *             the viewport, or NULL to disable clipping.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1484,6 +1633,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetRenderClipRect(SDL_Renderer *renderer, c
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_RenderClipEnabled
@@ -1497,6 +1648,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderClipRect(SDL_Renderer *renderer, S
  * \param renderer the rendering context.
  * \returns true if clipping is enabled or false if not; call SDL_GetError()
  *          for more information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1522,6 +1675,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderClipEnabled(SDL_Renderer *renderer);
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetRenderScale
@@ -1536,6 +1691,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetRenderScale(SDL_Renderer *renderer, floa
  * \param scaleY a pointer filled in with the vertical scaling factor.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1558,6 +1715,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderScale(SDL_Renderer *renderer, floa
  *          specify how the alpha channel is used.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1582,6 +1741,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetRenderDrawColor(SDL_Renderer *renderer, 
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetRenderDrawColorFloat
@@ -1604,6 +1765,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetRenderDrawColorFloat(SDL_Renderer *rende
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetRenderDrawColorFloat
@@ -1625,6 +1788,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderDrawColor(SDL_Renderer *renderer, 
  *          rendering target.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1649,6 +1814,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderDrawColorFloat(SDL_Renderer *rende
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetRenderColorScale
@@ -1662,6 +1829,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetRenderColorScale(SDL_Renderer *renderer,
  * \param scale a pointer filled in with the current color scale value.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1679,6 +1848,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderColorScale(SDL_Renderer *renderer,
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetRenderDrawBlendMode
@@ -1692,6 +1863,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetRenderDrawBlendMode(SDL_Renderer *render
  * \param blendMode a pointer filled in with the current SDL_BlendMode.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1711,6 +1884,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderDrawBlendMode(SDL_Renderer *render
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_SetRenderDrawColor
@@ -1726,6 +1901,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderClear(SDL_Renderer *renderer);
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_RenderPoints
@@ -1740,6 +1917,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderPoint(SDL_Renderer *renderer, float x
  * \param count the number of points to draw.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1758,6 +1937,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderPoints(SDL_Renderer *renderer, const 
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_RenderLines
@@ -1774,6 +1955,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderLine(SDL_Renderer *renderer, float x1
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_RenderLine
@@ -1788,6 +1971,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderLines(SDL_Renderer *renderer, const S
  *             entire rendering target.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1805,6 +1990,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderRect(SDL_Renderer *renderer, const SD
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_RenderRect
@@ -1821,6 +2008,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderRects(SDL_Renderer *renderer, const S
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_RenderFillRects
@@ -1836,6 +2025,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRect(SDL_Renderer *renderer, cons
  * \param count the number of rectangles.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1855,6 +2046,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderFillRects(SDL_Renderer *renderer, con
  *                entire rendering target.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1883,14 +2076,16 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderTexture(SDL_Renderer *renderer, SDL_T
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_RenderTexture
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_RenderTextureRotated(SDL_Renderer *renderer, SDL_Texture *texture,
                                                      const SDL_FRect *srcrect, const SDL_FRect *dstrect,
-                                                     const double angle, const SDL_FPoint *center,
-                                                     const SDL_FlipMode flip);
+                                                     double angle, const SDL_FPoint *center,
+                                                     SDL_FlipMode flip);
 
 /**
  * Tile a portion of the texture to the current rendering target at subpixel
@@ -1910,6 +2105,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderTextureRotated(SDL_Renderer *renderer
  *                entire rendering target.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1943,6 +2140,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderTextureTiled(SDL_Renderer *renderer, 
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_RenderTexture
@@ -1964,6 +2163,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderTexture9Grid(SDL_Renderer *renderer, 
  * \param num_indices number of indices.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -1995,6 +2196,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderGeometry(SDL_Renderer *renderer,
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_RenderGeometry
@@ -2022,6 +2225,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderGeometryRaw(SDL_Renderer *renderer,
  * \returns a new SDL_Surface on success or NULL on failure; call
  *          SDL_GetError() for more information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  */
 extern SDL_DECLSPEC SDL_Surface * SDLCALL SDL_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rect *rect);
@@ -2046,16 +2251,18 @@ extern SDL_DECLSPEC SDL_Surface * SDLCALL SDL_RenderReadPixels(SDL_Renderer *ren
  * pixel.
  *
  * Please note, that in case of rendering to a texture - there is **no need**
- * to call `SDL_RenderPresent` after drawing needed objects to a texture, you
- * are only required to change back the rendering target to default via
- * `SDL_SetRenderTarget(renderer, NULL)` afterwards, as textures by themselves
- * do not have a concept of backbuffers.
+ * to call `SDL_RenderPresent` after drawing needed objects to a texture, and
+ * should not be done; you are only required to change back the rendering
+ * target to default via `SDL_SetRenderTarget(renderer, NULL)` afterwards, as
+ * textures by themselves do not have a concept of backbuffers. Calling
+ * SDL_RenderPresent while rendering to a texture will still update the screen
+ * with any current drawing that has been done _to the window itself_.
  *
  * \param renderer the rendering context.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
- * \threadsafety You may only call this function on the main thread.
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -2082,6 +2289,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderPresent(SDL_Renderer *renderer);
  *
  * \param texture the texture to destroy.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_CreateTexture
@@ -2096,6 +2305,8 @@ extern SDL_DECLSPEC void SDLCALL SDL_DestroyTexture(SDL_Texture *texture);
  * This should be called before destroying the associated window.
  *
  * \param renderer the rendering context.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -2130,6 +2341,8 @@ extern SDL_DECLSPEC void SDLCALL SDL_DestroyRenderer(SDL_Renderer *renderer);
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_FlushRenderer(SDL_Renderer *renderer);
@@ -2143,6 +2356,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_FlushRenderer(SDL_Renderer *renderer);
  * \param renderer the renderer to query.
  * \returns a `CAMetalLayer *` on success, or NULL if the renderer isn't a
  *          Metal renderer.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -2164,6 +2379,8 @@ extern SDL_DECLSPEC void * SDLCALL SDL_GetRenderMetalLayer(SDL_Renderer *rendere
  * \param renderer the renderer to query.
  * \returns an `id<MTLRenderCommandEncoder>` on success, or NULL if the
  *          renderer isn't a Metal renderer or there was an error.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *
@@ -2219,6 +2436,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_AddVulkanRenderSemaphores(SDL_Renderer *ren
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety You may only call this function from the main thread.
+ *
  * \since This function is available since SDL 3.0.0.
  *
  * \sa SDL_GetRenderVSync
@@ -2236,6 +2455,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetRenderVSync(SDL_Renderer *renderer, int 
  *              See SDL_SetRenderVSync() for the meaning of the value.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
+ *
+ * \threadsafety You may only call this function from the main thread.
  *
  * \since This function is available since SDL 3.0.0.
  *

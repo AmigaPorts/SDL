@@ -439,7 +439,7 @@ const char *SDL_GetThreadName(SDL_Thread *thread)
     }
 }
 
-bool SDL_SetThreadPriority(SDL_ThreadPriority priority)
+bool SDL_SetCurrentThreadPriority(SDL_ThreadPriority priority)
 {
     return SDL_SYS_SetThreadPriority(priority);
 }
@@ -515,5 +515,44 @@ bool SDL_WaitConditionTimeout(SDL_Condition *cond, SDL_Mutex *mutex, Sint32 time
         timeoutNS = -1;
     }
     return SDL_WaitConditionTimeoutNS(cond, mutex, timeoutNS);
+}
+
+bool SDL_ShouldInit(SDL_InitState *state)
+{
+    while (SDL_GetAtomicInt(&state->status) != SDL_INIT_STATUS_INITIALIZED) {
+        if (SDL_CompareAndSwapAtomicInt(&state->status, SDL_INIT_STATUS_UNINITIALIZED, SDL_INIT_STATUS_INITIALIZING)) {
+            state->thread = SDL_GetCurrentThreadID();
+            return true;
+        }
+
+        // Wait for the other thread to complete transition
+        SDL_Delay(1);
+    }
+    return false;
+}
+
+bool SDL_ShouldQuit(SDL_InitState *state)
+{
+    while (SDL_GetAtomicInt(&state->status) != SDL_INIT_STATUS_UNINITIALIZED) {
+        if (SDL_CompareAndSwapAtomicInt(&state->status, SDL_INIT_STATUS_INITIALIZED, SDL_INIT_STATUS_UNINITIALIZING)) {
+            state->thread = SDL_GetCurrentThreadID();
+            return true;
+        }
+
+        // Wait for the other thread to complete transition
+        SDL_Delay(1);
+    }
+    return false;
+}
+
+void SDL_SetInitialized(SDL_InitState *state, bool initialized)
+{
+    SDL_assert(state->thread == SDL_GetCurrentThreadID());
+
+    if (initialized) {
+        SDL_SetAtomicInt(&state->status, SDL_INIT_STATUS_INITIALIZED);
+    } else {
+        SDL_SetAtomicInt(&state->status, SDL_INIT_STATUS_UNINITIALIZED);
+    }
 }
 

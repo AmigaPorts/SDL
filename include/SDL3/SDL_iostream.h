@@ -147,8 +147,11 @@ typedef struct SDL_IOStreamInterface
     /**
      *  Close and free any allocated resources.
      *
+     *  This does not guarantee file writes will sync to physical media; they
+     *  can be in the system's file cache, waiting to go to disk.
+     *
      *  The SDL_IOStream is still destroyed even if this fails, so clean up anything
-     *  even if flushing to disk returns an error.
+     *  even if flushing buffers, etc, returns an error.
      *
      *  \return true if successful or false on write error when flushing data.
      */
@@ -288,6 +291,13 @@ extern SDL_DECLSPEC SDL_IOStream * SDLCALL SDL_IOFromFile(const char *file, cons
  * buffer, you should use SDL_IOFromConstMem() with a read-only buffer of
  * memory instead.
  *
+ * The following properties will be set at creation time by SDL:
+ *
+ * - `SDL_PROP_IOSTREAM_MEMORY_POINTER`: this will be the `mem` parameter that
+ *   was passed to this function.
+ * - `SDL_PROP_IOSTREAM_MEMORY_SIZE_NUMBER`: this will be the `size` parameter
+ *   that was passed to this function.
+ *
  * \param mem a pointer to a buffer to feed an SDL_IOStream stream.
  * \param size the buffer size, in bytes.
  * \returns a pointer to a new SDL_IOStream structure or NULL on failure; call
@@ -305,6 +315,9 @@ extern SDL_DECLSPEC SDL_IOStream * SDLCALL SDL_IOFromFile(const char *file, cons
  */
 extern SDL_DECLSPEC SDL_IOStream * SDLCALL SDL_IOFromMem(void *mem, size_t size);
 
+#define SDL_PROP_IOSTREAM_MEMORY_POINTER "SDL.iostream.memory.base"
+#define SDL_PROP_IOSTREAM_MEMORY_SIZE_NUMBER  "SDL.iostream.memory.size"
+
 /**
  * Use this function to prepare a read-only memory buffer for use with
  * SDL_IOStream.
@@ -321,6 +334,13 @@ extern SDL_DECLSPEC SDL_IOStream * SDLCALL SDL_IOFromMem(void *mem, size_t size)
  *
  * If you need to write to a memory buffer, you should use SDL_IOFromMem()
  * with a writable buffer of memory instead.
+ *
+ * The following properties will be set at creation time by SDL:
+ *
+ * - `SDL_PROP_IOSTREAM_MEMORY_POINTER`: this will be the `mem` parameter that
+ *   was passed to this function.
+ * - `SDL_PROP_IOSTREAM_MEMORY_SIZE_NUMBER`: this will be the `size` parameter
+ *   that was passed to this function.
  *
  * \param mem a pointer to a read-only buffer to feed an SDL_IOStream stream.
  * \param size the buffer size, in bytes.
@@ -406,8 +426,17 @@ extern SDL_DECLSPEC SDL_IOStream * SDLCALL SDL_OpenIO(const SDL_IOStreamInterfac
  * returns true on success, or false if the stream failed to flush to its
  * output (e.g. to disk).
  *
- * Note that if this fails to flush the stream to disk, this function reports
- * an error, but the SDL_IOStream is still invalid once this function returns.
+ * Note that if this fails to flush the stream for any reason, this function
+ * reports an error, but the SDL_IOStream is still invalid once this function
+ * returns.
+ *
+ * This call flushes any buffered writes to the operating system, but there
+ * are no guarantees that those writes have gone to physical media; they might
+ * be in the OS's file cache, waiting to go to disk later. If it's absolutely
+ * crucial that writes go to disk immediately, so they are definitely stored
+ * even if the power fails before the file cache would have caught up, one
+ * should call SDL_FlushIO() before closing. Note that flushing takes time and
+ * makes the system and your app operate less efficiently, so do so sparingly.
  *
  * \param context SDL_IOStream structure to close.
  * \returns true on success or false on failure; call SDL_GetError() for more

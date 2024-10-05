@@ -388,7 +388,7 @@ static bool X11_VideoInit(SDL_VideoDevice *_this)
     data->window_group = (XID)(((size_t)data->pid) ^ ((size_t)_this));
 
     // Look up some useful Atoms
-#define GET_ATOM(X) data->X = X11_XInternAtom(data->display, #X, False)
+#define GET_ATOM(X) data->atoms.X = X11_XInternAtom(data->display, #X, False)
     GET_ATOM(WM_PROTOCOLS);
     GET_ATOM(WM_DELETE_WINDOW);
     GET_ATOM(WM_TAKE_FOCUS);
@@ -417,6 +417,9 @@ static bool X11_VideoInit(SDL_VideoDevice *_this)
     GET_ATOM(_SDL_WAKEUP);
     GET_ATOM(UTF8_STRING);
     GET_ATOM(PRIMARY);
+    GET_ATOM(CLIPBOARD);
+    GET_ATOM(INCR);
+    GET_ATOM(SDL_SELECTION);
     GET_ATOM(XdndEnter);
     GET_ATOM(XdndPosition);
     GET_ATOM(XdndStatus);

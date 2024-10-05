@@ -23,6 +23,7 @@
 #include "SDL_syscamera.h"
 #include "SDL_camera_c.h"
 #include "../video/SDL_pixels_c.h"
+#include "../video/SDL_surface_c.h"
 #include "../thread/SDL_systhread.h"
 
 
@@ -784,7 +785,7 @@ void SDL_CameraThreadSetup(SDL_Camera *device)
     }*/
 #else
     // The camera capture is always a high priority thread
-    SDL_SetThreadPriority(SDL_THREAD_PRIORITY_HIGH);
+    SDL_SetCurrentThreadPriority(SDL_THREAD_PRIORITY_HIGH);
 #endif
 }
 

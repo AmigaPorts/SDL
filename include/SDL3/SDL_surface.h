@@ -22,7 +22,19 @@
 /**
  * # CategorySurface
  *
- * SDL_Surface definition and management functions.
+ * SDL surfaces are buffers of pixels in system RAM. These are useful for
+ * passing around and manipulating images that are not stored in GPU memory.
+ *
+ * SDL_Surface makes serious efforts to manage images in various formats, and
+ * provides a reasonable toolbox for transforming the data, including copying
+ * between surfaces, filling rectangles in the image data, etc.
+ *
+ * There is also a simple .bmp loader, SDL_LoadBMP(). SDL itself does not
+ * provide loaders for various other file formats, but there are several
+ * excellent external libraries that do, including it's own satellite library,
+ * SDL_image:
+ *
+ * https://github.com/libsdl-org/SDL_image
  */
 
 #ifndef SDL_surface_h_
@@ -86,8 +98,7 @@ typedef enum SDL_FlipMode
     SDL_FLIP_VERTICAL       /**< flip vertically */
 } SDL_FlipMode;
 
-/* Internal surface data */
-typedef struct SDL_SurfaceData SDL_SurfaceData;
+#ifndef SDL_INTERNAL
 
 /**
  * A collection of pixels used in software blitting.
@@ -105,21 +116,26 @@ typedef struct SDL_SurfaceData SDL_SurfaceData;
  * alignment, and have undefined contents.
  *
  * \since This struct is available since SDL 3.0.0.
+ *
+ * \sa SDL_CreateSurface
+ * \sa SDL_DestroySurface
  */
-typedef struct SDL_Surface
+struct SDL_Surface
 {
-    SDL_SurfaceFlags flags;     /**< Read-only */
-    SDL_PixelFormat format;     /**< Read-only */
-    int w, h;                   /**< Read-only */
-    int pitch;                  /**< Read-only */
-    void *pixels;               /**< Read-only pointer, writable pixels if non-NULL */
+    SDL_SurfaceFlags flags;     /**< The flags of the surface, read-only */
+    SDL_PixelFormat format;     /**< The format of the surface, read-only */
+    int w;                      /**< The width of the surface, read-only. */
+    int h;                      /**< The height of the surface, read-only. */
+    int pitch;                  /**< The distance in bytes between rows of pixels, read-only */
+    void *pixels;               /**< A pointer to the pixels of the surface, the pixels are writeable if non-NULL */
 
     int refcount;               /**< Application reference count, used when freeing surface */
 
-    SDL_SurfaceData *internal;  /**< Private */
+    void *reserved;             /**< Reserved for internal use */
+};
+#endif /* !SDL_INTERNAL */
 
-} SDL_Surface;
-
+typedef struct SDL_Surface SDL_Surface;
 
 /**
  * Allocate a new surface with a specific pixel format.

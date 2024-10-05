@@ -26,7 +26,6 @@
 #include "../../core/windows/SDL_windows.h"
 #include "../../video/directx/SDL_d3d12.h"
 #include "../SDL_sysgpu.h"
-#include "SDL_hashtable.h"
 
 #ifdef __IDXGIInfoQueue_INTERFACE_DEFINED__
 #define HAVE_IDXGIINFOQUEUE
@@ -56,14 +55,24 @@
 
 // Macros
 
-#define ERROR_CHECK(msg)                                     \
-    if (FAILED(res)) {                                       \
-        D3D12_INTERNAL_LogError(renderer->device, msg, res); \
-    }
+#define SET_ERROR(fmt, msg)                           \
+    if (renderer->debug_mode) {                       \
+        SDL_LogError(SDL_LOG_CATEGORY_GPU, fmt, msg); \
+    }                                                 \
+    SDL_SetError(fmt, msg);
 
-#define ERROR_CHECK_RETURN(msg, ret)                         \
+#define SET_ERROR_AND_RETURN(fmt, msg, ret)           \
+    if (renderer->debug_mode) {                       \
+        SDL_LogError(SDL_LOG_CATEGORY_GPU, fmt, msg); \
+    }                                                 \
+    SDL_SetError(fmt, msg);                           \
+    return ret;                                       \
+
+#define SET_STRING_ERROR_AND_RETURN(msg, ret) SET_ERROR_AND_RETURN("%s", msg, ret)
+
+#define CHECK_D3D12_ERROR_AND_RETURN(msg, ret)                           \
     if (FAILED(res)) {                                       \
-        D3D12_INTERNAL_LogError(renderer->device, msg, res); \
+        D3D12_INTERNAL_SetError(renderer, msg, res); \
         return ret;                                          \
     }
 
@@ -280,12 +289,18 @@ static DXGI_FORMAT SDLToD3D12_TextureFormat[] = {
     DXGI_FORMAT_R16_UINT,             // R16_UINT
     DXGI_FORMAT_R16G16_UINT,          // R16G16_UINT
     DXGI_FORMAT_R16G16B16A16_UINT,    // R16G16B16A16_UINT
+    DXGI_FORMAT_R32_UINT,             // R32_UINT
+    DXGI_FORMAT_R32G32_UINT,          // R32G32_UINT
+    DXGI_FORMAT_R32G32B32A32_UINT,    // R32G32B32A32_UINT
     DXGI_FORMAT_R8_SINT,              // R8_INT
     DXGI_FORMAT_R8G8_SINT,            // R8G8_INT
     DXGI_FORMAT_R8G8B8A8_SINT,        // R8G8B8A8_INT
     DXGI_FORMAT_R16_SINT,             // R16_INT
     DXGI_FORMAT_R16G16_SINT,          // R16G16_INT
     DXGI_FORMAT_R16G16B16A16_SINT,    // R16G16B16A16_INT
+    DXGI_FORMAT_R32_SINT,             // R32_INT
+    DXGI_FORMAT_R32G32_SINT,          // R32G32_INT
+    DXGI_FORMAT_R32G32B32A32_SINT,    // R32G32B32A32_INT
     DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,  // R8G8B8A8_UNORM_SRGB
     DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,  // B8G8R8A8_UNORM_SRGB
     DXGI_FORMAT_BC1_UNORM_SRGB,       // BC1_UNORM_SRGB
@@ -528,7 +543,6 @@ typedef struct D3D12WindowData
     SDL_Window *window;
 #if (defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES))
     D3D12XBOX_FRAME_PIPELINE_TOKEN frameToken;
-    Uint32 swapchainWidth, swapchainHeight;
 #else
     IDXGISwapChain3 *swapchain;
 #endif
@@ -539,6 +553,9 @@ typedef struct D3D12WindowData
 
     D3D12TextureContainer textureContainers[MAX_FRAMES_IN_FLIGHT];
     SDL_GPUFence *inFlightFences[MAX_FRAMES_IN_FLIGHT];
+    Uint32 width;
+    Uint32 height;
+    bool needsSwapchainRecreate;
 } D3D12WindowData;
 
 typedef struct D3D12PresentData
@@ -559,12 +576,12 @@ struct D3D12Renderer
     IDXGIInfoQueue *dxgiInfoQueue;
 #endif
     IDXGIAdapter1 *adapter;
-    void *dxgi_dll;
-    void *dxgidebug_dll;
+    SDL_SharedObject *dxgi_dll;
+    SDL_SharedObject *dxgidebug_dll;
 #endif
     ID3D12Debug *d3d12Debug;
     bool supportsTearing;
-    void *d3d12_dll;
+    SDL_SharedObject *d3d12_dll;
     ID3D12Device *device;
     PFN_D3D12_SERIALIZE_ROOT_SIGNATURE D3D12SerializeRootSignature_func;
     const char *semantic;
@@ -722,10 +739,10 @@ struct D3D12CommandBuffer
     D3D12Sampler *computeSamplers[MAX_TEXTURE_SAMPLERS_PER_STAGE];
     D3D12Texture *computeReadOnlyStorageTextures[MAX_STORAGE_TEXTURES_PER_STAGE];
     D3D12Buffer *computeReadOnlyStorageBuffers[MAX_STORAGE_BUFFERS_PER_STAGE];
-    D3D12TextureSubresource *computeWriteOnlyStorageTextureSubresources[MAX_COMPUTE_WRITE_TEXTURES];
-    Uint32 computeWriteOnlyStorageTextureSubresourceCount;
-    D3D12Buffer *computeWriteOnlyStorageBuffers[MAX_COMPUTE_WRITE_BUFFERS];
-    Uint32 computeWriteOnlyStorageBufferCount;
+    D3D12TextureSubresource *computeReadWriteStorageTextureSubresources[MAX_COMPUTE_WRITE_TEXTURES];
+    Uint32 computeReadWriteStorageTextureSubresourceCount;
+    D3D12Buffer *computeReadWriteStorageBuffers[MAX_COMPUTE_WRITE_BUFFERS];
+    Uint32 computeReadWriteStorageBufferCount;
     D3D12UniformBuffer *computeUniformBuffers[MAX_UNIFORM_BUFFERS_PER_STAGE];
 
     // Resource tracking
@@ -815,8 +832,8 @@ typedef struct D3D12ComputeRootSignature
     Sint32 samplerTextureRootIndex;
     Sint32 readOnlyStorageTextureRootIndex;
     Sint32 readOnlyStorageBufferRootIndex;
-    Sint32 writeOnlyStorageTextureRootIndex;
-    Sint32 writeOnlyStorageBufferRootIndex;
+    Sint32 readWriteStorageTextureRootIndex;
+    Sint32 readWriteStorageBufferRootIndex;
     Sint32 uniformBufferRootIndex[MAX_UNIFORM_BUFFERS_PER_STAGE];
 } D3D12ComputeRootSignature;
 
@@ -828,8 +845,8 @@ struct D3D12ComputePipeline
     Uint32 numSamplers;
     Uint32 numReadOnlyStorageTextures;
     Uint32 numReadOnlyStorageBuffers;
-    Uint32 numWriteOnlyStorageTextures;
-    Uint32 numWriteOnlyStorageBuffers;
+    Uint32 numReadWriteStorageTextures;
+    Uint32 numReadWriteStorageBuffers;
     Uint32 numUniformBuffers;
 
     SDL_AtomicInt referenceCount;
@@ -891,8 +908,8 @@ struct D3D12UniformBuffer
 // Forward function declarations
 
 static void D3D12_ReleaseWindow(SDL_GPURenderer *driverData, SDL_Window *window);
-static void D3D12_Wait(SDL_GPURenderer *driverData);
-static void D3D12_WaitForFences(SDL_GPURenderer *driverData, bool waitAll, SDL_GPUFence *const *fences, Uint32 numFences);
+static bool D3D12_Wait(SDL_GPURenderer *driverData);
+static bool D3D12_WaitForFences(SDL_GPURenderer *driverData, bool waitAll, SDL_GPUFence *const *fences, Uint32 numFences);
 static void D3D12_INTERNAL_ReleaseBlitPipelines(SDL_GPURenderer *driverData);
 
 // Helpers
@@ -911,27 +928,27 @@ static ID3D12CommandQueue *s_CommandQueue;
 #endif
 
 #if defined(SDL_PLATFORM_XBOXONE)
-// This is not defined in d3d12_x.h.
+// These are not defined in d3d12_x.h.
 typedef HRESULT (D3DAPI* PFN_D3D12_XBOX_CREATE_DEVICE)(_In_opt_ IGraphicsUnknown*, _In_ const D3D12XBOX_CREATE_DEVICE_PARAMETERS*, _In_ REFIID, _Outptr_opt_ void**);
+#define D3D12_STANDARD_MULTISAMPLE_PATTERN DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN
 #endif
 
 // Logging
 
-static void
-D3D12_INTERNAL_LogError(
-    ID3D12Device *device,
+static void D3D12_INTERNAL_SetError(
+    D3D12Renderer *renderer,
     const char *msg,
     HRESULT res)
 {
-#define MAX_ERROR_LEN 1024 // FIXME: Arbitrary!
+    #define MAX_ERROR_LEN 1024 // FIXME: Arbitrary!
 
     // Buffer for text, ensure space for \0 terminator after buffer
     char wszMsgBuff[MAX_ERROR_LEN + 1];
     DWORD dwChars; // Number of chars returned.
 
     if (res == DXGI_ERROR_DEVICE_REMOVED) {
-        if (device) {
-            res = ID3D12Device_GetDeviceRemovedReason(device);
+        if (renderer->device) {
+            res = ID3D12Device_GetDeviceRemovedReason(renderer->device);
         }
     }
 
@@ -947,7 +964,10 @@ D3D12_INTERNAL_LogError(
 
     // No message? Screw it, just post the code.
     if (dwChars == 0) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s! Error Code: " HRESULT_FMT, msg, res);
+        if (renderer->debug_mode) {
+            SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s! Error Code: " HRESULT_FMT, msg, res);
+        }
+        SDL_SetError("%s! Error Code: " HRESULT_FMT, msg, res);
         return;
     }
 
@@ -966,7 +986,10 @@ D3D12_INTERNAL_LogError(
     // Ensure null-terminated string
     wszMsgBuff[dwChars] = '\0';
 
-    SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s! Error Code: %s " HRESULT_FMT, msg, wszMsgBuff, res);
+    if (renderer->debug_mode) {
+        SDL_LogError(SDL_LOG_CATEGORY_GPU, "%s! Error Code: %s " HRESULT_FMT, msg, wszMsgBuff, res);
+    }
+    SDL_SetError("%s! Error Code: %s " HRESULT_FMT, msg, wszMsgBuff, res);
 }
 
 // Debug Naming
@@ -1505,13 +1528,17 @@ static void D3D12_INTERNAL_TextureSubresourceBarrier(
     D3D12_RESOURCE_STATES destinationState,
     D3D12TextureSubresource *textureSubresource)
 {
+    bool needsUAVBarrier =
+        (textureSubresource->parent->container->header.info.usage & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE) ||
+        (textureSubresource->parent->container->header.info.usage & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE);
+
     D3D12_INTERNAL_ResourceBarrier(
         commandBuffer,
         sourceState,
         destinationState,
         textureSubresource->parent->resource,
         textureSubresource->index,
-        textureSubresource->parent->container->header.info.usage & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE);
+        needsUAVBarrier);
 }
 
 static D3D12_RESOURCE_STATES D3D12_INTERNAL_DefaultTextureResourceState(
@@ -1530,6 +1557,8 @@ static D3D12_RESOURCE_STATES D3D12_INTERNAL_DefaultTextureResourceState(
     } else if (usageFlags & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ) {
         return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
     } else if (usageFlags & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE) {
+        return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    } else if (usageFlags & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE) {
         return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     } else {
         SDL_LogError(SDL_LOG_CATEGORY_GPU, "Texture has no default usage mode!");
@@ -1774,7 +1803,7 @@ static D3D12DescriptorHeap *D3D12_INTERNAL_CreateDescriptorHeap(
         (void **)&handle);
 
     if (FAILED(res)) {
-        D3D12_INTERNAL_LogError(renderer->device, "Failed to create descriptor heap!", res);
+        D3D12_INTERNAL_SetError(renderer, "Failed to create descriptor heap!", res);
         D3D12_INTERNAL_DestroyDescriptorHeap(heap);
         return NULL;
     }
@@ -2080,7 +2109,7 @@ static D3D12GraphicsRootSignature *D3D12_INTERNAL_CreateGraphicsRootSignature(
 
     if (FAILED(res)) {
         if (errorBlob) {
-            SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to serialize RootSignature: %s", (const char *)ID3D10Blob_GetBufferPointer(errorBlob));
+            SET_ERROR("Failed to serialize RootSignature: %s", (const char *)ID3D10Blob_GetBufferPointer(errorBlob));
             ID3D10Blob_Release(errorBlob);
         }
         D3D12_INTERNAL_DestroyGraphicsRootSignature(d3d12GraphicsRootSignature);
@@ -2100,7 +2129,7 @@ static D3D12GraphicsRootSignature *D3D12_INTERNAL_CreateGraphicsRootSignature(
 
     if (FAILED(res)) {
         if (errorBlob) {
-            SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create RootSignature");
+            SET_ERROR("Failed to create RootSignature: %s", (const char *)ID3D10Blob_GetBufferPointer(errorBlob));
             ID3D10Blob_Release(errorBlob);
         }
         D3D12_INTERNAL_DestroyGraphicsRootSignature(d3d12GraphicsRootSignature);
@@ -2158,8 +2187,8 @@ static D3D12ComputeRootSignature *D3D12_INTERNAL_CreateComputeRootSignature(
     d3d12ComputeRootSignature->samplerTextureRootIndex = -1;
     d3d12ComputeRootSignature->readOnlyStorageTextureRootIndex = -1;
     d3d12ComputeRootSignature->readOnlyStorageBufferRootIndex = -1;
-    d3d12ComputeRootSignature->writeOnlyStorageTextureRootIndex = -1;
-    d3d12ComputeRootSignature->writeOnlyStorageBufferRootIndex = -1;
+    d3d12ComputeRootSignature->readWriteStorageTextureRootIndex = -1;
+    d3d12ComputeRootSignature->readWriteStorageBufferRootIndex = -1;
 
     for (Uint32 i = 0; i < MAX_UNIFORM_BUFFERS_PER_STAGE; i += 1) {
         d3d12ComputeRootSignature->uniformBufferRootIndex[i] = -1;
@@ -2235,9 +2264,9 @@ static D3D12ComputeRootSignature *D3D12_INTERNAL_CreateComputeRootSignature(
         parameterCount += 1;
     }
 
-    if (createInfo->num_writeonly_storage_textures) {
+    if (createInfo->num_readwrite_storage_textures) {
         descriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-        descriptorRange.NumDescriptors = createInfo->num_writeonly_storage_textures;
+        descriptorRange.NumDescriptors = createInfo->num_readwrite_storage_textures;
         descriptorRange.BaseShaderRegister = 0;
         descriptorRange.RegisterSpace = 1;
         descriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
@@ -2248,15 +2277,15 @@ static D3D12ComputeRootSignature *D3D12_INTERNAL_CreateComputeRootSignature(
         rootParameter.DescriptorTable.pDescriptorRanges = &descriptorRanges[rangeCount];
         rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL; // ALL is used for compute
         rootParameters[parameterCount] = rootParameter;
-        d3d12ComputeRootSignature->writeOnlyStorageTextureRootIndex = parameterCount;
+        d3d12ComputeRootSignature->readWriteStorageTextureRootIndex = parameterCount;
         rangeCount += 1;
         parameterCount += 1;
     }
 
-    if (createInfo->num_writeonly_storage_buffers) {
+    if (createInfo->num_readwrite_storage_buffers) {
         descriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-        descriptorRange.NumDescriptors = createInfo->num_writeonly_storage_buffers;
-        descriptorRange.BaseShaderRegister = createInfo->num_writeonly_storage_textures;
+        descriptorRange.NumDescriptors = createInfo->num_readwrite_storage_buffers;
+        descriptorRange.BaseShaderRegister = createInfo->num_readwrite_storage_textures;
         descriptorRange.RegisterSpace = 1;
         descriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
         descriptorRanges[rangeCount] = descriptorRange;
@@ -2266,7 +2295,7 @@ static D3D12ComputeRootSignature *D3D12_INTERNAL_CreateComputeRootSignature(
         rootParameter.DescriptorTable.pDescriptorRanges = &descriptorRanges[rangeCount];
         rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL; // ALL is used for compute
         rootParameters[parameterCount] = rootParameter;
-        d3d12ComputeRootSignature->writeOnlyStorageBufferRootIndex = parameterCount;
+        d3d12ComputeRootSignature->readWriteStorageBufferRootIndex = parameterCount;
         rangeCount += 1;
         parameterCount += 1;
     }
@@ -2298,7 +2327,7 @@ static D3D12ComputeRootSignature *D3D12_INTERNAL_CreateComputeRootSignature(
 
     if (FAILED(res)) {
         if (errorBlob) {
-            SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to serialize RootSignature: %s", (const char *)ID3D10Blob_GetBufferPointer(errorBlob));
+            SET_ERROR("Failed to serialize RootSignature: %s", (const char *)ID3D10Blob_GetBufferPointer(errorBlob));
             ID3D10Blob_Release(errorBlob);
         }
         D3D12_INTERNAL_DestroyComputeRootSignature(d3d12ComputeRootSignature);
@@ -2317,7 +2346,7 @@ static D3D12ComputeRootSignature *D3D12_INTERNAL_CreateComputeRootSignature(
 
     if (FAILED(res)) {
         if (errorBlob) {
-            SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create RootSignature");
+            SET_ERROR("Failed to create RootSignature: %s", (const char *)ID3D10Blob_GetBufferPointer(errorBlob));
             ID3D10Blob_Release(errorBlob);
         }
         D3D12_INTERNAL_DestroyComputeRootSignature(d3d12ComputeRootSignature);
@@ -2354,9 +2383,8 @@ static SDL_GPUComputePipeline *D3D12_CreateComputePipeline(
         createinfo);
 
     if (rootSignature == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Could not create root signature!");
         SDL_free(bytecode);
-        return NULL;
+        SET_STRING_ERROR_AND_RETURN("Could not create root signature!", NULL)
     }
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC pipelineDesc;
@@ -2375,7 +2403,7 @@ static SDL_GPUComputePipeline *D3D12_CreateComputePipeline(
         (void **)&pipelineState);
 
     if (FAILED(res)) {
-        D3D12_INTERNAL_LogError(renderer->device, "Could not create compute pipeline state", res);
+        D3D12_INTERNAL_SetError(renderer, "Could not create compute pipeline state", res);
         SDL_free(bytecode);
         return NULL;
     }
@@ -2394,8 +2422,8 @@ static SDL_GPUComputePipeline *D3D12_CreateComputePipeline(
     computePipeline->numSamplers = createinfo->num_samplers;
     computePipeline->numReadOnlyStorageTextures = createinfo->num_readonly_storage_textures;
     computePipeline->numReadOnlyStorageBuffers = createinfo->num_readonly_storage_buffers;
-    computePipeline->numWriteOnlyStorageTextures = createinfo->num_writeonly_storage_textures;
-    computePipeline->numWriteOnlyStorageBuffers = createinfo->num_writeonly_storage_buffers;
+    computePipeline->numReadWriteStorageTextures = createinfo->num_readwrite_storage_textures;
+    computePipeline->numReadWriteStorageBuffers = createinfo->num_readwrite_storage_buffers;
     computePipeline->numUniformBuffers = createinfo->num_uniform_buffers;
     SDL_SetAtomicInt(&computePipeline->referenceCount, 0);
 
@@ -2432,7 +2460,7 @@ static bool D3D12_INTERNAL_ConvertRasterizerState(SDL_GPURasterizerState rasteri
         desc->SlopeScaledDepthBias = 0.0f;
     }
 
-    desc->DepthClipEnable = TRUE;
+    desc->DepthClipEnable = rasterizerState.enable_depth_clip;
     desc->MultisampleEnable = FALSE;
     desc->AntialiasedLineEnable = FALSE;
     desc->ForcedSampleCount = 0;
@@ -2640,7 +2668,6 @@ static SDL_GPUGraphicsPipeline *D3D12_CreateGraphicsPipeline(
         fragShader);
 
     if (rootSignature == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Could not create root signature!");
         D3D12_INTERNAL_DestroyGraphicsPipeline(pipeline);
         return NULL;
     }
@@ -2655,7 +2682,7 @@ static SDL_GPUGraphicsPipeline *D3D12_CreateGraphicsPipeline(
         D3D_GUID(D3D_IID_ID3D12PipelineState),
         (void **)&pipelineState);
     if (FAILED(res)) {
-        D3D12_INTERNAL_LogError(renderer->device, "Could not create graphics pipeline state", res);
+        D3D12_INTERNAL_SetError(renderer, "Could not create graphics pipeline state", res);
         D3D12_INTERNAL_DestroyGraphicsPipeline(pipeline);
         return NULL;
     }
@@ -2778,6 +2805,9 @@ static D3D12Texture *D3D12_INTERNAL_CreateTexture(
     D3D12_RESOURCE_STATES initialState = (D3D12_RESOURCE_STATES)0;
     D3D12_CLEAR_VALUE clearValue;
     bool useClearValue = false;
+    bool needsUAV =
+        (createinfo->usage & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE) ||
+        (createinfo->usage & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE);
     HRESULT res;
 
     texture = (D3D12Texture *)SDL_calloc(1, sizeof(D3D12Texture));
@@ -2805,7 +2835,7 @@ static D3D12Texture *D3D12_INTERNAL_CreateTexture(
         clearValue.DepthStencil.Stencil = (UINT8)SDL_GetNumberProperty(createinfo->props, SDL_PROP_GPU_CREATETEXTURE_D3D12_CLEAR_STENCIL_UINT8, 0);
     }
 
-    if (createinfo->usage & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE) {
+    if (needsUAV) {
         resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
     }
 
@@ -2856,7 +2886,7 @@ static D3D12Texture *D3D12_INTERNAL_CreateTexture(
         D3D_GUID(D3D_IID_ID3D12Resource),
         (void **)&handle);
     if (FAILED(res)) {
-        D3D12_INTERNAL_LogError(renderer->device, "Failed to create texture!", res);
+        D3D12_INTERNAL_SetError(renderer, "Failed to create texture!", res);
         D3D12_INTERNAL_DestroyTexture(renderer, texture);
         return NULL;
     }
@@ -2957,31 +2987,23 @@ static D3D12Texture *D3D12_INTERNAL_CreateTexture(
 
                     rtvDesc.Format = SDLToD3D12_TextureFormat[createinfo->format];
 
-                    if (isMultisample) {
-                        if (createinfo->type == SDL_GPU_TEXTURETYPE_2D) {
-                            rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
-                        } else if (createinfo->type == SDL_GPU_TEXTURETYPE_2D_ARRAY) {
-                            rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
-                            rtvDesc.Texture2DMSArray.FirstArraySlice = layerIndex;
-                            rtvDesc.Texture2DMSArray.ArraySize = 1;
-                        }
+                    if (createinfo->type == SDL_GPU_TEXTURETYPE_2D_ARRAY || createinfo->type == SDL_GPU_TEXTURETYPE_CUBE || createinfo->type == SDL_GPU_TEXTURETYPE_CUBE_ARRAY) {
+                        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                        rtvDesc.Texture2DArray.MipSlice = levelIndex;
+                        rtvDesc.Texture2DArray.FirstArraySlice = layerIndex;
+                        rtvDesc.Texture2DArray.ArraySize = 1;
+                        rtvDesc.Texture2DArray.PlaneSlice = 0;
+                    } else if (createinfo->type == SDL_GPU_TEXTURETYPE_3D) {
+                        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
+                        rtvDesc.Texture3D.MipSlice = levelIndex;
+                        rtvDesc.Texture3D.FirstWSlice = depthIndex;
+                        rtvDesc.Texture3D.WSize = 1;
+                    } else if (isMultisample) {
+                        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
                     } else {
-                        if (createinfo->type == SDL_GPU_TEXTURETYPE_2D_ARRAY || createinfo->type == SDL_GPU_TEXTURETYPE_CUBE || createinfo->type == SDL_GPU_TEXTURETYPE_CUBE_ARRAY) {
-                            rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-                            rtvDesc.Texture2DArray.MipSlice = levelIndex;
-                            rtvDesc.Texture2DArray.FirstArraySlice = layerIndex;
-                            rtvDesc.Texture2DArray.ArraySize = 1;
-                            rtvDesc.Texture2DArray.PlaneSlice = 0;
-                        } else if (createinfo->type == SDL_GPU_TEXTURETYPE_3D) {
-                            rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
-                            rtvDesc.Texture3D.MipSlice = levelIndex;
-                            rtvDesc.Texture3D.FirstWSlice = depthIndex;
-                            rtvDesc.Texture3D.WSize = 1;
-                        } else {
-                            rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-                            rtvDesc.Texture2D.MipSlice = levelIndex;
-                            rtvDesc.Texture2D.PlaneSlice = 0;
-                        }
+                        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+                        rtvDesc.Texture2D.MipSlice = levelIndex;
+                        rtvDesc.Texture2D.PlaneSlice = 0;
                     }
 
                     ID3D12Device_CreateRenderTargetView(
@@ -3019,7 +3041,7 @@ static D3D12Texture *D3D12_INTERNAL_CreateTexture(
             }
 
             // Create subresource UAV if necessary
-            if (createinfo->usage & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE) {
+            if (needsUAV) {
                 D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc;
 
                 D3D12_INTERNAL_AssignCpuDescriptorHandle(
@@ -3168,8 +3190,7 @@ static D3D12Buffer *D3D12_INTERNAL_CreateBuffer(
         }
         heapFlags = D3D12_HEAP_FLAG_NONE;
     } else {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Unrecognized buffer type!");
-        return NULL;
+        SET_STRING_ERROR_AND_RETURN("Unrecognized buffer type!", NULL)
     }
 
     desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
@@ -3194,7 +3215,7 @@ static D3D12Buffer *D3D12_INTERNAL_CreateBuffer(
         D3D_GUID(D3D_IID_ID3D12Resource),
         (void **)&handle);
     if (FAILED(res)) {
-        D3D12_INTERNAL_LogError(renderer->device, "Could not create buffer!", res);
+        D3D12_INTERNAL_SetError(renderer, "Could not create buffer!", res);
         D3D12_INTERNAL_DestroyBuffer(renderer, buffer);
         return NULL;
     }
@@ -3284,7 +3305,7 @@ static D3D12Buffer *D3D12_INTERNAL_CreateBuffer(
             NULL,
             (void **)&buffer->mapPointer);
         if (FAILED(res)) {
-            D3D12_INTERNAL_LogError(renderer->device, "Failed to map upload buffer!", res);
+            D3D12_INTERNAL_SetError(renderer, "Failed to map upload buffer!", res);
             D3D12_INTERNAL_DestroyBuffer(renderer, buffer);
             return NULL;
         }
@@ -3333,7 +3354,6 @@ static D3D12BufferContainer *D3D12_INTERNAL_CreateBufferContainer(
         type);
 
     if (buffer == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create buffer!");
         SDL_free(container->buffers);
         SDL_free(container);
         return NULL;
@@ -3747,7 +3767,6 @@ static void D3D12_INTERNAL_CycleActiveTexture(
         false);
 
     if (!texture) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to cycle active texture!");
         return;
     }
 
@@ -3829,7 +3848,6 @@ static void D3D12_INTERNAL_CycleActiveBuffer(
         container->type);
 
     if (!buffer) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to cycle active buffer!");
         return;
     }
 
@@ -4119,7 +4137,7 @@ static D3D12UniformBuffer *D3D12_INTERNAL_AcquireUniformBufferFromPool(
         0,
         NULL,
         (void **)&uniformBuffer->buffer->mapPointer);
-    ERROR_CHECK_RETURN("Failed to map buffer pool!", NULL);
+    CHECK_D3D12_ERROR_AND_RETURN("Failed to map buffer pool!", NULL);
 
     D3D12_INTERNAL_TrackUniformBuffer(commandBuffer, uniformBuffer);
 
@@ -4875,26 +4893,23 @@ static void D3D12_EndRenderPass(
 
 static void D3D12_BeginComputePass(
     SDL_GPUCommandBuffer *commandBuffer,
-    const SDL_GPUStorageTextureWriteOnlyBinding *storageTextureBindings,
+    const SDL_GPUStorageTextureReadWriteBinding *storageTextureBindings,
     Uint32 numStorageTextureBindings,
-    const SDL_GPUStorageBufferWriteOnlyBinding *storageBufferBindings,
+    const SDL_GPUStorageBufferReadWriteBinding *storageBufferBindings,
     Uint32 numStorageBufferBindings)
 {
     D3D12CommandBuffer *d3d12CommandBuffer = (D3D12CommandBuffer *)commandBuffer;
 
-    d3d12CommandBuffer->computeWriteOnlyStorageTextureSubresourceCount = numStorageTextureBindings;
-    d3d12CommandBuffer->computeWriteOnlyStorageBufferCount = numStorageBufferBindings;
+    d3d12CommandBuffer->computeReadWriteStorageTextureSubresourceCount = numStorageTextureBindings;
+    d3d12CommandBuffer->computeReadWriteStorageBufferCount = numStorageBufferBindings;
 
-    /* Write-only resources will be actually bound in BindComputePipeline
+    /* Read-write resources will be actually bound in BindComputePipeline
      * after the root signature is set.
      * We also have to scan to see which barriers we actually need because depth slices aren't separate subresources
      */
     if (numStorageTextureBindings > 0) {
         for (Uint32 i = 0; i < numStorageTextureBindings; i += 1) {
             D3D12TextureContainer *container = (D3D12TextureContainer *)storageTextureBindings[i].texture;
-            if (!(container->header.info.usage & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE)) {
-                SDL_LogError(SDL_LOG_CATEGORY_GPU, "Attempted to bind read-only texture as compute write texture");
-            }
 
             D3D12TextureSubresource *subresource = D3D12_INTERNAL_PrepareTextureSubresourceForWrite(
                 d3d12CommandBuffer,
@@ -4904,7 +4919,7 @@ static void D3D12_BeginComputePass(
                 storageTextureBindings[i].cycle,
                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-            d3d12CommandBuffer->computeWriteOnlyStorageTextureSubresources[i] = subresource;
+            d3d12CommandBuffer->computeReadWriteStorageTextureSubresources[i] = subresource;
 
             D3D12_INTERNAL_TrackTexture(
                 d3d12CommandBuffer,
@@ -4915,16 +4930,14 @@ static void D3D12_BeginComputePass(
     if (numStorageBufferBindings > 0) {
         for (Uint32 i = 0; i < numStorageBufferBindings; i += 1) {
             D3D12BufferContainer *container = (D3D12BufferContainer *)storageBufferBindings[i].buffer;
-            if (!(container->usage & SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE)) {
-                SDL_LogError(SDL_LOG_CATEGORY_GPU, "Attempted to bind read-only texture as compute write texture");
-            }
+
             D3D12Buffer *buffer = D3D12_INTERNAL_PrepareBufferForWrite(
                 d3d12CommandBuffer,
                 container,
                 storageBufferBindings[i].cycle,
                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-            d3d12CommandBuffer->computeWriteOnlyStorageBuffers[i] = buffer;
+            d3d12CommandBuffer->computeReadWriteStorageBuffers[i] = buffer;
 
             D3D12_INTERNAL_TrackBuffer(
                 d3d12CommandBuffer,
@@ -4970,39 +4983,39 @@ static void D3D12_BindComputePipeline(
     D3D12_INTERNAL_TrackComputePipeline(d3d12CommandBuffer, pipeline);
 
     // Bind write-only resources after setting root signature
-    if (pipeline->numWriteOnlyStorageTextures > 0) {
-        for (Uint32 i = 0; i < pipeline->numWriteOnlyStorageTextures; i += 1) {
-            cpuHandles[i] = d3d12CommandBuffer->computeWriteOnlyStorageTextureSubresources[i]->uavHandle.cpuHandle;
+    if (pipeline->numReadWriteStorageTextures > 0) {
+        for (Uint32 i = 0; i < pipeline->numReadWriteStorageTextures; i += 1) {
+            cpuHandles[i] = d3d12CommandBuffer->computeReadWriteStorageTextureSubresources[i]->uavHandle.cpuHandle;
         }
 
         D3D12_INTERNAL_WriteGPUDescriptors(
             d3d12CommandBuffer,
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
             cpuHandles,
-            d3d12CommandBuffer->computeWriteOnlyStorageTextureSubresourceCount,
+            d3d12CommandBuffer->computeReadWriteStorageTextureSubresourceCount,
             &gpuDescriptorHandle);
 
         ID3D12GraphicsCommandList_SetComputeRootDescriptorTable(
             d3d12CommandBuffer->graphicsCommandList,
-            d3d12CommandBuffer->currentComputePipeline->rootSignature->writeOnlyStorageTextureRootIndex,
+            d3d12CommandBuffer->currentComputePipeline->rootSignature->readWriteStorageTextureRootIndex,
             gpuDescriptorHandle);
     }
 
-    if (pipeline->numWriteOnlyStorageBuffers > 0) {
-        for (Uint32 i = 0; i < pipeline->numWriteOnlyStorageBuffers; i += 1) {
-            cpuHandles[i] = d3d12CommandBuffer->computeWriteOnlyStorageBuffers[i]->uavDescriptor.cpuHandle;
+    if (pipeline->numReadWriteStorageBuffers > 0) {
+        for (Uint32 i = 0; i < pipeline->numReadWriteStorageBuffers; i += 1) {
+            cpuHandles[i] = d3d12CommandBuffer->computeReadWriteStorageBuffers[i]->uavDescriptor.cpuHandle;
         }
 
         D3D12_INTERNAL_WriteGPUDescriptors(
             d3d12CommandBuffer,
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
             cpuHandles,
-            d3d12CommandBuffer->computeWriteOnlyStorageBufferCount,
+            d3d12CommandBuffer->computeReadWriteStorageBufferCount,
             &gpuDescriptorHandle);
 
         ID3D12GraphicsCommandList_SetComputeRootDescriptorTable(
             d3d12CommandBuffer->graphicsCommandList,
-            d3d12CommandBuffer->currentComputePipeline->rootSignature->writeOnlyStorageBufferRootIndex,
+            d3d12CommandBuffer->currentComputePipeline->rootSignature->readWriteStorageBufferRootIndex,
             gpuDescriptorHandle);
     }
 }
@@ -5255,29 +5268,29 @@ static void D3D12_EndComputePass(
 {
     D3D12CommandBuffer *d3d12CommandBuffer = (D3D12CommandBuffer *)commandBuffer;
 
-    for (Uint32 i = 0; i < d3d12CommandBuffer->computeWriteOnlyStorageTextureSubresourceCount; i += 1) {
-        if (d3d12CommandBuffer->computeWriteOnlyStorageTextureSubresources[i]) {
+    for (Uint32 i = 0; i < d3d12CommandBuffer->computeReadWriteStorageTextureSubresourceCount; i += 1) {
+        if (d3d12CommandBuffer->computeReadWriteStorageTextureSubresources[i]) {
             D3D12_INTERNAL_TextureSubresourceTransitionToDefaultUsage(
                 d3d12CommandBuffer,
                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                d3d12CommandBuffer->computeWriteOnlyStorageTextureSubresources[i]);
+                d3d12CommandBuffer->computeReadWriteStorageTextureSubresources[i]);
 
-            d3d12CommandBuffer->computeWriteOnlyStorageTextureSubresources[i] = NULL;
+            d3d12CommandBuffer->computeReadWriteStorageTextureSubresources[i] = NULL;
         }
     }
-    d3d12CommandBuffer->computeWriteOnlyStorageTextureSubresourceCount = 0;
+    d3d12CommandBuffer->computeReadWriteStorageTextureSubresourceCount = 0;
 
-    for (Uint32 i = 0; i < d3d12CommandBuffer->computeWriteOnlyStorageBufferCount; i += 1) {
-        if (d3d12CommandBuffer->computeWriteOnlyStorageBuffers[i]) {
+    for (Uint32 i = 0; i < d3d12CommandBuffer->computeReadWriteStorageBufferCount; i += 1) {
+        if (d3d12CommandBuffer->computeReadWriteStorageBuffers[i]) {
             D3D12_INTERNAL_BufferTransitionToDefaultUsage(
                 d3d12CommandBuffer,
                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                d3d12CommandBuffer->computeWriteOnlyStorageBuffers[i]);
+                d3d12CommandBuffer->computeReadWriteStorageBuffers[i]);
 
-            d3d12CommandBuffer->computeWriteOnlyStorageBuffers[i] = NULL;
+            d3d12CommandBuffer->computeReadWriteStorageBuffers[i] = NULL;
         }
     }
-    d3d12CommandBuffer->computeWriteOnlyStorageBufferCount = 0;
+    d3d12CommandBuffer->computeReadWriteStorageBufferCount = 0;
 
     for (Uint32 i = 0; i < MAX_STORAGE_TEXTURES_PER_STAGE; i += 1) {
         if (d3d12CommandBuffer->computeReadOnlyStorageTextures[i]) {
@@ -5438,7 +5451,6 @@ static void D3D12_UploadToTexture(
             D3D12_BUFFER_TYPE_UPLOAD);
 
         if (!temporaryBuffer) {
-            SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create temporary upload buffer.");
             return;
         }
 
@@ -5485,7 +5497,6 @@ static void D3D12_UploadToTexture(
             D3D12_BUFFER_TYPE_UPLOAD);
 
         if (!temporaryBuffer) {
-            SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create temporary upload buffer.");
             return;
         }
 
@@ -5769,7 +5780,6 @@ static void D3D12_DownloadFromTexture(
             D3D12_BUFFER_TYPE_DOWNLOAD);
 
         if (!textureDownload->temporaryBuffer) {
-            SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create temporary download buffer!");
             SDL_free(textureDownload);
             return;
         }
@@ -5964,6 +5974,18 @@ static D3D12WindowData *D3D12_INTERNAL_FetchWindowData(
     return (D3D12WindowData *)SDL_GetPointerProperty(properties, WINDOW_PROPERTY_DATA, NULL);
 }
 
+static bool D3D12_INTERNAL_OnWindowResize(void *userdata, SDL_Event *e)
+{
+    SDL_Window *w = (SDL_Window *)userdata;
+    D3D12WindowData *data;
+    if (e->type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED && e->window.windowID == SDL_GetWindowID(w)) {
+        data = D3D12_INTERNAL_FetchWindowData(w);
+        data->needsSwapchainRecreate = true;
+    }
+
+    return true;
+}
+
 static bool D3D12_SupportsSwapchainComposition(
     SDL_GPURenderer *driverData,
     SDL_Window *window,
@@ -5999,8 +6021,7 @@ static bool D3D12_SupportsSwapchainComposition(
 
     D3D12WindowData *windowData = D3D12_INTERNAL_FetchWindowData(window);
     if (windowData == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Must claim window before querying swapchain composition support!");
-        return false;
+        SET_STRING_ERROR_AND_RETURN("Must claim window before querying swapchain composition support!", false)
     }
 
     // Check the color space support if necessary
@@ -6055,7 +6076,8 @@ static bool D3D12_INTERNAL_CreateSwapchain(
     D3D12Texture *texture;
 
     // Get the swapchain size
-    SDL_GetWindowSize(windowData->window, &width, &height);
+    SDL_SyncWindow(windowData->window);
+    SDL_GetWindowSizeInPixels(windowData->window, &width, &height);
 
     // Create the swapchain textures
     SDL_zero(createInfo);
@@ -6083,8 +6105,6 @@ static bool D3D12_INTERNAL_CreateSwapchain(
     windowData->swapchainComposition = swapchain_composition;
     windowData->swapchainColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
     windowData->frameCounter = 0;
-    windowData->swapchainWidth = width;
-    windowData->swapchainHeight = height;
 
     // Precache blit pipelines for the swapchain format
     for (Uint32 i = 0; i < 5; i += 1) {
@@ -6097,6 +6117,7 @@ static bool D3D12_INTERNAL_CreateSwapchain(
             renderer->blitFrom2DArrayShader,
             renderer->blitFrom3DShader,
             renderer->blitFromCubeShader,
+            renderer->blitFromCubeArrayShader,
             &renderer->blitPipelines,
             &renderer->blitPipelineCount,
             &renderer->blitPipelineCapacity);
@@ -6117,35 +6138,31 @@ static void D3D12_INTERNAL_DestroySwapchain(
     }
 }
 
-static bool D3D12_INTERNAL_ResizeSwapchainIfNeeded(
+static bool D3D12_INTERNAL_ResizeSwapchain(
     D3D12Renderer *renderer,
     D3D12WindowData *windowData)
 {
-    int w, h;
-    SDL_GetWindowSize(windowData->window, &w, &h);
+    // Wait so we don't release in-flight views
+    D3D12_Wait((SDL_GPURenderer *)renderer);
 
-    if (w != windowData->swapchainWidth || h != windowData->swapchainHeight) {
-        // Wait so we don't release in-flight views
-        D3D12_Wait((SDL_GPURenderer *)renderer);
+    // Present a black screen
+    renderer->commandQueue->PresentX(0, NULL, NULL);
 
-        // Present a black screen
-        renderer->commandQueue->PresentX(0, NULL, NULL);
-
-        // Clean up the previous swapchain textures
-        for (Uint32 i = 0; i < MAX_FRAMES_IN_FLIGHT; i += 1) {
-            D3D12_INTERNAL_DestroyTexture(
-                renderer,
-                windowData->textureContainers[i].activeTexture);
-        }
-
-        // Create a new swapchain
-        D3D12_INTERNAL_CreateSwapchain(
+    // Clean up the previous swapchain textures
+    for (Uint32 i = 0; i < MAX_FRAMES_IN_FLIGHT; i += 1) {
+        D3D12_INTERNAL_DestroyTexture(
             renderer,
-            windowData,
-            windowData->swapchainComposition,
-            windowData->present_mode);
+            windowData->textureContainers[i].activeTexture);
     }
 
+    // Create a new swapchain
+    D3D12_INTERNAL_CreateSwapchain(
+        renderer,
+        windowData,
+        windowData->swapchainComposition,
+        windowData->present_mode);
+
+    windowData->needsSwapchainRecreate = false;
     return true;
 }
 #else
@@ -6169,7 +6186,7 @@ static bool D3D12_INTERNAL_InitializeSwapchainTexture(
         index,
         D3D_GUID(D3D_IID_ID3D12Resource),
         (void **)&swapchainTexture);
-    ERROR_CHECK_RETURN("Could not get buffer from swapchain!", 0);
+    CHECK_D3D12_ERROR_AND_RETURN("Could not get buffer from swapchain!", false);
 
     pTexture = (D3D12Texture *)SDL_calloc(1, sizeof(D3D12Texture));
     if (!pTexture) {
@@ -6264,58 +6281,60 @@ static bool D3D12_INTERNAL_InitializeSwapchainTexture(
     return true;
 }
 
-static bool D3D12_INTERNAL_ResizeSwapchainIfNeeded(
+static bool D3D12_INTERNAL_ResizeSwapchain(
     D3D12Renderer *renderer,
     D3D12WindowData *windowData)
 {
-    DXGI_SWAP_CHAIN_DESC swapchainDesc;
+    // Wait so we don't release in-flight views
+    D3D12_Wait((SDL_GPURenderer *)renderer);
+
+    // Release views and clean up
+    for (Uint32 i = 0; i < MAX_FRAMES_IN_FLIGHT; i += 1) {
+        D3D12_INTERNAL_ReleaseCpuDescriptorHandle(
+            renderer,
+            &windowData->textureContainers[i].activeTexture->srvHandle);
+        D3D12_INTERNAL_ReleaseCpuDescriptorHandle(
+            renderer,
+            &windowData->textureContainers[i].activeTexture->subresources[0].rtvHandles[0]);
+
+        SDL_free(windowData->textureContainers[i].activeTexture->subresources[0].rtvHandles);
+        SDL_free(windowData->textureContainers[i].activeTexture->subresources);
+        SDL_free(windowData->textureContainers[i].activeTexture);
+        SDL_free(windowData->textureContainers[i].textures);
+    }
+
     int w, h;
+    SDL_SyncWindow(windowData->window);
+    SDL_GetWindowSizeInPixels(
+        windowData->window,
+        &w,
+        &h);
 
-    IDXGISwapChain_GetDesc(windowData->swapchain, &swapchainDesc);
-    SDL_GetWindowSize(windowData->window, &w, &h);
+    // Resize the swapchain
+    HRESULT res = IDXGISwapChain_ResizeBuffers(
+        windowData->swapchain,
+        0, // Keep buffer count the same
+        w,
+        h,
+        DXGI_FORMAT_UNKNOWN, // Keep the old format
+        renderer->supportsTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0);
+    CHECK_D3D12_ERROR_AND_RETURN("Could not resize swapchain buffers", false)
 
-    if ((UINT)w != swapchainDesc.BufferDesc.Width || (UINT)h != swapchainDesc.BufferDesc.Height) {
-        // Wait so we don't release in-flight views
-        D3D12_Wait((SDL_GPURenderer *)renderer);
-
-        // Release views and clean up
-        for (Uint32 i = 0; i < MAX_FRAMES_IN_FLIGHT; i += 1) {
-            D3D12_INTERNAL_ReleaseCpuDescriptorHandle(
+    // Create texture object for the swapchain
+    for (Uint32 i = 0; i < MAX_FRAMES_IN_FLIGHT; i += 1) {
+        if (!D3D12_INTERNAL_InitializeSwapchainTexture(
                 renderer,
-                &windowData->textureContainers[i].activeTexture->srvHandle);
-            D3D12_INTERNAL_ReleaseCpuDescriptorHandle(
-                renderer,
-                &windowData->textureContainers[i].activeTexture->subresources[0].rtvHandles[0]);
-
-            SDL_free(windowData->textureContainers[i].activeTexture->subresources[0].rtvHandles);
-            SDL_free(windowData->textureContainers[i].activeTexture->subresources);
-            SDL_free(windowData->textureContainers[i].activeTexture);
-            SDL_free(windowData->textureContainers[i].textures);
-        }
-
-        // Resize the swapchain
-        HRESULT res = IDXGISwapChain_ResizeBuffers(
-            windowData->swapchain,
-            0, // Keep buffer count the same
-            w,
-            h,
-            DXGI_FORMAT_UNKNOWN, // Keep the old format
-            renderer->supportsTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0);
-        ERROR_CHECK_RETURN("Could not resize swapchain buffers", 0)
-
-        // Create texture object for the swapchain
-        for (Uint32 i = 0; i < MAX_FRAMES_IN_FLIGHT; i += 1) {
-            if (!D3D12_INTERNAL_InitializeSwapchainTexture(
-                    renderer,
-                    windowData->swapchain,
-                    windowData->swapchainComposition,
-                    i,
-                    &windowData->textureContainers[i])) {
-                return false;
-            }
+                windowData->swapchain,
+                windowData->swapchainComposition,
+                i,
+                &windowData->textureContainers[i])) {
+            return false;
         }
     }
 
+    windowData->width = w;
+    windowData->height = h;
+    windowData->needsSwapchainRecreate = false;
     return true;
 }
 
@@ -6349,7 +6368,6 @@ static bool D3D12_INTERNAL_CreateSwapchain(
     SDL_GPUPresentMode presentMode)
 {
     HWND dxgiHandle;
-    int width, height;
     DXGI_SWAP_CHAIN_DESC1 swapchainDesc;
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc;
     DXGI_FORMAT swapchainFormat;
@@ -6365,10 +6383,10 @@ static bool D3D12_INTERNAL_CreateSwapchain(
     dxgiHandle = (HWND)windowData->window;
 #endif
 
-    // Get the window size
-    SDL_GetWindowSize(windowData->window, &width, &height);
-
     swapchainFormat = SwapchainCompositionToTextureFormat[swapchainComposition];
+
+    int w, h;
+    SDL_GetWindowSizeInPixels(windowData->window, &w, &h);
 
     // Initialize the swapchain buffer descriptor
     swapchainDesc.Width = 0;
@@ -6410,14 +6428,14 @@ static bool D3D12_INTERNAL_CreateSwapchain(
         &fullscreenDesc,
         NULL,
         &swapchain);
-    ERROR_CHECK_RETURN("Could not create swapchain", 0);
+    CHECK_D3D12_ERROR_AND_RETURN("Could not create swapchain", false);
 
     res = IDXGISwapChain1_QueryInterface(
         swapchain,
         D3D_GUID(D3D_IID_IDXGISwapChain3),
         (void **)&swapchain3);
     IDXGISwapChain1_Release(swapchain);
-    ERROR_CHECK_RETURN("Could not create IDXGISwapChain3", 0);
+    CHECK_D3D12_ERROR_AND_RETURN("Could not create IDXGISwapChain3", false);
 
     if (swapchainComposition != SDL_GPU_SWAPCHAINCOMPOSITION_SDR) {
         // Support already verified if we hit this block
@@ -6465,6 +6483,8 @@ static bool D3D12_INTERNAL_CreateSwapchain(
     windowData->swapchainComposition = swapchainComposition;
     windowData->swapchainColorSpace = SwapchainCompositionToColorSpace[swapchainComposition];
     windowData->frameCounter = 0;
+    windowData->width = w;
+    windowData->height = h;
 
     // Precache blit pipelines for the swapchain format
     for (Uint32 i = 0; i < 5; i += 1) {
@@ -6520,7 +6540,6 @@ static bool D3D12_ClaimWindow(
             SDL_SetPointerProperty(SDL_GetWindowProperties(window), WINDOW_PROPERTY_DATA, windowData);
 
             SDL_LockMutex(renderer->windowLock);
-
             if (renderer->claimedWindowCount >= renderer->claimedWindowCapacity) {
                 renderer->claimedWindowCapacity *= 2;
                 renderer->claimedWindows = (D3D12WindowData **)SDL_realloc(
@@ -6529,14 +6548,14 @@ static bool D3D12_ClaimWindow(
             }
             renderer->claimedWindows[renderer->claimedWindowCount] = windowData;
             renderer->claimedWindowCount += 1;
-
             SDL_UnlockMutex(renderer->windowLock);
+
+            SDL_AddEventWatch(D3D12_INTERNAL_OnWindowResize, window);
 
             return true;
         } else {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not create swapchain, failed to claim window!");
             SDL_free(windowData);
-            return false;
+            SET_STRING_ERROR_AND_RETURN("Could not create swapchain, failed to claim window!", false)
         }
     } else {
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Window already claimed!");
@@ -6581,6 +6600,7 @@ static void D3D12_ReleaseWindow(
 
     SDL_free(windowData);
     SDL_ClearProperty(SDL_GetWindowProperties(window), WINDOW_PROPERTY_DATA);
+    SDL_RemoveEventWatch(D3D12_INTERNAL_OnWindowResize, window);
 }
 
 static bool D3D12_SetSwapchainParameters(
@@ -6593,18 +6613,15 @@ static bool D3D12_SetSwapchainParameters(
     D3D12WindowData *windowData = D3D12_INTERNAL_FetchWindowData(window);
 
     if (windowData == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Cannot set swapchain parameters on unclaimed window!");
-        return false;
+        SET_STRING_ERROR_AND_RETURN("Cannot set swapchain parameters on unclaimed window!", false)
     }
 
     if (!D3D12_SupportsSwapchainComposition(driverData, window, swapchainComposition)) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Swapchain composition not supported!");
-        return false;
+        SET_STRING_ERROR_AND_RETURN("Swapchain composition not supported!", false)
     }
 
     if (!D3D12_SupportsPresentMode(driverData, window, presentMode)) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Present mode not supported!");
-        return false;
+        SET_STRING_ERROR_AND_RETURN("Present mode not supported!", false)
     }
 
     if (
@@ -6631,11 +6648,11 @@ static SDL_GPUTextureFormat D3D12_GetSwapchainTextureFormat(
     SDL_GPURenderer *driverData,
     SDL_Window *window)
 {
+    D3D12Renderer *renderer = (D3D12Renderer *)driverData;
     D3D12WindowData *windowData = D3D12_INTERNAL_FetchWindowData(window);
 
     if (windowData == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Cannot get swapchain format, window has not been claimed!");
-        return SDL_GPU_TEXTUREFORMAT_INVALID;
+        SET_STRING_ERROR_AND_RETURN("Cannot get swapchain format, window has not been claimed!", SDL_GPU_TEXTUREFORMAT_INVALID)
     }
 
     return windowData->textureContainers[windowData->frameCounter].header.info.format;
@@ -6658,7 +6675,7 @@ static D3D12Fence *D3D12_INTERNAL_AcquireFence(
             D3D_GUID(D3D_IID_ID3D12Fence),
             (void **)&handle);
         if (FAILED(res)) {
-            D3D12_INTERNAL_LogError(renderer->device, "Failed to create fence!", res);
+            D3D12_INTERNAL_SetError(renderer, "Failed to create fence!", res);
             SDL_UnlockMutex(renderer->fenceLock);
             return NULL;
         }
@@ -6684,7 +6701,7 @@ static D3D12Fence *D3D12_INTERNAL_AcquireFence(
     return fence;
 }
 
-static void D3D12_INTERNAL_AllocateCommandBuffer(
+static bool D3D12_INTERNAL_AllocateCommandBuffer(
     D3D12Renderer *renderer)
 {
     D3D12CommandBuffer *commandBuffer;
@@ -6694,8 +6711,7 @@ static void D3D12_INTERNAL_AllocateCommandBuffer(
 
     commandBuffer = (D3D12CommandBuffer *)SDL_calloc(1, sizeof(D3D12CommandBuffer));
     if (!commandBuffer) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create ID3D12CommandList. Out of Memory");
-        return;
+        SET_STRING_ERROR_AND_RETURN("Failed to create ID3D12CommandList. Out of Memory", false)
     }
 
     res = ID3D12Device_CreateCommandAllocator(
@@ -6704,9 +6720,9 @@ static void D3D12_INTERNAL_AllocateCommandBuffer(
         D3D_GUID(D3D_IID_ID3D12CommandAllocator),
         (void **)&commandAllocator);
     if (FAILED(res)) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create ID3D12CommandAllocator");
+        D3D12_INTERNAL_SetError(renderer, "Failed to create ID3D12CommandAllocator", res);
         D3D12_INTERNAL_DestroyCommandBuffer(commandBuffer);
-        return;
+        return false;
     }
     commandBuffer->commandAllocator = commandAllocator;
 
@@ -6720,9 +6736,9 @@ static void D3D12_INTERNAL_AllocateCommandBuffer(
         (void **)&commandList);
 
     if (FAILED(res)) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create ID3D12CommandList");
+        D3D12_INTERNAL_SetError(renderer, "Failed to create ID3D12CommandList", res);
         D3D12_INTERNAL_DestroyCommandBuffer(commandBuffer);
-        return;
+        return false;
     }
     commandBuffer->graphicsCommandList = commandList;
 
@@ -6780,9 +6796,8 @@ static void D3D12_INTERNAL_AllocateCommandBuffer(
         (!commandBuffer->usedComputePipelines) ||
         (!commandBuffer->usedUniformBuffers) ||
         (!commandBuffer->textureDownloads)) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create ID3D12CommandList. Out of Memory");
         D3D12_INTERNAL_DestroyCommandBuffer(commandBuffer);
-        return;
+        SET_STRING_ERROR_AND_RETURN("Failed to create ID3D12CommandList. Out of Memory", false)
     }
 
     D3D12CommandBuffer **resizedAvailableCommandBuffers = (D3D12CommandBuffer **)SDL_realloc(
@@ -6790,9 +6805,8 @@ static void D3D12_INTERNAL_AllocateCommandBuffer(
         sizeof(D3D12CommandBuffer *) * (renderer->availableCommandBufferCapacity + 1));
 
     if (!resizedAvailableCommandBuffers) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to create ID3D12CommandList. Out of Memory");
         D3D12_INTERNAL_DestroyCommandBuffer(commandBuffer);
-        return;
+        SET_STRING_ERROR_AND_RETURN("Failed to create ID3D12CommandList. Out of Memory", false)
     }
     // Add to inactive command buffer array
     renderer->availableCommandBufferCapacity += 1;
@@ -6800,6 +6814,8 @@ static void D3D12_INTERNAL_AllocateCommandBuffer(
 
     renderer->availableCommandBuffers[renderer->availableCommandBufferCount] = commandBuffer;
     renderer->availableCommandBufferCount += 1;
+
+    return true;
 }
 
 static D3D12CommandBuffer *D3D12_INTERNAL_AcquireCommandBufferFromPool(
@@ -6808,7 +6824,9 @@ static D3D12CommandBuffer *D3D12_INTERNAL_AcquireCommandBufferFromPool(
     D3D12CommandBuffer *commandBuffer;
 
     if (renderer->availableCommandBufferCount == 0) {
-        D3D12_INTERNAL_AllocateCommandBuffer(renderer);
+        if (!D3D12_INTERNAL_AllocateCommandBuffer(renderer)) {
+            return NULL;
+        }
     }
 
     commandBuffer = renderer->availableCommandBuffers[renderer->availableCommandBufferCount - 1];
@@ -6830,7 +6848,6 @@ static SDL_GPUCommandBuffer *D3D12_AcquireCommandBuffer(
     SDL_UnlockMutex(renderer->acquireCommandBufferLock);
 
     if (commandBuffer == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to acquire command buffer!");
         return NULL;
     }
 
@@ -6839,7 +6856,6 @@ static SDL_GPUCommandBuffer *D3D12_AcquireCommandBuffer(
         D3D12_INTERNAL_AcquireDescriptorHeapFromPool(commandBuffer, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
     if (!commandBuffer->gpuDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to acquire descriptor heap!");
         D3D12_INTERNAL_DestroyCommandBuffer(commandBuffer);
         return NULL;
     }
@@ -6848,7 +6864,6 @@ static SDL_GPUCommandBuffer *D3D12_AcquireCommandBuffer(
         D3D12_INTERNAL_AcquireDescriptorHeapFromPool(commandBuffer, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
 
     if (!commandBuffer->gpuDescriptorHeaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER]) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to acquire descriptor heap!");
         D3D12_INTERNAL_DestroyCommandBuffer(commandBuffer);
         return NULL;
     }
@@ -6888,8 +6903,8 @@ static SDL_GPUCommandBuffer *D3D12_AcquireCommandBuffer(
     SDL_zeroa(commandBuffer->computeSamplers);
     SDL_zeroa(commandBuffer->computeReadOnlyStorageTextures);
     SDL_zeroa(commandBuffer->computeReadOnlyStorageBuffers);
-    SDL_zeroa(commandBuffer->computeWriteOnlyStorageTextureSubresources);
-    SDL_zeroa(commandBuffer->computeWriteOnlyStorageBuffers);
+    SDL_zeroa(commandBuffer->computeReadWriteStorageTextureSubresources);
+    SDL_zeroa(commandBuffer->computeReadWriteStorageBuffers);
     SDL_zeroa(commandBuffer->computeUniformBuffers);
 
     commandBuffer->autoReleaseFence = true;
@@ -6897,11 +6912,12 @@ static SDL_GPUCommandBuffer *D3D12_AcquireCommandBuffer(
     return (SDL_GPUCommandBuffer *)commandBuffer;
 }
 
-static SDL_GPUTexture *D3D12_AcquireSwapchainTexture(
+static bool D3D12_AcquireSwapchainTexture(
     SDL_GPUCommandBuffer *commandBuffer,
     SDL_Window *window,
-    Uint32 *w,
-    Uint32 *h)
+    SDL_GPUTexture **swapchainTexture,
+    Uint32 *swapchainTextureWidth,
+    Uint32 *swapchainTextureHeight)
 {
     D3D12CommandBuffer *d3d12CommandBuffer = (D3D12CommandBuffer *)commandBuffer;
     D3D12Renderer *renderer = d3d12CommandBuffer->renderer;
@@ -6909,33 +6925,51 @@ static SDL_GPUTexture *D3D12_AcquireSwapchainTexture(
     Uint32 swapchainIndex;
     HRESULT res;
 
-    windowData = D3D12_INTERNAL_FetchWindowData(window);
-    if (windowData == NULL) {
-        return NULL;
+    *swapchainTexture = NULL;
+    if (swapchainTextureWidth) {
+        *swapchainTextureWidth = 0;
+    }
+    if (swapchainTextureHeight) {
+        *swapchainTextureHeight = 0;
     }
 
-    res = D3D12_INTERNAL_ResizeSwapchainIfNeeded(
-        renderer,
-        windowData);
-    ERROR_CHECK_RETURN("Could not resize swapchain", NULL);
+    windowData = D3D12_INTERNAL_FetchWindowData(window);
+    if (windowData == NULL) {
+        SET_STRING_ERROR_AND_RETURN("Cannot acquire swapchain texture from an unclaimed window!", false)
+    }
+
+    if (windowData->needsSwapchainRecreate) {
+        if (!D3D12_INTERNAL_ResizeSwapchain(renderer, windowData)) {
+            return false;
+        }
+    }
+
+    if (swapchainTextureWidth) {
+        *swapchainTextureWidth = windowData->width;
+    }
+    if (swapchainTextureHeight) {
+        *swapchainTextureHeight = windowData->height;
+    }
 
     if (windowData->inFlightFences[windowData->frameCounter] != NULL) {
         if (windowData->present_mode == SDL_GPU_PRESENTMODE_VSYNC) {
             // In VSYNC mode, block until the least recent presented frame is done
-            D3D12_WaitForFences(
+            if (!D3D12_WaitForFences(
                 (SDL_GPURenderer *)renderer,
                 true,
                 &windowData->inFlightFences[windowData->frameCounter],
-                1);
+                1)) {
+                return false;
+            }
         } else {
             if (!D3D12_QueryFence(
                     (SDL_GPURenderer *)renderer,
                     windowData->inFlightFences[windowData->frameCounter])) {
                 /*
                  * In MAILBOX or IMMEDIATE mode, if the least recent fence is not signaled,
-                 * return NULL to indicate that rendering should be skipped
+                 * return true to indicate that there is no error but rendering should be skipped
                  */
-                return NULL;
+                return true;
             }
         }
 
@@ -6960,12 +6994,8 @@ static SDL_GPUTexture *D3D12_AcquireSwapchainTexture(
         swapchainIndex,
         D3D_GUID(D3D_IID_ID3D12Resource),
         (void **)&windowData->textureContainers[swapchainIndex].activeTexture->resource);
-    ERROR_CHECK_RETURN("Could not acquire swapchain!", NULL);
+    CHECK_D3D12_ERROR_AND_RETURN("Could not acquire swapchain!", false);
 #endif
-
-    // Send the dimensions to the out parameters.
-    *w = windowData->textureContainers[swapchainIndex].header.info.width;
-    *h = windowData->textureContainers[swapchainIndex].header.info.height;
 
     // Set up presentation
     if (d3d12CommandBuffer->presentDataCount == d3d12CommandBuffer->presentDataCapacity) {
@@ -6992,7 +7022,8 @@ static SDL_GPUTexture *D3D12_AcquireSwapchainTexture(
         1,
         &barrierDesc);
 
-    return (SDL_GPUTexture *)&windowData->textureContainers[swapchainIndex];
+    *swapchainTexture = (SDL_GPUTexture*)&windowData->textureContainers[swapchainIndex];
+    return true;
 }
 
 static void D3D12_INTERNAL_PerformPendingDestroys(D3D12Renderer *renderer)
@@ -7055,10 +7086,11 @@ static void D3D12_INTERNAL_PerformPendingDestroys(D3D12Renderer *renderer)
     SDL_UnlockMutex(renderer->disposeLock);
 }
 
-static void D3D12_INTERNAL_CopyTextureDownload(
+static bool D3D12_INTERNAL_CopyTextureDownload(
     D3D12CommandBuffer *commandBuffer,
     D3D12TextureDownload *download)
 {
+    D3D12Renderer *renderer = commandBuffer->renderer;
     Uint8 *sourcePtr;
     Uint8 *destPtr;
     HRESULT res;
@@ -7069,10 +7101,7 @@ static void D3D12_INTERNAL_CopyTextureDownload(
         NULL,
         (void **)&sourcePtr);
 
-    if (FAILED(res)) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to map temporary buffer!");
-        return;
-    }
+    CHECK_D3D12_ERROR_AND_RETURN("Failed to map temporary buffer", false)
 
     res = ID3D12Resource_Map(
         download->destinationBuffer->handle,
@@ -7080,10 +7109,7 @@ static void D3D12_INTERNAL_CopyTextureDownload(
         NULL,
         (void **)&destPtr);
 
-    if (FAILED(res)) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to map destination buffer!");
-        return;
-    }
+    CHECK_D3D12_ERROR_AND_RETURN("Failed to map destination buffer", false)
 
     for (Uint32 sliceIndex = 0; sliceIndex < download->depth; sliceIndex += 1) {
         for (Uint32 rowIndex = 0; rowIndex < download->height; rowIndex += 1) {
@@ -7103,33 +7129,40 @@ static void D3D12_INTERNAL_CopyTextureDownload(
         download->destinationBuffer->handle,
         0,
         NULL);
+
+    return true;
 }
 
-static void D3D12_INTERNAL_CleanCommandBuffer(
+static bool D3D12_INTERNAL_CleanCommandBuffer(
     D3D12Renderer *renderer,
     D3D12CommandBuffer *commandBuffer)
 {
     Uint32 i;
     HRESULT res;
+    bool result = true;
 
     // Perform deferred texture data copies
 
     for (i = 0; i < commandBuffer->textureDownloadCount; i += 1) {
-        D3D12_INTERNAL_CopyTextureDownload(
+        result &= D3D12_INTERNAL_CopyTextureDownload(
             commandBuffer,
             commandBuffer->textureDownloads[i]);
         SDL_free(commandBuffer->textureDownloads[i]);
     }
     commandBuffer->textureDownloadCount = 0;
 
+    if (!result) {
+        return false;
+    }
+
     res = ID3D12CommandAllocator_Reset(commandBuffer->commandAllocator);
-    ERROR_CHECK("Could not reset command allocator")
+    CHECK_D3D12_ERROR_AND_RETURN("Could not reset command allocator", false)
 
     res = ID3D12GraphicsCommandList_Reset(
         commandBuffer->graphicsCommandList,
         commandBuffer->commandAllocator,
         NULL);
-    ERROR_CHECK("Could not reset graphicsCommandList")
+    CHECK_D3D12_ERROR_AND_RETURN("Could not reset command list", false)
 
     // Return descriptor heaps to pool
     D3D12_INTERNAL_ReturnDescriptorHeapToPool(
@@ -7212,9 +7245,11 @@ static void D3D12_INTERNAL_CleanCommandBuffer(
             renderer->submittedCommandBufferCount -= 1;
         }
     }
+
+    return true;
 }
 
-static void D3D12_Submit(
+static bool D3D12_Submit(
     SDL_GPUCommandBuffer *commandBuffer)
 {
     D3D12CommandBuffer *d3d12CommandBuffer = (D3D12CommandBuffer *)commandBuffer;
@@ -7267,13 +7302,16 @@ static void D3D12_Submit(
 
     // Notify the command buffer that we have completed recording
     res = ID3D12GraphicsCommandList_Close(d3d12CommandBuffer->graphicsCommandList);
-    ERROR_CHECK("Failed to close command list!");
+    CHECK_D3D12_ERROR_AND_RETURN("Failed to close command list!", false);
 
     res = ID3D12GraphicsCommandList_QueryInterface(
         d3d12CommandBuffer->graphicsCommandList,
         D3D_GUID(D3D_IID_ID3D12CommandList),
         (void **)&commandLists[0]);
-    ERROR_CHECK("Failed to convert command list!")
+    if (FAILED(res)) {
+        SDL_UnlockMutex(renderer->submitLock);
+        CHECK_D3D12_ERROR_AND_RETURN("Failed to convert command list!", false)
+    }
 
     // Submit the command list to the queue
     ID3D12CommandQueue_ExecuteCommandLists(
@@ -7286,7 +7324,8 @@ static void D3D12_Submit(
     // Acquire a fence and set it to the in-flight fence
     d3d12CommandBuffer->inFlightFence = D3D12_INTERNAL_AcquireFence(renderer);
     if (!d3d12CommandBuffer->inFlightFence) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to acquire fence.");
+        SDL_UnlockMutex(renderer->submitLock);
+        return false;
     }
 
     // Mark that a fence should be signaled after command list execution
@@ -7294,7 +7333,10 @@ static void D3D12_Submit(
         renderer->commandQueue,
         d3d12CommandBuffer->inFlightFence->handle,
         D3D12_FENCE_SIGNAL_VALUE);
-    ERROR_CHECK("Failed to enqueue fence signal!");
+    if (FAILED(res)) {
+        SDL_UnlockMutex(renderer->submitLock);
+        CHECK_D3D12_ERROR_AND_RETURN("Failed to enqueue fence signal!", false);
+    }
 
     // Mark the command buffer as submitted
     if (renderer->submittedCommandBufferCount + 1 >= renderer->submittedCommandBufferCapacity) {
@@ -7307,6 +7349,8 @@ static void D3D12_Submit(
 
     renderer->submittedCommandBuffers[renderer->submittedCommandBufferCount] = d3d12CommandBuffer;
     renderer->submittedCommandBufferCount += 1;
+
+    bool result = true;
 
     // Present, if applicable
     for (Uint32 i = 0; i < d3d12CommandBuffer->presentDataCount; i += 1) {
@@ -7326,6 +7370,9 @@ static void D3D12_Submit(
         presentParams.Flags = (windowData->present_mode == SDL_GPU_PRESENTMODE_IMMEDIATE) ? D3D12XBOX_PRESENT_FLAG_IMMEDIATE : D3D12XBOX_PRESENT_FLAG_NONE;
 
         renderer->commandQueue->PresentX(1, &planeParams, &presentParams);
+        if (FAILED(res)) {
+            result = false;
+        }
 #else
         // NOTE: flip discard always supported since DXGI 1.4 is required
         Uint32 syncInterval = 1;
@@ -7340,10 +7387,13 @@ static void D3D12_Submit(
             presentFlags = DXGI_PRESENT_ALLOW_TEARING;
         }
 
-        IDXGISwapChain_Present(
+        res = IDXGISwapChain_Present(
             windowData->swapchain,
             syncInterval,
             presentFlags);
+        if (FAILED(res)) {
+            result = false;
+        }
 
         ID3D12Resource_Release(windowData->textureContainers[presentData->swapchainImageIndex].activeTexture->resource);
 #endif
@@ -7359,7 +7409,7 @@ static void D3D12_Submit(
             renderer->submittedCommandBuffers[i]->inFlightFence->handle);
 
         if (fenceValue == D3D12_FENCE_SIGNAL_VALUE) {
-            D3D12_INTERNAL_CleanCommandBuffer(
+            result &= D3D12_INTERNAL_CleanCommandBuffer(
                 renderer,
                 renderer->submittedCommandBuffers[i]);
         }
@@ -7368,6 +7418,8 @@ static void D3D12_Submit(
     D3D12_INTERNAL_PerformPendingDestroys(renderer);
 
     SDL_UnlockMutex(renderer->submitLock);
+
+    return result;
 }
 
 static SDL_GPUFence *D3D12_SubmitAndAcquireFence(
@@ -7379,14 +7431,13 @@ static SDL_GPUFence *D3D12_SubmitAndAcquireFence(
     return (SDL_GPUFence *)d3d12CommandBuffer->inFlightFence;
 }
 
-static void D3D12_Wait(
+static bool D3D12_Wait(
     SDL_GPURenderer *driverData)
 {
     D3D12Renderer *renderer = (D3D12Renderer *)driverData;
     D3D12Fence *fence = D3D12_INTERNAL_AcquireFence(renderer);
     if (!fence) {
-        SDL_LogError(SDL_LOG_CATEGORY_GPU, "Failed to acquire fence.");
-        return;
+        return false;
     }
     HRESULT res;
 
@@ -7405,9 +7456,13 @@ static void D3D12_Wait(
                 fence->handle,
                 D3D12_FENCE_SIGNAL_VALUE,
                 fence->event);
-            ERROR_CHECK_RETURN("Setting fence event failed", )
+            CHECK_D3D12_ERROR_AND_RETURN("Setting fence event failed", false)
 
-            WaitForSingleObject(fence->event, INFINITE);
+            DWORD waitResult = WaitForSingleObject(fence->event, INFINITE);
+            if (waitResult == WAIT_FAILED) {
+                SDL_UnlockMutex(renderer->submitLock);
+                SET_STRING_ERROR_AND_RETURN("Wait failed", false) // TODO: is there a better way to report this?
+            }
         }
     }
 
@@ -7415,17 +7470,21 @@ static void D3D12_Wait(
         (SDL_GPURenderer *)renderer,
         (SDL_GPUFence *)fence);
 
+    bool result = true;
+
     // Clean up
     for (Sint32 i = renderer->submittedCommandBufferCount - 1; i >= 0; i -= 1) {
-        D3D12_INTERNAL_CleanCommandBuffer(renderer, renderer->submittedCommandBuffers[i]);
+        result &= D3D12_INTERNAL_CleanCommandBuffer(renderer, renderer->submittedCommandBuffers[i]);
     }
 
     D3D12_INTERNAL_PerformPendingDestroys(renderer);
 
     SDL_UnlockMutex(renderer->submitLock);
+
+    return result;
 }
 
-static void D3D12_WaitForFences(
+static bool D3D12_WaitForFences(
     SDL_GPURenderer *driverData,
     bool waitAll,
     SDL_GPUFence *const *fences,
@@ -7445,16 +7504,23 @@ static void D3D12_WaitForFences(
             fence->handle,
             D3D12_FENCE_SIGNAL_VALUE,
             fence->event);
-        ERROR_CHECK_RETURN("Setting fence event failed", )
+        CHECK_D3D12_ERROR_AND_RETURN("Setting fence event failed", false)
 
         events[i] = fence->event;
     }
 
-    WaitForMultipleObjects(
+    DWORD waitResult = WaitForMultipleObjects(
         numFences,
         events,
         waitAll,
         INFINITE);
+
+    if (waitResult == WAIT_FAILED) {
+        SDL_UnlockMutex(renderer->submitLock);
+        SET_STRING_ERROR_AND_RETURN("Wait failed", false) // TODO: is there a better way to report this?
+    }
+
+    bool result = true;
 
     // Check for cleanups
     for (Sint32 i = renderer->submittedCommandBufferCount - 1; i >= 0; i -= 1) {
@@ -7462,7 +7528,7 @@ static void D3D12_WaitForFences(
             renderer->submittedCommandBuffers[i]->inFlightFence->handle);
 
         if (fenceValue == D3D12_FENCE_SIGNAL_VALUE) {
-            D3D12_INTERNAL_CleanCommandBuffer(
+            result &= D3D12_INTERNAL_CleanCommandBuffer(
                 renderer,
                 renderer->submittedCommandBuffers[i]);
         }
@@ -7473,6 +7539,8 @@ static void D3D12_WaitForFences(
     SDL_stack_free(events);
 
     SDL_UnlockMutex(renderer->submitLock);
+
+    return result;
 }
 
 // Feature Queries
@@ -7523,6 +7591,9 @@ static bool D3D12_SupportsTextureFormat(
         return false;
     }
     if ((usage & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE) && !(formatSupport.Support2 & D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE)) {
+        return false;
+    }
+    if ((usage & SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE) && !(formatSupport.Support2 & D3D12_FORMAT_SUPPORT2_UAV_TYPED_LOAD)) {
         return false;
     }
     if ((usage & SDL_GPU_TEXTUREUSAGE_COLOR_TARGET) && !(formatSupport.Support1 & D3D12_FORMAT_SUPPORT1_RENDER_TARGET)) {
@@ -7691,8 +7762,8 @@ static bool D3D12_PrepareDriver(SDL_VideoDevice *_this)
 #if defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)
     return true;
 #else
-    void *d3d12Dll;
-    void *dxgiDll;
+    SDL_SharedObject *d3d12Dll;
+    SDL_SharedObject *dxgiDll;
     PFN_D3D12_CREATE_DEVICE D3D12CreateDeviceFunc;
     PFN_CREATE_DXGI_FACTORY1 CreateDXGIFactoryFunc;
     HRESULT res;
@@ -7868,7 +7939,7 @@ static void D3D12_INTERNAL_TryInitializeD3D12Debug(D3D12Renderer *renderer)
 }
 
 #if !(defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES))
-static void D3D12_INTERNAL_TryInitializeD3D12DebugInfoQueue(D3D12Renderer *renderer)
+static bool D3D12_INTERNAL_TryInitializeD3D12DebugInfoQueue(D3D12Renderer *renderer)
 {
     ID3D12InfoQueue *infoQueue = NULL;
     D3D12_MESSAGE_SEVERITY severities[] = { D3D12_MESSAGE_SEVERITY_INFO };
@@ -7880,7 +7951,7 @@ static void D3D12_INTERNAL_TryInitializeD3D12DebugInfoQueue(D3D12Renderer *rende
         D3D_GUID(D3D_IID_ID3D12InfoQueue),
         (void **)&infoQueue);
     if (FAILED(res)) {
-        ERROR_CHECK_RETURN("Failed to convert ID3D12Device to ID3D12InfoQueue", );
+        CHECK_D3D12_ERROR_AND_RETURN("Failed to convert ID3D12Device to ID3D12InfoQueue", false);
     }
 
     SDL_zero(filter);
@@ -7901,6 +7972,8 @@ static void D3D12_INTERNAL_TryInitializeD3D12DebugInfoQueue(D3D12Renderer *rende
         true);
 
     ID3D12InfoQueue_Release(infoQueue);
+
+    return true;
 }
 #endif
 
@@ -7930,9 +8003,8 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
     // Load the DXGI library
     renderer->dxgi_dll = SDL_LoadObject(DXGI_DLL);
     if (renderer->dxgi_dll == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not find " DXGI_DLL);
         D3D12_INTERNAL_DestroyRenderer(renderer);
-        return NULL;
+        SET_STRING_ERROR_AND_RETURN("Could not find " DXGI_DLL, NULL);
     }
 
 #ifdef HAVE_IDXGIINFOQUEUE
@@ -7947,9 +8019,8 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
         renderer->dxgi_dll,
         CREATE_DXGI_FACTORY1_FUNC);
     if (CreateDXGIFactoryFunc == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not load function: " CREATE_DXGI_FACTORY1_FUNC);
         D3D12_INTERNAL_DestroyRenderer(renderer);
-        return NULL;
+        SET_STRING_ERROR_AND_RETURN("Could not load function: " CREATE_DXGI_FACTORY1_FUNC, NULL)
     }
 
     // Create the DXGI factory
@@ -7958,7 +8029,7 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
         (void **)&factory1);
     if (FAILED(res)) {
         D3D12_INTERNAL_DestroyRenderer(renderer);
-        ERROR_CHECK_RETURN("Could not create DXGIFactory", NULL);
+        CHECK_D3D12_ERROR_AND_RETURN("Could not create DXGIFactory", NULL);
     }
 
     // Check for DXGI 1.4 support
@@ -7968,7 +8039,7 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
         (void **)&renderer->factory);
     if (FAILED(res)) {
         D3D12_INTERNAL_DestroyRenderer(renderer);
-        ERROR_CHECK_RETURN("DXGI1.4 support not found, required for DX12", NULL);
+        CHECK_D3D12_ERROR_AND_RETURN("DXGI1.4 support not found, required for DX12", NULL);
     }
     IDXGIFactory1_Release(factory1);
 
@@ -8011,14 +8082,14 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
 
     if (FAILED(res)) {
         D3D12_INTERNAL_DestroyRenderer(renderer);
-        ERROR_CHECK_RETURN("Could not find adapter for D3D12Device", NULL);
+        CHECK_D3D12_ERROR_AND_RETURN("Could not find adapter for D3D12Device", NULL);
     }
 
     // Get information about the selected adapter. Used for logging info.
     res = IDXGIAdapter1_GetDesc1(renderer->adapter, &adapterDesc);
     if (FAILED(res)) {
         D3D12_INTERNAL_DestroyRenderer(renderer);
-        ERROR_CHECK_RETURN("Could not get adapter description", NULL);
+        CHECK_D3D12_ERROR_AND_RETURN("Could not get adapter description", NULL);
     }
 
     SDL_LogInfo(SDL_LOG_CATEGORY_GPU, "SDL_GPU Driver: D3D12");
@@ -8028,9 +8099,8 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
     // Load the D3D library
     renderer->d3d12_dll = SDL_LoadObject(D3D12_DLL);
     if (renderer->d3d12_dll == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not find " D3D12_DLL);
         D3D12_INTERNAL_DestroyRenderer(renderer);
-        return NULL;
+        SET_STRING_ERROR_AND_RETURN("Could not find " D3D12_DLL, NULL);
     }
 
     // Load the CreateDevice function
@@ -8039,18 +8109,16 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
         renderer->d3d12_dll,
         "D3D12XboxCreateDevice");
     if (D3D12XboxCreateDeviceFunc == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not load function: D3D12XboxCreateDevice");
         D3D12_INTERNAL_DestroyRenderer(renderer);
-        return NULL;
+        SET_STRING_ERROR_AND_RETURN("Could not load function: D3D12XboxCreateDevice", NULL)
     }
 #else
     D3D12CreateDeviceFunc = (PFN_D3D12_CREATE_DEVICE)SDL_LoadFunction(
         renderer->d3d12_dll,
         D3D12_CREATE_DEVICE_FUNC);
     if (D3D12CreateDeviceFunc == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not load function: " D3D12_CREATE_DEVICE_FUNC);
         D3D12_INTERNAL_DestroyRenderer(renderer);
-        return NULL;
+        SET_STRING_ERROR_AND_RETURN("Could not load function: " D3D12_CREATE_DEVICE_FUNC, NULL)
     }
 #endif
 
@@ -8058,9 +8126,8 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
         renderer->d3d12_dll,
         D3D12_SERIALIZE_ROOT_SIGNATURE_FUNC);
     if (renderer->D3D12SerializeRootSignature_func == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not load function: " D3D12_SERIALIZE_ROOT_SIGNATURE_FUNC);
         D3D12_INTERNAL_DestroyRenderer(renderer);
-        return NULL;
+        SET_STRING_ERROR_AND_RETURN("Could not load function: " D3D12_SERIALIZE_ROOT_SIGNATURE_FUNC, NULL)
     }
 
     // Initialize the D3D12 debug layer, if applicable
@@ -8093,7 +8160,7 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
             IID_GRAPHICS_PPV_ARGS(&renderer->device));
         if (FAILED(res)) {
             D3D12_INTERNAL_DestroyRenderer(renderer);
-            ERROR_CHECK_RETURN("Could not create D3D12Device", NULL);
+            CHECK_D3D12_ERROR_AND_RETURN("Could not create D3D12Device", NULL);
         }
 
         res = renderer->device->SetFrameIntervalX(
@@ -8103,7 +8170,7 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
             D3D12XBOX_FRAME_INTERVAL_FLAG_NONE);
         if (FAILED(res)) {
             D3D12_INTERNAL_DestroyRenderer(renderer);
-            ERROR_CHECK_RETURN("Could not get set frame interval", NULL);
+            CHECK_D3D12_ERROR_AND_RETURN("Could not get set frame interval", NULL);
         }
 
         res = renderer->device->ScheduleFrameEventX(
@@ -8113,7 +8180,7 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
             D3D12XBOX_SCHEDULE_FRAME_EVENT_FLAG_NONE);
         if (FAILED(res)) {
             D3D12_INTERNAL_DestroyRenderer(renderer);
-            ERROR_CHECK_RETURN("Could not schedule frame events", NULL);
+            CHECK_D3D12_ERROR_AND_RETURN("Could not schedule frame events", NULL);
         }
 
         s_Device = renderer->device;
@@ -8127,12 +8194,14 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
 
     if (FAILED(res)) {
         D3D12_INTERNAL_DestroyRenderer(renderer);
-        ERROR_CHECK_RETURN("Could not create D3D12Device", NULL);
+        CHECK_D3D12_ERROR_AND_RETURN("Could not create D3D12Device", NULL);
     }
 
     // Initialize the D3D12 debug info queue, if applicable
     if (debugMode) {
-        D3D12_INTERNAL_TryInitializeD3D12DebugInfoQueue(renderer);
+        if (!D3D12_INTERNAL_TryInitializeD3D12DebugInfoQueue(renderer)) {
+            return NULL;
+        }
     }
 #endif
 
@@ -8145,7 +8214,7 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
         sizeof(D3D12_FEATURE_DATA_ARCHITECTURE));
     if (FAILED(res)) {
         D3D12_INTERNAL_DestroyRenderer(renderer);
-        ERROR_CHECK_RETURN("Could not get device architecture", NULL);
+        CHECK_D3D12_ERROR_AND_RETURN("Could not get device architecture", NULL);
     }
 
     renderer->UMA = (bool)architecture.UMA;
@@ -8187,7 +8256,7 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
 
         if (FAILED(res)) {
             D3D12_INTERNAL_DestroyRenderer(renderer);
-            ERROR_CHECK_RETURN("Could not create D3D12CommandQueue", NULL);
+            CHECK_D3D12_ERROR_AND_RETURN("Could not create D3D12CommandQueue", NULL);
         }
 #if (defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES))
         s_CommandQueue = renderer->commandQueue;
@@ -8214,7 +8283,7 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
         (void **)&renderer->indirectDrawCommandSignature);
     if (FAILED(res)) {
         D3D12_INTERNAL_DestroyRenderer(renderer);
-        ERROR_CHECK_RETURN("Could not create indirect draw command signature", NULL)
+        CHECK_D3D12_ERROR_AND_RETURN("Could not create indirect draw command signature", NULL)
     }
 
     indirectArgumentDesc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
@@ -8229,7 +8298,7 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
         (void **)&renderer->indirectIndexedDrawCommandSignature);
     if (FAILED(res)) {
         D3D12_INTERNAL_DestroyRenderer(renderer);
-        ERROR_CHECK_RETURN("Could not create indirect indexed draw command signature", NULL)
+        CHECK_D3D12_ERROR_AND_RETURN("Could not create indirect indexed draw command signature", NULL)
     }
 
     indirectArgumentDesc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
@@ -8244,7 +8313,7 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
         (void **)&renderer->indirectDispatchCommandSignature);
     if (FAILED(res)) {
         D3D12_INTERNAL_DestroyRenderer(renderer);
-        ERROR_CHECK_RETURN("Could not create indirect dispatch command signature", NULL)
+        CHECK_D3D12_ERROR_AND_RETURN("Could not create indirect dispatch command signature", NULL)
     }
 
     // Initialize pools
@@ -8292,6 +8361,10 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
             (D3D12_DESCRIPTOR_HEAP_TYPE)i,
             (i <= D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) ? VIEW_SAMPLER_STAGING_DESCRIPTOR_COUNT : TARGET_STAGING_DESCRIPTOR_COUNT,
             true);
+        if (renderer->stagingDescriptorHeaps[i] == NULL) {
+            D3D12_INTERNAL_DestroyRenderer(renderer);
+            return NULL;
+        }
     }
 
     // Initialize GPU descriptor heaps
@@ -8308,6 +8381,11 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
                 (D3D12_DESCRIPTOR_HEAP_TYPE)i,
                 i == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ? VIEW_GPU_DESCRIPTOR_COUNT : SAMPLER_GPU_DESCRIPTOR_COUNT,
                 false);
+
+            if (renderer->descriptorHeapPools[i].heaps[j] == NULL) {
+                D3D12_INTERNAL_DestroyRenderer(renderer);
+                return NULL;
+            }
         }
     }
 
@@ -8409,8 +8487,7 @@ void SDL_GDKSuspendGPU(SDL_GPUDevice *device)
     D3D12Renderer *renderer = (D3D12Renderer *)device->driverData;
     HRESULT res;
     if (device == NULL) {
-        SDL_SetError("Invalid GPU device");
-        return;
+        SET_STRING_ERROR_AND_RETURN("Invalid GPU device", );
     }
 
     SDL_LockMutex(renderer->submitLock);
@@ -8428,8 +8505,7 @@ void SDL_GDKResumeGPU(SDL_GPUDevice *device)
     D3D12Renderer *renderer = (D3D12Renderer *)device->driverData;
     HRESULT res;
     if (device == NULL) {
-        SDL_SetError("Invalid GPU device");
-        return;
+        SET_STRING_ERROR_AND_RETURN("Invalid GPU device", );
     }
 
     SDL_LockMutex(renderer->submitLock);

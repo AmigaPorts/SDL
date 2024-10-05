@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -17,13 +17,13 @@
 #include <proto/exec.h>
 #include <proto/intuition.h>
 
-#include "../src/video/amigaos4/SDL_os4video.h"
-
 static struct Library * MyIntuitionBase;
 static struct IntuitionIFace * MyIIntuition;
 
 static void *CreateWindowAmigaOS4(int w, int h);
 static void DestroyWindowAmigaOS4(void *window);
+
+struct MsgPort *OS4_GetSharedMessagePort();
 
 NativeWindowFactory AmigaOS4WindowFactory = {
     "amigaos4",

@@ -222,6 +222,9 @@
 #define SDL_EndThreadFunction NULL
 #endif
 
+/* Enable internal definitions in SDL API headers */
+#define SDL_INTERNAL
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_intrin.h>
 
@@ -234,6 +237,7 @@ extern "C" {
 #endif
 
 #include "SDL_utils_c.h"
+#include "SDL_hashtable.h"
 
 // Do any initialization that needs to happen before threads are started
 extern void SDL_InitMainThread(void);

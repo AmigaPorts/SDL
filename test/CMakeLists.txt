@@ -102,7 +102,7 @@ define_property(TARGET PROPERTY SDL_NONINTERACTIVE_ARGUMENTS BRIEF_DOCS "Argumen
 define_property(TARGET PROPERTY SDL_NONINTERACTIVE_TIMEOUT BRIEF_DOCS "Timeout for noninteractive executable." FULL_DOCS "Timeout for noninteractive executable.")
 
 macro(add_sdl_test_executable TARGET)
-    cmake_parse_arguments(AST "BUILD_DEPENDENT;NONINTERACTIVE;NEEDS_RESOURCES;TESTUTILS;THREADS;NO_C90;MAIN_CALLBACKS;NOTRACKMEM" "" "DISABLE_THREADS_ARGS;NONINTERACTIVE_TIMEOUT;NONINTERACTIVE_ARGS;SOURCES" ${ARGN})
+    cmake_parse_arguments(AST "BUILD_DEPENDENT;NONINTERACTIVE;NEEDS_RESOURCES;TESTUTILS;THREADS;NO_C90;MAIN_CALLBACKS;NOTRACKMEM" "" "DISABLE_THREADS_ARGS;NONINTERACTIVE_TIMEOUT;NONINTERACTIVE_ARGS;INSTALLED_ARGS;SOURCES" ${ARGN})
     if(AST_UNPARSED_ARGUMENTS)
         message(FATAL_ERROR "Unknown argument(s): ${AST_UNPARSED_ARGUMENTS}")
     endif()
@@ -138,6 +138,11 @@ macro(add_sdl_test_executable TARGET)
     set_property(TARGET ${TARGET} PROPERTY SDL_THREADS "${AST_THREADS}")
     if(AST_NONINTERACTIVE_ARGS)
         set_property(TARGET ${TARGET} PROPERTY SDL_NONINTERACTIVE_ARGUMENTS "${AST_NONINTERACTIVE_ARGS}")
+    endif()
+    if(AST_INSTALLED_ARGS)
+        set_property(TARGET ${TARGET} PROPERTY SDL_INSTALLED_ARGUMENTS "${AST_INSTALLED_ARGS}")
+    elseif(AST_NONINTERACTIVE_ARGS)
+        set_property(TARGET ${TARGET} PROPERTY SDL_INSTALLED_ARGUMENTS "${AST_NONINTERACTIVE_ARGS}")
     endif()
     if(AST_NONINTERACTIVE_TIMEOUT)
         set_property(TARGET ${TARGET} PROPERTY SDL_NONINTERACTIVE_TIMEOUT "${AST_NONINTERACTIVE_TIMEOUT}")
@@ -363,9 +368,6 @@ add_sdl_test_executable(testmouse SOURCES testmouse.c)
 add_sdl_test_executable(testoverlay NEEDS_RESOURCES TESTUTILS SOURCES testoverlay.c)
 add_sdl_test_executable(testplatform NONINTERACTIVE SOURCES testplatform.c)
 add_sdl_test_executable(testpower NONINTERACTIVE SOURCES testpower.c)
-add_sdl_test_executable(testprocess NONINTERACTIVE THREADS NONINTERACTIVE_ARGS $<TARGET_FILE:childprocess> SOURCES testprocess.c)
-add_sdl_test_executable(childprocess SOURCES childprocess.c)
-add_dependencies(testprocess childprocess)
 add_sdl_test_executable(testfilesystem NONINTERACTIVE SOURCES testfilesystem.c)
 if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 4)
     add_sdl_test_executable(pretest SOURCES pretest.c NONINTERACTIVE NONINTERACTIVE_TIMEOUT 60)
@@ -404,6 +406,16 @@ add_sdl_test_executable(testdialog SOURCES testdialog.c)
 add_sdl_test_executable(testtime SOURCES testtime.c)
 add_sdl_test_executable(testmanymouse SOURCES testmanymouse.c)
 add_sdl_test_executable(testmodal SOURCES testmodal.c)
+
+
+add_sdl_test_executable(testprocess
+    NONINTERACTIVE THREADS
+    NONINTERACTIVE_ARGS $<TARGET_FILE:childprocess>
+    INSTALLED_ARGS "${CMAKE_INSTALL_FULL_LIBEXECDIR}/installed-tests/SDL3/childprocess${CMAKE_EXECUTABLE_SUFFIX}"
+    SOURCES testprocess.c
+)
+add_sdl_test_executable(childprocess SOURCES childprocess.c)
+add_dependencies(testprocess childprocess)
 
 if (HAVE_WAYLAND)
     # Set the GENERATED property on the protocol file, since it is first created at build time
@@ -593,6 +605,7 @@ function(add_sdl_test TEST TARGET)
             set(command ${TARGET})
         endif()
         get_property(noninteractive_arguments TARGET ${TARGET} PROPERTY SDL_NONINTERACTIVE_ARGUMENTS)
+        get_property(installed_arguments TARGET ${TARGET} PROPERTY SDL_INSTALLED_ARGUMENTS)
         get_property(disable_threads_args TARGET ${TARGET} PROPERTY SDL_DISABLE_THREADS_ARGS)
         get_property(uses_threads TARGET ${TARGET} PROPERTY SDL_THREADS)
         if(noninteractive_arguments)

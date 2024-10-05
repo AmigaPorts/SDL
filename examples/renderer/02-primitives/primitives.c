@@ -53,7 +53,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
     SDL_FRect rect;
 
     /* as you can see from this, rendering draws over whatever was drawn before it. */
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);  /* black, full alpha */
+    SDL_SetRenderDrawColor(renderer, 33, 33, 33, 255);  /* dark gray, full alpha */
     SDL_RenderClear(renderer);  /* start with a blank canvas. */
 
     /* draw a filled rectangle in the middle of the canvas. */
@@ -86,7 +86,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
 }
 
 /* This function runs once at shutdown. */
-void SDL_AppQuit(void *appstate)
+void SDL_AppQuit(void *appstate, SDL_AppResult result)
 {
     /* SDL will clean up the window/renderer for us. */
 }

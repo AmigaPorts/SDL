@@ -20,8 +20,6 @@
 */
 #include "SDL_internal.h"
 
-#include "SDL_hashtable.h"
-
 #if defined(SDL_PLATFORM_UNIX) || defined(SDL_PLATFORM_APPLE)
 #include <unistd.h>
 #endif
@@ -119,40 +117,6 @@ bool SDL_endswith(const char *string, const char *suffix)
         }
     }
     return false;
-}
-
-bool SDL_ShouldInit(SDL_InitState *state)
-{
-    while (SDL_GetAtomicInt(&state->status) != SDL_INIT_STATUS_INITIALIZED) {
-        if (SDL_CompareAndSwapAtomicInt(&state->status, SDL_INIT_STATUS_UNINITIALIZED, SDL_INIT_STATUS_INITIALIZING)) {
-            state->thread = SDL_GetCurrentThreadID();
-            return true;
-        }
-
-        // Wait for the other thread to complete transition
-        SDL_Delay(1);
-    }
-    return false;
-}
-
-bool SDL_ShouldQuit(SDL_InitState *state)
-{
-    if (SDL_CompareAndSwapAtomicInt(&state->status, SDL_INIT_STATUS_INITIALIZED, SDL_INIT_STATUS_UNINITIALIZING)) {
-        state->thread = SDL_GetCurrentThreadID();
-        return true;
-    }
-    return false;
-}
-
-void SDL_SetInitialized(SDL_InitState *state, bool initialized)
-{
-    SDL_assert(state->thread == SDL_GetCurrentThreadID());
-
-    if (initialized) {
-        SDL_SetAtomicInt(&state->status, SDL_INIT_STATUS_INITIALIZED);
-    } else {
-        SDL_SetAtomicInt(&state->status, SDL_INIT_STATUS_UNINITIALIZED);
-    }
 }
 
 SDL_COMPILE_TIME_ASSERT(sizeof_object_id, sizeof(int) == sizeof(Uint32));
