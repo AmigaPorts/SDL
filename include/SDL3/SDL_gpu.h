@@ -302,9 +302,8 @@ typedef struct SDL_GPUGraphicsPipeline SDL_GPUGraphicsPipeline;
  * buffer A and then command buffer B all commands in A will begin executing
  * before any command in B begins executing.
  *
- * In multi-threading scenarios, you should acquire and submit a command
- * buffer on the same thread. As long as you satisfy this requirement, all
- * functionality related to command buffers is thread-safe.
+ * In multi-threading scenarios, you should only access a command buffer on
+ * the thread you acquired it from.
  *
  * \since This struct is available since SDL 3.0.0
  *
@@ -588,7 +587,52 @@ typedef enum SDL_GPUTextureFormat
     SDL_GPU_TEXTUREFORMAT_D24_UNORM,
     SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
     SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT,
-    SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT
+    SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT,
+    /* Compressed ASTC Normalized Float Color Formats*/
+    SDL_GPU_TEXTUREFORMAT_ASTC_4x4_UNORM,
+    SDL_GPU_TEXTUREFORMAT_ASTC_5x4_UNORM,
+    SDL_GPU_TEXTUREFORMAT_ASTC_5x5_UNORM,
+    SDL_GPU_TEXTUREFORMAT_ASTC_6x5_UNORM,
+    SDL_GPU_TEXTUREFORMAT_ASTC_6x6_UNORM,
+    SDL_GPU_TEXTUREFORMAT_ASTC_8x5_UNORM,
+    SDL_GPU_TEXTUREFORMAT_ASTC_8x6_UNORM,
+    SDL_GPU_TEXTUREFORMAT_ASTC_8x8_UNORM,
+    SDL_GPU_TEXTUREFORMAT_ASTC_10x5_UNORM,
+    SDL_GPU_TEXTUREFORMAT_ASTC_10x6_UNORM,
+    SDL_GPU_TEXTUREFORMAT_ASTC_10x8_UNORM,
+    SDL_GPU_TEXTUREFORMAT_ASTC_10x10_UNORM,
+    SDL_GPU_TEXTUREFORMAT_ASTC_12x10_UNORM,
+    SDL_GPU_TEXTUREFORMAT_ASTC_12x12_UNORM,
+    /* Compressed SRGB ASTC Normalized Float Color Formats*/
+    SDL_GPU_TEXTUREFORMAT_ASTC_4x4_UNORM_SRGB,
+    SDL_GPU_TEXTUREFORMAT_ASTC_5x4_UNORM_SRGB,
+    SDL_GPU_TEXTUREFORMAT_ASTC_5x5_UNORM_SRGB,
+    SDL_GPU_TEXTUREFORMAT_ASTC_6x5_UNORM_SRGB,
+    SDL_GPU_TEXTUREFORMAT_ASTC_6x6_UNORM_SRGB,
+    SDL_GPU_TEXTUREFORMAT_ASTC_8x5_UNORM_SRGB,
+    SDL_GPU_TEXTUREFORMAT_ASTC_8x6_UNORM_SRGB,
+    SDL_GPU_TEXTUREFORMAT_ASTC_8x8_UNORM_SRGB,
+    SDL_GPU_TEXTUREFORMAT_ASTC_10x5_UNORM_SRGB,
+    SDL_GPU_TEXTUREFORMAT_ASTC_10x6_UNORM_SRGB,
+    SDL_GPU_TEXTUREFORMAT_ASTC_10x8_UNORM_SRGB,
+    SDL_GPU_TEXTUREFORMAT_ASTC_10x10_UNORM_SRGB,
+    SDL_GPU_TEXTUREFORMAT_ASTC_12x10_UNORM_SRGB,
+    SDL_GPU_TEXTUREFORMAT_ASTC_12x12_UNORM_SRGB,
+    /* Compressed ASTC Signed Float Color Formats*/
+    SDL_GPU_TEXTUREFORMAT_ASTC_4x4_FLOAT,
+    SDL_GPU_TEXTUREFORMAT_ASTC_5x4_FLOAT,
+    SDL_GPU_TEXTUREFORMAT_ASTC_5x5_FLOAT,
+    SDL_GPU_TEXTUREFORMAT_ASTC_6x5_FLOAT,
+    SDL_GPU_TEXTUREFORMAT_ASTC_6x6_FLOAT,
+    SDL_GPU_TEXTUREFORMAT_ASTC_8x5_FLOAT,
+    SDL_GPU_TEXTUREFORMAT_ASTC_8x6_FLOAT,
+    SDL_GPU_TEXTUREFORMAT_ASTC_8x8_FLOAT,
+    SDL_GPU_TEXTUREFORMAT_ASTC_10x5_FLOAT,
+    SDL_GPU_TEXTUREFORMAT_ASTC_10x6_FLOAT,
+    SDL_GPU_TEXTUREFORMAT_ASTC_10x8_FLOAT,
+    SDL_GPU_TEXTUREFORMAT_ASTC_10x10_FLOAT,
+    SDL_GPU_TEXTUREFORMAT_ASTC_12x10_FLOAT,
+    SDL_GPU_TEXTUREFORMAT_ASTC_12x12_FLOAT
 } SDL_GPUTextureFormat;
 
 /**
@@ -1917,8 +1961,8 @@ extern SDL_DECLSPEC SDL_GPUDevice *SDLCALL SDL_CreateGPUDevice(
  *   provide shaders for an NDA platform.
  * - `SDL_PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOL`: The app is able to
  *   provide SPIR-V shaders if applicable.
- * - SDL_PROP_GPU_DEVICE_CREATE_SHADERS_DXBC_BOOL`: The app is able to provide
- *   DXBC shaders if applicable
+ * - `SDL_PROP_GPU_DEVICE_CREATE_SHADERS_DXBC_BOOL`: The app is able to
+ *   provide DXBC shaders if applicable
  *   `SDL_PROP_GPU_DEVICE_CREATE_SHADERS_DXIL_BOOL`: The app is able to
  *   provide DXIL shaders if applicable.
  * - `SDL_PROP_GPU_DEVICE_CREATE_SHADERS_MSL_BOOL`: The app is able to provide
@@ -3669,6 +3713,23 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GPUTextureSupportsSampleCount(
     SDL_GPUDevice *device,
     SDL_GPUTextureFormat format,
     SDL_GPUSampleCount sample_count);
+
+/**
+ * Calculate the size in bytes of a texture format with dimensions.
+ *
+ * \param format a texture format.
+ * \param width width in pixels.
+ * \param height height in pixels.
+ * \param depth_or_layer_count depth for 3D textures or layer count otherwise.
+ * \returns the size of a texture with this format and dimensions.
+ *
+ * \since This function is available since SDL 3.1.4.
+ */
+extern SDL_DECLSPEC Uint32 SDLCALL SDL_CalculateGPUTextureFormatSize(
+    SDL_GPUTextureFormat format,
+    Uint32 width,
+    Uint32 height,
+    Uint32 depth_or_layer_count);
 
 #ifdef SDL_PLATFORM_GDK
 

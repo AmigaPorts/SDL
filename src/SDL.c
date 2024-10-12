@@ -58,6 +58,9 @@
 #include "video/SDL_surface_c.h"
 #include "video/SDL_video_c.h"
 #include "filesystem/SDL_filesystem_c.h"
+#ifdef SDL_PLATFORM_ANDROID
+#include "core/android/SDL_android.h"
+#endif
 
 #define SDL_INIT_EVERYTHING ~0U
 
@@ -254,10 +257,26 @@ void SDL_SetMainReady(void)
 // Initialize all the subsystems that require initialization before threads start
 void SDL_InitMainThread(void)
 {
+    static bool done_info = false;
+
     SDL_InitTLSData();
     SDL_InitEnvironment();
     SDL_InitTicks();
     SDL_InitFilesystem();
+
+    if (!done_info) {
+        const char *value;
+
+        value = SDL_GetAppMetadataProperty(SDL_PROP_APP_METADATA_NAME_STRING);
+        SDL_LogInfo(SDL_LOG_CATEGORY_SYSTEM, "App name: %s", value ? value : "<unspecified>");
+        value = SDL_GetAppMetadataProperty(SDL_PROP_APP_METADATA_VERSION_STRING);
+        SDL_LogInfo(SDL_LOG_CATEGORY_SYSTEM, "App version: %s", value ? value : "<unspecified>");
+        value = SDL_GetAppMetadataProperty(SDL_PROP_APP_METADATA_IDENTIFIER_STRING);
+        SDL_LogInfo(SDL_LOG_CATEGORY_SYSTEM, "App ID: %s", value ? value : "<unspecified>");
+        SDL_LogInfo(SDL_LOG_CATEGORY_SYSTEM, "SDL revision: %s", SDL_REVISION);
+
+        done_info = true;
+    }
 }
 
 static void SDL_QuitMainThread(void)
@@ -726,7 +745,6 @@ const char *SDL_GetPlatform(void)
 bool SDL_IsTablet(void)
 {
 #ifdef SDL_PLATFORM_ANDROID
-    extern bool SDL_IsAndroidTablet(void);
     return SDL_IsAndroidTablet();
 #elif defined(SDL_PLATFORM_IOS)
     extern bool SDL_IsIPad(void);
@@ -739,7 +757,6 @@ bool SDL_IsTablet(void)
 bool SDL_IsTV(void)
 {
 #ifdef SDL_PLATFORM_ANDROID
-    extern bool SDL_IsAndroidTV(void);
     return SDL_IsAndroidTV();
 #elif defined(SDL_PLATFORM_IOS)
     extern bool SDL_IsAppleTV(void);
