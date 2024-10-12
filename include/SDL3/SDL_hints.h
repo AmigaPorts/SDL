@@ -1244,8 +1244,10 @@ extern "C" {
  *
  * The variable can be set to the following values:
  *
- * - "0": GameInput is not used. (default)
+ * - "0": GameInput is not used.
  * - "1": GameInput is used.
+ *
+ * The default is "1" on GDK platforms, and "0" otherwise.
  *
  * This hint should be set before SDL is initialized.
  *
@@ -2243,7 +2245,7 @@ extern "C" {
  *   (default)
  * - "1": The application may remain in the background when launched.
  *
- * This hint should be set before applicationDidFinishLaunching() is called.
+ * This hint needs to be set before SDL_Init().
  *
  * \since This hint is available since SDL 3.0.0.
  */
@@ -2287,6 +2289,21 @@ extern "C" {
  * \since This hint is available since SDL 3.0.0.
  */
 #define SDL_HINT_MAC_OPENGL_ASYNC_DISPATCH "SDL_MAC_OPENGL_ASYNC_DISPATCH"
+
+/**
+ * A variable controlling whether SDL_EVENT_MOUSE_WHEEL event values will have
+ * momentum on macOS.
+ *
+ * The variable can be set to the following values:
+ *
+ * - "0": The mouse wheel events will have no momentum. (default)
+ * - "1": The mouse wheel events will have momentum.
+ *
+ * This hint needs to be set before SDL_Init().
+ *
+ * \since This hint is available since SDL 3.1.4.
+ */
+#define SDL_HINT_MAC_SCROLL_MOMENTUM "SDL_MAC_SCROLL_MOMENTUM"
 
 /**
  * Request SDL_AppIterate() be called at a specific rate.
@@ -2767,7 +2784,7 @@ extern "C" {
  *
  * If the application doesn't pick a specific renderer to use, this variable
  * specifies the name of the preferred renderer. If the preferred renderer
- * can't be initialized, the normal default renderer is used.
+ * can't be initialized, creating a renderer will fail.
  *
  * This variable is case insensitive and can be set to the following values:
  *

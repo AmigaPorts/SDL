@@ -642,6 +642,49 @@ Uint32 SDL_GPUTextureFormatTexelBlockSize(
         return 8;
     case SDL_GPU_TEXTUREFORMAT_R32G32B32A32_FLOAT:
         return 16;
+    case SDL_GPU_TEXTUREFORMAT_ASTC_4x4_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_5x4_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_5x5_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_6x5_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_6x6_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_8x5_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_8x6_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_8x8_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_10x5_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_10x6_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_10x8_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_10x10_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_12x10_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_12x12_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_4x4_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_5x4_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_5x5_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_6x5_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_6x6_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_8x5_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_8x6_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_8x8_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_10x5_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_10x6_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_10x8_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_10x10_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_12x10_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_12x12_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_4x4_FLOAT:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_5x4_FLOAT:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_5x5_FLOAT:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_6x5_FLOAT:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_6x6_FLOAT:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_8x5_FLOAT:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_8x6_FLOAT:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_8x8_FLOAT:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_10x5_FLOAT:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_10x6_FLOAT:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_10x8_FLOAT:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_10x10_FLOAT:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_12x10_FLOAT:
+    case SDL_GPU_TEXTUREFORMAT_ASTC_12x12_FLOAT:
+        return 16;
     default:
         SDL_assert_release(!"Unrecognized TextureFormat!");
         return 0;
@@ -2752,4 +2795,17 @@ void SDL_ReleaseGPUFence(
     device->ReleaseFence(
         device->driverData,
         fence);
+}
+
+Uint32 SDL_CalculateGPUTextureFormatSize(
+    SDL_GPUTextureFormat format,
+    Uint32 width,
+    Uint32 height,
+    Uint32 depth_or_layer_count)
+{
+    Uint32 blockWidth = SDL_max(Texture_GetBlockWidth(format), 1);
+    Uint32 blockHeight = SDL_max(Texture_GetBlockHeight(format), 1);
+    Uint32 blocksPerRow = (width + blockWidth - 1) / blockWidth;
+    Uint32 blocksPerColumn = (height + blockHeight - 1) / blockHeight;
+    return depth_or_layer_count * blocksPerRow * blocksPerColumn * SDL_GPUTextureFormatTexelBlockSize(format);
 }
