@@ -59,6 +59,10 @@
 #include <emscripten.h>
 #endif
 
+#ifdef SDL_PLATFORM_3DS
+#include <3ds.h>
+#endif
+
 #ifdef SDL_PLATFORM_LINUX
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -71,6 +75,9 @@
 
 // Available video drivers
 static VideoBootStrap *bootstrap[] = {
+#ifdef SDL_VIDEO_DRIVER_PRIVATE
+    &PRIVATE_bootstrap,
+#endif
 #ifdef SDL_VIDEO_DRIVER_COCOA
     &COCOA_bootstrap,
 #endif
@@ -139,6 +146,9 @@ static VideoBootStrap *bootstrap[] = {
 #ifdef SDL_INPUT_LINUXEV
     &DUMMY_evdev_bootstrap,
 #endif
+#endif
+#ifdef SDL_VIDEO_DRIVER_OPENVR
+    &OPENVR_bootstrap,
 #endif
     NULL
 };
@@ -273,6 +283,11 @@ static Uint32 SDL_DefaultGraphicsBackends(SDL_VideoDevice *_this)
 #if defined(SDL_VIDEO_METAL) && (TARGET_OS_MACCATALYST || defined(SDL_PLATFORM_MACOS) || defined(SDL_PLATFORM_IOS))
     if (_this->Metal_CreateView) {
         return SDL_WINDOW_METAL;
+    }
+#endif
+#if defined(SDL_VIDEO_OPENGL) && defined(SDL_VIDEO_DRIVER_OPENVR)
+    if (SDL_strcmp(_this->name, "openvr") == 0) {
+        return SDL_WINDOW_OPENGL;
     }
 #endif
     return 0;
@@ -1747,11 +1762,17 @@ float SDL_GetWindowDisplayScale(SDL_Window *window)
 
 static void SDL_CheckWindowDisplayScaleChanged(SDL_Window *window)
 {
-    float pixel_density = SDL_GetWindowPixelDensity(window);
-    float content_scale = SDL_GetDisplayContentScale(SDL_GetDisplayForWindowPosition(window));
     float display_scale;
 
-    display_scale = (pixel_density * content_scale);
+    if (_this->GetWindowContentScale) {
+        display_scale = _this->GetWindowContentScale(_this, window);
+    } else {
+        const float pixel_density = SDL_GetWindowPixelDensity(window);
+        const float content_scale = SDL_GetDisplayContentScale(SDL_GetDisplayForWindowPosition(window));
+
+        display_scale = pixel_density * content_scale;
+    }
+
     if (display_scale != window->display_scale) {
         window->display_scale = display_scale;
         SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED, 0, 0);
@@ -4598,7 +4619,7 @@ void SDL_GL_ResetAttributes(void)
     _this->gl_config.egl_platform = 0;
 }
 
-bool SDL_GL_SetAttribute(SDL_GLattr attr, int value)
+bool SDL_GL_SetAttribute(SDL_GLAttr attr, int value)
 {
 #if defined(SDL_VIDEO_OPENGL) || defined(SDL_VIDEO_OPENGL_ES) || defined(SDL_VIDEO_OPENGL_ES2)
     bool result;
@@ -4716,7 +4737,7 @@ bool SDL_GL_SetAttribute(SDL_GLattr attr, int value)
 #endif // SDL_VIDEO_OPENGL
 }
 
-bool SDL_GL_GetAttribute(SDL_GLattr attr, int *value)
+bool SDL_GL_GetAttribute(SDL_GLAttr attr, int *value)
 {
 #if defined(SDL_VIDEO_OPENGL) || defined(SDL_VIDEO_OPENGL_ES) || defined(SDL_VIDEO_OPENGL_ES2)
     PFNGLGETERRORPROC glGetErrorFunc;
@@ -5596,6 +5617,23 @@ bool SDL_ShowSimpleMessageBox(SDL_MessageBoxFlags flags, const char *title, cons
         alert(UTF8ToString($0) + "\n\n" + UTF8ToString($1));
     },
             title, message);
+    return true;
+#elif defined(SDL_PLATFORM_3DS)
+    errorConf errCnf;
+    bool hasGpuRight;
+
+    // If the video subsystem has not been initialised, set up graphics temporarily
+    hasGpuRight = gspHasGpuRight();
+    if (!hasGpuRight)
+        gfxInitDefault();
+
+    errorInit(&errCnf, ERROR_TEXT_WORD_WRAP, CFG_LANGUAGE_EN);
+    errorText(&errCnf, message);
+    errorDisp(&errCnf);
+
+    if (!hasGpuRight)
+        gfxExit();
+
     return true;
 #else
     SDL_MessageBoxData data;

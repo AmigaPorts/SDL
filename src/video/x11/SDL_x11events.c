@@ -894,6 +894,13 @@ void X11_HandleButtonPress(SDL_VideoDevice *_this, SDL_WindowData *windowdata, S
 #ifdef DEBUG_XEVENTS
     SDL_Log("window 0x%lx: ButtonPress (X11 button = %d)\n", windowdata->xwindow, button);
 #endif
+
+    SDL_Mouse *mouse = SDL_GetMouse();
+    if ((!mouse->relative_mode || mouse->relative_mode_warp) && (x != mouse->x || y != mouse->y)) {
+        X11_ProcessHitTest(_this, windowdata, x, y, false);
+        SDL_SendMouseMotion(0, window, mouseID, false, x, y);
+    }
+
     if (X11_IsWheelEvent(display, button, &xticks, &yticks)) {
         SDL_SendMouseWheel(0, window, mouseID, (float)-xticks, (float)yticks, SDL_MOUSEWHEEL_NORMAL);
     } else {
@@ -1377,7 +1384,6 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
         // Have we been requested to quit (or another client message?)
     case ClientMessage:
     {
-
         static int xdnd_version = 0;
 
         if (xevent->xclient.message_type == videodata->atoms.XdndEnter) {
@@ -1402,6 +1408,11 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
                 // pick from list of three
                 data->xdnd_req = X11_PickTargetFromAtoms(display, xevent->xclient.data.l[2], xevent->xclient.data.l[3], xevent->xclient.data.l[4]);
             }
+        } else if (xevent->xclient.message_type == videodata->atoms.XdndLeave) {
+#ifdef DEBUG_XEVENTS
+            SDL_Log("XID of source window : 0x%lx\n", xevent->xclient.data.l[0]);
+#endif
+            SDL_SendDropComplete(data->window);
         } else if (xevent->xclient.message_type == videodata->atoms.XdndPosition) {
 
 #ifdef DEBUG_XEVENTS
