@@ -43,6 +43,8 @@
 #include <dlfcn.h>
 #define environ ((char **)dlsym(RTLD_DEFAULT, "environ"))
 #elif defined(SDL_PLATFORM_AMIGAOS4)
+#include <proto/dos.h>
+#include "../main/amigaos4/SDL_os4debug.h"
 static char **environ; // Workaround undefined reference
 #else
 extern char **environ;
@@ -82,6 +84,27 @@ void SDL_QuitEnvironment(void)
         SDL_DestroyEnvironment(env);
     }
 }
+
+#ifdef SDL_PLATFORM_AMIGAOS4
+static ULONG OS4_ScanVars(const struct Hook *hook, CONST_APTR extradata, struct ScanVarsMsg* msg)
+{
+    if (extradata && msg) {
+        SDL_Environment *env = (SDL_Environment*)extradata;
+        dprintf("Name '%s', var '%s'\n", msg->sv_Name, msg->sv_Var);
+        SDL_InsertIntoHashTable(env->strings, SDL_strdup(msg->sv_Name), SDL_strdup(msg->sv_Var));
+    } else {
+        dprintf("extradata %p, msg %p\n", extradata, msg);
+    }
+    return 0;
+}
+
+static struct Hook OS4_ScanVarsHook = {
+    {0, 0},               // h_MinNode
+    (void *)OS4_ScanVars, // h_Entry
+    0,                    // h_SubEntry
+    0                     // h_Data
+};
+#endif
 
 SDL_Environment *SDL_CreateEnvironment(bool populated)
 {
@@ -124,6 +147,14 @@ SDL_Environment *SDL_CreateEnvironment(bool populated)
 #ifdef SDL_PLATFORM_ANDROID
         // Make sure variables from the application manifest are available
         Android_JNI_GetManifestEnvironmentVariables();
+#endif
+#ifdef SDL_PLATFORM_AMIGAOS4
+        if (IDOS) {
+            const int32 found = IDOS->ScanVars(&OS4_ScanVarsHook, LV_VAR | GVF_LOCAL_ONLY, env);
+            if (!found) {
+                dprintf("ScanVars failed, err %d\n", IDOS->IoErr());
+            }
+        }
 #endif
         char **strings = environ;
         if (strings) {

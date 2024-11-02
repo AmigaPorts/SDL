@@ -274,6 +274,9 @@
 /* #undef SDL_HAPTIC_DINPUT */
 /* #undef SDL_HAPTIC_XINPUT */
 
+/* Enable various process implementations */
+#define SDL_PROCESS_AMIGAOS4 1
+
 /* Enable various sensor drivers */
 /* #undef SDL_SENSOR_ANDROID */
 #define SDL_SENSOR_DUMMY 1
