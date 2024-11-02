@@ -40,6 +40,7 @@ typedef struct CommandBufferCommonHeader
     Pass compute_pass;
     bool compute_pipeline_bound;
     Pass copy_pass;
+    bool swapchain_texture_acquired;
     bool submitted;
 } CommandBufferCommonHeader;
 
@@ -180,6 +181,11 @@ static inline Sint32 Texture_GetBlockWidth(
     case SDL_GPU_TEXTUREFORMAT_R16G16B16A16_INT:
     case SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM_SRGB:
     case SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_D16_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_D24_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_D32_FLOAT:
+    case SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT:
+    case SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT:
         return 1;
     default:
         SDL_assert_release(!"Unrecognized TextureFormat!");
@@ -289,6 +295,11 @@ static inline Sint32 Texture_GetBlockHeight(
     case SDL_GPU_TEXTUREFORMAT_R16G16B16A16_INT:
     case SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM_SRGB:
     case SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM_SRGB:
+    case SDL_GPU_TEXTUREFORMAT_D16_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_D24_UNORM:
+    case SDL_GPU_TEXTUREFORMAT_D32_FLOAT:
+    case SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT:
+    case SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT:
         return 1;
     default:
         SDL_assert_release(!"Unrecognized TextureFormat!");
@@ -800,6 +811,9 @@ struct SDL_GPUDevice
     SDL_GPUFence *(*SubmitAndAcquireFence)(
         SDL_GPUCommandBuffer *commandBuffer);
 
+    bool (*Cancel)(
+        SDL_GPUCommandBuffer *commandBuffer);
+
     bool (*Wait)(
         SDL_GPURenderer *driverData);
 
@@ -918,6 +932,7 @@ struct SDL_GPUDevice
     ASSIGN_DRIVER_FUNC(AcquireSwapchainTexture, name)       \
     ASSIGN_DRIVER_FUNC(Submit, name)                        \
     ASSIGN_DRIVER_FUNC(SubmitAndAcquireFence, name)         \
+    ASSIGN_DRIVER_FUNC(Cancel, name)                        \
     ASSIGN_DRIVER_FUNC(Wait, name)                          \
     ASSIGN_DRIVER_FUNC(WaitForFences, name)                 \
     ASSIGN_DRIVER_FUNC(QueryFence, name)                    \
