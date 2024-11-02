@@ -9,13 +9,15 @@ DEPS = $(SRC_FILES:.c=.d)
 
 TARGETS = \
 	checkkeys \
+	childprocess \
 	helloworld \
 	loopwave \
 	sdl3benchmark \
 	testatomic \
-	testaudiorecording \
 	testaudiohotplug \
 	testaudioinfo \
+	testaudiorecording \
+	testaudiostreamdynamicresample \
 	testautomation \
 	testbounds \
 	testcolorspace \
@@ -53,6 +55,7 @@ TARGETS = \
 	testpen \
 	testplatform \
 	testpower \
+	testprocess \
 	testqsort \
 	testrelative \
 	testrendercopyex \
@@ -67,6 +70,7 @@ TARGETS = \
 	testshape \
 	testsprite \
 	testspriteminimal \
+	testspritesurface \
 	teststreaming \
 	testsurround \
 	testthread \
@@ -83,6 +87,9 @@ TARGETS = \
 all: $(TARGETS)
 
 checkkeys: checkkeys.o
+	$(CC) -o $@ $^ $(LIBS)
+
+childprocess: childprocess.o
 	$(CC) -o $@ $^ $(LIBS)
 
 helloworld: helloworld.o
@@ -140,6 +147,9 @@ testaudiohotplug: testaudiohotplug.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testaudiorecording: testaudiorecording.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testaudiostreamdynamicresample: testaudiostreamdynamicresample.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testatomic: testatomic.o
@@ -238,6 +248,9 @@ testplatform: testplatform.o
 testpower: testpower.o
 	$(CC) -o $@ $^ $(LIBS)
 
+testprocess: testprocess.o
+	$(CC) -o $@ $^ $(LIBS)
+
 testfilesystem: testfilesystem.o
 	$(CC) -o $@ $^ $(LIBS)
 
@@ -266,6 +279,9 @@ testsprite: testsprite.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testspriteminimal: testspriteminimal.o testutils.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testspritesurface: testspritesurface.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 teststreaming: teststreaming.o testutils.o
