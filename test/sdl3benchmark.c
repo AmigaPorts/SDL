@@ -144,14 +144,14 @@ clearDisplay(Context *ctx)
         result = SDL_SetRenderDrawColor(ctx->renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
     }
 
-    if (result) {
+    if (!result) {
         SDL_Log("[%s]Failed to set draw color: %s\n", __FUNCTION__, SDL_GetError());
         return false;
     }
 
     result = SDL_RenderClear(ctx->renderer);
 
-    if (result) {
+    if (!result) {
         SDL_Log("[%s]Failed to clear: %s\n", __FUNCTION__, SDL_GetError());
         return false;
     }
@@ -191,7 +191,7 @@ prepareTexture(Context *ctx)
 {
     int result = SDL_SetSurfaceColorKey(ctx->surface, 1, 0);
 
-    if (result) {
+    if (!result) {
         SDL_Log("[%s]Failed to set color key: %s\n", __FUNCTION__, SDL_GetError());
         return false;
     }
@@ -209,7 +209,7 @@ prepareTexture(Context *ctx)
 
     result = SDL_SetTextureBlendMode(ctx->texture, ctx->mode);
 
-    if (result) {
+    if (!result) {
         SDL_Log("[%s]Failed to set texture blend mode: %s\n", __FUNCTION__, SDL_GetError());
 
         SDL_DestroyTexture(ctx->texture);
@@ -331,7 +331,7 @@ setRandomColor(Context *ctx)
     const int result = SDL_SetRenderDrawColor(ctx->renderer,
         getRand(256), getRand(256), getRand(256), getRand(256));
 
-    if (result) {
+    if (!result) {
         SDL_Log("[%s]Failed to set color: %s\n", __FUNCTION__, SDL_GetError());
         return false;
     }
@@ -343,7 +343,7 @@ static bool testPointsInner(Context *ctx, bool linemode)
 {
     int result = SDL_SetRenderDrawBlendMode(ctx->renderer, ctx->mode);
 
-    if (result) {
+    if (!result) {
         SDL_Log("[%s]Failed to set blend mode: %s\n", __FUNCTION__, SDL_GetError());
         return false;
     }
@@ -365,7 +365,7 @@ static bool testPointsInner(Context *ctx, bool linemode)
 
     ctx->operations++;
 
-    if (result) {
+    if (!result) {
         SDL_Log("[%s]Failed to draw lines/points: %s\n", __FUNCTION__, SDL_GetError());
         return false;
     }
@@ -392,7 +392,7 @@ testFillRects(Context *ctx)
 {
     int result = SDL_SetRenderDrawBlendMode(ctx->renderer, ctx->mode);
 
-    if (result) {
+    if (!result) {
         SDL_Log("[%s]Failed to set blend mode: %s\n", __FUNCTION__, SDL_GetError());
         return false;
     }
@@ -414,7 +414,7 @@ testFillRects(Context *ctx)
 
     result = SDL_RenderFillRects(ctx->renderer, rects, ctx->objects);
 
-    if (result) {
+    if (!result) {
         SDL_Log("[%s]Failed to draw filled rectangles: %s\n", __FUNCTION__, SDL_GetError());
         return false;
     }
@@ -459,7 +459,7 @@ testRenderCopyInner(Context *ctx, bool ex)
                 SDL_FLIP_NONE);
         }
 
-        if (result) {
+        if (!result) {
             SDL_Log("[%s]Failed to draw texture: %s\n", __FUNCTION__, SDL_GetError());
             return false;
         }
@@ -500,7 +500,7 @@ testColorModulation(Context *ctx)
 
     const int c = i++ % count;
 
-    if (SDL_SetTextureColorMod(ctx->texture, colors[c].r, colors[c].g, colors[c].b)) {
+    if (!SDL_SetTextureColorMod(ctx->texture, colors[c].r, colors[c].g, colors[c].b)) {
         SDL_Log("[%s]Failed to set color modulation: %s\n", __FUNCTION__, SDL_GetError());
         return false;
     }
@@ -511,7 +511,7 @@ testColorModulation(Context *ctx)
 static bool
 testAlphaModulation(Context *ctx)
 {
-    if (SDL_SetTextureAlphaMod(ctx->texture, 127)) {
+    if (!SDL_SetTextureAlphaMod(ctx->texture, 127)) {
         SDL_Log("[%s]Failed to set alpha modulation: %s\n", __FUNCTION__, SDL_GetError());
         return false;
     }
@@ -522,7 +522,7 @@ testAlphaModulation(Context *ctx)
 static bool
 testUpdateTexture(Context *ctx)
 {
-    if (SDL_UpdateTexture(ctx->texture, NULL, ctx->buffer, ctx->texturewidth * sizeof(Uint32))) {
+    if (!SDL_UpdateTexture(ctx->texture, NULL, ctx->buffer, ctx->texturewidth * sizeof(Uint32))) {
         SDL_Log("[%s]Failed to update texture: %s\n", __FUNCTION__, SDL_GetError());
         return false;
     }
@@ -691,7 +691,7 @@ main(int argc, char **argv)
 {
     Context ctx;
 
-    if (SDL_Init(SDL_INIT_VIDEO)) {
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
         SDL_Log("Init failed: %s\n", SDL_GetError());
         return -1;
     }

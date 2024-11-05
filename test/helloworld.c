@@ -859,7 +859,7 @@ static void testHiddenWindow()
 
 int main(void)
 {
-    if (SDL_Init(SDL_INIT_VIDEO/*|SDL_INIT_TIMER*/) == 0) {
+    if (SDL_Init(SDL_INIT_VIDEO/*|SDL_INIT_TIMER*/)) {
         if (0) testPath();
         if (0) testWindow();
         if (0) testManyWindows();
