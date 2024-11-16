@@ -4225,6 +4225,13 @@ bool SDL_RenderTextureTiled(SDL_Renderer *renderer, SDL_Texture *texture, const 
 
     texture->last_command_generation = renderer->render_command_generation;
 
+#ifdef SDL_PLATFORM_AMIGAOS4
+    if (SDL_strcmp(renderer->name, "compositing") == 0) {
+        // We cannot repeat texture coordinates when using CompositeTags()
+        return SDL_RenderTextureTiled_Iterate(renderer, texture, &real_srcrect, scale, &real_dstrect);
+    }
+#endif
+
     // See if we can use geometry with repeating texture coordinates
     if (!renderer->software &&
         (!srcrect ||
