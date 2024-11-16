@@ -1326,14 +1326,16 @@ SDL_DisplayMode **SDL_GetFullscreenDisplayModes(SDL_DisplayID displayID, int *co
 
 bool SDL_GetClosestFullscreenDisplayMode(SDL_DisplayID displayID, int w, int h, float refresh_rate, bool include_high_density_modes, SDL_DisplayMode *result)
 {
+    if (!result) {
+        return SDL_InvalidParamError("closest"); // Parameter `result` is called `closest` in the header.
+    }
+
     const SDL_DisplayMode *mode, *closest = NULL;
     float aspect_ratio;
     int i;
     SDL_VideoDisplay *display = SDL_GetVideoDisplay(displayID);
 
-    if (result) {
-        SDL_zerop(result);
-    }
+    SDL_zerop(result);
 
     CHECK_DISPLAY_MAGIC(display, false);
 
@@ -1385,9 +1387,9 @@ bool SDL_GetClosestFullscreenDisplayMode(SDL_DisplayID displayID, int w, int h, 
     if (!closest) {
         return SDL_SetError("Couldn't find any matching video modes");
     }
-    if (result) {
-        SDL_copyp(result, closest);
-    }
+
+    SDL_copyp(result, closest);
+
     return true;
 }
 
@@ -1605,11 +1607,21 @@ void SDL_GlobalToRelativeForWindow(SDL_Window *window, int abs_x, int abs_y, int
 
 SDL_DisplayID SDL_GetDisplayForPoint(const SDL_Point *point)
 {
+    if (!point) {
+        SDL_InvalidParamError("point");
+        return 0;
+    }
+
     return GetDisplayForRect(point->x, point->y, 1, 1);
 }
 
 SDL_DisplayID SDL_GetDisplayForRect(const SDL_Rect *rect)
 {
+    if (!rect) {
+        SDL_InvalidParamError("rect");
+        return 0;
+    }
+
     return GetDisplayForRect(rect->x, rect->y, rect->w, rect->h);
 }
 
@@ -2387,7 +2399,7 @@ SDL_Window *SDL_CreateWindowWithProperties(SDL_PropertiesID props)
         SDL_GetDisplayUsableBounds(displayID, &bounds);
         if (w > bounds.w || h > bounds.h) {
             // This window is larger than the usable bounds, just center on the display
-            SDL_GetDisplayUsableBounds(displayID, &bounds);
+            SDL_GetDisplayBounds(displayID, &bounds);
         }
         if (SDL_WINDOWPOS_ISCENTERED(x) || SDL_WINDOWPOS_ISUNDEFINED(x)) {
             if (SDL_WINDOWPOS_ISUNDEFINED(x)) {
@@ -2456,7 +2468,9 @@ SDL_Window *SDL_CreateWindowWithProperties(SDL_PropertiesID props)
     window->undefined_y = undefined_y;
 
     SDL_VideoDisplay *display = SDL_GetVideoDisplayForWindow(window);
-    SDL_SetWindowHDRProperties(window, &display->HDR, false);
+    if (display) {
+        SDL_SetWindowHDRProperties(window, &display->HDR, false);
+    }
 
     if (flags & SDL_WINDOW_FULLSCREEN || IsFullscreenOnly(_this)) {
         SDL_Rect bounds;
