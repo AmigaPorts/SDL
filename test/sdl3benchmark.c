@@ -573,6 +573,10 @@ checkEvents(Context *ctx)
                 ctx->running = false;
             }
         }
+        if (e.type == SDL_EVENT_QUIT) {
+            SDL_Log("Quitting...\n");
+            ctx->running = false;
+        }
     }
 }
 
@@ -712,10 +716,10 @@ main(int argc, char **argv)
         SDL_Log("Image size %d*%d\n", ctx.surface->w, ctx.surface->h);
 
         ctx.window = SDL_CreateWindow(
-            "SDL2 benchmark",
+            "SDL3 benchmark",
             ctx.width,
             ctx.height,
-            SDL_WINDOW_FULLSCREEN);
+            0 /*SDL_WINDOW_FULLSCREEN*/);
 
         if (ctx.window) {
             checkPixelFormat(&ctx);
