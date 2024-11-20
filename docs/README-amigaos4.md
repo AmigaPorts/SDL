@@ -3,8 +3,7 @@ SDL 3 requirements
 ================================================================================
 
 AmigaOS 4.1 Final Edition
-MiniGL (optional from SDL3 point of view, but OpenGL context might still be
-        required by the SDL3 application)
+MiniGL (optional)
 OpenGL ES 2.0 (optional)
 
 ================================================================================
@@ -168,7 +167,7 @@ to install the following software:
 Tips
 ================================================================================
 
-If you are already familiar with SDL 1.2, or porting SDL 1.2 code, it's worth
+If you are already familiar with SDL 2, or porting SDL 2 code, it's worth
 checking the migration guide at:
 
 https://wiki.libsdl.org/MigrationGuide
@@ -183,10 +182,10 @@ Limitations
 Altivec support is disabled. It should be possible to enable in private builds
 but it hasn't been tested so far.
 
-Unsupported subsystems include Haptic and Power. There is no Vulkan backend for
-AmigaOS either.
+Unsupported subsystems include Camera, GPU, Haptic, Power and Sensor. There is
+no Vulkan backend for AmigaOS either.
 
-OpenGL renderer doesn't exist anymore. This is due to missing features in MiniGL.
+"opengl" renderer doesn't exist anymore. This is due to missing features in MiniGL.
 
 Compositing renderer doesn't support color modulation for triangle geometry. Use
 "software" or "opengles2" driver if you need it.
