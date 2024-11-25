@@ -452,7 +452,7 @@ OS4_HandleHitTest(SDL_VideoDevice *_this, SDL_Window * sdlwin, struct MyIntuiMes
     return false;
 }
 
-static int
+static bool
 OS4_GetButtonState(uint16 code)
 {
     return (code & IECODE_UP_PREFIX) ? false : true;
@@ -479,8 +479,8 @@ OS4_HandleMouseButtons(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
     if (sdlwin) {
-        uint8 button = OS4_GetButton(imsg->Code);
-        uint8 state = OS4_GetButtonState(imsg->Code);
+        const uint8 button = OS4_GetButton(imsg->Code);
+        const bool state = OS4_GetButtonState(imsg->Code);
 
         globalMouseState.buttonPressed[button] = state;
 
@@ -503,7 +503,7 @@ OS4_HandleMouseButtons(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
         }
 
         // TODO: can we support more buttons?
-        SDL_SendMouseButton(0, sdlwin, 0, state, button);
+        SDL_SendMouseButton(0, sdlwin, 0, button, state);
     }
 }
 
