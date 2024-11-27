@@ -465,6 +465,10 @@ OS4_GetButton(uint16 code)
             return SDL_BUTTON_RIGHT;
         case IECODE_MBUTTON:
             return SDL_BUTTON_MIDDLE;
+        case IECODE_4TH_BUTTON:
+            return SDL_BUTTON_X1;
+        case IECODE_5TH_BUTTON:
+            return SDL_BUTTON_X2;
         default:
             return 0;
     }
@@ -499,7 +503,6 @@ OS4_HandleMouseButtons(_THIS, struct MyIntuiMessage * imsg)
             }
         }
 
-        // TODO: can we support more buttons?
         SDL_SendMouseButton(sdlwin, 0, state, button);
     }
 }
