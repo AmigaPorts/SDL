@@ -1034,7 +1034,7 @@ extern "C" {
  * force a specific target, such as "direct3d11" if, say, your hardware
  * supports D3D12 but want to try using D3D11 instead.
  *
- * This hint should be set before SDL_GPUSelectBackend() is called.
+ * This hint should be set before any GPU functions are called.
  *
  * \since This hint is available since SDL 3.1.3.
  */
@@ -1658,6 +1658,25 @@ extern "C" {
  * \since This hint is available since SDL 3.1.3.
  */
 #define SDL_HINT_JOYSTICK_HIDAPI_STEAM "SDL_JOYSTICK_HIDAPI_STEAM"
+
+/**
+ * A variable controlling whether the Steam button LED should be turned on
+ * when a Steam controller is opened.
+ *
+ * The variable can be set to the following values:
+ *
+ * - "0": Steam button LED is turned off.
+ * - "1": Steam button LED is turned on.
+ *
+ * By default the Steam button LED state is not changed. This hint can also be
+ * set to a floating point value between 0.0 and 1.0 which controls the
+ * brightness of the Steam button LED.
+ *
+ * This hint can be set anytime.
+ *
+ * \since This hint is available since SDL 3.1.8.
+ */
+#define SDL_HINT_JOYSTICK_HIDAPI_STEAM_HOME_LED "SDL_JOYSTICK_HIDAPI_STEAM_HOME_LED"
 
 /**
  * A variable controlling whether the HIDAPI driver for the Steam Deck builtin
@@ -2381,6 +2400,18 @@ extern "C" {
  * \since This hint is available since SDL 3.1.3.
  */
 #define SDL_HINT_MOUSE_DOUBLE_CLICK_TIME "SDL_MOUSE_DOUBLE_CLICK_TIME"
+
+/**
+ * A variable setting which system cursor to use as the default cursor.
+ *
+ * This should be an integer corresponding to the SDL_SystemCursor enum. The
+ * default value is zero (SDL_SYSTEM_CURSOR_DEFAULT).
+ *
+ * This hint needs to be set before SDL_Init().
+ *
+ * \since This hint is available since SDL 3.1.3.
+ */
+#define SDL_HINT_MOUSE_DEFAULT_SYSTEM_CURSOR "SDL_MOUSE_DEFAULT_SYSTEM_CURSOR"
 
 /**
  * A variable controlling whether warping a hidden mouse cursor will activate
