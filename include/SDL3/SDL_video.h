@@ -1848,6 +1848,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_ShowWindow(SDL_Window *window);
  * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_ShowWindow
+ * \sa SDL_WINDOW_HIDDEN
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_HideWindow(SDL_Window *window);
 
@@ -1976,6 +1977,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RestoreWindow(SDL_Window *window);
  * \sa SDL_GetWindowFullscreenMode
  * \sa SDL_SetWindowFullscreenMode
  * \sa SDL_SyncWindow
+ * \sa SDL_WINDOW_FULLSCREEN
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_SetWindowFullscreen(SDL_Window *window, bool fullscreen);
 
@@ -2355,6 +2357,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetWindowParent(SDL_Window *window, SDL_Win
  * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_SetWindowParent
+ * \sa SDL_WINDOW_MODAL
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_SetWindowModal(SDL_Window *window, bool modal);
 

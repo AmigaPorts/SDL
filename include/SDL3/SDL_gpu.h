@@ -148,6 +148,17 @@
  * Examples demonstrating proper usage of this API can be found
  * [here](https://github.com/TheSpydog/SDL_gpu_examples)
  * .
+ *
+ * ## FAQ
+ *
+ * **Question: When are you adding more advanced features, like ray tracing or
+ * mesh shaders?**
+ *
+ * Answer: We don't have immediate plans to add more bleeding-edge features,
+ * but we certainly might in the future, when these features prove worthwhile,
+ * and reasonable to implement across several platforms and underlying APIs.
+ * So while these things are not in the "never" category, they are definitely
+ * not "near future" items either.
  */
 
 #ifndef SDL_gpu_h_
@@ -1827,11 +1838,11 @@ typedef struct SDL_GPUBlitInfo {
  * \since This struct is available since SDL 3.1.3
  *
  * \sa SDL_BindGPUVertexBuffers
- * \sa SDL_BindGPUIndexBuffers
+ * \sa SDL_BindGPUIndexBuffer
  */
 typedef struct SDL_GPUBufferBinding
 {
-    SDL_GPUBuffer *buffer;  /**< The buffer to bind. Must have been created with SDL_GPU_BUFFERUSAGE_VERTEX for SDL_BindGPUVertexBuffers, or SDL_GPU_BUFFERUSAGE_INDEX for SDL_BindGPUIndexBuffers. */
+    SDL_GPUBuffer *buffer;  /**< The buffer to bind. Must have been created with SDL_GPU_BUFFERUSAGE_VERTEX for SDL_BindGPUVertexBuffers, or SDL_GPU_BUFFERUSAGE_INDEX for SDL_BindGPUIndexBuffer. */
     Uint32 offset;          /**< The starting byte of the data to bind in the buffer. */
 } SDL_GPUBufferBinding;
 
@@ -2138,7 +2149,7 @@ extern SDL_DECLSPEC SDL_GPUGraphicsPipeline *SDLCALL SDL_CreateGPUGraphicsPipeli
  *
  * \sa SDL_BindGPUVertexSamplers
  * \sa SDL_BindGPUFragmentSamplers
- * \sa SDL_ReleaseSampler
+ * \sa SDL_ReleaseGPUSampler
  */
 extern SDL_DECLSPEC SDL_GPUSampler *SDLCALL SDL_CreateGPUSampler(
     SDL_GPUDevice *device,
@@ -2190,7 +2201,7 @@ extern SDL_DECLSPEC SDL_GPUSampler *SDLCALL SDL_CreateGPUSampler(
  *   is bound at [[buffer(14)]], vertex buffer 1 at [[buffer(15)]], and so on.
  *   Rather than manually authoring vertex buffer indices, use the
  *   [[stage_in]] attribute which will automatically use the vertex input
- *   information from the SDL_GPUPipeline.
+ *   information from the SDL_GPUGraphicsPipeline.
  *
  * \param device a GPU Context.
  * \param createinfo a struct describing the state of the shader to create.
@@ -3611,7 +3622,7 @@ extern SDL_DECLSPEC SDL_GPUFence *SDLCALL SDL_SubmitGPUCommandBufferAndAcquireFe
  * \returns true on success, false on error; call SDL_GetError() for more
  *          information.
  *
- * \since This function is available since SDL 3.1.3.
+ * \since This function is available since SDL 3.1.6.
  *
  * \sa SDL_AcquireGPUCommandBuffer
  * \sa SDL_AcquireGPUSwapchainTexture
@@ -3741,7 +3752,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GPUTextureSupportsSampleCount(
  * \param depth_or_layer_count depth for 3D textures or layer count otherwise.
  * \returns the size of a texture with this format and dimensions.
  *
- * \since This function is available since SDL 3.1.3.
+ * \since This function is available since SDL 3.1.6.
  */
 extern SDL_DECLSPEC Uint32 SDLCALL SDL_CalculateGPUTextureFormatSize(
     SDL_GPUTextureFormat format,

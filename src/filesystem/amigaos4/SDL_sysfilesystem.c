@@ -165,6 +165,11 @@ SDL_SYS_GetUserFolder(SDL_Folder folder)
     return folderPath;
 }
 
+char *SDL_SYS_GetCurrentDirectory(void)
+{
+    return NULL; // TODO: implement
+}
+
 int SDL_SYS_EnumerateDirectory(const char *path, const char *dirname, SDL_EnumerateDirectoryCallback cb, void *userdata)
 {
     if (!IDOS) {

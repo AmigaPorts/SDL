@@ -2672,7 +2672,9 @@ elseif(PSP)
   sdl_glob_sources("${SDL3_SOURCE_DIR}/src/filesystem/psp/*.c")
   set(HAVE_SDL_FILESYSTEM TRUE)
 
-  # !!! FIXME: do we need a FSops implementation for this?
+  set(SDL_FSOPS_POSIX 1)
+  sdl_sources("${SDL3_SOURCE_DIR}/src/filesystem/posix/SDL_sysfsops.c")
+  set(HAVE_SDL_FSOPS TRUE)
 
   if(SDL_JOYSTICK)
     set(SDL_JOYSTICK_PSP 1)
@@ -2694,6 +2696,9 @@ elseif(PSP)
     "${SDL3_SOURCE_DIR}/src/thread/psp/*.c"
   )
   set(HAVE_SDL_THREADS TRUE)
+
+  sdl_glob_sources("${SDL3_SOURCE_DIR}/src/locale/psp/*.c")
+  set(HAVE_SDL_LOCALE TRUE)
 
   set(SDL_TIME_PSP 1)
   sdl_glob_sources("${SDL3_SOURCE_DIR}/src/time/psp/*.c")
@@ -2742,7 +2747,9 @@ elseif(PS2)
   sdl_glob_sources("${SDL3_SOURCE_DIR}/src/filesystem/ps2/*.c")
   set(HAVE_SDL_FILESYSTEM TRUE)
 
-  # !!! FIXME: do we need a FSops implementation for this?
+  set(SDL_FSOPS_POSIX 1)
+  sdl_sources("${SDL3_SOURCE_DIR}/src/filesystem/posix/SDL_sysfsops.c")
+  set(HAVE_SDL_FSOPS TRUE)
 
   if(SDL_JOYSTICK)
     set(SDL_JOYSTICK_PS2 1)
@@ -3434,7 +3441,7 @@ endif()
 if(WINDOWS AND NOT MINGW)
   set(SDL_INSTALL_CMAKEDIR_ROOT_DEFAULT "cmake")
 else()
-  set(SDL_INSTALL_CMAKEDIR_ROOT_DEFAULT "${CMAKE_INSTALL_LIBDIR}/cmake")
+  set(SDL_INSTALL_CMAKEDIR_ROOT_DEFAULT "${CMAKE_INSTALL_LIBDIR}/cmake/SDL3")
 endif()
 set(SDL_INSTALL_CMAKEDIR_ROOT "${SDL_INSTALL_CMAKEDIR_ROOT_DEFAULT}" CACHE STRING "Root folder where to install SDL3Config.cmake related files (SDL3 subfolder for MSVC projects)")
 
@@ -3454,7 +3461,7 @@ elseif(SDL_FRAMEWORK)
   set(SDL_INSTALL_LICENSEDIR "Resources")
   set(SDL_INSTALL_HEADERSDIR "Headers")
 else()
-  set(SDL_INSTALL_CMAKEDIR "${SDL_INSTALL_CMAKEDIR_ROOT}/SDL3")
+  set(SDL_INSTALL_CMAKEDIR "${SDL_INSTALL_CMAKEDIR_ROOT}")
   set(SDL_INSTALL_LICENSEDIR "${CMAKE_INSTALL_DATAROOTDIR}/licenses/${PROJECT_NAME}")
   set(SDL_INSTALL_HEADERSDIR "${CMAKE_INSTALL_INCLUDEDIR}/SDL3")
 endif()
