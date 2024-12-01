@@ -167,7 +167,34 @@ SDL_SYS_GetUserFolder(SDL_Folder folder)
 
 char *SDL_SYS_GetCurrentDirectory(void)
 {
-    return NULL; // TODO: implement
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return NULL;
+    }
+
+    BPTR lock = IDOS->GetCurrentDir();
+    if (lock) {
+        char buffer[MAX_DOS_PATH];
+        const int32 success = IDOS->NameFromLock(lock, buffer, sizeof(buffer));
+        if (success) {
+            const size_t len = SDL_strlen(buffer) + 1;
+            char* result = SDL_malloc(len);
+            if (result) {
+                SDL_snprintf(result, len, "%s", buffer);
+                dprintf("Current dir: %s\n", result);
+                return result;
+            } else {
+                SDL_OutOfMemory();
+                dprintf("Failed to allocate path buffer\n");
+            }
+        } else {
+            dprintf("Failed to get name from lock (err %d)\n", IDOS->IoErr());
+        }
+    } else {
+        dprintf("Failed to get the lock to the current directory\n");
+    }
+
+    return NULL;
 }
 
 int SDL_SYS_EnumerateDirectory(const char *path, const char *dirname, SDL_EnumerateDirectoryCallback cb, void *userdata)
