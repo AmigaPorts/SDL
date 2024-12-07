@@ -78,7 +78,7 @@ extern "C" {
 typedef Uint32 SDL_InitFlags;
 
 #define SDL_INIT_AUDIO      0x00000010u /**< `SDL_INIT_AUDIO` implies `SDL_INIT_EVENTS` */
-#define SDL_INIT_VIDEO      0x00000020u /**< `SDL_INIT_VIDEO` implies `SDL_INIT_EVENTS` */
+#define SDL_INIT_VIDEO      0x00000020u /**< `SDL_INIT_VIDEO` implies `SDL_INIT_EVENTS`, should be initialized on the main thread */
 #define SDL_INIT_JOYSTICK   0x00000200u /**< `SDL_INIT_JOYSTICK` implies `SDL_INIT_EVENTS`, should be initialized on the same thread as SDL_INIT_VIDEO on Windows if you don't set SDL_HINT_JOYSTICK_THREAD */
 #define SDL_INIT_HAPTIC     0x00001000u
 #define SDL_INIT_GAMEPAD    0x00002000u /**< `SDL_INIT_GAMEPAD` implies `SDL_INIT_JOYSTICK` */
@@ -139,7 +139,7 @@ typedef void (SDLCALL *SDL_AppQuit_func)(void *appstate, SDL_AppResult result);
  * - `SDL_INIT_AUDIO`: audio subsystem; automatically initializes the events
  *   subsystem
  * - `SDL_INIT_VIDEO`: video subsystem; automatically initializes the events
- *   subsystem
+ *   subsystem, should be initialized on the main thread.
  * - `SDL_INIT_JOYSTICK`: joystick subsystem; automatically initializes the
  *   events subsystem
  * - `SDL_INIT_HAPTIC`: haptic (force feedback) subsystem
@@ -238,6 +238,63 @@ extern SDL_DECLSPEC SDL_InitFlags SDLCALL SDL_WasInit(SDL_InitFlags flags);
  * \sa SDL_QuitSubSystem
  */
 extern SDL_DECLSPEC void SDLCALL SDL_Quit(void);
+
+/**
+ * Return whether this is the main thread.
+ *
+ * On Apple platforms, the main thread is the thread that runs your program's
+ * main() entry point. On other platforms, the main thread is the one that
+ * calls SDL_Init(SDL_INIT_VIDEO), which should usually be the one that runs
+ * your program's main() entry point. If you are using the main callbacks,
+ * SDL_AppInit(), SDL_AppIterate(), and SDL_AppQuit() are all called on the
+ * main thread.
+ *
+ * \returns true if this thread is the main thread, or false otherwise.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_RunOnMainThread
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_IsMainThread(void);
+
+/**
+ * Callback run on the main thread.
+ *
+ * \param userdata an app-controlled pointer that is passed to the callback.
+ *
+ * \since This datatype is available since SDL 3.1.8.
+ *
+ * \sa SDL_RunOnMainThread
+ */
+typedef void (SDLCALL *SDL_MainThreadCallback)(void *userdata);
+
+/**
+ * Call a function on the main thread during event processing.
+ *
+ * If this is called on the main thread, the callback is executed immediately.
+ * If this is called on another thread, this callback is queued for execution
+ * on the main thread during event processing.
+ *
+ * Be careful of deadlocks when using this functionality. You should not have
+ * the main thread wait for the current thread while this function is being
+ * called with `wait_complete` true.
+ *
+ * \param callback the callback to call on the main thread.
+ * \param userdata a pointer that is passed to `callback`.
+ * \param wait_complete true to wait for the callback to complete, false to
+ *                      return immediately.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_IsMainThread
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_RunOnMainThread(SDL_MainThreadCallback callback, void *userdata, bool wait_complete);
 
 /**
  * Specify basic metadata about your app.

@@ -147,7 +147,7 @@ const char *SDL_GetCurrentAudioDriver(void)
     return current_audio.name;
 }
 
-static int GetDefaultSampleFramesFromFreq(const int freq)
+int SDL_GetDefaultSampleFramesFromFreq(const int freq)
 {
     const char *hint = SDL_GetHint(SDL_HINT_AUDIO_DEVICE_SAMPLE_FRAMES);
     if (hint) {
@@ -347,6 +347,16 @@ static SDL_AudioDeviceID AssignAudioDeviceInstanceId(bool recording, bool islogi
     const SDL_AudioDeviceID instance_id = (((SDL_AudioDeviceID) (SDL_AtomicIncRef(&last_device_instance_id) + 1)) << 2) | flags;
     SDL_assert( (instance_id >= 2) && (instance_id < SDL_AUDIO_DEVICE_DEFAULT_RECORDING) );
     return instance_id;
+}
+
+bool SDL_IsAudioDevicePhysical(SDL_AudioDeviceID devid)
+{
+    return (devid & (1 << 1)) != 0;
+}
+
+bool SDL_IsAudioDevicePlayback(SDL_AudioDeviceID devid)
+{
+    return (devid & (1 << 0)) != 0;
 }
 
 static void ObtainPhysicalAudioDeviceObj(SDL_AudioDevice *device) SDL_NO_THREAD_SAFETY_ANALYSIS  // !!! FIXMEL SDL_ACQUIRE
@@ -619,7 +629,7 @@ static SDL_AudioDevice *CreatePhysicalAudioDevice(const char *name, bool recordi
     device->recording = recording;
     SDL_copyp(&device->spec, spec);
     SDL_copyp(&device->default_spec, spec);
-    device->sample_frames = GetDefaultSampleFramesFromFreq(device->spec.freq);
+    device->sample_frames = SDL_GetDefaultSampleFramesFromFreq(device->spec.freq);
     device->silence_value = SDL_GetSilenceValueForFormat(device->spec.format);
     device->handle = handle;
 
@@ -856,7 +866,7 @@ static SDL_AudioDevice *GetFirstAddedAudioDevice(const bool recording)
         // bit #0 of devid is set for playback devices and unset for recording.
         // bit #1 of devid is set for physical devices and unset for logical.
         const bool devid_recording = !(devid & (1 << 0));
-        const bool isphysical = (devid & (1 << 1));
+        const bool isphysical = !!(devid & (1 << 1));
         if (isphysical && (devid_recording == recording) && (devid < highest)) {
             highest = devid;
             result = (SDL_AudioDevice *) value;
@@ -1058,7 +1068,7 @@ void SDL_QuitAudio(void)
     while (SDL_IterateHashTable(device_hash, &key, &value, &iter)) {
         // bit #1 of devid is set for physical devices and unset for logical.
         const SDL_AudioDeviceID devid = (SDL_AudioDeviceID) (uintptr_t) key;
-        const bool isphysical = (devid & (1<<1));
+        const bool isphysical = !!(devid & (1<<1));
         if (isphysical) {
             DestroyPhysicalAudioDevice((SDL_AudioDevice *) value);
         }
@@ -1360,7 +1370,7 @@ static SDL_AudioDeviceID *GetAudioDevices(int *count, bool recording)
                     // bit #0 of devid is set for playback devices and unset for recording.
                     // bit #1 of devid is set for physical devices and unset for logical.
                     const bool devid_recording = !(devid & (1<<0));
-                    const bool isphysical = (devid & (1<<1));
+                    const bool isphysical = !!(devid & (1<<1));
                     if (isphysical && (devid_recording == recording)) {
                         SDL_assert(devs_seen < num_devices);
                         result[devs_seen++] = devid;
@@ -1412,7 +1422,7 @@ SDL_AudioDevice *SDL_FindPhysicalAudioDeviceByCallback(bool (*callback)(SDL_Audi
     while (SDL_IterateHashTable(current_audio.device_hash, &key, &value, &iter)) {
         const SDL_AudioDeviceID devid = (SDL_AudioDeviceID) (uintptr_t) key;
         // bit #1 of devid is set for physical devices and unset for logical.
-        const bool isphysical = (devid & (1<<1));
+        const bool isphysical = !!(devid & (1<<1));
         if (isphysical) {
             SDL_AudioDevice *device = (SDL_AudioDevice *) value;
             if (callback(device, userdata)) {  // found it?
@@ -1659,7 +1669,7 @@ static bool OpenPhysicalAudioDevice(SDL_AudioDevice *device, const SDL_AudioSpec
     device->spec.format = (SDL_AUDIO_BITSIZE(device->default_spec.format) >= SDL_AUDIO_BITSIZE(spec.format)) ? device->default_spec.format : spec.format;
     device->spec.freq = SDL_max(device->default_spec.freq, spec.freq);
     device->spec.channels = SDL_max(device->default_spec.channels, spec.channels);
-    device->sample_frames = GetDefaultSampleFramesFromFreq(device->spec.freq);
+    device->sample_frames = SDL_GetDefaultSampleFramesFromFreq(device->spec.freq);
     SDL_UpdatedAudioDeviceFormat(device);  // start this off sane.
 
     device->currently_opened = true;  // mark this true even if impl.OpenDevice fails, so we know to clean up.
