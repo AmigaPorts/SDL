@@ -1187,6 +1187,24 @@ SDL3_0.0.0 {
     SDL_SaveFile_IO;
     SDL_SaveFile;
     SDL_GetCurrentDirectory;
+    SDL_IsAudioDevicePhysical;
+    SDL_IsAudioDevicePlayback;
+    SDL_AsyncIOFromFile;
+    SDL_GetAsyncIOSize;
+    SDL_ReadAsyncIO;
+    SDL_WriteAsyncIO;
+    SDL_CloseAsyncIO;
+    SDL_CreateAsyncIOQueue;
+    SDL_DestroyAsyncIOQueue;
+    SDL_GetAsyncIOResult;
+    SDL_WaitAsyncIOResult;
+    SDL_SignalAsyncIOQueue;
+    SDL_LoadFileAsync;
+    SDL_ShowFileDialogWithProperties;
+    SDL_IsMainThread;
+    SDL_RunOnMainThread;
+    SDL_SetGPUAllowedFramesInFlight;
+    SDL_RenderTextureAffine;
     # extra symbols go here (don't modify this line)
   local: *;
 };

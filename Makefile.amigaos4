@@ -29,6 +29,7 @@ SOURCES = \
 	./src/dialog/amigaos4/SDL_amigaos4dialog.c \
 	./src/events/*.c \
 	./src/file/*.c \
+	./src/file/generic/SDL_asyncio_generic.c \
 	./src/filesystem/SDL_filesystem.c \
 	./src/filesystem/amigaos4/*.c \
 	./src/haptic/*.c \
