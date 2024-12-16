@@ -447,8 +447,8 @@ OS4_CaptureFromDevice(_THIS, void * buffer, int buflen)
     request = os4data->ahiRequest[0];
 
     if (os4data->lastCaptureTicks == 0 || (now - os4data->lastCaptureTicks) > RESTART_CAPTURE_THRESHOLD) {
-        if (os4data->requestSent) {
-            IExec->WaitIO((struct IORequest *)request);
+        if (os4data->link) {
+            IExec->WaitIO((struct IORequest *)os4data->link);
         }
 
         /* Assume that we have to (re)start recording */
@@ -464,13 +464,13 @@ OS4_CaptureFromDevice(_THIS, void * buffer, int buflen)
         dprintf("Start recording\n");
 
         IExec->DoIO((struct IORequest *)request);
-        os4data->requestSent = SDL_FALSE;
+        os4data->link = NULL;
 
         current = OS4_SwapBuffer(current);
     } else {
         /* Wait for the previous request completion */
-        if (os4data->requestSent) {
-            IExec->WaitIO((struct IORequest *)request);
+        if (os4data->link) {
+            IExec->WaitIO((struct IORequest *)os4data->link);
         }
     }
 
@@ -482,7 +482,7 @@ OS4_CaptureFromDevice(_THIS, void * buffer, int buflen)
         os4data->ahiType);
 
     IExec->SendIO((struct IORequest *)request);
-    os4data->requestSent = SDL_TRUE;
+    os4data->link = request;
 
     current = OS4_SwapBuffer(current);
 
