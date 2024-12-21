@@ -1453,7 +1453,7 @@ SDL_Texture *SDL_CreateTextureWithProperties(SDL_Renderer *renderer, SDL_Propert
         renderer->textures = texture;
 
         if (SDL_ISPIXELFORMAT_FOURCC(texture->format)) {
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
             texture->yuv = SDL_SW_CreateYUVTexture(texture->format, texture->colorspace, w, h);
 #else
             SDL_SetError("SDL not built with YUV support");
@@ -1974,7 +1974,7 @@ bool SDL_GetTextureScaleMode(SDL_Texture *texture, SDL_ScaleMode *scaleMode)
     return true;
 }
 
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
 static bool SDL_UpdateTextureYUV(SDL_Texture *texture, const SDL_Rect *rect,
                                 const void *pixels, int pitch)
 {
@@ -2086,7 +2086,7 @@ bool SDL_UpdateTexture(SDL_Texture *texture, const SDL_Rect *rect, const void *p
 
     if (real_rect.w == 0 || real_rect.h == 0) {
         return true; // nothing to do.
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     } else if (texture->yuv) {
         return SDL_UpdateTextureYUV(texture, &real_rect, pixels, pitch);
 #endif
@@ -2101,7 +2101,7 @@ bool SDL_UpdateTexture(SDL_Texture *texture, const SDL_Rect *rect, const void *p
     }
 }
 
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
 static bool SDL_UpdateTextureYUVPlanar(SDL_Texture *texture, const SDL_Rect *rect,
                                       const Uint8 *Yplane, int Ypitch,
                                       const Uint8 *Uplane, int Upitch,
@@ -2210,7 +2210,7 @@ bool SDL_UpdateYUVTexture(SDL_Texture *texture, const SDL_Rect *rect,
                          const Uint8 *Uplane, int Upitch,
                          const Uint8 *Vplane, int Vpitch)
 {
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     SDL_Renderer *renderer;
     SDL_Rect real_rect;
 
@@ -2276,7 +2276,7 @@ bool SDL_UpdateNVTexture(SDL_Texture *texture, const SDL_Rect *rect,
                         const Uint8 *Yplane, int Ypitch,
                         const Uint8 *UVplane, int UVpitch)
 {
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     SDL_Renderer *renderer;
     SDL_Rect real_rect;
 
@@ -2332,7 +2332,7 @@ bool SDL_UpdateNVTexture(SDL_Texture *texture, const SDL_Rect *rect,
 #endif
 }
 
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
 static bool SDL_LockTextureYUV(SDL_Texture *texture, const SDL_Rect *rect,
                               void **pixels, int *pitch)
 {
@@ -2369,7 +2369,7 @@ bool SDL_LockTexture(SDL_Texture *texture, const SDL_Rect *rect, void **pixels, 
         rect = &full_rect;
     }
 
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     if (texture->yuv) {
         if (!FlushRenderCommandsIfTextureNeeded(texture)) {
             return false;
@@ -2421,7 +2421,7 @@ bool SDL_LockTextureToSurface(SDL_Texture *texture, const SDL_Rect *rect, SDL_Su
     return true;
 }
 
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
 static void SDL_UnlockTextureYUV(SDL_Texture *texture)
 {
     SDL_Texture *native = texture->native;
@@ -2470,7 +2470,7 @@ void SDL_UnlockTexture(SDL_Texture *texture)
     if (texture->access != SDL_TEXTUREACCESS_STREAMING) {
         return;
     }
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     if (texture->yuv) {
         SDL_UnlockTextureYUV(texture);
     } else
@@ -2791,6 +2791,29 @@ static void SDL_RenderLogicalPresentation(SDL_Renderer *renderer)
     }
 }
 
+static bool SDL_RenderVectorFromWindow(SDL_Renderer *renderer, float window_dx, float window_dy, float *restrict dx, float *restrict dy)
+{
+    // Convert from window coordinates to pixels within the window
+    window_dx *= renderer->dpi_scale.x;
+    window_dy *= renderer->dpi_scale.y;
+
+    // Convert from pixels within the window to pixels within the view
+    if (renderer->logical_presentation_mode != SDL_LOGICAL_PRESENTATION_DISABLED) {
+        const SDL_FRect *src = &renderer->logical_src_rect;
+        const SDL_FRect *dst = &renderer->logical_dst_rect;
+        window_dx = (window_dx * src->w) / dst->w;
+        window_dy = (window_dy * src->h) / dst->h;
+    }
+
+    const SDL_RenderViewState *view = &renderer->main_view;
+    window_dx /= view->scale.x;
+    window_dy /= view->scale.y;
+
+    *dx = window_dx;
+    *dy = window_dy;
+    return true;
+}
+
 bool SDL_RenderCoordinatesFromWindow(SDL_Renderer *renderer, float window_x, float window_y, float *x, float *y)
 {
     float render_x, render_y;
@@ -2859,37 +2882,7 @@ bool SDL_ConvertEventToRenderCoordinates(SDL_Renderer *renderer, SDL_Event *even
         SDL_Window *window = SDL_GetWindowFromID(event->motion.windowID);
         if (window == renderer->window) {
             SDL_RenderCoordinatesFromWindow(renderer, event->motion.x, event->motion.y, &event->motion.x, &event->motion.y);
-
-            if (event->motion.xrel != 0.0f) {
-                // Convert from window coordinates to pixels within the window
-                float scale = renderer->dpi_scale.x;
-
-                // Convert from pixels within the window to pixels within the view
-                if (renderer->logical_presentation_mode != SDL_LOGICAL_PRESENTATION_DISABLED) {
-                    const SDL_FRect *src = &renderer->logical_src_rect;
-                    const SDL_FRect *dst = &renderer->logical_dst_rect;
-                    scale = (scale * src->w) / dst->w;
-                }
-
-                // Convert from pixels within the view to render coordinates
-                scale = (scale / renderer->main_view.scale.x);
-                event->motion.xrel *= scale;
-            }
-            if (event->motion.yrel != 0.0f) {
-                // Convert from window coordinates to pixels within the window
-                float scale = renderer->dpi_scale.y;
-
-                // Convert from pixels within the window to pixels within the view
-                if (renderer->logical_presentation_mode != SDL_LOGICAL_PRESENTATION_DISABLED) {
-                    const SDL_FRect *src = &renderer->logical_src_rect;
-                    const SDL_FRect *dst = &renderer->logical_dst_rect;
-                    scale = (scale * src->h) / dst->h;
-                }
-
-                // Convert from pixels within the view to render coordinates
-                scale = (scale / renderer->main_view.scale.y);
-                event->motion.yrel *= scale;
-            }
+            SDL_RenderVectorFromWindow(renderer, event->motion.xrel, event->motion.yrel, &event->motion.xrel, &event->motion.yrel);
         }
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
                event->type == SDL_EVENT_MOUSE_BUTTON_UP) {
@@ -2915,6 +2908,7 @@ bool SDL_ConvertEventToRenderCoordinates(SDL_Renderer *renderer, SDL_Event *even
                 return false;
             }
             SDL_RenderCoordinatesFromWindow(renderer, event->tfinger.x * w, event->tfinger.y * h, &event->tfinger.x, &event->tfinger.y);
+            SDL_RenderVectorFromWindow(renderer, event->tfinger.dx * w, event->tfinger.dy * h, &event->tfinger.dx, &event->tfinger.dy);
         }
     } else if (event->type == SDL_EVENT_PEN_MOTION) {
         SDL_Window *window = SDL_GetWindowFromID(event->pmotion.windowID);
@@ -3998,7 +3992,7 @@ bool SDL_RenderTextureAffine(SDL_Renderer *renderer, SDL_Texture *texture,
             xy[0] = real_dstrect.x;
             xy[1] = real_dstrect.y;
         }
-        
+
         // (maxx, miny)
         if (right) {
             xy[2] = right->x;
@@ -4028,7 +4022,7 @@ bool SDL_RenderTextureAffine(SDL_Renderer *renderer, SDL_Texture *texture,
 
         result = QueueCmdGeometry(
             renderer, texture,
-            xy, xy_stride, 
+            xy, xy_stride,
             &texture->color, 0 /* color_stride */,
             uv, uv_stride,
             num_vertices, indices, num_indices, size_indices,
@@ -5158,7 +5152,7 @@ static void SDL_DestroyTextureInternal(SDL_Texture *texture, bool is_destroying)
     if (texture->native) {
         SDL_DestroyTextureInternal(texture->native, is_destroying);
     }
-#if SDL_HAVE_YUV
+#ifdef SDL_HAVE_YUV
     if (texture->yuv) {
         SDL_SW_DestroyYUVTexture(texture->yuv);
     }
@@ -5598,4 +5592,30 @@ bool SDL_RenderDebugText(SDL_Renderer *renderer, float x, float y, const char *s
     }
 
     return result;
+}
+
+bool SDL_RenderDebugTextFormat(SDL_Renderer *renderer, float x, float y, SDL_PRINTF_FORMAT_STRING const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+
+    // fast path to avoid unnecessary allocation and copy. If you're going through the dynapi, there's a good chance
+    // you _always_ hit this path, since it probably had to process varargs before calling into the jumptable.
+    if (SDL_strcmp(fmt, "%s") == 0) {
+        const char *str = va_arg(ap, const char *);
+        va_end(ap);
+        return SDL_RenderDebugText(renderer, x, y, str);
+    }
+
+    char *str = NULL;
+    const int rc = SDL_vasprintf(&str, fmt, ap);
+    va_end(ap);
+
+    if (rc == -1) {
+        return false;
+    }
+
+    const bool retval = SDL_RenderDebugText(renderer, x, y, str);
+    SDL_free(str);
+    return retval;
 }

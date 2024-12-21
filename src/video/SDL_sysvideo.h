@@ -78,6 +78,9 @@ struct SDL_Window
      */
     SDL_Rect floating;
 
+    // The last client requested size and position for the window.
+    SDL_Rect pending;
+
     /* Toggle for drivers to indicate that the current window state is tiled,
      * and sizes set non-programmatically shouldn't be cached.
      */
@@ -96,9 +99,10 @@ struct SDL_Window
     SDL_Surface *surface;
     bool surface_valid;
 
-    bool is_repositioning; // Set during an SDL_SetWindowPosition() call.
     bool is_hiding;
     bool restore_on_show; // Child was hidden recursively by the parent, restore when shown.
+    bool last_position_pending; // This should NOT be cleared by the backend, as it is used for fullscreen positioning.
+    bool last_size_pending; // This should be cleared by the backend if the new size cannot be applied.
     bool is_destroying;
     bool is_dropping; // drag/drop in progress, expecting SDL_SendDropComplete().
 
@@ -352,6 +356,7 @@ struct SDL_VideoDevice
     bool (*HasScreenKeyboardSupport)(SDL_VideoDevice *_this);
     void (*ShowScreenKeyboard)(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID props);
     void (*HideScreenKeyboard)(SDL_VideoDevice *_this, SDL_Window *window);
+    void (*SetTextInputProperties)(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID props);
     bool (*IsScreenKeyboardShown)(SDL_VideoDevice *_this, SDL_Window *window);
 
     // Clipboard
@@ -521,7 +526,6 @@ extern VideoBootStrap AMIGAOS4_bootstrap;
 extern VideoBootStrap VIVANTE_bootstrap;
 extern VideoBootStrap Emscripten_bootstrap;
 extern VideoBootStrap OFFSCREEN_bootstrap;
-extern VideoBootStrap NGAGE_bootstrap;
 extern VideoBootStrap QNX_bootstrap;
 extern VideoBootStrap OPENVR_bootstrap;
 
@@ -580,6 +584,7 @@ extern SDL_Window *SDL_GetToplevelForKeyboardFocus(void);
 extern bool SDL_ShouldAllowTopmost(void);
 
 extern void SDL_ToggleDragAndDropSupport(void);
+extern void SDL_UpdateRawMouseDataEnabled(void);
 
 extern SDL_TextInputType SDL_GetTextInputType(SDL_PropertiesID props);
 extern SDL_Capitalization SDL_GetTextInputCapitalization(SDL_PropertiesID props);

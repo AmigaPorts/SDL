@@ -35,6 +35,13 @@
  *
  * SDL will take care of platform specific details on how it gets called.
  *
+ * This is also where an app can be configured to use the main callbacks, via
+ * the SDL_MAIN_USE_CALLBACKS macro.
+ *
+ * This is a "single-header library," which is to say that including this
+ * header inserts code into your program, and you should only include it once
+ * in most cases. SDL.h does not include this header automatically.
+ *
  * For more information, see:
  *
  * https://wiki.libsdl.org/SDL3/README/main-functions
@@ -132,13 +139,6 @@
 
           If you provide this yourself, you may define SDL_MAIN_HANDLED
         */
-        #define SDL_MAIN_AVAILABLE
-
-    #elif defined(SDL_PLATFORM_NGAGE)
-        /*
-        TODO: not sure if it should be SDL_MAIN_NEEDED, in SDL2 ngage had a
-                main implementation, but wasn't mentioned in SDL_main.h
-         */
         #define SDL_MAIN_AVAILABLE
 
     #endif
@@ -567,16 +567,15 @@ extern SDL_DECLSPEC void SDLCALL SDL_UnregisterApp(void);
 
 #endif /* defined(SDL_PLATFORM_WINDOWS) */
 
-#ifdef SDL_PLATFORM_GDK
-
 /**
  * Callback from the application to let the suspend continue.
+ *
+ * This function is only needed for Xbox GDK support; all other platforms will
+ * do nothing and set an "unsupported" error message.
  *
  * \since This function is available since SDL 3.1.3.
  */
 extern SDL_DECLSPEC void SDLCALL SDL_GDKSuspendComplete(void);
-
-#endif /* SDL_PLATFORM_GDK */
 
 #ifdef __cplusplus
 }
