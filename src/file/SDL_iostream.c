@@ -27,7 +27,8 @@
 #endif
 
 #if defined(SDL_PLATFORM_AMIGAOS4)
-#define off64_t _off64_t
+#include "../main/amigaos4/SDL_os4debug.h"
+#include <proto/dos.h>
 #endif
 
 #ifdef HAVE_STDIO_H
@@ -361,7 +362,278 @@ SDL_IOStream *SDL_IOFromHandle(HANDLE handle, const char *mode, bool autoclose)
 }
 #endif // defined(SDL_PLATFORM_WINDOWS)
 
-#if !defined(SDL_PLATFORM_WINDOWS)
+#if defined(SDL_PLATFORM_AMIGAOS4)
+
+typedef struct IOStreamAmigaOS4Data
+{
+    BPTR bptr;
+    bool append;
+    bool write;
+    bool read;
+    bool autoclose;
+} IOStreamAmigaOS4Data;
+
+static BPTR SDLCALL amigaos4_file_open(const char *filename, const char *mode)
+{
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return 0;
+    }
+
+    dprintf("filename '%s' mode '%s'\n", filename, mode);
+
+    // "r" = reading, file must exist
+    // "w" = writing, truncate existing, file may not exist
+    // "r+"= reading or writing, file must exist
+    // "a" = writing, append file may not exist
+    // "a+"= append + read, file may not exist
+    // "w+" = read, write, truncate. file may not exist
+
+    int32 accessMode = MODE_NEWFILE;
+
+    if ((SDL_strchr(mode, 'r') != NULL)) {
+        accessMode = MODE_OLDFILE;
+    }
+
+    if ((SDL_strchr(mode, 'a') != NULL)) {
+        accessMode = MODE_READWRITE;
+    }
+
+    dprintf("filename '%s' mode '%s' accessMode %d\n", filename, mode, accessMode);
+
+    const int32 defaultBufferSize = 0;
+    BPTR bptr = IDOS->FOpen(filename, accessMode, defaultBufferSize);
+
+    dprintf("bptr %p\n", bptr);
+
+    if (!bptr) {
+        SDL_SetError("Failed to open file (error %ld)", IDOS->IoErr());
+    }
+
+    return bptr;
+}
+
+static Sint64 SDLCALL amigaos4_file_size(void *userdata)
+{
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return -1;
+    }
+
+    IOStreamAmigaOS4Data *iodata = (IOStreamAmigaOS4Data *) userdata;
+
+    const int64 filesize = IDOS->GetFileSize(iodata->bptr);
+
+    if (filesize == -1LL) {
+        SDL_SetError("Couldn't get file size (error %ld)", IDOS->IoErr());
+    }
+
+    return filesize;
+}
+
+static Sint64 SDLCALL amigaos4_file_seek(void *userdata, Sint64 offset, SDL_IOWhence whence)
+{
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return -1;
+    }
+
+    dprintf("offset %lld, whence %d\n", offset, whence);
+
+    int32 mode;
+
+    switch (whence) {
+    case SDL_IO_SEEK_SET:
+        mode = OFFSET_BEGINNING;
+        break;
+    case SDL_IO_SEEK_CUR:
+        mode = OFFSET_CURRENT;
+        break;
+    case SDL_IO_SEEK_END:
+        mode = OFFSET_END;
+        break;
+    default:
+        SDL_SetError("Unknown value for 'whence'");
+        return -1;
+    }
+
+    IOStreamAmigaOS4Data *iodata = (IOStreamAmigaOS4Data *) userdata;
+
+    const int32 success = IDOS->ChangeFilePosition(iodata->bptr, offset, mode);
+
+    if (!success) {
+        SDL_SetError("Couldn't change file position (error %ld)", IDOS->IoErr());
+        return -1;
+    }
+
+    const int64 position = IDOS->GetFilePosition(iodata->bptr);
+
+    if (position == -1LL) {
+        SDL_SetError("Couldn't get file position (error %ld)", IDOS->IoErr());
+    }
+
+    return position;
+}
+
+static size_t SDLCALL amigaos4_file_read(void *userdata, void *ptr, size_t size, SDL_IOStatus *status)
+{
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return 0;
+    }
+
+    dprintf("ptr %p, size %zu\n", ptr, size);
+
+    IOStreamAmigaOS4Data *iodata = (IOStreamAmigaOS4Data *) userdata;
+
+    if (!iodata->read) {
+        SDL_SetError("Write-only file");
+        return 0;
+    }
+
+    const uint32 count = IDOS->FRead(iodata->bptr, ptr, 1, size);
+
+    if (count < size) {
+        SDL_SetError("Error reading from datastream, read %lu of %zu", count, size);
+    }
+    return (size_t)count;
+}
+
+static size_t SDLCALL amigaos4_file_write(void *userdata, const void *ptr, size_t size, SDL_IOStatus *status)
+{
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return 0;
+    }
+
+    dprintf("ptr %p, size %zu\n", ptr, size);
+
+    IOStreamAmigaOS4Data *iodata = (IOStreamAmigaOS4Data *) userdata;
+
+    if (!iodata->write) {
+        SDL_SetError("Read-only file");
+        return 0;
+    }
+
+    if (iodata->append) {
+        const int32 success = IDOS->ChangeFilePosition(iodata->bptr, 0, OFFSET_END);
+        if (!success) {
+            SDL_SetError("Couldn't change file position (error %ld)", IDOS->IoErr());
+            return 0;
+        }
+    }
+
+    const uint32 count = IDOS->FWrite(iodata->bptr, ptr, 1, size);
+
+    // TODO: status
+
+    if (count < size) {
+        SDL_SetError("Error writing to datastream, wrote %lu of %zu", count, size);
+    }
+
+    return (size_t)count;
+}
+
+static bool SDLCALL amigaos4_file_flush(void *userdata, SDL_IOStatus *status)
+{
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return false;
+    }
+
+    IOStreamAmigaOS4Data *iodata = (IOStreamAmigaOS4Data *) userdata;
+
+    // TODO: status
+
+    dprintf("bptr %p\n", iodata->bptr);
+
+    if (!IDOS->FFlush(iodata->bptr)) {
+        return SDL_SetError("Error flushing datastream (error %ld)", IDOS->IoErr());
+    }
+    return true;
+}
+
+static bool SDLCALL amigaos4_file_close(void *userdata)
+{
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return false;
+    }
+
+    IOStreamAmigaOS4Data *iodata = (IOStreamAmigaOS4Data *) userdata;
+
+    dprintf("bptr %p\n", iodata->bptr);
+
+    bool status = true;
+    if (iodata->autoclose) {
+        if (!IDOS->FClose(iodata->bptr)) {
+            status = SDL_SetError("Error closing datastream (error %ld)", IDOS->IoErr());
+        }
+    }
+    SDL_free(iodata);
+    return status;
+}
+
+SDL_IOStream *SDL_IOFromBPTR(BPTR bptr, const char *mode, bool autoclose)
+{
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return NULL;
+    }
+
+    dprintf("bptr %p, autoclose %d\n", autoclose);
+
+    IOStreamAmigaOS4Data *iodata = (IOStreamAmigaOS4Data *) SDL_calloc(1, sizeof (*iodata));
+    if (!iodata) {
+        if (autoclose) {
+            IDOS->FClose(bptr);
+        }
+        return NULL;
+    }
+
+    SDL_IOStreamInterface iface;
+    SDL_INIT_INTERFACE(&iface);
+    iface.size = amigaos4_file_size;
+    iface.seek = amigaos4_file_seek;
+    iface.read = amigaos4_file_read;
+    iface.write = amigaos4_file_write;
+    iface.flush = amigaos4_file_flush;
+    iface.close = amigaos4_file_close;
+
+    iodata->bptr = bptr;
+
+    // "r" = reading, file must exist
+    // "w" = writing, truncate existing, file may not exist
+    // "r+"= reading or writing, file must exist
+    // "a" = writing, append file may not exist
+    // "a+"= append + read, file may not exist
+    // "w+" = read, write, truncate. file may not exist
+    const bool a = (SDL_strchr(mode, 'a') != NULL);
+    const bool r = (SDL_strchr(mode, 'r') != NULL);
+    const bool w = (SDL_strchr(mode, 'w') != NULL);
+    const bool plus = (SDL_strchr(mode, '+') != NULL);
+
+    iodata->append = a;
+    iodata->read = r || (a && plus) || (w && plus);
+    iodata->write = w || (r && plus) || a;
+
+    iodata->autoclose = autoclose;
+
+    SDL_IOStream *iostr = SDL_OpenIO(&iface, iodata);
+    if (!iostr) {
+        iface.close(iodata);
+    } else {
+        const SDL_PropertiesID props = SDL_GetIOProperties(iostr);
+        if (props) {
+            SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_AMIGAOS4_POINTER, (void*)iodata->bptr);
+        }
+    }
+
+    return iostr;
+}
+#endif // defined(SDL_PLATFORM_AMIGAOS4)
+
+#if !defined(SDL_PLATFORM_WINDOWS) && !defined(SDL_PLATFORM_AMIGAOS4)
 
 // Functions to read/write file descriptors. Not used for windows.
 
@@ -517,7 +789,7 @@ SDL_IOStream *SDL_IOFromFD(int fd, bool autoclose)
 }
 #endif // !defined(SDL_PLATFORM_WINDOWS)
 
-#if defined(HAVE_STDIO_H) && !defined(SDL_PLATFORM_WINDOWS)
+#if defined(HAVE_STDIO_H) && !defined(SDL_PLATFORM_WINDOWS) && !defined(SDL_PLATFORM_AMIGAOS4)
 
 // Functions to read/write stdio file pointers. Not used for windows.
 
@@ -789,7 +1061,7 @@ static bool SDLCALL mem_close(void *userdata)
 
 // Functions to create SDL_IOStream structures from various data sources
 
-#if defined(HAVE_STDIO_H) && !defined(SDL_PLATFORM_WINDOWS)
+#if defined(HAVE_STDIO_H) && !defined(SDL_PLATFORM_WINDOWS) && !defined(SDL_PLATFORM_AMIGAOS4)
 static bool IsRegularFileOrPipe(FILE *f)
 {
     struct stat st;
@@ -890,6 +1162,12 @@ SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
     HANDLE handle = windows_file_open(file, mode);
     if (handle != INVALID_HANDLE_VALUE) {
         iostr = SDL_IOFromHandle(handle, mode, true);
+    }
+
+#elif defined (SDL_PLATFORM_AMIGAOS4)
+    BPTR bptr = amigaos4_file_open(file, mode);
+    if (bptr != 0) {
+        iostr = SDL_IOFromBPTR(bptr, mode, true);
     }
 
 #elif defined(HAVE_STDIO_H)
