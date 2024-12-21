@@ -23,6 +23,30 @@
  * # CategoryEvents
  *
  * Event queue management.
+ *
+ * It's extremely common--often required--that an app deal with SDL's event
+ * queue. Almost all useful information about interactions with the real world
+ * flow through here: the user interacting with the computer and app, hardware
+ * coming and going, the system changing in some way, etc.
+ *
+ * An app generally takes a moment, perhaps at the start of a new frame, to
+ * examine any events that have occured since the last time and process or
+ * ignore them. This is generally done by calling SDL_PollEvent() in a loop
+ * until it returns false (or, if using the main callbacks, events are
+ * provided one at a time in calls to SDL_AppEvent() before the next call to
+ * SDL_AppIterate(); in this scenario, the app does not call SDL_PollEvent()
+ * at all).
+ *
+ * There is other forms of control, too: SDL_PeepEvents() has more
+ * functionality at the cost of more complexity, and SDL_WaitEvents() can
+ * block the process until something interesting happens, which might be
+ * beneficial for certain types of programs on low-power hardware. One may
+ * also call SDL_AddEventWatch() to set a callback when new events arrive.
+ *
+ * The app is free to generate their own events, too: SDL_PushEvent allows the
+ * app to put events onto the queue for later retrieval; SDL_RegisterEvents
+ * can guarantee that these events have a type that isn't in use by other
+ * parts of the system.
  */
 
 #ifndef SDL_events_h_
@@ -334,8 +358,8 @@ typedef struct SDL_KeyboardEvent
     SDL_Keycode key;        /**< SDL virtual key code */
     SDL_Keymod mod;         /**< current key modifiers */
     Uint16 raw;             /**< The platform dependent scancode for this event */
-    bool down;          /**< true if the key is pressed */
-    bool repeat;        /**< true if this is a key repeat */
+    bool down;              /**< true if the key is pressed */
+    bool repeat;            /**< true if this is a key repeat */
 } SDL_KeyboardEvent;
 
 /**
@@ -441,9 +465,9 @@ typedef struct SDL_MouseButtonEvent
     Uint32 reserved;
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     SDL_WindowID windowID; /**< The window with mouse focus, if any */
-    SDL_MouseID which;  /**< The mouse instance id, SDL_TOUCH_MOUSEID */
+    SDL_MouseID which;  /**< The mouse instance id or SDL_TOUCH_MOUSEID */
     Uint8 button;       /**< The mouse button index */
-    bool down;      /**< true if the button is pressed */
+    bool down;          /**< true if the button is pressed */
     Uint8 clicks;       /**< 1 for single-click, 2 for double-click, etc. */
     Uint8 padding;
     float x;            /**< X coordinate, relative to window */
@@ -461,7 +485,7 @@ typedef struct SDL_MouseWheelEvent
     Uint32 reserved;
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     SDL_WindowID windowID; /**< The window with mouse focus, if any */
-    SDL_MouseID which;  /**< The mouse instance id, SDL_TOUCH_MOUSEID */
+    SDL_MouseID which;  /**< The mouse instance id */
     float x;            /**< The amount scrolled horizontally, positive to the right and negative to the left */
     float y;            /**< The amount scrolled vertically, positive away from the user and negative toward the user */
     SDL_MouseWheelDirection direction; /**< Set to one of the SDL_MOUSEWHEEL_* defines. When FLIPPED the values in X and Y will be opposite. Multiply by -1 to change them back */
@@ -773,7 +797,7 @@ typedef struct SDL_PenProximityEvent
     SDL_EventType type; /**< SDL_EVENT_PEN_PROXIMITY_IN or SDL_EVENT_PEN_PROXIMITY_OUT */
     Uint32 reserved;
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window with mouse focus, if any */
+    SDL_WindowID windowID; /**< The window with pen focus, if any */
     SDL_PenID which;        /**< The pen instance id */
 } SDL_PenProximityEvent;
 
@@ -793,7 +817,7 @@ typedef struct SDL_PenMotionEvent
     SDL_EventType type; /**< SDL_EVENT_PEN_MOTION */
     Uint32 reserved;
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window with mouse focus, if any */
+    SDL_WindowID windowID; /**< The window with pen focus, if any */
     SDL_PenID which;        /**< The pen instance id */
     SDL_PenInputFlags pen_state;   /**< Complete pen input state at time of event */
     float x;                /**< X coordinate, relative to window */

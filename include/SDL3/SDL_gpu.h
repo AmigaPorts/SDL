@@ -25,7 +25,7 @@
  * # CategoryGPU
  *
  * The GPU API offers a cross-platform way for apps to talk to modern graphics
- * hardware. It offers both 3D graphics and "compute" support, in the style of
+ * hardware. It offers both 3D graphics and compute support, in the style of
  * Metal, Vulkan, and Direct3D 12.
  *
  * A basic workflow might be something like this:
@@ -56,7 +56,7 @@
  * Rendering can happen to a texture (what other APIs call a "render target")
  * or it can happen to the swapchain texture (which is just a special texture
  * that represents a window's contents). The app can use
- * SDL_AcquireGPUSwapchainTexture() to render to the window.
+ * SDL_WaitAndAcquireGPUSwapchainTexture() to render to the window.
  *
  * Rendering actually happens in a Render Pass, which is encoded into a
  * command buffer. One can encode multiple render passes (or alternate between
@@ -1068,32 +1068,26 @@ typedef enum SDL_GPUSamplerAddressMode
  * Specifies the timing that will be used to present swapchain textures to the
  * OS.
  *
- * Note that this value affects the behavior of
- * SDL_AcquireGPUSwapchainTexture. VSYNC mode will always be supported.
- * IMMEDIATE and MAILBOX modes may not be supported on certain systems.
+ * VSYNC mode will always be supported. IMMEDIATE and MAILBOX modes may not be
+ * supported on certain systems.
  *
  * It is recommended to query SDL_WindowSupportsGPUPresentMode after claiming
  * the window if you wish to change the present mode to IMMEDIATE or MAILBOX.
  *
  * - VSYNC: Waits for vblank before presenting. No tearing is possible. If
  *   there is a pending image to present, the new image is enqueued for
- *   presentation. Disallows tearing at the cost of visual latency. When using
- *   this present mode, AcquireGPUSwapchainTexture will block if too many
- *   frames are in flight.
+ *   presentation. Disallows tearing at the cost of visual latency.
  * - IMMEDIATE: Immediately presents. Lowest latency option, but tearing may
- *   occur. When using this mode, AcquireGPUSwapchainTexture will fill the
- *   swapchain texture pointer with NULL if too many frames are in flight.
+ *   occur.
  * - MAILBOX: Waits for vblank before presenting. No tearing is possible. If
  *   there is a pending image to present, the pending image is replaced by the
- *   new image. Similar to VSYNC, but with reduced visual latency. When using
- *   this mode, AcquireGPUSwapchainTexture will fill the swapchain texture
- *   pointer with NULL if too many frames are in flight.
+ *   new image. Similar to VSYNC, but with reduced visual latency.
  *
  * \since This enum is available since SDL 3.1.3
  *
  * \sa SDL_SetGPUSwapchainParameters
  * \sa SDL_WindowSupportsGPUPresentMode
- * \sa SDL_AcquireGPUSwapchainTexture
+ * \sa SDL_WaitAndAcquireGPUSwapchainTexture
  */
 typedef enum SDL_GPUPresentMode
 {
@@ -1125,7 +1119,7 @@ typedef enum SDL_GPUPresentMode
  *
  * \sa SDL_SetGPUSwapchainParameters
  * \sa SDL_WindowSupportsGPUSwapchainComposition
- * \sa SDL_AcquireGPUSwapchainTexture
+ * \sa SDL_WaitAndAcquireGPUSwapchainTexture
  */
 typedef enum SDL_GPUSwapchainComposition
 {
@@ -1659,6 +1653,12 @@ typedef struct SDL_GPUGraphicsPipelineTargetInfo
  * \since This struct is available since SDL 3.1.3
  *
  * \sa SDL_CreateGPUGraphicsPipeline
+ * \sa SDL_GPUVertexInputState
+ * \sa SDL_GPUPrimitiveType
+ * \sa SDL_GPURasterizerState
+ * \sa SDL_GPUMultisampleState
+ * \sa SDL_GPUDepthStencilState
+ * \sa SDL_GPUGraphicsPipelineTargetInfo
  */
 typedef struct SDL_GPUGraphicsPipelineCreateInfo
 {
@@ -2202,6 +2202,15 @@ extern SDL_DECLSPEC SDL_GPUSampler *SDLCALL SDL_CreateGPUSampler(
  *   Rather than manually authoring vertex buffer indices, use the
  *   [[stage_in]] attribute which will automatically use the vertex input
  *   information from the SDL_GPUGraphicsPipeline.
+ *
+ * Shader semantics other than system-value semantics do not matter in D3D12
+ * and for ease of use the SDL implementation assumes that non system-value
+ * semantics will all be TEXCOORD. If you are using HLSL as the shader source
+ * language, your vertex semantics should start at TEXCOORD0 and increment
+ * like so: TEXCOORD1, TEXCOORD2, etc. If you wish to change the semantic
+ * prefix to something other than TEXCOORD you can use
+ * SDL_PROP_GPU_DEVICE_CREATE_D3D12_SEMANTIC_NAME_STRING with
+ * SDL_CreateGPUDeviceWithProperties().
  *
  * \param device a GPU Context.
  * \param createinfo a struct describing the state of the shader to create.
@@ -3442,9 +3451,12 @@ extern SDL_DECLSPEC bool SDLCALL SDL_WindowSupportsGPUPresentMode(
  * \returns true on success, or false on failure; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety This function should only be called from the thread that
+ *               created the window.
+ *
  * \since This function is available since SDL 3.1.3.
  *
- * \sa SDL_AcquireGPUSwapchainTexture
+ * \sa SDL_WaitAndAcquireGPUSwapchainTexture
  * \sa SDL_ReleaseWindowFromGPUDevice
  * \sa SDL_WindowSupportsGPUPresentMode
  * \sa SDL_WindowSupportsGPUSwapchainComposition
@@ -3501,8 +3513,9 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetGPUSwapchainParameters(
  *
  * The default value when the device is created is 2. This means that after
  * you have submitted 2 frames for presentation, if the GPU has not finished
- * working on the first frame, SDL_AcquireGPUSwapchainTexture() will block or
- * return false depending on the present mode.
+ * working on the first frame, SDL_AcquireGPUSwapchainTexture() will fill the
+ * swapchain texture pointer with NULL, and
+ * SDL_WaitAndAcquireGPUSwapchainTexture() will block.
  *
  * Higher values increase throughput at the expense of visual latency. Lower
  * values decrease visual latency at the expense of throughput.
@@ -3514,9 +3527,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetGPUSwapchainParameters(
  *
  * \param device a GPU context.
  * \param allowed_frames_in_flight the maximum number of frames that can be
- *                                 pending on the GPU before
- *                                 AcquireSwapchainTexture blocks or returns
- *                                 false.
+ *                                 pending on the GPU.
  * \returns true if successful, false on error; call SDL_GetError() for more
  *          information.
  *
@@ -3547,19 +3558,20 @@ extern SDL_DECLSPEC SDL_GPUTextureFormat SDLCALL SDL_GetGPUSwapchainTextureForma
  * When a swapchain texture is acquired on a command buffer, it will
  * automatically be submitted for presentation when the command buffer is
  * submitted. The swapchain texture should only be referenced by the command
- * buffer used to acquire it. The swapchain texture handle can be filled in
- * with NULL under certain conditions. This is not necessarily an error. If
- * this function returns false then there is an error.
+ * buffer used to acquire it.
+ *
+ * This function will fill the swapchain texture handle with NULL if too many
+ * frames are in flight. This is not an error.
+ *
+ * If you use this function, it is possible to create a situation where many
+ * command buffers are allocated while the rendering context waits for the GPU
+ * to catch up, which will cause memory usage to grow. You should use
+ * SDL_WaitAndAcquireGPUSwapchainTexture() unless you know what you are doing
+ * with timing.
  *
  * The swapchain texture is managed by the implementation and must not be
  * freed by the user. You MUST NOT call this function from any thread other
  * than the one that created the window.
- *
- * When using SDL_GPU_PRESENTMODE_VSYNC, this function will block if too many
- * frames are in flight. Otherwise, this function will fill the swapchain
- * texture handle with NULL if too many frames are in flight. The best
- * practice is to call SDL_CancelGPUCommandBuffer if the swapchain texture
- * handle is NULL to avoid enqueuing needless work on the GPU.
  *
  * \param command_buffer a command buffer.
  * \param window a window that has been claimed.
@@ -3572,16 +3584,82 @@ extern SDL_DECLSPEC SDL_GPUTextureFormat SDLCALL SDL_GetGPUSwapchainTextureForma
  * \returns true on success, false on error; call SDL_GetError() for more
  *          information.
  *
+ * \threadsafety This function should only be called from the thread that
+ *               created the window.
+ *
  * \since This function is available since SDL 3.1.3.
  *
- * \sa SDL_GPUPresentMode
  * \sa SDL_ClaimWindowForGPUDevice
  * \sa SDL_SubmitGPUCommandBuffer
  * \sa SDL_SubmitGPUCommandBufferAndAcquireFence
  * \sa SDL_CancelGPUCommandBuffer
  * \sa SDL_GetWindowSizeInPixels
+ * \sa SDL_WaitForGPUSwapchain
+ * \sa SDL_WaitAndAcquireGPUSwapchainTexture
+ * \sa SDL_SetGPUAllowedFramesInFlight
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_AcquireGPUSwapchainTexture(
+    SDL_GPUCommandBuffer *command_buffer,
+    SDL_Window *window,
+    SDL_GPUTexture **swapchain_texture,
+    Uint32 *swapchain_texture_width,
+    Uint32 *swapchain_texture_height);
+
+/**
+ * Blocks the thread until a swapchain texture is available to be acquired.
+ *
+ * \param device a GPU context.
+ * \param window a window that has been claimed.
+ * \returns true on success, false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety This function should only be called from the thread that
+ *               created the window.
+ *
+ * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_AcquireGPUSwapchainTexture
+ * \sa SDL_WaitAndAcquireGPUSwapchainTexture
+ * \sa SDL_SetGPUAllowedFramesInFlight
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_WaitForGPUSwapchain(
+    SDL_GPUDevice *device,
+    SDL_Window *window);
+
+/**
+ * Blocks the thread until a swapchain texture is available to be acquired,
+ * and then acquires it.
+ *
+ * When a swapchain texture is acquired on a command buffer, it will
+ * automatically be submitted for presentation when the command buffer is
+ * submitted. The swapchain texture should only be referenced by the command
+ * buffer used to acquire it. It is an error to call
+ * SDL_CancelGPUCommandBuffer() after a swapchain texture is acquired.
+ *
+ * The swapchain texture is managed by the implementation and must not be
+ * freed by the user. You MUST NOT call this function from any thread other
+ * than the one that created the window.
+ *
+ * \param command_buffer a command buffer.
+ * \param window a window that has been claimed.
+ * \param swapchain_texture a pointer filled in with a swapchain texture
+ *                          handle.
+ * \param swapchain_texture_width a pointer filled in with the swapchain
+ *                                texture width, may be NULL.
+ * \param swapchain_texture_height a pointer filled in with the swapchain
+ *                                 texture height, may be NULL.
+ * \returns true on success, false on error; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety This function should only be called from the thread that
+ *               created the window.
+ *
+ * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_SubmitGPUCommandBuffer
+ * \sa SDL_SubmitGPUCommandBufferAndAcquireFence
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_WaitAndAcquireGPUSwapchainTexture(
     SDL_GPUCommandBuffer *command_buffer,
     SDL_Window *window,
     SDL_GPUTexture **swapchain_texture,
@@ -3605,6 +3683,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_AcquireGPUSwapchainTexture(
  * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_AcquireGPUCommandBuffer
+ * \sa SDL_WaitAndAcquireGPUSwapchainTexture
  * \sa SDL_AcquireGPUSwapchainTexture
  * \sa SDL_SubmitGPUCommandBufferAndAcquireFence
  */
@@ -3630,6 +3709,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SubmitGPUCommandBuffer(
  * \since This function is available since SDL 3.1.3.
  *
  * \sa SDL_AcquireGPUCommandBuffer
+ * \sa SDL_WaitAndAcquireGPUSwapchainTexture
  * \sa SDL_AcquireGPUSwapchainTexture
  * \sa SDL_SubmitGPUCommandBuffer
  * \sa SDL_ReleaseGPUFence
@@ -3642,11 +3722,12 @@ extern SDL_DECLSPEC SDL_GPUFence *SDLCALL SDL_SubmitGPUCommandBufferAndAcquireFe
  *
  * None of the enqueued commands are executed.
  *
+ * It is an error to call this function after a swapchain texture has been
+ * acquired.
+ *
  * This must be called from the thread the command buffer was acquired on.
  *
- * You must not reference the command buffer after calling this function. It
- * is an error to call this function after a swapchain texture has been
- * acquired.
+ * You must not reference the command buffer after calling this function.
  *
  * \param command_buffer a command buffer.
  * \returns true on success, false on error; call SDL_GetError() for more
@@ -3654,6 +3735,7 @@ extern SDL_DECLSPEC SDL_GPUFence *SDLCALL SDL_SubmitGPUCommandBufferAndAcquireFe
  *
  * \since This function is available since SDL 3.1.6.
  *
+ * \sa SDL_WaitAndAcquireGPUSwapchainTexture
  * \sa SDL_AcquireGPUCommandBuffer
  * \sa SDL_AcquireGPUSwapchainTexture
  */

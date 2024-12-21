@@ -45,8 +45,6 @@
 #include "SDL_build_config_ios.h"
 #elif defined(SDL_PLATFORM_ANDROID)
 #include "SDL_build_config_android.h"
-#elif defined(SDL_PLATFORM_NGAGE)
-#include "SDL_build_config_ngage.h"
 #elif defined(SDL_PLATFORM_AMIGAOS4)
 #include "SDL_build_config_amigaos4.h"
 #else
