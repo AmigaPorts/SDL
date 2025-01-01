@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,17 +23,61 @@
 #ifdef SDL_PROCESS_AMIGAOS4
 
 #include "../SDL_sysprocess.h"
-
+#include "../../file/SDL_iostream_c.h"
 #include "../../main/amigaos4/SDL_os4debug.h"
 
 #include <proto/dos.h>
-
-// TODO: IOStream AmigaOS 4 implementation
 
 struct SDL_ProcessData {
     uint32 pid;
     int32 exitCode;
 };
+
+static void OS4_CleanupStream(void *userdata, void *value)
+{
+    SDL_Process *process = (SDL_Process *)value;
+    const char *property = (const char *)userdata;
+
+    SDL_ClearProperty(process->props, property);
+}
+
+static bool OS4_SetupStream(SDL_Process *process, BPTR bptr, const char *mode, const char *property)
+{
+    dprintf("Setting %p to non-blocking mode\n", bptr);
+    const int32 oldBlockingMode = IDOS->SetBlockingMode(bptr, SBM_NON_BLOCKING);
+
+    if (oldBlockingMode <= 0) {
+        dprintf("SetBlockingMode() returned %d (error %ld)\n", oldBlockingMode, IDOS->IoErr());
+    }
+
+    SDL_IOStream *io = SDL_IOFromBPTR(bptr, mode, true);
+    if (!io) {
+        return SDL_SetError("Failed to get iostream for bptr %p", (void *)bptr);
+    }
+
+    SDL_SetPointerPropertyWithCleanup(SDL_GetIOProperties(io), "SDL.internal.process", process, OS4_CleanupStream, (void *)property);
+    SDL_SetPointerProperty(process->props, property, io);
+    return true;
+}
+
+static bool OS4_GetStreamBPTR(SDL_PropertiesID props, const char *property, BPTR *result)
+{
+    SDL_IOStream *io = (SDL_IOStream *)SDL_GetPointerProperty(props, property, NULL);
+    if (!io) {
+        return SDL_SetError("%s is not set", property);
+    }
+
+    BPTR bptr = (BPTR)SDL_GetPointerProperty(props, SDL_PROP_IOSTREAM_AMIGAOS4_POINTER, ZERO);
+    if (bptr == ZERO) {
+        return SDL_SetError("%s doesn't have SDL_PROP_IOSTREAM_AMIGAOS4_POINTER available", property);
+    }
+
+    dprintf("%s, %d\n", property, bptr);
+
+    *result = bptr;
+    return true;
+}
+
 
 static char* OS4_MakeCommandLine(char* const *args)
 {
@@ -56,6 +100,8 @@ static char* OS4_MakeCommandLine(char* const *args)
         return NULL;
     }
 
+    // NOTE: process_testArguments has an array of arguments that may contain whitespace,
+    // so that test fails because arguments are not passed as an array here.
     for (index = 0; args[index]; index++) {
         SDL_strlcat(command, args[index], len);
         if (args[index + 1]) {
@@ -94,7 +140,7 @@ static char** OS4_MakeEnvVariables(char **envp)
         while(envp[index]) {
             result[2 * index] = SDL_strdup(envp[index]);
             result[2 * index + 1] = SDL_strdup(envp[index] + SDL_strlen(envp[index]) + 1);
-            dprintf("'%s': '%s'\n", result[2 * index], result[2 * index +1]);
+            //dprintf("'%s': '%s'\n", result[2 * index], result[2 * index +1]);
             index++;
         }
     } else {
@@ -129,6 +175,77 @@ static void OS4_FinalCode(int32 returnCode, int32 finalData, struct ExecBase *sy
     data->exitCode = returnCode;
 }
 
+#define READ_END 0
+#define WRITE_END 1
+
+static BPTR OS4_OpenNil()
+{
+    BPTR file = IDOS->FOpen("NIL:", MODE_OLDFILE, 0);
+
+    if (file) {
+        dprintf("Opened NIL: (%p)\n", file);
+    } else {
+        dprintf("Failed to open NIL: (error %ld)\n", IDOS->IoErr());
+        SDL_SetError("Failed to open NIL:");
+    }
+
+    return file;
+}
+
+static bool OS4_Close(BPTR *bptr, const char *name)
+{
+    if (!bptr) {
+        dprintf("Nullptr passed\n");
+        return false;
+    }
+
+    if (!IDOS->FClose(*bptr)) {
+        dprintf("Failed to close %s (%p)\n", name, *bptr);
+        return false;
+    }
+
+    *bptr = ZERO;
+    return true;
+}
+
+static bool OS4_CreatePipe(BPTR *pipe, const char *reason)
+{
+    pipe[WRITE_END] = IDOS->FOpen("PIPE:/UNIQUE/32000", MODE_NEWFILE, 0);
+
+    if (!pipe[WRITE_END]) {
+        dprintf("Failed to open %s pipe for writing (error %ld)\n", reason, IDOS->IoErr());
+        return SDL_SetError("Failed to open %s pipe\n", reason);
+    }
+
+	struct ExamineData *data = IDOS->ExamineObjectTags(EX_FileHandleInput, pipe[WRITE_END], TAG_DONE);
+
+    if (data) {
+        char name[120];
+
+        SDL_strlcpy(name, "PIPE:", sizeof(name));
+        SDL_strlcat(name, data->Name, sizeof(name));
+
+        IDOS->FreeDosObject(DOS_EXAMINEDATA, data);
+
+        dprintf("Unique %s pipe name '%s'\n", reason, name);
+
+        pipe[READ_END] = IDOS->FOpen(name, MODE_OLDFILE, 0);
+
+        if (!pipe[READ_END]) {
+            dprintf("Failed to open %s pipe for reading (error %ld)\n", reason, IDOS->IoErr());
+            OS4_Close(&pipe[WRITE_END], "pipe write end");
+            return SDL_SetError("Failed to open %s pipe\n", reason);
+        }
+    } else {
+        dprintf("ExamineObjectTags() failed (error %ld)\n", IDOS->IoErr());
+        OS4_Close(&pipe[WRITE_END], "pipe write end");
+        return SDL_SetError("Failed to open %s pipe\n", reason);
+    }
+
+    dprintf("%s pipe opened (read %p, write %p)\n", reason, pipe[READ_END], pipe[WRITE_END]);
+    return true;
+}
+
 bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID props)
 {
     if (!IDOS) {
@@ -136,6 +253,14 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
     }
 
     char * const *args = SDL_GetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, NULL);
+
+    SDL_ProcessIO stdin_option = (SDL_ProcessIO)SDL_GetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDIN_NUMBER, SDL_PROCESS_STDIO_NULL);
+    SDL_ProcessIO stdout_option = (SDL_ProcessIO)SDL_GetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_INHERITED);
+    SDL_ProcessIO stderr_option = (SDL_ProcessIO)SDL_GetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER, SDL_PROCESS_STDIO_INHERITED);
+    bool redirect_stderr = SDL_GetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_TO_STDOUT_BOOLEAN, false) &&
+                           !SDL_HasProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER);
+
+    // TODO: background process?
 
     SDL_Environment *env = SDL_GetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ENVIRONMENT_POINTER, SDL_GetEnvironment());
     char **envp = SDL_GetEnvironmentVariables(env);
@@ -161,20 +286,133 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
 
     process->internal = data;
 
-    BPTR inputHandle = IDOS->DupFileHandle(IDOS->Input());
-    BPTR outputHandle = IDOS->DupFileHandle(IDOS->Output());
-    BPTR errorHandle = IDOS->DupFileHandle(IDOS->ErrorOutput());
+    BPTR stdin_pipe[2] = { ZERO, ZERO };
+    BPTR stdout_pipe[2] = { ZERO, ZERO };
+    BPTR stderr_pipe[2] = { ZERO, ZERO };
+
+    BPTR inputHandle = ZERO;
+    BPTR outputHandle = ZERO;
+    BPTR errorHandle = ZERO;
+
+    switch (stdin_option) {
+    case SDL_PROCESS_STDIO_REDIRECT:
+        BPTR file = ZERO;
+        if (OS4_GetStreamBPTR(props, SDL_PROP_PROCESS_CREATE_STDIN_POINTER, &file)) {
+            inputHandle = IDOS->DupFileHandle(file);
+            dprintf("Redirected input handle %p\n", inputHandle);
+        } else {
+            dprintf("Failed to get redirected STDIN BPTR\n"); // TODO
+            goto fail;
+        }
+        break;
+    case SDL_PROCESS_STDIO_APP:
+        if (OS4_CreatePipe(stdin_pipe, "stdin")) {
+            inputHandle = IDOS->DupFileHandle(stdin_pipe[READ_END]);
+            dprintf("input handle %p is stdin_pipe's read end\n", inputHandle);
+        } else {
+            goto fail;
+        }
+        break;
+    case SDL_PROCESS_STDIO_NULL:
+        inputHandle = OS4_OpenNil();
+        if (inputHandle == ZERO) {
+            goto fail;
+        }
+        break;
+    case SDL_PROCESS_STDIO_INHERITED:
+    default:
+        inputHandle = IDOS->DupFileHandle(IDOS->Input());
+        if (inputHandle == ZERO) {
+            goto fail;
+        }
+        break;
+    }
+
+    switch (stdout_option) {
+    case SDL_PROCESS_STDIO_REDIRECT:
+        BPTR file = ZERO;
+        if (OS4_GetStreamBPTR(props, SDL_PROP_PROCESS_CREATE_STDOUT_POINTER, &file)) {
+            outputHandle = file;
+            dprintf("Redirected output handle %p\n", outputHandle);
+        } else {
+            dprintf("Failed to get redirected STDOUT BPTR\n"); // TODO
+            goto fail;
+        }
+        break;
+    case SDL_PROCESS_STDIO_APP:
+        if (OS4_CreatePipe(stdout_pipe, "stdout")) {
+            outputHandle = IDOS->DupFileHandle(stdout_pipe[WRITE_END]);
+            dprintf("output handle %p is stdout_pipe's write end\n", outputHandle);
+        } else {
+            goto fail;
+        }
+        break;
+    case SDL_PROCESS_STDIO_NULL:
+        outputHandle = OS4_OpenNil();
+        if (outputHandle == ZERO) {
+            goto fail;
+        }
+        break;
+    case SDL_PROCESS_STDIO_INHERITED:
+    default:
+        outputHandle = IDOS->DupFileHandle(IDOS->Output());
+        if (outputHandle == ZERO) {
+            dprintf("Failed to duplicate output handle (error %ld)\n", IDOS->IoErr());
+        }
+        break;
+    }
+
+    if (redirect_stderr) {
+        errorHandle = IDOS->DupFileHandle(IDOS->Output()); // TODO
+        if (errorHandle == ZERO) {
+            dprintf("Failed to duplicate error handle (error %ld)\n", IDOS->IoErr());
+        }
+    } else {
+        switch (stderr_option) {
+        case SDL_PROCESS_STDIO_REDIRECT:
+            BPTR file = ZERO;
+            if (OS4_GetStreamBPTR(props, SDL_PROP_PROCESS_CREATE_STDERR_POINTER, &file)) {
+                errorHandle = IDOS->DupFileHandle(file);
+                dprintf("Redirected error handle %p\n", errorHandle);
+            } else {
+                dprintf("Failed to get redirected STDERR BPTR\n"); // TODO
+                goto fail;
+            }
+            break;
+        case SDL_PROCESS_STDIO_APP:
+            if (OS4_CreatePipe(stderr_pipe, "stderr")) {
+                errorHandle = IDOS->DupFileHandle(stderr_pipe[WRITE_END]);
+                dprintf("error handle is stderr_pipe's write end\n");
+            } else {
+                goto fail;
+            }
+            break;
+        case SDL_PROCESS_STDIO_NULL:
+            errorHandle = OS4_OpenNil();
+            if (errorHandle == ZERO) {
+                goto fail;
+            }
+            break;
+        case SDL_PROCESS_STDIO_INHERITED:
+        default:
+            errorHandle = IDOS->DupFileHandle(IDOS->ErrorOutput());
+            if (errorHandle == ZERO) {
+                dprintf("Failed to duplicate error handle (error %ld)\n", IDOS->IoErr());
+            }
+            break;
+        }
+    }
 
     if (inputHandle == ZERO)  {
-        dprintf("input ZERO\n");
+        dprintf("input handle ZERO\n");
     }
 
     if (outputHandle == ZERO) {
-        dprintf("output ZERO\n");
+        dprintf("output handle ZERO\n");
     }
 
     if (errorHandle == ZERO) {
-        dprintf("error ZERO\n");
+        dprintf("error handle ZERO\n");
     }
 
     const int32 error = IDOS->SystemTags(command,
@@ -207,7 +445,54 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
 
     SDL_SetNumberProperty(process->props, SDL_PROP_PROCESS_PID_NUMBER, data->pid);
 
+    if (stdin_option == SDL_PROCESS_STDIO_APP) {
+        if (!OS4_SetupStream(process, stdin_pipe[WRITE_END], "wb", SDL_PROP_PROCESS_STDIN_POINTER)) {
+            dprintf("Failed to setup STDIN pointer\n");
+            OS4_Close(&stdin_pipe[WRITE_END], "stdin_pipe's write end");
+        }
+        OS4_Close(&stdin_pipe[READ_END], "stdin_pipe's read end");
+    }
+
+    if (stdout_option == SDL_PROCESS_STDIO_APP) {
+        if (!OS4_SetupStream(process, stdout_pipe[READ_END], "rb", SDL_PROP_PROCESS_STDOUT_POINTER)) {
+            dprintf("Failed to setup STDOUT pointer\n");
+            OS4_Close(&stdout_pipe[READ_END], "stdout_pipe's read end");
+        }
+        OS4_Close(&stdout_pipe[WRITE_END], "stdout_pipe's write end");
+    }
+
+    if (stderr_option == SDL_PROCESS_STDIO_APP) {
+        if (!OS4_SetupStream(process, stderr_pipe[READ_END], "rb", SDL_PROP_PROCESS_STDERR_POINTER)) {
+            dprintf("Failed to setup STDERR pointer\n");
+            OS4_Close(&stderr_pipe[READ_END], "stderr_pipe's read end");
+        }
+        OS4_Close(&stderr_pipe[WRITE_END], "stderr_pipe's write end");
+    }
+
     return true;
+
+fail:
+    SDL_free(command);
+    OS4_FreeEnvVariables(variables);
+
+    // TODO: pipe cleanup
+
+    OS4_Close(&inputHandle, "input handle");
+    OS4_Close(&outputHandle, "output handle");
+    OS4_Close(&errorHandle, "error handle");
+
+    return false;
+}
+
+static int32 OS4_ProcessHook(struct Hook *hook, uint32 pid, struct Process *process)
+{
+    if (pid == process->pr_ProcessID) {
+        dprintf("Send SIGBREAKF_C to PID %u (%p)\n", pid, process);
+        IExec->Signal((struct Task*)process, SIGBREAKF_CTRL_C);
+        return TRUE;
+    }
+
+    return FALSE;
 }
 
 bool SDL_SYS_KillProcess(SDL_Process *process, bool force)
@@ -216,27 +501,18 @@ bool SDL_SYS_KillProcess(SDL_Process *process, bool force)
         return SDL_SetError("IDOS nullptr");
     }
 
-    struct SignalSemaphore* sem = IExec->FindSemaphore("DosCliProc");
-
     bool result = false;
 
-    if (sem) {
-        const uint32 pid = process->internal->pid;
-        IExec->ObtainSemaphoreShared(sem);
+    const uint32 pid = process->internal->pid;
 
-        struct Process *proc = IDOS->FindCliProc(pid);
+    static struct Hook hook;
+    hook.h_Entry = (APTR)OS4_ProcessHook;
 
-        if (proc) {
-            dprintf("Send SIGBREAKF_C to PID %u\n", pid);
-            IExec->Signal((struct Task*)process, SIGBREAKF_CTRL_C);
-            result = true;
-        } else {
-            dprintf("Process %u not found\n", pid);
-        }
-
-        IExec->ReleaseSemaphore(sem);
+    if (IDOS->ProcessScan(&hook, (APTR)pid, 0 /* reserved */)) {
+        dprintf("ProcessScan successful\n");
+        result = true;
     } else {
-        return SDL_SetError("Failed to find DosCliProc semaphore");
+        dprintf("Process %u not found\n", pid);
     }
 
     return result;
@@ -250,7 +526,7 @@ bool SDL_SYS_WaitProcess(SDL_Process *process, bool block, int *exitcode)
 
     const uint32 pid = process->internal->pid;
 
-    dprintf("Waiting for process %u\n", pid);
+    dprintf("Waiting for process %u (block %d)\n", pid, block);
 
     if (block) {
         const int32 found = IDOS->WaitForChildExit(pid);
@@ -276,6 +552,24 @@ bool SDL_SYS_WaitProcess(SDL_Process *process, bool block, int *exitcode)
 void SDL_SYS_DestroyProcess(SDL_Process *process)
 {
     dprintf("\n");
+
+    SDL_IOStream *io = (SDL_IOStream *)SDL_GetPointerProperty(process->props, SDL_PROP_PROCESS_STDIN_POINTER, NULL);
+    if (io) {
+        dprintf("Closing STDIN\n");
+        SDL_CloseIO(io);
+    }
+
+    io = (SDL_IOStream *)SDL_GetPointerProperty(process->props, SDL_PROP_PROCESS_STDOUT_POINTER, NULL);
+    if (io) {
+        dprintf("Closing STDOUT\n");
+        SDL_CloseIO(io);
+    }
+
+    io = (SDL_IOStream *)SDL_GetPointerProperty(process->props, SDL_PROP_PROCESS_STDERR_POINTER, NULL);
+    if (io) {
+        dprintf("Closing STDERR\n");
+        SDL_CloseIO(io);
+    }
 
     SDL_free(process->internal);
 }
