@@ -404,7 +404,7 @@ static BPTR SDLCALL amigaos4_file_open(const char *filename, const char *mode)
     const int32 defaultBufferSize = 0;
     BPTR bptr = IDOS->FOpen(filename, accessMode, defaultBufferSize);
 
-    dprintf("bptr %p\n", bptr);
+    dprintf("BPTR %p\n", bptr);
 
     if (!bptr) {
         SDL_SetError("Failed to open file (error %ld)", IDOS->IoErr());
@@ -427,6 +427,8 @@ static Sint64 SDLCALL amigaos4_file_size(void *userdata)
     if (filesize == -1LL) {
         SDL_SetError("Couldn't get file size (error %ld)", IDOS->IoErr());
     }
+
+    dprintf("File %p size %lld\n", iodata->bptr, filesize);
 
     return filesize;
 }
@@ -496,6 +498,9 @@ static size_t SDLCALL amigaos4_file_read(void *userdata, void *ptr, size_t size,
     if (count < size) {
         SDL_SetError("Error reading from datastream, read %lu of %zu", count, size);
     }
+
+    dprintf("Read %u bytes\n", count);
+
     return (size_t)count;
 }
 
@@ -531,6 +536,8 @@ static size_t SDLCALL amigaos4_file_write(void *userdata, const void *ptr, size_
         SDL_SetError("Error writing to datastream, wrote %lu of %zu", count, size);
     }
 
+    dprintf("Wrote %u bytes\n", count);
+
     return (size_t)count;
 }
 
@@ -545,7 +552,7 @@ static bool SDLCALL amigaos4_file_flush(void *userdata, SDL_IOStatus *status)
 
     // TODO: status
 
-    dprintf("bptr %p\n", iodata->bptr);
+    dprintf("BPTR %p\n", iodata->bptr);
 
     if (!IDOS->FFlush(iodata->bptr)) {
         return SDL_SetError("Error flushing datastream (error %ld)", IDOS->IoErr());
@@ -562,7 +569,7 @@ static bool SDLCALL amigaos4_file_close(void *userdata)
 
     IOStreamAmigaOS4Data *iodata = (IOStreamAmigaOS4Data *) userdata;
 
-    dprintf("bptr %p\n", iodata->bptr);
+    dprintf("BPTR %p\n", iodata->bptr);
 
     bool status = true;
     if (iodata->autoclose) {
@@ -581,11 +588,13 @@ SDL_IOStream *SDL_IOFromBPTR(BPTR bptr, const char *mode, bool autoclose)
         return NULL;
     }
 
-    dprintf("bptr %p, autoclose %d\n", autoclose);
+    dprintf("BPTR %p, autoclose %d\n", bptr, autoclose);
 
     IOStreamAmigaOS4Data *iodata = (IOStreamAmigaOS4Data *) SDL_calloc(1, sizeof (*iodata));
     if (!iodata) {
+        dprintf("Failed to allocate iodata\n");
         if (autoclose) {
+            dprintf("Auto-closing %p\n", bptr);
             IDOS->FClose(bptr);
         }
         return NULL;
@@ -621,11 +630,15 @@ SDL_IOStream *SDL_IOFromBPTR(BPTR bptr, const char *mode, bool autoclose)
 
     SDL_IOStream *iostr = SDL_OpenIO(&iface, iodata);
     if (!iostr) {
+        dprintf("Closing IO stream\n");
         iface.close(iodata);
     } else {
         const SDL_PropertiesID props = SDL_GetIOProperties(iostr);
         if (props) {
+            dprintf("Setting %s to %p\n", SDL_PROP_IOSTREAM_AMIGAOS4_POINTER, iodata->bptr);
             SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_AMIGAOS4_POINTER, (void*)iodata->bptr);
+        } else {
+            dprintf("Failed to get IO properties\n");
         }
     }
 
