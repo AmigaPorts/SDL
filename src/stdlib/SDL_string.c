@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -369,7 +369,7 @@ static size_t SDL_ScanUnsignedLongLongInternal(const char *text, int count, int 
             negative = *text == '-';
             ++text;
         }
-        if ((radix == 0 || radix == 16) && *text == '0') {
+        if ((radix == 0 || radix == 16) && *text == '0' && text[1] != '\0') {
             ++text;
             if (*text == 'x' || *text == 'X') {
                 radix = 16;

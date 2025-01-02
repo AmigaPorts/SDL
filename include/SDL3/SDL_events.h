@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -212,6 +212,7 @@ typedef enum SDL_EventType
     SDL_EVENT_FINGER_DOWN      = 0x700,
     SDL_EVENT_FINGER_UP,
     SDL_EVENT_FINGER_MOTION,
+    SDL_EVENT_FINGER_CANCELED,
 
     /* 0x800, 0x801, and 0x802 were the Gesture events from SDL2. Do not reuse these values! sdl2-compat needs them! */
 
@@ -446,7 +447,7 @@ typedef struct SDL_MouseMotionEvent
     Uint32 reserved;
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     SDL_WindowID windowID; /**< The window with mouse focus, if any */
-    SDL_MouseID which;  /**< The mouse instance id or SDL_TOUCH_MOUSEID */
+    SDL_MouseID which;  /**< The mouse instance id in relative mode, SDL_TOUCH_MOUSEID for touch events, or 0 */
     SDL_MouseButtonFlags state;       /**< The current button state */
     float x;            /**< X coordinate, relative to window */
     float y;            /**< Y coordinate, relative to window */
@@ -465,7 +466,7 @@ typedef struct SDL_MouseButtonEvent
     Uint32 reserved;
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     SDL_WindowID windowID; /**< The window with mouse focus, if any */
-    SDL_MouseID which;  /**< The mouse instance id or SDL_TOUCH_MOUSEID */
+    SDL_MouseID which;  /**< The mouse instance id in relative mode, SDL_TOUCH_MOUSEID for touch events, or 0 */
     Uint8 button;       /**< The mouse button index */
     bool down;          /**< true if the button is pressed */
     Uint8 clicks;       /**< 1 for single-click, 2 for double-click, etc. */
@@ -485,7 +486,7 @@ typedef struct SDL_MouseWheelEvent
     Uint32 reserved;
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     SDL_WindowID windowID; /**< The window with mouse focus, if any */
-    SDL_MouseID which;  /**< The mouse instance id */
+    SDL_MouseID which;  /**< The mouse instance id in relative mode or 0 */
     float x;            /**< The amount scrolled horizontally, positive to the right and negative to the left */
     float y;            /**< The amount scrolled vertically, positive away from the user and negative toward the user */
     SDL_MouseWheelDirection direction; /**< Set to one of the SDL_MOUSEWHEEL_* defines. When FLIPPED the values in X and Y will be opposite. Multiply by -1 to change them back */
@@ -764,7 +765,7 @@ typedef struct SDL_RenderEvent
  */
 typedef struct SDL_TouchFingerEvent
 {
-    SDL_EventType type; /**< SDL_EVENT_FINGER_MOTION or SDL_EVENT_FINGER_DOWN or SDL_EVENT_FINGER_UP */
+    SDL_EventType type; /**< SDL_EVENT_FINGER_DOWN, SDL_EVENT_FINGER_UP, SDL_EVENT_FINGER_MOTION, or SDL_EVENT_FINGER_CANCELED */
     Uint32 reserved;
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
     SDL_TouchID touchID; /**< The touch device id */
@@ -919,8 +920,8 @@ typedef struct SDL_ClipboardEvent
     SDL_EventType type; /**< SDL_EVENT_CLIPBOARD_UPDATE */
     Uint32 reserved;
     Uint64 timestamp;   /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    bool owner;       /**< are we owning the clipboard (internal update) */
-    Sint32 n_mime_types;     /**< number of mime types */
+    bool owner;         /**< are we owning the clipboard (internal update) */
+    Sint32 num_mime_types;   /**< number of mime types */
     const char **mime_types; /**< current mime types */
 } SDL_ClipboardEvent;
 

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -2391,13 +2391,21 @@ extern "C" {
 /**
  * Request SDL_AppIterate() be called at a specific rate.
  *
- * This number is in Hz, so "60" means try to iterate 60 times per second.
+ * If this is set to a number, it represents Hz, so "60" means try to iterate
+ * 60 times per second. "0" means to iterate as fast as possible. Negative
+ * values are illegal, but reserved, in case they are useful in a future
+ * revision of SDL.
+ *
+ * There are other strings that have special meaning. If set to "waitevent",
+ * SDL_AppIterate will not be called until new event(s) have arrived (and been
+ * processed by SDL_AppEvent). This can be useful for apps that are completely
+ * idle except in response to input.
  *
  * On some platforms, or if you are using SDL_main instead of SDL_AppIterate,
  * this hint is ignored. When the hint can be used, it is allowed to be
  * changed at any time.
  *
- * This defaults to 60, and specifying NULL for the hint's value will restore
+ * This defaults to 0, and specifying NULL for the hint's value will restore
  * the default.
  *
  * This hint can be set anytime.
@@ -2774,6 +2782,10 @@ extern "C" {
  *   from the macOS menu bar, sending a SIGINT (ctrl-c) on Unix, etc.
  * - "1": SDL will send a quit event when the last window is requesting to
  *   close. (default)
+ *
+ * If there is at least one active system tray icon, SDL_EVENT_QUIT will
+ * instead be sent when both the last window will be closed and the last tray
+ * icon will be destroyed.
  *
  * This hint can be set anytime.
  *
@@ -4021,6 +4033,15 @@ extern "C" {
  * \since This hint is available since SDL 3.1.3.
  */
 #define SDL_HINT_WINDOWS_INTRESOURCE_ICON       "SDL_WINDOWS_INTRESOURCE_ICON"
+
+/**
+ * A variable to specify custom icon resource id from RC file on Windows
+ * platform.
+ *
+ * This hint should be set before SDL is initialized.
+ *
+ * \since This hint is available since SDL 3.1.3.
+ */
 #define SDL_HINT_WINDOWS_INTRESOURCE_ICON_SMALL "SDL_WINDOWS_INTRESOURCE_ICON_SMALL"
 
 /**

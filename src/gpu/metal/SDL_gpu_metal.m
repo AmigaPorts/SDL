@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -369,7 +369,7 @@ static SDL_GPUTextureFormat SwapchainCompositionToFormat[] = {
     SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM,      // SDR
     SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM_SRGB, // SDR_LINEAR
     SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT,  // HDR_EXTENDED_LINEAR
-    SDL_GPU_TEXTUREFORMAT_R10G10B10A2_UNORM,   // HDR10_ST2048
+    SDL_GPU_TEXTUREFORMAT_R10G10B10A2_UNORM,   // HDR10_ST2084
 };
 
 static CFStringRef SwapchainCompositionToColorSpace[4]; // initialized on device creation
@@ -3490,7 +3490,7 @@ static bool METAL_SupportsSwapchainComposition(
     SDL_GPUSwapchainComposition swapchainComposition)
 {
 #ifndef SDL_PLATFORM_MACOS
-    if (swapchainComposition == SDL_GPU_SWAPCHAINCOMPOSITION_HDR10_ST2048) {
+    if (swapchainComposition == SDL_GPU_SWAPCHAINCOMPOSITION_HDR10_ST2084) {
         return false;
     }
 #endif
@@ -3498,7 +3498,7 @@ static bool METAL_SupportsSwapchainComposition(
     if (@available(macOS 11.0, *)) {
         return true;
     } else {
-        return swapchainComposition != SDL_GPU_SWAPCHAINCOMPOSITION_HDR10_ST2048;
+        return swapchainComposition != SDL_GPU_SWAPCHAINCOMPOSITION_HDR10_ST2084;
     }
 }
 
@@ -4180,7 +4180,7 @@ static bool METAL_SupportsTextureFormat(
 
 static bool METAL_PrepareDriver(SDL_VideoDevice *this)
 {
-    if (@available(macOS 10.13, iOS 13.0, tvOS 13.0, *)) {
+    if (@available(macOS 10.14, iOS 13.0, tvOS 13.0, *)) {
         return (this->Metal_CreateView != NULL);
     }
     return false;
@@ -4342,6 +4342,16 @@ static SDL_GPUDevice *METAL_CreateDevice(bool debugMode, bool preferLowPower, SD
     @autoreleasepool {
         MetalRenderer *renderer;
         id<MTLDevice> device = NULL;
+        bool hasHardwareSupport = false;
+
+        if (debugMode) {
+            /* Due to a Metal driver quirk, once a MTLDevice has been created
+             * with this environment variable set, the Metal validation layers
+             * will remain enabled for the rest of the application's lifespan,
+             * even if the device is destroyed and recreated.
+             */
+            SDL_setenv_unsafe("MTL_DEBUG_LAYER", "1", 0);
+        }
 
         // Create the Metal device and command queue
 #ifdef SDL_PLATFORM_MACOS
@@ -4361,6 +4371,23 @@ static SDL_GPUDevice *METAL_CreateDevice(bool debugMode, bool preferLowPower, SD
                 SDL_SetError("Failed to create Metal device");
                 return NULL;
             }
+        }
+
+#ifdef SDL_PLATFORM_MACOS
+        if (@available(macOS 10.15, *)) {
+            hasHardwareSupport = [device supportsFamily:MTLGPUFamilyMac2];
+        } else if (@available(macOS 10.14, *)) {
+            hasHardwareSupport = [device supportsFeatureSet:MTLFeatureSet_macOS_GPUFamily2_v1];
+        }
+#else
+        if (@available(iOS 13.0, tvOS 13.0, *)) {
+            hasHardwareSupport = [device supportsFamily:MTLGPUFamilyApple3];
+        }
+#endif
+
+        if (!hasHardwareSupport) {
+            SDL_SetError("Device does not meet the hardware requirements for SDL_GPU Metal");
+            return NULL;
         }
 
         // Allocate and zero out the renderer

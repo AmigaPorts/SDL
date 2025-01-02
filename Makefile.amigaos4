@@ -32,6 +32,7 @@ SOURCES = \
 	./src/file/generic/SDL_asyncio_generic.c \
 	./src/filesystem/SDL_filesystem.c \
 	./src/filesystem/amigaos4/*.c \
+	./src/gpu/SDL_gpu.c \
 	./src/haptic/*.c \
 	./src/haptic/dummy/*.c \
 	./src/joystick/*.c \
@@ -65,6 +66,7 @@ SOURCES = \
 	./src/time/unix/SDL_systime.c \
 	./src/timer/*.c \
 	./src/timer/amigaos4/*.c \
+	./src/tray/SDL_tray_utils.c \
 	./src/video/*.c \
 	./src/video/dummy/*.c \
 	./src/video/amigaos4/*.c \

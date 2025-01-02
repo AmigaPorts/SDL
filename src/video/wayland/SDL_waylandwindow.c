@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -60,12 +60,12 @@ static int PointToPixel(SDL_Window *window, int point)
      * Wayland scale units are in units of 1/120, so the offset is required to correct for
      * rounding errors when using certain scale values.
      */
-    return SDL_max((int)SDL_lround((double)point * GetWindowScale(window) + 1e-6), 1);
+    return point ? SDL_max((int)SDL_lround((double)point * GetWindowScale(window) + 1e-6), 1) : 0;
 }
 
 static int PixelToPoint(SDL_Window *window, int pixel)
 {
-    return SDL_max((int)SDL_lround((double)pixel / GetWindowScale(window)), 1);
+    return pixel ? SDL_max((int)SDL_lround((double)pixel / GetWindowScale(window)), 1) : 0;
 }
 
 /* According to the Wayland spec:
@@ -1026,15 +1026,31 @@ static void handle_configure_xdg_popup(void *data,
     x -= offset_x;
     y -= offset_y;
 
-    wind->requested.logical_width = width;
-    wind->requested.logical_height = height;
-
-    if (wind->scale_to_display) {
-        x = PointToPixel(wind->sdlwindow->parent, x);
-        y = PointToPixel(wind->sdlwindow->parent, y);
-        wind->requested.pixel_width = PointToPixel(wind->sdlwindow, width);
-        wind->requested.pixel_height = PointToPixel(wind->sdlwindow, height);
+    /* This happens when the compositor indicates that the size is
+     * up to the client, so use the cached window size here.
+     */
+    if (width == 0 || height == 0) {
+        width = wind->sdlwindow->floating.w;
+        height = wind->sdlwindow->floating.h;
     }
+
+    /* Don't apply the supplied dimensions if they haven't changed from the last configuration
+     * event, or a newer size set programmatically can be overwritten by old data.
+     */
+    if (width != wind->last_configure.width || height != wind->last_configure.height) {
+        wind->requested.logical_width = width;
+        wind->requested.logical_height = height;
+
+        if (wind->scale_to_display) {
+            x = PointToPixel(wind->sdlwindow->parent, x);
+            y = PointToPixel(wind->sdlwindow->parent, y);
+            wind->requested.pixel_width = PointToPixel(wind->sdlwindow, width);
+            wind->requested.pixel_height = PointToPixel(wind->sdlwindow, height);
+        }
+    }
+
+    wind->last_configure.width = width;
+    wind->last_configure.height = height;
 
     SDL_SendWindowEvent(wind->sdlwindow, SDL_EVENT_WINDOW_MOVED, x, y);
 
@@ -1615,16 +1631,18 @@ static const struct frog_color_managed_surface_listener frog_surface_listener = 
 
 static void SetKeyboardFocus(SDL_Window *window)
 {
-    SDL_Window *topmost = window;
+    SDL_Window *toplevel = window;
 
-    // Find the topmost parent
-    while (topmost->parent) {
-        topmost = topmost->parent;
+    // Find the toplevel parent
+    while (SDL_WINDOW_IS_POPUP(toplevel)) {
+        toplevel = toplevel->parent;
     }
 
-    topmost->internal->keyboard_focus = window;
+    toplevel->internal->keyboard_focus = window;
 
-    SDL_SetKeyboardFocus(window);
+    if (!window->is_hiding && !window->is_destroying) {
+        SDL_SetKeyboardFocus(window);
+    }
 }
 
 bool Wayland_SetWindowHitTest(SDL_Window *window, bool enabled)
@@ -1852,8 +1870,8 @@ void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
             xdg_positioner_set_size(data->shell_surface.xdg.popup.xdg_positioner, data->current.logical_width, data->current.logical_height);
 
             // Set the popup initial position
-            position_x = window->x;
-            position_y = window->y;
+            position_x = window->last_position_pending ? window->pending.x : window->x;
+            position_y = window->last_position_pending ? window->pending.y : window->y;
             EnsurePopupPositionIsValid(window, &position_x, &position_y);
             if (data->scale_to_display) {
                 position_x = PixelToPoint(window->parent, position_x);
@@ -2027,8 +2045,8 @@ static void Wayland_ReleasePopup(SDL_VideoDevice *_this, SDL_Window *popup)
         if (popup == SDL_GetKeyboardFocus()) {
             SDL_Window *new_focus = popup->parent;
 
-            // Find the highest level window that isn't being hidden or destroyed.
-            while (new_focus->parent && (new_focus->is_hiding || new_focus->is_destroying)) {
+            // Find the highest level window, up to the toplevel parent, that isn't being hidden or destroyed.
+            while (SDL_WINDOW_IS_POPUP(new_focus) && new_focus->parent && (new_focus->is_hiding || new_focus->is_destroying)) {
                 new_focus = new_focus->parent;
             }
 

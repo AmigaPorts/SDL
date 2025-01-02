@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -1148,7 +1148,7 @@ static void touch_handler_down(void *data, struct wl_touch *touch, uint32_t seri
         SDL_SetMouseFocus(window_data->sdlwindow);
 
         SDL_SendTouch(Wayland_GetTouchTimestamp(input, timestamp), (SDL_TouchID)(uintptr_t)touch,
-                      (SDL_FingerID)(id + 1), window_data->sdlwindow, true, x, y, 1.0f);
+                      (SDL_FingerID)(id + 1), window_data->sdlwindow, SDL_EVENT_FINGER_DOWN, x, y, 1.0f);
     }
 }
 
@@ -1169,7 +1169,7 @@ static void touch_handler_up(void *data, struct wl_touch *touch, uint32_t serial
             const float y = (float)wl_fixed_to_double(fy) / window_data->current.logical_height;
 
             SDL_SendTouch(Wayland_GetTouchTimestamp(input, timestamp), (SDL_TouchID)(uintptr_t)touch,
-                          (SDL_FingerID)(id + 1), window_data->sdlwindow, false, x, y, 0.0f);
+                          (SDL_FingerID)(id + 1), window_data->sdlwindow, SDL_EVENT_FINGER_UP, x, y, 0.0f);
 
             /* If the seat lacks pointer focus, the seat's keyboard focus is another window or NULL, this window currently
              * has mouse focus, and the surface has no active touch events, consider mouse focus to be lost.
@@ -1223,7 +1223,7 @@ static void touch_handler_cancel(void *data, struct wl_touch *touch)
                 const float y = (float)(wl_fixed_to_double(tp->fy) / window_data->current.logical_height);
 
                 SDL_SendTouch(0, (SDL_TouchID)(uintptr_t)touch,
-                              (SDL_FingerID)(tp->id + 1), window_data->sdlwindow, false, x, y, 0.0f);
+                              (SDL_FingerID)(tp->id + 1), window_data->sdlwindow, SDL_EVENT_FINGER_CANCELED, x, y, 0.0f);
 
                 // Remove the touch from the list before checking for still-active touches on the surface.
                 WAYLAND_wl_list_remove(&tp->link);
@@ -2429,7 +2429,8 @@ static void data_device_handle_drop(void *data, struct wl_data_device *wl_data_d
     data_device->drag_offer = NULL;
 }
 
-static void notifyFromMimes(struct wl_list *mimes) {
+static void notifyFromMimes(struct wl_list *mimes)
+{
     int nformats = 0;
     char **new_mime_types = NULL;
     if (mimes) {

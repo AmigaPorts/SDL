@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -1093,6 +1093,10 @@ static void SDLTest_PrintRenderer(SDL_Renderer *renderer)
     name = SDL_GetRendererName(renderer);
 
     SDL_Log("  Renderer %s:\n", name);
+    if (SDL_strcmp(name, "gpu") == 0) {
+        SDL_GPUDevice *device = SDL_GetPointerProperty(SDL_GetRendererProperties(renderer), SDL_PROP_RENDERER_GPU_DEVICE_POINTER, NULL);
+        SDL_Log("    Driver: %s\n", SDL_GetGPUDeviceDriver(device));
+    }
     SDL_Log("    VSync: %d\n", (int)SDL_GetNumberProperty(SDL_GetRendererProperties(renderer), SDL_PROP_RENDERER_VSYNC_NUMBER, 0));
 
     texture_formats = (const SDL_PixelFormat *)SDL_GetPointerProperty(SDL_GetRendererProperties(renderer), SDL_PROP_RENDERER_TEXTURE_FORMATS_POINTER, NULL);
@@ -1906,8 +1910,10 @@ void SDLTest_PrintEvent(const SDL_Event *event)
         break;
     case SDL_EVENT_FINGER_DOWN:
     case SDL_EVENT_FINGER_UP:
+    case SDL_EVENT_FINGER_CANCELED:
         SDL_Log("SDL EVENT: Finger: %s touch=%" SDL_PRIu64 ", finger=%" SDL_PRIu64 ", x=%f, y=%f, dx=%f, dy=%f, pressure=%f",
-                (event->type == SDL_EVENT_FINGER_DOWN) ? "down" : "up",
+                (event->type == SDL_EVENT_FINGER_DOWN) ? "down" :
+                (event->type == SDL_EVENT_FINGER_UP) ? "up" : "cancel",
                 event->tfinger.touchID,
                 event->tfinger.fingerID,
                 event->tfinger.x, event->tfinger.y,

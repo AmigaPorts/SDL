@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -59,6 +59,7 @@ typedef enum
     NSInteger focusClickPending;
     float pendingWindowWarpX, pendingWindowWarpY;
     BOOL isDragAreaRunning;
+    NSTimer *liveResizeTimer;
 }
 
 - (BOOL)isTouchFromTrackpad:(NSEvent *)theEvent;
@@ -83,6 +84,9 @@ typedef enum
 // Window delegate functionality
 - (BOOL)windowShouldClose:(id)sender;
 - (void)windowDidExpose:(NSNotification *)aNotification;
+- (void)windowDidChangeOcclusionState:(NSNotification *)aNotification;
+- (void)windowWillStartLiveResize:(NSNotification *)aNotification;
+- (void)windowDidEndLiveResize:(NSNotification *)aNotification;
 - (void)windowDidMove:(NSNotification *)aNotification;
 - (void)windowDidResize:(NSNotification *)aNotification;
 - (void)windowDidMiniaturize:(NSNotification *)aNotification;

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -144,7 +144,7 @@ typedef enum SDL_AsyncIOResult
 {
     SDL_ASYNCIO_COMPLETE,  /**< request was completed without error */
     SDL_ASYNCIO_FAILURE,   /**< request failed for some reason; check SDL_GetError()! */
-    SDL_ASYNCIO_CANCELLED  /**< request was cancelled before completing. */
+    SDL_ASYNCIO_CANCELED   /**< request was canceled before completing. */
 } SDL_AsyncIOResult;
 
 /**
@@ -273,7 +273,6 @@ extern SDL_DECLSPEC Sint64 SDLCALL SDL_GetAsyncIOSize(SDL_AsyncIO *asyncio);
  *
  * \sa SDL_WriteAsyncIO
  * \sa SDL_CreateAsyncIOQueue
- * \sa SDL_GetAsyncIOTaskResult
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_ReadAsyncIO(SDL_AsyncIO *asyncio, void *ptr, Uint64 offset, Uint64 size, SDL_AsyncIOQueue *queue, void *userdata);
 
@@ -311,7 +310,6 @@ extern SDL_DECLSPEC bool SDLCALL SDL_ReadAsyncIO(SDL_AsyncIO *asyncio, void *ptr
  *
  * \sa SDL_ReadAsyncIO
  * \sa SDL_CreateAsyncIOQueue
- * \sa SDL_GetAsyncIOTaskResult
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_WriteAsyncIO(SDL_AsyncIO *asyncio, void *ptr, Uint64 offset, Uint64 size, SDL_AsyncIOQueue *queue, void *userdata);
 
@@ -338,10 +336,10 @@ extern SDL_DECLSPEC bool SDLCALL SDL_WriteAsyncIO(SDL_AsyncIO *asyncio, void *pt
  * close the file immediately, then check for all results later. This function
  * will not block until the tasks have completed.
  *
- * Once this function returns non-NULL, `asyncio` is no longer valid,
- * regardless of any future outcomes. Any completed tasks might still contain
- * this pointer in their SDL_AsyncIOOutcome data, in case the app was using
- * this value to track information, but it should not be used again.
+ * Once this function returns true, `asyncio` is no longer valid, regardless
+ * of any future outcomes. Any completed tasks might still contain this
+ * pointer in their SDL_AsyncIOOutcome data, in case the app was using this
+ * value to track information, but it should not be used again.
  *
  * If this function returns false, the close wasn't started at all, and it's
  * safe to attempt to close again later.
@@ -429,7 +427,7 @@ extern SDL_DECLSPEC void SDLCALL SDL_DestroyAsyncIOQueue(SDL_AsyncIOQueue *queue
  * \param queue the async I/O task queue to query.
  * \param outcome details of a finished task will be written here. May not be
  *                NULL.
- * \returns true if task has completed, false otherwise.
+ * \returns true if a task has completed, false otherwise.
  *
  * \threadsafety It is safe to call this function from any thread.
  *

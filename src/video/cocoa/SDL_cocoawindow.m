@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -622,26 +622,29 @@ static void Cocoa_UpdateClipCursor(SDL_Window *window)
     }
 }
 
-static SDL_Window *GetTopmostWindow(SDL_Window *window)
+static SDL_Window *GetParentToplevelWindow(SDL_Window *window)
 {
-    SDL_Window *topmost = window;
+    SDL_Window *toplevel = window;
 
     // Find the topmost parent
-    while (topmost->parent != NULL) {
-        topmost = topmost->parent;
+    while (SDL_WINDOW_IS_POPUP(toplevel)) {
+        toplevel = toplevel->parent;
     }
 
-    return topmost;
+    return toplevel;
 }
 
 static void Cocoa_SetKeyboardFocus(SDL_Window *window)
 {
-    SDL_Window *topmost = GetTopmostWindow(window);
-    SDL_CocoaWindowData *topmost_data;
+    SDL_Window *toplevel = GetParentToplevelWindow(window);
+    SDL_CocoaWindowData *toplevel_data;
 
-    topmost_data = (__bridge SDL_CocoaWindowData *)topmost->internal;
-    topmost_data.keyboard_focus = window;
-    SDL_SetKeyboardFocus(window);
+    toplevel_data = (__bridge SDL_CocoaWindowData *)toplevel->internal;
+    toplevel_data.keyboard_focus = window;
+
+    if (!window->is_hiding && !window->is_destroying) {
+    	SDL_SetKeyboardFocus(window);
+    }
 }
 
 static void Cocoa_SendExposedEventIfVisible(SDL_Window *window)
@@ -696,11 +699,15 @@ static NSCursor *Cocoa_GetDesiredCursor(void)
     isMiniaturizing = NO;
     isDragAreaRunning = NO;
     pendingWindowWarpX = pendingWindowWarpY = FLT_MAX;
+    liveResizeTimer = nil;
 
     center = [NSNotificationCenter defaultCenter];
 
     if ([window delegate] != nil) {
         [center addObserver:self selector:@selector(windowDidExpose:) name:NSWindowDidExposeNotification object:window];
+        [center addObserver:self selector:@selector(windowDidChangeOcclusionState:) name:NSWindowDidChangeOcclusionStateNotification object:window];
+        [center addObserver:self selector:@selector(windowWillStartLiveResize:) name:NSWindowWillStartLiveResizeNotification object:window];
+        [center addObserver:self selector:@selector(windowDidEndLiveResize:) name:NSWindowDidEndLiveResizeNotification object:window];
         [center addObserver:self selector:@selector(windowWillMove:) name:NSWindowWillMoveNotification object:window];
         [center addObserver:self selector:@selector(windowDidMove:) name:NSWindowDidMoveNotification object:window];
         [center addObserver:self selector:@selector(windowDidResize:) name:NSWindowDidResizeNotification object:window];
@@ -718,7 +725,6 @@ static NSCursor *Cocoa_GetDesiredCursor(void)
         [center addObserver:self selector:@selector(windowDidExitFullScreen:) name:NSWindowDidExitFullScreenNotification object:window];
         [center addObserver:self selector:@selector(windowDidFailToEnterFullScreen:) name:@"NSWindowDidFailToEnterFullScreenNotification" object:window];
         [center addObserver:self selector:@selector(windowDidFailToExitFullScreen:) name:@"NSWindowDidFailToExitFullScreenNotification" object:window];
-        [center addObserver:self selector:@selector(windowDidChangeOcclusionState:) name:NSWindowDidChangeOcclusionStateNotification object:window];
     } else {
         [window setDelegate:self];
     }
@@ -853,6 +859,9 @@ static NSCursor *Cocoa_GetDesiredCursor(void)
 
     if ([window delegate] != self) {
         [center removeObserver:self name:NSWindowDidExposeNotification object:window];
+        [center removeObserver:self name:NSWindowDidChangeOcclusionStateNotification object:window];
+        [center removeObserver:self name:NSWindowWillStartLiveResizeNotification object:window];
+        [center removeObserver:self name:NSWindowDidEndLiveResizeNotification object:window];
         [center removeObserver:self name:NSWindowWillMoveNotification object:window];
         [center removeObserver:self name:NSWindowDidMoveNotification object:window];
         [center removeObserver:self name:NSWindowDidResizeNotification object:window];
@@ -870,7 +879,6 @@ static NSCursor *Cocoa_GetDesiredCursor(void)
         [center removeObserver:self name:NSWindowDidExitFullScreenNotification object:window];
         [center removeObserver:self name:@"NSWindowDidFailToEnterFullScreenNotification" object:window];
         [center removeObserver:self name:@"NSWindowDidFailToExitFullScreenNotification" object:window];
-        [center removeObserver:self name:NSWindowDidChangeOcclusionStateNotification object:window];
     } else {
         [window setDelegate:nil];
     }
@@ -995,6 +1003,26 @@ static NSCursor *Cocoa_GetDesiredCursor(void)
     } else {
         SDL_SendWindowEvent(_data.window, SDL_EVENT_WINDOW_OCCLUDED, 0, 0);
     }
+}
+
+- (void)windowWillStartLiveResize:(NSNotification *)aNotification
+{
+    // We'll try to maintain 60 FPS during live resizing
+    const NSTimeInterval interval = 1.0 / 60.0;
+    liveResizeTimer = [NSTimer scheduledTimerWithTimeInterval:interval
+                                                      repeats:TRUE
+                                                        block:^(NSTimer *unusedTimer)
+    {
+        SDL_OnWindowLiveResizeUpdate(_data.window);
+    }];
+
+    [[NSRunLoop currentRunLoop] addTimer:liveResizeTimer forMode:NSRunLoopCommonModes];
+}
+
+- (void)windowDidEndLiveResize:(NSNotification *)aNotification
+{
+    [liveResizeTimer invalidate];
+    liveResizeTimer = nil;
 }
 
 - (void)windowWillMove:(NSNotification *)aNotification
@@ -1819,7 +1847,7 @@ static void Cocoa_SendMouseButtonClicks(SDL_Mouse *mouse, NSEvent *theEvent, SDL
                  * events from being generated from touch events.
                  */
                 SDL_Window *window = NULL;
-                SDL_SendTouch(Cocoa_GetEventTimestamp([theEvent timestamp]), touchID, finger->id, window, false, 0, 0, 0);
+                SDL_SendTouch(Cocoa_GetEventTimestamp([theEvent timestamp]), touchID, finger->id, window, SDL_EVENT_FINGER_CANCELED, 0, 0, 0);
             }
             SDL_free(fingers);
         }
@@ -1889,11 +1917,13 @@ static void Cocoa_SendMouseButtonClicks(SDL_Mouse *mouse, NSEvent *theEvent, SDL
 
         switch (phase) {
         case NSTouchPhaseBegan:
-            SDL_SendTouch(Cocoa_GetEventTimestamp([theEvent timestamp]), touchId, fingerId, window, true, x, y, 1.0f);
+            SDL_SendTouch(Cocoa_GetEventTimestamp([theEvent timestamp]), touchId, fingerId, window, SDL_EVENT_FINGER_DOWN, x, y, 1.0f);
             break;
         case NSTouchPhaseEnded:
+            SDL_SendTouch(Cocoa_GetEventTimestamp([theEvent timestamp]), touchId, fingerId, window, SDL_EVENT_FINGER_UP, x, y, 1.0f);
+            break;
         case NSTouchPhaseCancelled:
-            SDL_SendTouch(Cocoa_GetEventTimestamp([theEvent timestamp]), touchId, fingerId, window, false, x, y, 1.0f);
+            SDL_SendTouch(Cocoa_GetEventTimestamp([theEvent timestamp]), touchId, fingerId, window, SDL_EVENT_FINGER_CANCELED, x, y, 1.0f);
             break;
         case NSTouchPhaseMoved:
             SDL_SendTouchMotion(Cocoa_GetEventTimestamp([theEvent timestamp]), touchId, fingerId, window, x, y, 1.0f);
@@ -2528,8 +2558,8 @@ void Cocoa_HideWindow(SDL_VideoDevice *_this, SDL_Window *window)
             if (window == SDL_GetKeyboardFocus()) {
                 SDL_Window *new_focus = window->parent;
 
-                // Find the highest level window that isn't being hidden or destroyed.
-                while (new_focus->parent != NULL && (new_focus->is_hiding || new_focus->is_destroying)) {
+                // Find the highest level window, up to the next toplevel, that isn't being hidden or destroyed.
+                while (SDL_WINDOW_IS_POPUP(new_focus) && (new_focus->is_hiding || new_focus->is_destroying)) {
                     new_focus = new_focus->parent;
                 }
 
@@ -2961,7 +2991,7 @@ void Cocoa_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
             NSArray *contexts;
 
 #endif // SDL_VIDEO_OPENGL
-            SDL_Window *topmost = GetTopmostWindow(window);
+            SDL_Window *topmost = GetParentToplevelWindow(window);
             SDL_CocoaWindowData *topmost_data = (__bridge SDL_CocoaWindowData *)topmost->internal;
 
             /* Reset the input focus of the root window if this window is still set as keyboard focus.
@@ -2971,7 +3001,7 @@ void Cocoa_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
              */
             if (topmost_data.keyboard_focus == window) {
                 SDL_Window *new_focus = window;
-                while (new_focus->parent && (new_focus->is_hiding || new_focus->is_destroying)) {
+                while (SDL_WINDOW_IS_POPUP(new_focus) && (new_focus->is_hiding || new_focus->is_destroying)) {
                     new_focus = new_focus->parent;
                 }
 
