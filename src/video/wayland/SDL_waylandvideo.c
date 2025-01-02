@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -647,6 +647,11 @@ static void display_handle_done(void *data,
 
     if (driverdata->index > -1) {
         dpy = SDL_GetDisplay(driverdata->index);
+
+        /* XXX: This can never happen, but jump threading during aggressive LTO can generate a warning without this check. */
+        if (!dpy) {
+            dpy = &driverdata->placeholder;
+        }
     } else {
         dpy = &driverdata->placeholder;
     }
