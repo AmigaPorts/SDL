@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -93,6 +93,10 @@ typedef struct SDL_DialogFileFilter
  * The filter argument is the index of the filter that was selected, or -1 if
  * no filter was selected or if the platform or method doesn't support
  * fetching the selected filter.
+ *
+ * In Android, the `filelist` are `content://` URIs. They should be opened
+ * using SDL_IOFromFile() with appropriate modes. This applies both to open
+ * and save file dialog.
  *
  * \param userdata an app-provided pointer, for the callback's use.
  * \param filelist the file(s) chosen by the user.

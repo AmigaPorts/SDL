@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -162,7 +162,7 @@ static DWORD GetWindowStyle(SDL_Window *window)
     DWORD style = 0;
 
     if (SDL_WINDOW_IS_POPUP(window)) {
-        style |= WS_POPUP;
+        style |= WS_POPUP | WS_THICKFRAME;
     } else if (window->flags & SDL_WINDOW_FULLSCREEN) {
         style |= STYLE_FULLSCREEN;
     } else {
@@ -180,13 +180,22 @@ static DWORD GetWindowStyle(SDL_Window *window)
             style |= STYLE_NORMAL;
         }
 
-        if (window->flags & SDL_WINDOW_RESIZABLE) {
+        /* The WS_MAXIMIZEBOX style flag needs to be retained for as long as the window is maximized,
+         * or restoration from minimized can fail, and leaving maximized can result in an odd size.
+         */
+        if ((window->flags & SDL_WINDOW_RESIZABLE) || (window->internal && window->internal->force_resizable)) {
             /* You can have a borderless resizable window, but Windows doesn't always draw it correctly,
                see https://bugzilla.libsdl.org/show_bug.cgi?id=4466
              */
             if (!(window->flags & SDL_WINDOW_BORDERLESS) ||
                 SDL_GetHintBoolean("SDL_BORDERLESS_RESIZABLE_STYLE", false)) {
                 style |= STYLE_RESIZABLE;
+            } else if (window->flags & SDL_WINDOW_BORDERLESS) {
+                /* Even if the resizable style hint isn't set, WS_MAXIMIZEBOX is still needed, or
+                 * maximizing the window will make it fullscreen and cover the taskbar, instead
+                 * of entering a normal maximized state that fills the usable desktop area.
+                 */
+                style |= WS_MAXIMIZEBOX;
             }
         }
 
@@ -260,7 +269,7 @@ static bool WIN_AdjustWindowRectWithStyle(SDL_Window *window, DWORD style, DWORD
     /* borderless windows will have WM_NCCALCSIZE return 0 for the non-client area. When this happens, it looks like windows will send a resize message
        expanding the window client area to the previous window + chrome size, so shouldn't need to adjust the window size for the set styles.
      */
-    if (!(window->flags & SDL_WINDOW_BORDERLESS)) {
+    if (!(window->flags & SDL_WINDOW_BORDERLESS) && !SDL_WINDOW_IS_POPUP(window)) {
 #if defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)
         AdjustWindowRectEx(&rect, style, menu, 0);
 #else
@@ -664,19 +673,21 @@ static void CleanupWindowData(SDL_VideoDevice *_this, SDL_Window *window)
     window->internal = NULL;
 }
 
-static void WIN_ConstrainPopup(SDL_Window *window)
+static void WIN_ConstrainPopup(SDL_Window *window, bool output_to_pending)
 {
     // Clamp popup windows to the output borders
     if (SDL_WINDOW_IS_POPUP(window)) {
         SDL_Window *w;
         SDL_DisplayID displayID;
         SDL_Rect rect;
-        int abs_x = window->floating.x;
-        int abs_y = window->floating.y;
+        int abs_x = window->last_position_pending ? window->pending.x : window->floating.x;
+        int abs_y = window->last_position_pending ? window->pending.y : window->floating.y;
+        const int width = window->last_size_pending ? window->pending.w : window->floating.w;
+        const int height = window->last_size_pending ? window->pending.h : window->floating.h;
         int offset_x = 0, offset_y = 0;
 
         // Calculate the total offset from the parents
-        for (w = window->parent; w->parent; w = w->parent) {
+        for (w = window->parent; SDL_WINDOW_IS_POPUP(w); w = w->parent) {
             offset_x += w->x;
             offset_y += w->y;
         }
@@ -689,31 +700,43 @@ static void WIN_ConstrainPopup(SDL_Window *window)
         // Constrain the popup window to the display of the toplevel parent
         displayID = SDL_GetDisplayForWindow(w);
         SDL_GetDisplayBounds(displayID, &rect);
-        if (abs_x + window->floating.w > rect.x + rect.w) {
-            abs_x -= (abs_x + window->floating.w) - (rect.x + rect.w);
+        if (abs_x + width > rect.x + rect.w) {
+            abs_x -= (abs_x + width) - (rect.x + rect.w);
         }
-        if (abs_y + window->floating.h > rect.y + rect.h) {
-            abs_y -= (abs_y + window->floating.h) - (rect.y + rect.h);
+        if (abs_y + height > rect.y + rect.h) {
+            abs_y -= (abs_y + height) - (rect.y + rect.h);
         }
         abs_x = SDL_max(abs_x, rect.x);
         abs_y = SDL_max(abs_y, rect.y);
 
-        window->floating.x = abs_x - offset_x;
-        window->floating.y = abs_y - offset_y;
+        if (output_to_pending) {
+            window->pending.x = abs_x - offset_x;
+            window->pending.y = abs_y - offset_y;
+            window->pending.w = width;
+            window->pending.h = height;
+        } else {
+            window->floating.x = abs_x - offset_x;
+            window->floating.y = abs_y - offset_y;
+            window->floating.w = width;
+            window->floating.h = height;
+        }
     }
 }
 
 static void WIN_SetKeyboardFocus(SDL_Window *window)
 {
-    SDL_Window *topmost = window;
+    SDL_Window *toplevel = window;
 
     // Find the topmost parent
-    while (topmost->parent) {
-        topmost = topmost->parent;
+    while (SDL_WINDOW_IS_POPUP(toplevel)) {
+        toplevel = toplevel->parent;
     }
 
-    topmost->internal->keyboard_focus = window;
-    SDL_SetKeyboardFocus(window);
+    toplevel->internal->keyboard_focus = window;
+
+    if (!window->is_hiding && !window->is_destroying) {
+    	SDL_SetKeyboardFocus(window);
+    }
 }
 
 bool WIN_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props)
@@ -742,9 +765,12 @@ bool WIN_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Properties
         styleEx |= GetWindowStyleEx(window);
 
         // Figure out what the window area will be
-        WIN_ConstrainPopup(window);
+        WIN_ConstrainPopup(window, false);
         WIN_AdjustWindowRectWithStyle(window, style, styleEx, FALSE, &x, &y, &w, &h, SDL_WINDOWRECT_FLOATING);
 
+        int gx, gy;
+        SDL_RelativeToGlobalForWindow(window, window->floating.x, window->floating.y, &gx, &gy);
+        SDL_Log("Create at: %i,%i (%i,%i)", gx, gy, x, y);
         hwnd = CreateWindowEx(styleEx, SDL_Appname, TEXT(""), style,
                               x, y, w, h, parent, NULL, SDL_Instance, NULL);
         if (!hwnd) {
@@ -938,7 +964,7 @@ bool WIN_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window *window)
      */
     if (!(window->flags & SDL_WINDOW_FULLSCREEN)) {
         if (!(window->flags & (SDL_WINDOW_MAXIMIZED | SDL_WINDOW_MINIMIZED))) {
-            WIN_ConstrainPopup(window);
+            WIN_ConstrainPopup(window, true);
             return WIN_SetWindowPositionInternal(window,
                                                  window->internal->copybits_flag | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_NOSIZE |
                                                  SWP_NOACTIVATE, SDL_WINDOWRECT_PENDING);
@@ -1053,7 +1079,7 @@ void WIN_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
 
     bool bActivate = SDL_GetHintBoolean(SDL_HINT_WINDOW_ACTIVATE_WHEN_SHOWN, true);
 
-    if (window->parent) {
+    if (SDL_WINDOW_IS_POPUP(window)) {
         // Update our position in case our parent moved while we were hidden
         WIN_SetWindowPosition(_this, window);
     }
@@ -1095,8 +1121,8 @@ void WIN_HideWindow(SDL_VideoDevice *_this, SDL_Window *window)
         if (window == SDL_GetKeyboardFocus()) {
             SDL_Window *new_focus = window->parent;
 
-            // Find the highest level window that isn't being hidden or destroyed.
-            while (new_focus->parent && (new_focus->is_hiding || new_focus->is_destroying)) {
+            // Find the highest level window, up to the toplevel parent, that isn't being hidden or destroyed.
+            while (SDL_WINDOW_IS_POPUP(new_focus) && (new_focus->is_hiding || new_focus->is_destroying)) {
                 new_focus = new_focus->parent;
             }
 

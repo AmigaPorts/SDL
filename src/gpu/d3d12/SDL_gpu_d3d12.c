@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -191,23 +191,23 @@ typedef enum D3D12BufferType
 
 static SDL_GPUTextureFormat SwapchainCompositionToSDLTextureFormat[] = {
     SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM,      // SDR
-    SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM_SRGB, // SDR_SRGB
-    SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT,  // HDR
-    SDL_GPU_TEXTUREFORMAT_R10G10B10A2_UNORM,   // HDR_ADVANCED
+    SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM_SRGB, // SDR_LINEAR
+    SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT,  // HDR_EXTENDED_LINEAR
+    SDL_GPU_TEXTUREFORMAT_R10G10B10A2_UNORM,   // HDR10_ST2084
 };
 
 static DXGI_FORMAT SwapchainCompositionToTextureFormat[] = {
-    DXGI_FORMAT_B8G8R8A8_UNORM,                // SDR
-    DXGI_FORMAT_B8G8R8A8_UNORM, /* SDR_SRGB */ // NOTE: The RTV uses the sRGB format
-    DXGI_FORMAT_R16G16B16A16_FLOAT,            // HDR
-    DXGI_FORMAT_R10G10B10A2_UNORM,             // HDR_ADVANCED
+    DXGI_FORMAT_B8G8R8A8_UNORM,     // SDR
+    DXGI_FORMAT_B8G8R8A8_UNORM,     // SDR_LINEAR (NOTE: The RTV uses the sRGB format)
+    DXGI_FORMAT_R16G16B16A16_FLOAT, // HDR_EXTENDED_LINEAR
+    DXGI_FORMAT_R10G10B10A2_UNORM,  // HDR10_ST2084
 };
 
 static DXGI_COLOR_SPACE_TYPE SwapchainCompositionToColorSpace[] = {
     DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709,   // SDR
-    DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709,   // SDR_SRGB
-    DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709,   // HDR
-    DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 // HDR_ADVANCED
+    DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709,   // SDR_LINEAR
+    DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709,   // HDR_EXTENDED_LINEAR
+    DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 // HDR10_ST2084
 };
 
 static D3D12_BLEND SDLToD3D12_BlendFactor[] = {
@@ -566,6 +566,14 @@ static D3D12_PRIMITIVE_TOPOLOGY SDLToD3D12_PrimitiveType[] = {
     D3D_PRIMITIVE_TOPOLOGY_LINELIST,      // LINELIST
     D3D_PRIMITIVE_TOPOLOGY_LINESTRIP,     // LINESTRIP
     D3D_PRIMITIVE_TOPOLOGY_POINTLIST      // POINTLIST
+};
+
+static D3D12_PRIMITIVE_TOPOLOGY_TYPE SDLToD3D12_PrimitiveTopologyType[] = {
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, // TRIANGLELIST
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE, // TRIANGLESTRIP
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE,     // LINELIST
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE,     // LINESTRIP
+    D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT     // POINTLIST
 };
 
 static D3D12_TEXTURE_ADDRESS_MODE SDLToD3D12_SamplerAddressMode[] = {
@@ -2864,7 +2872,7 @@ static SDL_GPUGraphicsPipeline *D3D12_CreateGraphicsPipeline(
         D3D12_INTERNAL_ConvertVertexInputState(createinfo->vertex_input_state, inputElementDescs, renderer->semantic);
     }
 
-    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    psoDesc.PrimitiveTopologyType = SDLToD3D12_PrimitiveTopologyType[createinfo->primitive_type];
 
     if (!D3D12_INTERNAL_ConvertRasterizerState(createinfo->rasterizer_state, &psoDesc.RasterizerState)) {
         return NULL;

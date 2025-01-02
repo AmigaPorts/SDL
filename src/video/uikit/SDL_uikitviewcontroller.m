@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -528,6 +528,7 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
         return true;
     }
 
+    [self resetTextState];
     return [textField resignFirstResponder];
 }
 
@@ -657,8 +658,7 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 {
     if (textField.markedTextRange == nil) {
         if (textField.text.length < 16) {
-            textField.text = obligateForBackspace;
-            committedText = textField.text;
+            [self resetTextState];
         }
     }
     return YES;
@@ -673,6 +673,12 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
         SDL_StopTextInput(window);
     }
     return YES;
+}
+
+- (void)resetTextState
+{
+    textField.text = obligateForBackspace;
+    committedText = textField.text;
 }
 
 #endif

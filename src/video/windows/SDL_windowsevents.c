@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -1405,7 +1405,7 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             constrain_max_size = FALSE;
         }
 
-        if (!(SDL_GetWindowFlags(data->window) & SDL_WINDOW_BORDERLESS)) {
+        if (!(SDL_GetWindowFlags(data->window) & SDL_WINDOW_BORDERLESS) && !SDL_WINDOW_IS_POPUP(data->window)) {
             size.top = 0;
             size.left = 0;
             size.bottom = h;
@@ -1450,6 +1450,13 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         break;
 #endif // WM_GETMINMAXINFO
 
+    case WM_WINDOWPOSCHANGING:
+
+        if (data->expected_resize) {
+            returnCode = 0;
+        }
+        break;
+
     case WM_WINDOWPOSCHANGED:
     {
         SDL_Window *win;
@@ -1473,8 +1480,13 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                 SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_RESTORED, 0, 0);
             }
             SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_MAXIMIZED, 0, 0);
+            data->force_resizable = true;
         } else if (data->window->flags & (SDL_WINDOW_MAXIMIZED | SDL_WINDOW_MINIMIZED)) {
             SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_RESTORED, 0, 0);
+
+            // If resizable was forced on for the maximized window, clear the style flags now.
+            data->force_resizable = false;
+            WIN_SetWindowResizable(SDL_GetVideoDevice(), data->window, !!(data->window->flags & SDL_WINDOW_RESIZABLE));
         }
 
         if (windowpos->flags & SWP_HIDEWINDOW) {
@@ -1521,8 +1533,8 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
         // Update the position of any child windows
         for (win = data->window->first_child; win; win = win->next_sibling) {
-            // Don't update hidden child windows, their relative position doesn't change
-            if (!(win->flags & SDL_WINDOW_HIDDEN)) {
+            // Don't update hidden child popup windows, their relative position doesn't change
+            if (SDL_WINDOW_IS_POPUP(win) && !(win->flags & SDL_WINDOW_HIDDEN)) {
                 WIN_SetWindowPositionInternal(win, SWP_NOCOPYBITS | SWP_NOACTIVATE, SDL_WINDOWRECT_CURRENT);
             }
         }
@@ -1541,12 +1553,7 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     case WM_TIMER:
     {
         if (wParam == (UINT_PTR)SDL_IterateMainCallbacks) {
-            if (SDL_HasMainCallbacks()) {
-                SDL_IterateMainCallbacks(false);
-            } else {
-                // Send an expose event so the application can redraw
-                SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_EXPOSED, 0, 0);
-            }
+            SDL_OnWindowLiveResizeUpdate(data->window);
             return 0;
         }
     } break;
@@ -1592,11 +1599,11 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                 switch (edge) {
                 case WMSZ_LEFT:
                 case WMSZ_RIGHT:
-                    h = (int)(w / data->window->max_aspect);
+                    h = (int)SDL_roundf(w / data->window->max_aspect);
                     break;
                 default:
                     // resizing via corners or top or bottom
-                    w = (int)(h*data->window->max_aspect);
+                    w = (int)SDL_roundf(h * data->window->max_aspect);
                     break;
                 }
             } else {
@@ -1811,13 +1818,13 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
                     // FIXME: Should we use the input->dwTime field for the tick source of the timestamp?
                     if (input->dwFlags & TOUCHEVENTF_DOWN) {
-                        SDL_SendTouch(WIN_GetEventTimestamp(), touchId, fingerId, data->window, true, x, y, 1.0f);
+                        SDL_SendTouch(WIN_GetEventTimestamp(), touchId, fingerId, data->window, SDL_EVENT_FINGER_DOWN, x, y, 1.0f);
                     }
                     if (input->dwFlags & TOUCHEVENTF_MOVE) {
                         SDL_SendTouchMotion(WIN_GetEventTimestamp(), touchId, fingerId, data->window, x, y, 1.0f);
                     }
                     if (input->dwFlags & TOUCHEVENTF_UP) {
-                        SDL_SendTouch(WIN_GetEventTimestamp(), touchId, fingerId, data->window, false, x, y, 1.0f);
+                        SDL_SendTouch(WIN_GetEventTimestamp(), touchId, fingerId, data->window, SDL_EVENT_FINGER_UP, x, y, 1.0f);
                     }
                 }
             }
@@ -1878,14 +1885,14 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             NCCALCSIZE_PARAMS *params = (NCCALCSIZE_PARAMS *)lParam;
             WINDOWPLACEMENT placement;
             if (GetWindowPlacement(hwnd, &placement) && placement.showCmd == SW_MAXIMIZE) {
-                // Maximized borderless windows should use the full monitor size
-                HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
+                // Maximized borderless windows should use the monitor work area.
+                HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
                 if (hMonitor) {
                     MONITORINFO info;
                     SDL_zero(info);
                     info.cbSize = sizeof(info);
                     if (GetMonitorInfo(hMonitor, &info)) {
-                        params->rgrc[0] = info.rcMonitor;
+                        params->rgrc[0] = info.rcWork;
                     }
                 }
             } else if (!(window_flags & SDL_WINDOW_RESIZABLE)) {
@@ -1984,7 +1991,7 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             {
                 RECT rect = { 0 };
 
-                if (!(data->window->flags & SDL_WINDOW_BORDERLESS)) {
+                if (!(data->window->flags & SDL_WINDOW_BORDERLESS) && !SDL_WINDOW_IS_POPUP(data->window)) {
                     WIN_AdjustWindowRectForHWND(hwnd, &rect, prevDPI);
                 }
 
@@ -2001,7 +2008,7 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                 rect.right = query_client_w_win;
                 rect.bottom = query_client_h_win;
 
-                if (!(data->window->flags & SDL_WINDOW_BORDERLESS)) {
+                if (!(data->window->flags & SDL_WINDOW_BORDERLESS) && !SDL_WINDOW_IS_POPUP(data->window)) {
                     WIN_AdjustWindowRectForHWND(hwnd, &rect, nextDPI);
                 }
 

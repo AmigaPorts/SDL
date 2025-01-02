@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
   Copyright (C) 2024 Wim Taymans <wtaymans@redhat.com>
 
   This software is provided 'as-is', without any express or implied
@@ -98,9 +98,9 @@ static struct pw_properties *(*PIPEWIRE_pw_properties_new_dict)(const struct spa
 static int (*PIPEWIRE_pw_properties_set)(struct pw_properties *, const char *, const char *);
 static int (*PIPEWIRE_pw_properties_setf)(struct pw_properties *, const char *, const char *, ...) SPA_PRINTF_FUNC(3, 4);
 
-#ifdef SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC
+#ifdef SDL_CAMERA_DRIVER_PIPEWIRE_DYNAMIC
 
-static const char *pipewire_library = SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC;
+static const char *pipewire_library = SDL_CAMERA_DRIVER_PIPEWIRE_DYNAMIC;
 static SDL_SharedObject *pipewire_handle = NULL;
 
 static bool pipewire_dlsym(const char *fn, void **addr)
@@ -146,7 +146,7 @@ static void unload_pipewire_library(void)
     // Nothing to do
 }
 
-#endif // SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC
+#endif // SDL_CAMERA_DRIVER_PIPEWIRE_DYNAMIC
 
 static bool load_pipewire_syms(void)
 {

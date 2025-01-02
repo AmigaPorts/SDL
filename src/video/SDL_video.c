@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,6 +24,7 @@
 // The high-level video driver subsystem
 
 #include "SDL_sysvideo.h"
+#include "SDL_clipboard_c.h"
 #include "SDL_egl_c.h"
 #include "SDL_surface_c.h"
 #include "SDL_pixels_c.h"
@@ -35,6 +36,7 @@
 #include "../timer/SDL_timer_c.h"
 #include "../camera/SDL_camera_c.h"
 #include "../render/SDL_sysrender.h"
+#include "../main/SDL_main_callbacks.h"
 
 #ifdef SDL_VIDEO_OPENGL
 #include <SDL3/SDL_opengl.h>
@@ -525,7 +527,7 @@ static int SDLCALL cmpmodes(const void *A, const void *B)
     return 0;
 }
 
-static bool SDL_UninitializedVideo(void)
+bool SDL_UninitializedVideo(void)
 {
     return SDL_SetError("Video subsystem has not been initialized");
 }
@@ -1571,6 +1573,10 @@ void SDL_RelativeToGlobalForWindow(SDL_Window *window, int rel_x, int rel_y, int
         for (w = window->parent; w; w = w->parent) {
             rel_x += w->x;
             rel_y += w->y;
+
+            if (!SDL_WINDOW_IS_POPUP(w)) {
+                break;
+            }
         }
     }
 
@@ -1591,6 +1597,10 @@ void SDL_GlobalToRelativeForWindow(SDL_Window *window, int abs_x, int abs_y, int
         for (w = window->parent; w; w = w->parent) {
             abs_x -= w->x;
             abs_y -= w->y;
+
+            if (!SDL_WINDOW_IS_POPUP(w)) {
+                break;
+            }
         }
     }
 
@@ -3139,8 +3149,6 @@ bool SDL_GetWindowSizeInPixels(SDL_Window *window, int *w, int *h)
 
 bool SDL_SetWindowMinimumSize(SDL_Window *window, int min_w, int min_h)
 {
-    int w, h;
-
     CHECK_WINDOW_MAGIC(window, false);
     if (min_w < 0) {
         return SDL_InvalidParamError("min_w");
@@ -3162,8 +3170,10 @@ bool SDL_SetWindowMinimumSize(SDL_Window *window, int min_w, int min_h)
     }
 
     // Ensure that window is not smaller than minimal size
-    w = window->min_w ? SDL_max(window->floating.w, window->min_w) : window->floating.w;
-    h = window->min_h ? SDL_max(window->floating.h, window->min_h) : window->floating.h;
+    int w = window->last_size_pending ? window->pending.w : window->floating.w;
+    int h = window->last_size_pending ? window->pending.h : window->floating.h;
+    w = window->min_w ? SDL_max(w, window->min_w) : w;
+    h = window->min_h ? SDL_max(h, window->min_h) : h;
     return SDL_SetWindowSize(window, w, h);
 }
 
@@ -3181,8 +3191,6 @@ bool SDL_GetWindowMinimumSize(SDL_Window *window, int *min_w, int *min_h)
 
 bool SDL_SetWindowMaximumSize(SDL_Window *window, int max_w, int max_h)
 {
-    int w, h;
-
     CHECK_WINDOW_MAGIC(window, false);
     if (max_w < 0) {
         return SDL_InvalidParamError("max_w");
@@ -3204,8 +3212,10 @@ bool SDL_SetWindowMaximumSize(SDL_Window *window, int max_w, int max_h)
     }
 
     // Ensure that window is not larger than maximal size
-    w = window->max_w ? SDL_min(window->floating.w, window->max_w) : window->floating.w;
-    h = window->max_h ? SDL_min(window->floating.h, window->max_h) : window->floating.h;
+    int w = window->last_size_pending ? window->pending.w : window->floating.w;
+    int h = window->last_size_pending ? window->pending.h : window->floating.h;
+    w = window->max_w ? SDL_min(w, window->max_w) : w;
+    h = window->max_h ? SDL_min(h, window->max_h) : h;
     return SDL_SetWindowSize(window, w, h);
 }
 
@@ -3275,7 +3285,8 @@ bool SDL_HideWindow(SDL_Window *window)
     }
 
     // Store the flags for restoration later.
-    window->pending_flags = window->flags;
+    const SDL_WindowFlags pending_mask = (SDL_WINDOW_MAXIMIZED | SDL_WINDOW_MINIMIZED | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_KEYBOARD_GRABBED | SDL_WINDOW_MOUSE_GRABBED);
+    window->pending_flags = (window->flags & pending_mask);
 
     window->is_hiding = true;
     if (_this->HideWindow) {
@@ -3991,6 +4002,16 @@ void SDL_OnWindowPixelSizeChanged(SDL_Window *window)
     window->surface_valid = false;
 }
 
+void SDL_OnWindowLiveResizeUpdate(SDL_Window *window)
+{
+    if (SDL_HasMainCallbacks()) {
+        SDL_IterateMainCallbacks(false);
+    } else {
+        // Send an expose event so the application can redraw
+        SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_EXPOSED, 0, 0);
+    }
+}
+
 static void SDL_CheckWindowSafeAreaChanged(SDL_Window *window)
 {
     SDL_Rect rect;
@@ -4321,6 +4342,8 @@ void SDL_VideoQuit(void)
     SDL_assert(_this->num_displays == 0);
     SDL_free(_this->displays);
     _this->displays = NULL;
+
+    SDL_CancelClipboardData(0);
 
     if (_this->primary_selection_text) {
         SDL_free(_this->primary_selection_text);
@@ -5543,7 +5566,7 @@ bool SDL_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
         if (!titlecpy) {
             return false;
         }
-        SDL_strlcpy(titlecpy, messageboxdata->title, slen);
+        SDL_memcpy(titlecpy, messageboxdata->title, slen);
     }
 
     if (messageboxdata->message) {
@@ -5553,7 +5576,7 @@ bool SDL_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
             SDL_small_free(titlecpy, titleisstack);
             return false;
         }
-        SDL_strlcpy(msgcpy, messageboxdata->message, slen);
+        SDL_memcpy(msgcpy, messageboxdata->message, slen);
     }
 
     (void)SDL_AtomicIncRef(&SDL_messagebox_count);

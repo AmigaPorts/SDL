@@ -146,18 +146,9 @@ From iOS 17 onward, the key now defaults to true.
 Notes -- Reading and Writing files
 ==============================================================================
 
-Each application installed on iPhone resides in a sandbox which includes its own Application Home directory.  Your application may not access files outside this directory.
+Each application installed on iPhone resides in a sandbox which includes its own application home directory. Your application may not access files outside this directory.
 
-Once your application is installed its directory tree looks like:
-
-    MySDLApp Home/
-        MySDLApp.app
-        Documents/
-        Library/
-            Preferences/
-        tmp/
-
-When your SDL based iPhone application starts up, it sets the working directory to the main bundle (MySDLApp Home/MySDLApp.app), where your application resources are stored.  You cannot write to this directory.  Instead, I advise you to write document files to "../Documents/" and preferences to "../Library/Preferences".
+When your SDL based iPhone application starts up, it sets the working directory to the main bundle, where your application resources are stored. You cannot write to this directory. Instead, you should write document files to the directory returned by SDL_GetUserFolder(SDL_FOLDER_DOCUMENTS) and preferences to the directory returned by SDL_GetPrefPath().
 
 More information on this subject is available here:
 http://developer.apple.com/library/ios/#documentation/iPhone/Conceptual/iPhoneOSProgrammingGuide/Introduction/Introduction.html
@@ -176,7 +167,7 @@ This target requires Xcode 11 or later. The target will simply fail to build if 
 
 In addition, on Apple platforms, main() cannot be in a dynamically loaded library.
 However, unlike in SDL2, in SDL3 SDL_main is implemented inline in SDL_main.h, so you don't need to link against a static libSDL3main.lib, and you don't need to copy a .c file from the SDL3 source either.
-This means that iOS apps which used the statically-linked libSDL3.lib and now link with the xcframwork can just `#include <SDL3/SDL_main.h>` in the source file that contains their standard `int main(int argc; char *argv[])` function to get a header-only SDL_main implementation that calls the `SDL_RunApp()` with your standard main function.
+This means that iOS apps which used the statically-linked libSDL3.lib and now link with the xcframwork can just `#include <SDL3/SDL_main.h>` in the source file that contains their standard `int main(int argc, char *argv[])` function to get a header-only SDL_main implementation that calls the `SDL_RunApp()` with your standard main function.
 
 Using an xcFramework is similar to using a regular framework. However, issues have been seen with the build system not seeing the headers in the xcFramework. To remedy this, add the path to the xcFramework in your app's target ==> Build Settings ==> Framework Search Paths and mark it recursive (this is critical). Also critical is to remove "*.framework" from Build Settings ==> Sub-Directories to Exclude in Recursive Searches. Clean the build folder, and on your next build the build system should be able to see any of these in your code, as expected:
 

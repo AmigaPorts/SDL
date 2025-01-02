@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -1233,3 +1233,25 @@
 #define SDL_RenderTextureAffine SDL_RenderTextureAffine_REAL
 #define SDL_WaitAndAcquireGPUSwapchainTexture SDL_WaitAndAcquireGPUSwapchainTexture_REAL
 #define SDL_RenderDebugTextFormat SDL_RenderDebugTextFormat_REAL
+#define SDL_CreateTray SDL_CreateTray_REAL
+#define SDL_SetTrayIcon SDL_SetTrayIcon_REAL
+#define SDL_SetTrayTooltip SDL_SetTrayTooltip_REAL
+#define SDL_CreateTrayMenu SDL_CreateTrayMenu_REAL
+#define SDL_CreateTraySubmenu SDL_CreateTraySubmenu_REAL
+#define SDL_GetTrayMenu SDL_GetTrayMenu_REAL
+#define SDL_GetTraySubmenu SDL_GetTraySubmenu_REAL
+#define SDL_GetTrayEntries SDL_GetTrayEntries_REAL
+#define SDL_RemoveTrayEntry SDL_RemoveTrayEntry_REAL
+#define SDL_InsertTrayEntryAt SDL_InsertTrayEntryAt_REAL
+#define SDL_SetTrayEntryLabel SDL_SetTrayEntryLabel_REAL
+#define SDL_GetTrayEntryLabel SDL_GetTrayEntryLabel_REAL
+#define SDL_SetTrayEntryChecked SDL_SetTrayEntryChecked_REAL
+#define SDL_GetTrayEntryChecked SDL_GetTrayEntryChecked_REAL
+#define SDL_SetTrayEntryEnabled SDL_SetTrayEntryEnabled_REAL
+#define SDL_GetTrayEntryEnabled SDL_GetTrayEntryEnabled_REAL
+#define SDL_SetTrayEntryCallback SDL_SetTrayEntryCallback_REAL
+#define SDL_DestroyTray SDL_DestroyTray_REAL
+#define SDL_GetTrayEntryParent SDL_GetTrayEntryParent_REAL
+#define SDL_GetTrayMenuParentEntry SDL_GetTrayMenuParentEntry_REAL
+#define SDL_GetTrayMenuParentTray SDL_GetTrayMenuParentTray_REAL
+#define SDL_GetThreadState SDL_GetThreadState_REAL

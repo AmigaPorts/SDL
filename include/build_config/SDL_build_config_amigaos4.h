@@ -407,4 +407,6 @@
 /* Enable dynamic libsamplerate support */
 /* #undef SDL_LIBSAMPLERATE_DYNAMIC */
 
+#define SDL_GPU_DISABLED 1
+
 #endif /* SDL_config_amigaos4_h_ */

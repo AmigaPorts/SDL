@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -67,7 +67,7 @@ SDL_DYNAPI_PROC(SDL_GPUComputePass*,SDL_BeginGPUComputePass,(SDL_GPUCommandBuffe
 SDL_DYNAPI_PROC(SDL_GPUCopyPass*,SDL_BeginGPUCopyPass,(SDL_GPUCommandBuffer *a),(a),return)
 SDL_DYNAPI_PROC(SDL_GPURenderPass*,SDL_BeginGPURenderPass,(SDL_GPUCommandBuffer *a, const SDL_GPUColorTargetInfo *b, Uint32 c, const SDL_GPUDepthStencilTargetInfo *d),(a,b,c,d),return)
 SDL_DYNAPI_PROC(bool,SDL_BindAudioStream,(SDL_AudioDeviceID a, SDL_AudioStream *b),(a,b),return)
-SDL_DYNAPI_PROC(bool,SDL_BindAudioStreams,(SDL_AudioDeviceID a, SDL_AudioStream **b, int c),(a,b,c),return)
+SDL_DYNAPI_PROC(bool,SDL_BindAudioStreams,(SDL_AudioDeviceID a, SDL_AudioStream * const *b, int c),(a,b,c),return)
 SDL_DYNAPI_PROC(void,SDL_BindGPUComputePipeline,(SDL_GPUComputePass *a, SDL_GPUComputePipeline *b),(a,b),)
 SDL_DYNAPI_PROC(void,SDL_BindGPUComputeSamplers,(SDL_GPUComputePass *a, Uint32 b, const SDL_GPUTextureSamplerBinding *c, Uint32 d),(a,b,c,d),)
 SDL_DYNAPI_PROC(void,SDL_BindGPUComputeStorageBuffers,(SDL_GPUComputePass *a, Uint32 b, SDL_GPUBuffer *const *c, Uint32 d),(a,b,c,d),)
@@ -972,7 +972,7 @@ SDL_DYNAPI_PROC(bool,SDL_TryLockSpinlock,(SDL_SpinLock *a),(a),return)
 SDL_DYNAPI_PROC(bool,SDL_TryWaitSemaphore,(SDL_Semaphore *a),(a),return)
 SDL_DYNAPI_PROC(char*,SDL_UCS4ToUTF8,(Uint32 a, char *b),(a,b),return)
 SDL_DYNAPI_PROC(void,SDL_UnbindAudioStream,(SDL_AudioStream *a),(a),)
-SDL_DYNAPI_PROC(void,SDL_UnbindAudioStreams,(SDL_AudioStream **a, int b),(a,b),)
+SDL_DYNAPI_PROC(void,SDL_UnbindAudioStreams,(SDL_AudioStream * const *a, int b),(a,b),)
 SDL_DYNAPI_PROC(void,SDL_UnloadObject,(SDL_SharedObject *a),(a),)
 SDL_DYNAPI_PROC(bool,SDL_UnlockAudioStream,(SDL_AudioStream *a),(a),return)
 SDL_DYNAPI_PROC(void,SDL_UnlockJoysticks,(void),(),)
@@ -1241,3 +1241,25 @@ SDL_DYNAPI_PROC(bool,SDL_WaitAndAcquireGPUSwapchainTexture,(SDL_GPUCommandBuffer
 #ifndef SDL_DYNAPI_PROC_NO_VARARGS
 SDL_DYNAPI_PROC(bool,SDL_RenderDebugTextFormat,(SDL_Renderer *a,float b,float c,SDL_PRINTF_FORMAT_STRING const char *d,...),(a,b,c,d),return)
 #endif
+SDL_DYNAPI_PROC(SDL_Tray*,SDL_CreateTray,(SDL_Surface *a,const char *b),(a,b),return)
+SDL_DYNAPI_PROC(void,SDL_SetTrayIcon,(SDL_Tray *a,SDL_Surface *b),(a,b),)
+SDL_DYNAPI_PROC(void,SDL_SetTrayTooltip,(SDL_Tray *a,const char *b),(a,b),)
+SDL_DYNAPI_PROC(SDL_TrayMenu*,SDL_CreateTrayMenu,(SDL_Tray *a),(a),return)
+SDL_DYNAPI_PROC(SDL_TrayMenu*,SDL_CreateTraySubmenu,(SDL_TrayEntry *a),(a),return)
+SDL_DYNAPI_PROC(SDL_TrayMenu*,SDL_GetTrayMenu,(SDL_Tray *a),(a),return)
+SDL_DYNAPI_PROC(SDL_TrayMenu*,SDL_GetTraySubmenu,(SDL_TrayEntry *a),(a),return)
+SDL_DYNAPI_PROC(const SDL_TrayEntry**,SDL_GetTrayEntries,(SDL_TrayMenu *a,int *b),(a,b),return)
+SDL_DYNAPI_PROC(void,SDL_RemoveTrayEntry,(SDL_TrayEntry *a),(a),)
+SDL_DYNAPI_PROC(SDL_TrayEntry*,SDL_InsertTrayEntryAt,(SDL_TrayMenu *a,int b,const char *c,SDL_TrayEntryFlags d),(a,b,c,d),return)
+SDL_DYNAPI_PROC(void,SDL_SetTrayEntryLabel,(SDL_TrayEntry *a,const char *b),(a,b),)
+SDL_DYNAPI_PROC(const char*,SDL_GetTrayEntryLabel,(SDL_TrayEntry *a),(a),return)
+SDL_DYNAPI_PROC(void,SDL_SetTrayEntryChecked,(SDL_TrayEntry *a,bool b),(a,b),)
+SDL_DYNAPI_PROC(bool,SDL_GetTrayEntryChecked,(SDL_TrayEntry *a),(a),return)
+SDL_DYNAPI_PROC(void,SDL_SetTrayEntryEnabled,(SDL_TrayEntry *a,bool b),(a,b),)
+SDL_DYNAPI_PROC(bool,SDL_GetTrayEntryEnabled,(SDL_TrayEntry *a),(a),return)
+SDL_DYNAPI_PROC(void,SDL_SetTrayEntryCallback,(SDL_TrayEntry *a,SDL_TrayCallback b,void *c),(a,b,c),)
+SDL_DYNAPI_PROC(void,SDL_DestroyTray,(SDL_Tray *a),(a),)
+SDL_DYNAPI_PROC(SDL_TrayMenu*,SDL_GetTrayEntryParent,(SDL_TrayEntry *a),(a),return)
+SDL_DYNAPI_PROC(SDL_TrayEntry*,SDL_GetTrayMenuParentEntry,(SDL_TrayMenu *a),(a),return)
+SDL_DYNAPI_PROC(SDL_Tray*,SDL_GetTrayMenuParentTray,(SDL_TrayMenu *a),(a),return)
+SDL_DYNAPI_PROC(SDL_ThreadState,SDL_GetThreadState,(SDL_Thread *a),(a),return)

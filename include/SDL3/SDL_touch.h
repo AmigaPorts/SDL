@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -53,12 +53,10 @@ typedef Uint64 SDL_TouchID;
 /**
  * A unique ID for a single finger on a touch device.
  *
- * This ID is valid for the time the finger (stylus, etc) is touching, and is
- * never reused for the lifetime of the application.
- *
- * The same physical finger will have a different ID if it lifts off the touch
- * device and then starts a new touch, so this ID tracks the lifetime of a
- * single continuous touch.
+ * This ID is valid for the time the finger (stylus, etc) is touching and will
+ * be unique for all fingers currently in contact, so this ID tracks the
+ * lifetime of a single continuous touch. This value may represent an index, a
+ * pointer, or some other unique ID, depending on the platform.
  *
  * The value 0 is an invalid ID.
  *

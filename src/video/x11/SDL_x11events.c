@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -1382,8 +1382,8 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
                 }
 #endif
                 for (w = data->window->first_child; w; w = w->next_sibling) {
-                    // Don't update hidden child windows, their relative position doesn't change
-                    if (!(w->flags & SDL_WINDOW_HIDDEN)) {
+                    // Don't update hidden child popup windows, their relative position doesn't change
+                    if (SDL_WINDOW_IS_POPUP(w) && !(w->flags & SDL_WINDOW_HIDDEN)) {
                         X11_UpdateWindowPosition(w, true);
                     }
                 }

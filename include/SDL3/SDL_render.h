@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -441,6 +441,11 @@ extern SDL_DECLSPEC const char * SDLCALL SDL_GetRendererName(SDL_Renderer *rende
  *   swapchain images, or potential frames in flight, used by the Vulkan
  *   renderer
  *
+ * With the gpu renderer:
+ *
+ * - `SDL_PROP_RENDERER_GPU_DEVICE_POINTER`: the SDL_GPUDevice associated with
+ *   the renderer
+ *
  * \param renderer the rendering context.
  * \returns a valid property ID on success or 0 on failure; call
  *          SDL_GetError() for more information.
@@ -474,6 +479,7 @@ extern SDL_DECLSPEC SDL_PropertiesID SDLCALL SDL_GetRendererProperties(SDL_Rende
 #define SDL_PROP_RENDERER_VULKAN_GRAPHICS_QUEUE_FAMILY_INDEX_NUMBER "SDL.renderer.vulkan.graphics_queue_family_index"
 #define SDL_PROP_RENDERER_VULKAN_PRESENT_QUEUE_FAMILY_INDEX_NUMBER  "SDL.renderer.vulkan.present_queue_family_index"
 #define SDL_PROP_RENDERER_VULKAN_SWAPCHAIN_IMAGE_COUNT_NUMBER       "SDL.renderer.vulkan.swapchain_image_count"
+#define SDL_PROP_RENDERER_GPU_DEVICE_POINTER                        "SDL.renderer.gpu.device"
 
 /**
  * Get the output size in pixels of a rendering context.
@@ -527,9 +533,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetCurrentRenderOutputSize(SDL_Renderer *re
  * \param access one of the enumerated values in SDL_TextureAccess.
  * \param w the width of the texture in pixels.
  * \param h the height of the texture in pixels.
- * \returns a pointer to the created texture or NULL if no rendering context
- *          was active, the format was unsupported, or the width or height
- *          were out of range; call SDL_GetError() for more information.
+ * \returns the created texture or NULL on failure; call SDL_GetError() for
+ *          more information.
  *
  * \threadsafety This function should only be called on the main thread.
  *
@@ -667,9 +672,8 @@ extern SDL_DECLSPEC SDL_Texture * SDLCALL SDL_CreateTextureFromSurface(SDL_Rende
  *
  * \param renderer the rendering context.
  * \param props the properties to use.
- * \returns a pointer to the created texture or NULL if no rendering context
- *          was active, the format was unsupported, or the width or height
- *          were out of range; call SDL_GetError() for more information.
+ * \returns the created texture or NULL on failure; call SDL_GetError() for
+ *          more information.
  *
  * \threadsafety This function should only be called on the main thread.
  *
