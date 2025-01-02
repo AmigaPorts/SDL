@@ -215,7 +215,7 @@ SDL_SignalSemaphore(SDL_Semaphore * sem)
 
     IExec->MutexRelease(sem->mutex);
 
-    dprintf("Semaphore %p value %u\n", sem, sem->count);
+    //dprintf("Semaphore %p value %u\n", sem, sem->count);
 }
 
 #endif /* SDL_THREAD_AMIGAOS4 */

@@ -90,7 +90,7 @@ static ULONG OS4_ScanVars(const struct Hook *hook, CONST_APTR extradata, struct 
 {
     if (extradata && msg) {
         SDL_Environment *env = (SDL_Environment*)extradata;
-        dprintf("Name '%s', var '%s'\n", msg->sv_Name, msg->sv_Var);
+        //dprintf("Name '%s', var '%s'\n", msg->sv_Name, msg->sv_Var);
         SDL_InsertIntoHashTable(env->strings, SDL_strdup(msg->sv_Name), SDL_strdup(msg->sv_Var));
     } else {
         dprintf("extradata %p, msg %p\n", extradata, msg);
