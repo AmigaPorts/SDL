@@ -86,7 +86,7 @@ OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture, SDL_Properties
 }
 
 static bool
-OS4_ModulateRGB(SDL_Renderer * renderer, SDL_Texture * texture, Uint8 * src, int pitch)
+OS4_ModulateRGB(SDL_Texture * texture, Uint8 * src, int pitch)
 {
     bool result = false;
 
@@ -194,7 +194,7 @@ OS4_SetTextureColorMod(SDL_Renderer * renderer, SDL_Texture * texture)
             }
         }
 
-        if (!OS4_ModulateRGB(renderer, texture, texturedata->rambuf, texture->w * sizeof(Uint32))) {
+        if (!OS4_ModulateRGB(texture, texturedata->rambuf, texture->w * sizeof(Uint32))) {
             return SDL_SetError("RGB modulation failed");
         }
 
@@ -240,7 +240,7 @@ OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
         }
 
         // This can be really slow, if done per frame
-        if (!OS4_ModulateRGB(renderer, texture, (Uint8 *)pixels, pitch)) {
+        if (!OS4_ModulateRGB(texture, (Uint8 *)pixels, pitch)) {
             return SDL_SetError("RGB modulation failed");
         }
     }
