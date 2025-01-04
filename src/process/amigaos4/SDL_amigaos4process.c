@@ -67,7 +67,7 @@ static bool OS4_GetStreamBPTR(SDL_PropertiesID props, const char *property, BPTR
         return SDL_SetError("%s is not set", property);
     }
 
-    BPTR bptr = (BPTR)SDL_GetPointerProperty(props, SDL_PROP_IOSTREAM_AMIGAOS4_POINTER, ZERO);
+    BPTR bptr = (BPTR)SDL_GetPointerProperty(SDL_GetIOProperties(io), SDL_PROP_IOSTREAM_AMIGAOS4_POINTER, ZERO);
     if (bptr == ZERO) {
         return SDL_SetError("%s doesn't have SDL_PROP_IOSTREAM_AMIGAOS4_POINTER available", property);
     }
@@ -332,7 +332,7 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
     case SDL_PROCESS_STDIO_REDIRECT:
         BPTR file = ZERO;
         if (OS4_GetStreamBPTR(props, SDL_PROP_PROCESS_CREATE_STDOUT_POINTER, &file)) {
-            outputHandle = file;
+            outputHandle = IDOS->DupFileHandle(file);
             dprintf("Redirected output handle %p\n", outputHandle);
         } else {
             dprintf("Failed to get redirected STDOUT BPTR\n"); // TODO
@@ -415,6 +415,7 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
         dprintf("error handle ZERO\n");
     }
 
+    // TODO: doesn't fail on non-existing command
     const int32 error = IDOS->SystemTags(command,
                                    SYS_Asynch, TRUE,
                                    SYS_Input, inputHandle,
