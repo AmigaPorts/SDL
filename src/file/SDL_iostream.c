@@ -377,7 +377,7 @@ static BPTR SDLCALL amigaos4_file_open(const char *filename, const char *mode)
 {
     if (!IDOS) {
         dprintf("IDOS nullptr\n");
-        return 0;
+        return ZERO;
     }
 
     dprintf("filename '%s' mode '%s'\n", filename, mode);
@@ -406,7 +406,13 @@ static BPTR SDLCALL amigaos4_file_open(const char *filename, const char *mode)
 
     dprintf("BPTR %p\n", bptr);
 
-    if (!bptr) {
+    if (bptr) {
+        // Use shared to mode to allow a child process to write the file
+        const int32 success = IDOS->ChangeMode(CHANGE_FH, bptr, CHANGE_MODE_SHARED);
+        if (!success) {
+            dprintf("Failed to change %p to shared mode\n", bptr);
+        }
+    } else {
         SDL_SetError("Failed to open file (error %ld)", IDOS->IoErr());
     }
 
@@ -576,6 +582,7 @@ static bool SDLCALL amigaos4_file_close(void *userdata)
         if (!IDOS->FClose(iodata->bptr)) {
             status = SDL_SetError("Error closing datastream (error %ld)", IDOS->IoErr());
         }
+        iodata->bptr = ZERO;
     }
     SDL_free(iodata);
     return status;
