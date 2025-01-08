@@ -47,7 +47,7 @@ static bool OS4_SetupStream(SDL_Process *process, BPTR bptr, const char *mode, c
     const int32 oldBlockingMode = IDOS->SetBlockingMode(bptr, SBM_NON_BLOCKING);
 
     if (oldBlockingMode <= 0) {
-        dprintf("SetBlockingMode() returned %d (error %ld)\n", oldBlockingMode, IDOS->IoErr());
+        dprintf("SetBlockingMode() returned %ld (error %ld)\n", oldBlockingMode, IDOS->IoErr());
     }
 
     SDL_IOStream *io = SDL_IOFromBPTR(bptr, mode, true);
@@ -104,6 +104,7 @@ static char* OS4_MakeCommandLine(char* const *args)
     // so that test fails because arguments are not passed as an array here.
     for (index = 0; args[index]; index++) {
         SDL_strlcat(command, args[index], len);
+
         if (args[index + 1]) {
             SDL_strlcat(command, " ", len);
         }
@@ -170,7 +171,7 @@ static void OS4_FinalCode(int32 returnCode, int32 finalData, struct ExecBase *sy
         return;
     }
 
-    dprintf("Process %u return code %d, final data %p\n", data->pid, returnCode, finalData);
+    dprintf("Process %lu return code %ld, final data %p\n", data->pid, returnCode, finalData);
 
     data->exitCode = returnCode;
 }
@@ -260,8 +261,6 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
     bool redirect_stderr = SDL_GetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_TO_STDOUT_BOOLEAN, false) &&
                            !SDL_HasProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER);
 
-    // TODO: background process?
-
     SDL_Environment *env = SDL_GetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ENVIRONMENT_POINTER, SDL_GetEnvironment());
     char **envp = SDL_GetEnvironmentVariables(env);
     if (!envp) {
@@ -274,6 +273,16 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
         dprintf("Failed to allocate process data\n");
         SDL_free(envp);
         return SDL_OutOfMemory();
+    }
+
+    BPTR lock = IDOS->Lock(args[0], SHARED_LOCK);
+
+    if (lock) {
+        IDOS->UnLock(lock);
+    } else {
+        dprintf("Failed to lock '%s' (%ld)\n", args[0], IDOS->IoErr());
+        SDL_free(envp);
+        return SDL_SetError("Failed to lock '%s'", args[0]);
     }
 
     char *command = OS4_MakeCommandLine(args);
@@ -301,7 +310,7 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
             inputHandle = IDOS->DupFileHandle(file);
             dprintf("Redirected input handle %p\n", inputHandle);
         } else {
-            dprintf("Failed to get redirected STDIN BPTR\n"); // TODO
+            dprintf("Failed to get redirected STDIN BPTR\n");
             goto fail;
         }
         break;
@@ -335,7 +344,7 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
             outputHandle = IDOS->DupFileHandle(file);
             dprintf("Redirected output handle %p\n", outputHandle);
         } else {
-            dprintf("Failed to get redirected STDOUT BPTR\n"); // TODO
+            dprintf("Failed to get redirected STDOUT BPTR\n");
             goto fail;
         }
         break;
@@ -363,7 +372,7 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
     }
 
     if (redirect_stderr) {
-        errorHandle = IDOS->DupFileHandle(IDOS->Output()); // TODO
+        errorHandle = IDOS->DupFileHandle(IDOS->Output());
         if (errorHandle == ZERO) {
             dprintf("Failed to duplicate error handle (error %ld)\n", IDOS->IoErr());
         }
@@ -375,7 +384,7 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
                 errorHandle = IDOS->DupFileHandle(file);
                 dprintf("Redirected error handle %p\n", errorHandle);
             } else {
-                dprintf("Failed to get redirected STDERR BPTR\n"); // TODO
+                dprintf("Failed to get redirected STDERR BPTR\n");
                 goto fail;
             }
             break;
@@ -415,9 +424,10 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
         dprintf("error handle ZERO\n");
     }
 
-    // TODO: doesn't fail on non-existing command
+    dprintf("Process is%s asynchronous\n", process->background ? "" : " not");
+
     const int32 error = IDOS->SystemTags(command,
-                                   SYS_Asynch, TRUE,
+                                   SYS_Asynch, process->background ? TRUE : FALSE,
                                    SYS_Input, inputHandle,
                                    SYS_Output, outputHandle,
                                    SYS_Error, errorHandle,
@@ -436,13 +446,16 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
     OS4_FreeEnvVariables(variables);
 
     if (error == -1) {
-        dprintf("Failed to start process '%s' (error %d)\n", args[0], ioErr);
-        return SDL_SetError("Failed to start process");
+        dprintf("Failed to start process '%s'. SystemTags() returned %ld (error %ld)\n", args[0], error, ioErr);
+        return SDL_SetError("Failed to start process '%s'", args[0]);
     }
 
-    data->pid = ioErr; // DOS 51.77
-
-    dprintf("'%s' started with pid %u\n", args[0], data->pid);
+    if (process->background) {
+        data->pid = ioErr; // DOS 51.77
+        dprintf("'%s' started with pid %u\n", args[0], data->pid);
+    } else {
+        data->pid = 1234; // synchronous process is finished, set a non-zero value for testprocess
+    }
 
     SDL_SetNumberProperty(process->props, SDL_PROP_PROCESS_PID_NUMBER, data->pid);
 
@@ -476,7 +489,14 @@ fail:
     SDL_free(command);
     OS4_FreeEnvVariables(variables);
 
-    // TODO: pipe cleanup
+    OS4_Close(&stdin_pipe[READ_END], "stdin_pipe read end");
+    OS4_Close(&stdin_pipe[WRITE_END], "stdin_pipe write end");
+
+    OS4_Close(&stdout_pipe[READ_END], "stdout_pipe read end");
+    OS4_Close(&stdout_pipe[WRITE_END], "stdout_pipe write end");
+
+    OS4_Close(&stderr_pipe[READ_END], "stderr_pipe read end");
+    OS4_Close(&stderr_pipe[WRITE_END], "stderr_pipe write end");
 
     OS4_Close(&inputHandle, "input handle");
     OS4_Close(&outputHandle, "output handle");
@@ -488,7 +508,7 @@ fail:
 static int32 OS4_ProcessHook(struct Hook *hook, uint32 pid, struct Process *process)
 {
     if (pid == process->pr_ProcessID) {
-        dprintf("Send SIGBREAKF_C to PID %u (%p)\n", pid, process);
+        dprintf("Send SIGBREAKF_C to PID %lu (%p)\n", pid, process);
         IExec->Signal((struct Task*)process, SIGBREAKF_CTRL_C);
         return TRUE;
     }
@@ -521,30 +541,36 @@ bool SDL_SYS_KillProcess(SDL_Process *process, bool force)
 
 bool SDL_SYS_WaitProcess(SDL_Process *process, bool block, int *exitcode)
 {
+    if (!process->background) {
+        *exitcode = process->internal->exitCode;
+        dprintf("Synchronous process, exit code %ld\n", *exitcode);
+        return true;
+    }
+
     if (!IDOS) {
         return SDL_SetError("IDOS nullptr");
     }
 
     const uint32 pid = process->internal->pid;
 
-    dprintf("Waiting for process %u (block %d)\n", pid, block);
+    dprintf("Waiting for process %lu (block %d)\n", pid, block);
 
     if (block) {
         const int32 found = IDOS->WaitForChildExit(pid);
         if (found) {
-            dprintf("Found, exitCode %d\n", process->internal->exitCode);
+            dprintf("Found, exitCode %ld\n", process->internal->exitCode);
             *exitcode = process->internal->exitCode;
         } else {
-            dprintf("Failed, error %d\n", IDOS->IoErr());
+            dprintf("Failed, error %ld\n", IDOS->IoErr());
             //return SDL_SetError("Failed to wait process");
         }
     } else {
         const int32 found = IDOS->CheckForChildExit(pid);
         if (found) {
-            dprintf("Process %u is running\n", pid);
+            dprintf("Process %lu is running\n", pid);
             return false;
         } else {
-            dprintf("Process %u not found, error %d\n", pid, IDOS->IoErr());
+            dprintf("Process %lu not found, error %ld\n", pid, IDOS->IoErr());
         }
     }
     return true;
