@@ -21,10 +21,10 @@
 #ifndef SDL_OS4DEBUG_H
 #define SDL_OS4DEBUG_H
 
-#include <proto/exec.h>
-
 #ifdef DEBUG
-# define dprintf(format, args...) IExec->DebugPrintF("[%s] " format, __PRETTY_FUNCTION__ , ## args)
+void OS4_DebugPrintF(const char* const fmt, ...) __attribute__ ((format (printf, 1, 2)));
+
+# define dprintf(format, args...) OS4_DebugPrintF("[%s] " format, __PRETTY_FUNCTION__ , ## args)
 #else
 # define dprintf(format, args...)
 #endif
