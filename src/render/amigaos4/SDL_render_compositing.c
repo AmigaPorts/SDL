@@ -452,7 +452,7 @@ OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, int count,
                 static Uint32 counter = 0;
 
                 if ((counter++ % 100) == 0) {
-                    dprintf("CompositeTags: %d (fails: %u)\n", ret_code, counter);
+                    dprintf("CompositeTags: %ld (fails: %u)\n", ret_code, counter);
                 }
             }
         }
@@ -510,7 +510,7 @@ OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Ver
         static Uint32 counter = 0;
 
         if ((counter++ % 100) == 0) {
-            dprintf("CompositeTags: %d (fails: %u)\n", ret_code, counter);
+            dprintf("CompositeTags: %lu (fails: %u)\n", ret_code, counter);
         }
 
         return SDL_SetError("CompositeTags failed");
@@ -558,7 +558,7 @@ OS4_RenderGeometry(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_V
         static Uint32 counter = 0;
 
         if ((counter++ % 100) == 0) {
-            dprintf("CompositeTags: %d (fails: %u)\n", ret_code, counter);
+            dprintf("CompositeTags: %lu (fails: %u)\n", ret_code, counter);
         }
 
         return SDL_SetError("CompositeTags failed");
@@ -654,7 +654,7 @@ OS4_RenderPresent(SDL_Renderer * renderer)
             ILayers->UnlockLayer(syswin->WLayer);
 
             if (ret != -1) {
-                dprintf("BltBitMapTags(): %d\n", ret);
+                dprintf("BltBitMapTags(): %ld\n", ret);
                 return false;
             }
         }

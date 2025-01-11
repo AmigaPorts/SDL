@@ -87,7 +87,7 @@ OS4_CreateDirTree(const char* path)
         IDOS->UnLock(lock);
     } else {
         const int32 err = IDOS->IoErr();
-        dprintf("Failed to create dir tree '%s' (err %d)\n", temp, err);
+        dprintf("Failed to create dir tree '%s' (err %ld)\n", temp, err);
         if (err == ERROR_OBJECT_EXISTS) {
             dprintf("Object already exists -> success\n");
             success = true;
@@ -188,7 +188,7 @@ char *SDL_SYS_GetCurrentDirectory(void)
                 dprintf("Failed to allocate path buffer\n");
             }
         } else {
-            dprintf("Failed to get name from lock (err %d)\n", IDOS->IoErr());
+            dprintf("Failed to get name from lock (err %ld)\n", IDOS->IoErr());
         }
     } else {
         dprintf("Failed to get the lock to the current directory\n");
@@ -231,14 +231,14 @@ int SDL_SYS_EnumerateDirectory(const char *path, const char *dirname, SDL_Enumer
         const int32 err = IDOS->IoErr();
 
         if (ERROR_NO_MORE_ENTRIES != err) {
-            dprintf("Error %d while examining path '%s'\n", err, path);
+            dprintf("Error %ld while examining path '%s'\n", err, path);
             SDL_SetError("Error while examining path");
             success = -1;
         }
 
         IDOS->ReleaseDirContext(context);
     } else {
-        dprintf("Failed to obtain dir context for '%s' (err %d)\n", path, IDOS->IoErr());
+        dprintf("Failed to obtain dir context for '%s' (err %ld)\n", path, IDOS->IoErr());
         SDL_SetError("Failed to obtain dir context");
         success = -1;
     }
@@ -259,7 +259,7 @@ bool SDL_SYS_RemovePath(const char *path)
         dprintf("'%s' deleted\n", path);
     } else {
         const int32 err = IDOS->IoErr();
-        dprintf("Failed to delete '%s' (err %d)\n", path, err);
+        dprintf("Failed to delete '%s' (err %ld)\n", path, err);
         if (err == ERROR_OBJECT_NOT_FOUND) {
             dprintf("Object doesn't exist -> success\n");
         } else {
@@ -283,7 +283,7 @@ bool SDL_SYS_RenamePath(const char *oldpath, const char *newpath)
     if (success) {
         dprintf("'%s' renamed to '%s'\n", oldpath, newpath);
     } else {
-        dprintf("Failed to rename '%s' to '%s' (err %d)\n", oldpath, newpath, IDOS->IoErr());
+        dprintf("Failed to rename '%s' to '%s' (err %ld)\n", oldpath, newpath, IDOS->IoErr());
         SDL_SetError("Failed to rename path");
         return false;
     }
@@ -308,7 +308,7 @@ bool SDL_SYS_CopyFile(const char *oldpath, const char *newpath)
         return true;
     }
 
-    dprintf("System(%s) failed with %d\n", buffer, result);
+    dprintf("System(%s) failed with %ld\n", buffer, result);
     return false;
 }
 
@@ -340,7 +340,7 @@ bool SDL_SYS_GetPathInfo(const char *path, SDL_PathInfo *info)
 
         IDOS->FreeDosObject(DOS_EXAMINEDATA, data);
     } else {
-        dprintf("Failed to examine object '%s' (err %d)\n", path, IDOS->IoErr());
+        dprintf("Failed to examine object '%s' (err %ld)\n", path, IDOS->IoErr());
         SDL_SetError("Failed to examine object");
         info->type = SDL_PATHTYPE_NONE;
         return false;

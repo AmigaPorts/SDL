@@ -70,7 +70,7 @@ OS4_GetWindowSize(struct Window * window, int * width, int * height)
         TAG_DONE);
 
     if (ret) {
-        dprintf("GetWindowAttrs() returned %d\n", ret);
+        dprintf("GetWindowAttrs() returned %ld\n", ret);
     }
 }
 
@@ -632,7 +632,7 @@ OS4_SetWindowBox(SDL_VideoDevice *_this, SDL_Window * window, SDL_Rect * rect)
             TAG_DONE);
 
         if (ret) {
-            dprintf("SetWindowAttrs() returned %d\n", ret);
+            dprintf("SetWindowAttrs() returned %ld\n", ret);
         }
 
         if (data->glContext) {
@@ -701,7 +701,7 @@ OS4_ShowWindow(SDL_VideoDevice *_this, SDL_Window * window)
             TAG_DONE);
 
         if (ret) {
-            dprintf("SetWindowAttrs() returned %d\n", ret);
+            dprintf("SetWindowAttrs() returned %ld\n", ret);
         }
 
         if (OS4_IsFullscreen(window)) {
@@ -943,7 +943,7 @@ OS4_SetWindowGrabPrivate(SDL_VideoDevice *_this, struct Window * w, bool activat
         }
 
         if (ret) {
-            dprintf("SetWindowAttrs() returned %d\n", ret);
+            dprintf("SetWindowAttrs() returned %ld\n", ret);
         } else {
             dprintf("Window %p ('%s') input was %s\n",
                 w, w->Title, activate ? "grabbed" : "released");
@@ -968,7 +968,7 @@ OS4_DestroyWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
     SDL_WindowData *data = window->internal;
 
-    dprintf("Called for '%s' (flags 0x%X)\n", window->title, window->flags);
+    dprintf("Called for '%s' (flags 0x%llX)\n", window->title, window->flags);
 
     if (!data) {
         dprintf("data is NULL\n");

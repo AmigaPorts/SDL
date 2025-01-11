@@ -70,7 +70,7 @@ void OS4_InitTimerSubSystem(void)
     struct EClockVal cv;
     OS4_TimerFrequency = SDL3_ITimer->ReadEClock(&cv);
 
-    dprintf("Timer frequency %u Hz\n", OS4_TimerFrequency);
+    dprintf("Timer frequency %lu Hz\n", OS4_TimerFrequency);
 }
 
 void OS4_QuitTimerSubSystem(void)

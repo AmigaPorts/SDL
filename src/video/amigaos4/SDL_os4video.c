@@ -114,7 +114,7 @@ OS4_RegisterApplication(SDL_VideoDevice *_this)
                                                     TAG_DONE);
 
     if (data->appId) {
-        dprintf("Registered application with id %u\n", data->appId);
+        dprintf("Registered application with id %lu\n", data->appId);
     } else {
         dprintf("Failed to register application\n");
     }
@@ -129,7 +129,7 @@ OS4_UnregisterApplication(SDL_VideoDevice *_this)
                                                       TAG_DONE);
 
     if (result) {
-        dprintf("Unregistered application with id %u\n", data->appId);
+        dprintf("Unregistered application with id %lu\n", data->appId);
     } else {
         dprintf("Failed to unregister application\n");
     }

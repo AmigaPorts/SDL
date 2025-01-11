@@ -168,7 +168,7 @@ SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore * sem, Sint64 timeout)
             }
 
             if (signals & MUTEX_SIGNAL) {
-                dprintf("Semaphore %p got signal 0x%X\n", sem, signals);
+                dprintf("Semaphore %p got signal 0x%lX\n", sem, signals);
             }
         }
     }

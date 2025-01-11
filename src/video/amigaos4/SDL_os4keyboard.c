@@ -85,7 +85,7 @@ OS4_TranslateUnicode(SDL_VideoDevice *_this, uint16 code, uint32 qualifier, APTR
             dprintf("Failed to map ANSI code %u to unicode\n", buffer[0]);
         }
     } else {
-        dprintf("MapRawKey(code %u, qualifier %u) returned %d\n", code, qualifier, res);
+        dprintf("MapRawKey(code %u, qualifier %lu) returned %d\n", code, qualifier, res);
     }
 
     return 0;

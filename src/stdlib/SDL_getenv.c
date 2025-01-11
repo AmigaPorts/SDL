@@ -152,7 +152,7 @@ SDL_Environment *SDL_CreateEnvironment(bool populated)
         if (IDOS) {
             const int32 found = IDOS->ScanVars(&OS4_ScanVarsHook, /*LV_VAR | GVF_LOCAL_ONLY*/ 0, env);
             if (!found) {
-                dprintf("ScanVars failed, err %d\n", IDOS->IoErr());
+                dprintf("ScanVars failed, err %ld\n", IDOS->IoErr());
             }
         } else {
             dprintf("IDOS nullptr\n");

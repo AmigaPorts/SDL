@@ -165,7 +165,7 @@ OS4_GL_AllocateBuffers(SDL_VideoDevice *_this, int width, int height, int depth,
 #endif
     IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_PIXELFORMAT);
 
-    dprintf("SRC FMT %u, SRC2 FMT %u, DST FMT %u\n", srcFmt, src2Fmt, dstFmt);
+    dprintf("SRC FMT %lu, SRC2 FMT %lu, DST FMT %lu\n", srcFmt, src2Fmt, dstFmt);
 
     return true;
 }
@@ -366,7 +366,7 @@ OS4_GL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
                                     TAG_DONE);
                 return true;
             } else {
-                dprintf("BltBitMapTags() returned %d\n", blitRet);
+                dprintf("BltBitMapTags() returned %ld\n", blitRet);
                 return SDL_SetError("BltBitMapTags failed");
             }
         } else {

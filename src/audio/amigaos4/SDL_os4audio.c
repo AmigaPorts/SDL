@@ -313,7 +313,7 @@ OS4_OpenDevice(SDL_AudioDevice *_this)
             break;
     }
 
-    dprintf("AHI format 0x%X\n", os4data->ahiType);
+    dprintf("AHI format 0x%lX\n", os4data->ahiType);
 
     return true;
 }

@@ -22,6 +22,7 @@
 
 #if SDL_VIDEO_DRIVER_AMIGAOS4
 
+#include <proto/exec.h>
 #include <proto/intuition.h>
 #include <intuition/pointerclass.h>
 
@@ -252,7 +253,7 @@ static void
 OS4_SetPointerObjectOrTypeForWindow(struct Window * window, ULONG type, Object * object)
 {
     if (object || type) {
-        dprintf("Setting pointer object %p (type %d) for window %p\n", object, type, window);
+        dprintf("Setting pointer object %p (type %lu) for window %p\n", object, type, window);
     }
 
     if (window) {
@@ -489,7 +490,7 @@ OS4_WarpMouse(SDL_Window * window, float x, float y)
      */
     BOOL warpHostPointer = !relativeMouseMode && (window == SDL_GetMouseFocus());
 
-    dprintf("Warping mouse to %d, %d\n", x, y);
+    dprintf("Warping mouse to %f, %f\n", x, y);
 
     if (warpHostPointer) {
         struct Screen *screen = (window->flags & SDL_WINDOW_FULLSCREEN) ?

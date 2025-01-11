@@ -145,7 +145,7 @@ OS4_ExitThread(int32 returnCode, int32 finalData)
 
     OS4_ThreadNode *node = (OS4_ThreadNode *)finalData; // TODO: cannot use thisTask->tc_UserData if this is sometimes called from other process' context
 
-    dprintf("Called from task %p, finalData %p\n", thisTask, finalData);
+    dprintf("Called from task %p, finalData %p\n", thisTask, (void *)finalData);
 
     IExec->MutexObtain(control.children.mutex);
 

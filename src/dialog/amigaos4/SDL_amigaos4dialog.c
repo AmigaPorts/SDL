@@ -161,7 +161,7 @@ static void OS4_ShowDialog(OS4_DialogArgs *args)
         dprintf("Result %d\n", result);
 
         if (result) {
-            dprintf("Drawer '%s', file '%s', args %d\n", req->fr_Drawer, req->fr_File, req->fr_NumArgs);
+            dprintf("Drawer '%s', file '%s', args %ld\n", req->fr_Drawer, req->fr_File, req->fr_NumArgs);
 
             if (req->fr_NumArgs > 0) {
                 OS4_HandleMultiselection(req, args);
