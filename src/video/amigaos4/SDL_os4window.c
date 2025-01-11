@@ -67,7 +67,7 @@ OS4_GetWindowSize(_THIS, struct Window * window, int * width, int * height)
         TAG_DONE);
 
     if (ret) {
-        dprintf("GetWindowAttrs() returned %d\n", ret);
+        dprintf("GetWindowAttrs() returned %ld\n", ret);
     }
 }
 
@@ -540,7 +540,7 @@ OS4_SetWindowBox(_THIS, SDL_Window * window)
             TAG_DONE);
 
         if (ret) {
-            dprintf("SetWindowAttrs() returned %d\n", ret);
+            dprintf("SetWindowAttrs() returned %ld\n", ret);
         }
 
         if (SDL_IsShapedWindow(window)) {
@@ -603,7 +603,7 @@ OS4_ShowWindow(_THIS, SDL_Window * window)
             TAG_DONE);
 
         if (ret) {
-            dprintf("SetWindowAttrs() returned %d\n", ret);
+            dprintf("SetWindowAttrs() returned %ld\n", ret);
         }
 
         if (OS4_IsFullscreen(window)) {
@@ -809,7 +809,7 @@ OS4_SetWindowGrabPrivate(_THIS, struct Window * w, SDL_bool activate)
         }
 
         if (ret) {
-            dprintf("SetWindowAttrs() returned %d\n", ret);
+            dprintf("SetWindowAttrs() returned %ld\n", ret);
         } else {
             dprintf("Window %p ('%s') input was %s\n",
                 w, w->Title, activate ? "grabbed" : "released");

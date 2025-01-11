@@ -752,7 +752,7 @@ OS4_HandleIdcmpMessages(_THIS, struct MsgPort * msgPort)
                 break;
 
             default:
-                dprintf("Unknown event received class %d, code %d\n", msg.Class, msg.Code);
+                dprintf("Unknown event received class %lu, code %u\n", msg.Class, msg.Code);
                 break;
         }
     }

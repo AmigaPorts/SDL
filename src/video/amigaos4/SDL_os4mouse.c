@@ -22,6 +22,7 @@
 
 #if SDL_VIDEO_DRIVER_AMIGAOS4
 
+#include <proto/exec.h>
 #include <proto/intuition.h>
 #include <intuition/pointerclass.h>
 
@@ -254,7 +255,7 @@ static void
 OS4_SetPointerObjectOrTypeForWindow(struct Window * window, ULONG type, Object * object)
 {
     if (object || type) {
-        dprintf("Setting pointer object %p (type %d) for window %p\n", object, type, window);
+        dprintf("Setting pointer object %p (type %lu) for window %p\n", object, type, window);
     }
 
     if (window) {

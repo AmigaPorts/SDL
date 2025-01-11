@@ -360,7 +360,7 @@ OS4_OpenLibrary(STRPTR name, ULONG version)
 {
     struct Library* lib = IExec->OpenLibrary(name, version);
 
-    dprintf("Opening '%s' version %u %s (address %p)\n",
+    dprintf("Opening '%s' version %lu %s (address %p)\n",
         name, version, lib ? "succeeded" : "FAILED", lib);
 
     return lib;

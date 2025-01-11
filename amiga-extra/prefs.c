@@ -216,7 +216,7 @@ DeleteVariable(const char* const name, uint32 control)
 #endif
         IDOS->DeleteVar(name, LV_VAR | GVF_GLOBAL_ONLY | control);
 
-    dprintf("name '%s', success %d\n", name, success);
+    dprintf("name '%s', success %ld\n", name, success);
 }
 
 static void
@@ -847,7 +847,7 @@ HandleMenuPick(Object* windowObject)
                 HandleIconify(windowObject);
                 break;
             default:
-                dprintf("Unknown menu item %d\n", id);
+                dprintf("Unknown menu item %lu\n", id);
                 break;
          }
     }
