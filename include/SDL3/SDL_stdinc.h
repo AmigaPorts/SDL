@@ -22,11 +22,25 @@
 /**
  * # CategoryStdinc
  *
- * This is a general header that includes C language support. It implements a
- * subset of the C runtime APIs, but with an `SDL_` prefix. For most common
- * use cases, these should behave the same way as their C runtime equivalents,
- * but they may differ in how or whether they handle certain edge cases. When
- * in doubt, consult the documentation for details.
+ * SDL provides its own implementation of some of the most important C runtime
+ * functions.
+ *
+ * Using these functions allows an app to have access to common C
+ * functionality without depending on a specific C runtime (or a C runtime at
+ * all). More importantly, the SDL implementations work identically across
+ * platforms, so apps can avoid surprises like snprintf() behaving differently
+ * between Windows and Linux builds, or itoa() only existing on some
+ * platforms.
+ *
+ * For many of the most common functions, like SDL_memcpy, SDL might just call
+ * through to the usual C runtime behind the scenes, if it makes sense to do
+ * so (if it's faster and always available/reliable on a given platform),
+ * reducing library size and offering the most optimized option.
+ *
+ * SDL also offers other C-runtime-adjacent functionality in this header that
+ * either isn't, strictly speaking, part of any C runtime standards, like
+ * SDL_crc32() and SDL_reinterpret_cast, etc. It also offers a few better
+ * options, like SDL_strlcpy(), which functions as a safer form of strcpy().
  */
 
 #ifndef SDL_stdinc_h_
@@ -92,6 +106,32 @@ void *alloca(size_t);
 #  endif
 # endif
 #endif
+
+
+#ifdef SDL_WIKI_DOCUMENTATION_SECTION
+
+/**
+ * Don't let SDL use "long long" C types.
+ *
+ * SDL will define this if it believes the compiler doesn't understand the
+ * "long long" syntax for C datatypes. This can happen on older compilers.
+ *
+ * If _your_ compiler doesn't support "long long" but SDL doesn't know it, it
+ * is safe to define this yourself to build against the SDL headers.
+ *
+ * If this is defined, it will remove access to some C runtime support
+ * functions, like SDL_ulltoa and SDL_strtoll that refer to this datatype
+ * explicitly. The rest of SDL will still be available.
+ *
+ * SDL's own source code cannot be built with a compiler that has this
+ * defined, for various technical reasons.
+ */
+#define SDL_NOLONGLONG 1
+
+#elif defined(_MSC_VER) && (_MSC_VER < 1310)  /* long long introduced in Visual Studio.NET 2003 */
+#  define SDL_NOLONGLONG 1
+#endif
+
 
 #ifdef SDL_WIKI_DOCUMENTATION_SECTION
 
@@ -739,7 +779,9 @@ typedef Sint64 SDL_Time;
 #endif
 /* Specifically for the `long long` -- SDL-specific. */
 #ifdef SDL_PLATFORM_WINDOWS
+#ifndef SDL_NOLONGLONG
 SDL_COMPILE_TIME_ASSERT(longlong_size64, sizeof(long long) == 8); /* using I64 for windows - make sure `long long` is 64 bits. */
+#endif
 #define SDL_PRILL_PREFIX "I64"
 #else
 #define SDL_PRILL_PREFIX "ll"
@@ -1112,8 +1154,10 @@ SDL_COMPILE_TIME_ASSERT(uint32_size, sizeof(Uint32) == 4);
 SDL_COMPILE_TIME_ASSERT(sint32_size, sizeof(Sint32) == 4);
 SDL_COMPILE_TIME_ASSERT(uint64_size, sizeof(Uint64) == 8);
 SDL_COMPILE_TIME_ASSERT(sint64_size, sizeof(Sint64) == 8);
+#ifndef SDL_NOLONGLONG
 SDL_COMPILE_TIME_ASSERT(uint64_longlong, sizeof(Uint64) <= sizeof(unsigned long long));
 SDL_COMPILE_TIME_ASSERT(size_t_longlong, sizeof(size_t) <= sizeof(unsigned long long));
+#endif
 typedef struct SDL_alignment_test
 {
     Uint8 a;
@@ -3478,6 +3522,8 @@ extern SDL_DECLSPEC char * SDLCALL SDL_ltoa(long value, char *str, int radix);
  */
 extern SDL_DECLSPEC char * SDLCALL SDL_ultoa(unsigned long value, char *str, int radix);
 
+#ifndef SDL_NOLONGLONG
+
 /**
  * Convert a long long integer into a string.
  *
@@ -3533,6 +3579,7 @@ extern SDL_DECLSPEC char * SDLCALL SDL_lltoa(long long value, char *str, int rad
  * \sa SDL_ultoa
  */
 extern SDL_DECLSPEC char * SDLCALL SDL_ulltoa(unsigned long long value, char *str, int radix);
+#endif
 
 /**
  * Parse an `int` from a string.
@@ -3646,6 +3693,8 @@ extern SDL_DECLSPEC long SDLCALL SDL_strtol(const char *str, char **endp, int ba
  */
 extern SDL_DECLSPEC unsigned long SDLCALL SDL_strtoul(const char *str, char **endp, int base);
 
+#ifndef SDL_NOLONGLONG
+
 /**
  * Parse a `long long` from a string.
  *
@@ -3712,6 +3761,7 @@ extern SDL_DECLSPEC long long SDLCALL SDL_strtoll(const char *str, char **endp, 
  * \sa SDL_ulltoa
  */
 extern SDL_DECLSPEC unsigned long long SDLCALL SDL_strtoull(const char *str, char **endp, int base);
+#endif
 
 /**
  * Parse a `double` from a string.

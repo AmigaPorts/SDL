@@ -25,7 +25,7 @@
  * # CategoryIOStream
  *
  * SDL provides an abstract interface for reading and writing data streams. It
- * offers implementations for files, memory, etc, and the app can provideo
+ * offers implementations for files, memory, etc, and the app can provide
  * their own implementations, too.
  *
  * SDL_IOStream is not related to the standard C++ iostream class, other than
@@ -704,7 +704,7 @@ extern SDL_DECLSPEC void * SDLCALL SDL_LoadFile(const char *file, size_t *datasi
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
- * \since This function is available since SDL 3.2.0.
+ * \since This function is available since SDL 3.1.8.
  *
  * \sa SDL_SaveFile
  * \sa SDL_LoadFile_IO
@@ -714,14 +714,14 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SaveFile_IO(SDL_IOStream *src, const void *
 /**
  * Save all the data into a file path.
  *
- * \param file the path to read all available data from.
+ * \param file the path to write all available data into.
  * \param data the data to be written. If datasize is 0, may be NULL or a
  *             invalid pointer.
  * \param datasize the number of bytes to be written.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
- * \since This function is available since SDL 3.2.0.
+ * \since This function is available since SDL 3.1.8.
  *
  * \sa SDL_SaveFile_IO
  * \sa SDL_LoadFile

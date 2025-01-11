@@ -833,6 +833,13 @@ static void handle_configure_xdg_toplevel(void *data,
                 if (floating) {
                     width = window->floating.w;
                     height = window->floating.h;
+
+                    // Clamp the window to the toplevel bounds, if any are set.
+                    if (wind->shell_surface_status == WAYLAND_SHELL_SURFACE_STATUS_WAITING_FOR_CONFIGURE &&
+                        wind->toplevel_bounds.width && wind->toplevel_bounds.height) {
+                        width = SDL_min(wind->toplevel_bounds.width, width);
+                        height = SDL_min(wind->toplevel_bounds.height, height);
+                    }
                 } else {
                     width = window->windowed.w;
                     height = window->windowed.h;
@@ -972,7 +979,9 @@ static void handle_xdg_configure_toplevel_bounds(void *data,
                                                  struct xdg_toplevel *xdg_toplevel,
                                                  int32_t width, int32_t height)
 {
-    // NOP
+    SDL_WindowData *window = (SDL_WindowData *)data;
+    window->toplevel_bounds.width = width;
+    window->toplevel_bounds.height = height;
 }
 
 static void handle_xdg_toplevel_wm_capabilities(void *data,
@@ -1042,17 +1051,20 @@ static void handle_configure_xdg_popup(void *data,
         wind->requested.logical_height = height;
 
         if (wind->scale_to_display) {
-            x = PointToPixel(wind->sdlwindow->parent, x);
-            y = PointToPixel(wind->sdlwindow->parent, y);
             wind->requested.pixel_width = PointToPixel(wind->sdlwindow, width);
             wind->requested.pixel_height = PointToPixel(wind->sdlwindow, height);
         }
     }
 
-    wind->last_configure.width = width;
-    wind->last_configure.height = height;
+    if (wind->scale_to_display) {
+        x = PointToPixel(wind->sdlwindow->parent, x);
+        y = PointToPixel(wind->sdlwindow->parent, y);
+    }
 
     SDL_SendWindowEvent(wind->sdlwindow, SDL_EVENT_WINDOW_MOVED, x, y);
+
+    wind->last_configure.width = width;
+    wind->last_configure.height = height;
 
     if (wind->shell_surface_status == WAYLAND_SHELL_SURFACE_STATUS_WAITING_FOR_CONFIGURE) {
         wind->shell_surface_status = WAYLAND_SHELL_SURFACE_STATUS_WAITING_FOR_FRAME;
@@ -1629,7 +1641,7 @@ static const struct frog_color_managed_surface_listener frog_surface_listener = 
     frog_preferred_metadata_handler
 };
 
-static void SetKeyboardFocus(SDL_Window *window)
+static void SetKeyboardFocus(SDL_Window *window, bool set_focus)
 {
     SDL_Window *toplevel = window;
 
@@ -1640,7 +1652,7 @@ static void SetKeyboardFocus(SDL_Window *window)
 
     toplevel->internal->keyboard_focus = window;
 
-    if (!window->is_hiding && !window->is_destroying) {
+    if (set_focus && !window->is_hiding && !window->is_destroying) {
         SDL_SetKeyboardFocus(window);
     }
 }
@@ -1895,9 +1907,7 @@ void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
                 wl_surface_set_input_region(data->surface, region);
                 wl_region_destroy(region);
             } else if (window->flags & SDL_WINDOW_POPUP_MENU) {
-                if (window->parent == SDL_GetKeyboardFocus()) {
-                    SetKeyboardFocus(window);
-                }
+                SetKeyboardFocus(window, window->parent == SDL_GetKeyboardFocus());
             }
 
             SDL_SetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_XDG_POPUP_POINTER, data->shell_surface.xdg.popup.xdg_popup);
@@ -1945,6 +1955,13 @@ void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
     } else
 #endif
         if (data->shell_surface_type == WAYLAND_SHELL_SURFACE_TYPE_XDG_POPUP || data->shell_surface_type == WAYLAND_SHELL_SURFACE_TYPE_XDG_TOPLEVEL) {
+
+        // Create the window decorations
+        if (data->shell_surface_type != WAYLAND_SHELL_SURFACE_TYPE_XDG_POPUP && data->shell_surface.xdg.toplevel.xdg_toplevel && c->decoration_manager) {
+            data->server_decoration = zxdg_decoration_manager_v1_get_toplevel_decoration(c->decoration_manager, data->shell_surface.xdg.toplevel.xdg_toplevel);
+            zxdg_toplevel_decoration_v1_add_listener(data->server_decoration, &decoration_listener, window);
+        }
+
         /* Unlike libdecor we need to call this explicitly to prevent a deadlock.
          * libdecor will call this as part of their configure event!
          * -flibit
@@ -1955,14 +1972,6 @@ void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
                 WAYLAND_wl_display_flush(c->display);
                 WAYLAND_wl_display_dispatch(c->display);
             }
-        }
-
-        // Create the window decorations
-        if (data->shell_surface_type != WAYLAND_SHELL_SURFACE_TYPE_XDG_POPUP && data->shell_surface.xdg.toplevel.xdg_toplevel && c->decoration_manager) {
-            data->server_decoration = zxdg_decoration_manager_v1_get_toplevel_decoration(c->decoration_manager, data->shell_surface.xdg.toplevel.xdg_toplevel);
-            zxdg_toplevel_decoration_v1_add_listener(data->server_decoration,
-                                                     &decoration_listener,
-                                                     window);
         }
     } else {
         // Nothing to see here, just commit.
@@ -2042,16 +2051,20 @@ static void Wayland_ReleasePopup(SDL_VideoDevice *_this, SDL_Window *popup)
     }
 
     if (popup->flags & SDL_WINDOW_POPUP_MENU) {
-        if (popup == SDL_GetKeyboardFocus()) {
-            SDL_Window *new_focus = popup->parent;
+        SDL_Window *new_focus = popup->parent;
+        bool set_focus = popup == SDL_GetKeyboardFocus();
 
-            // Find the highest level window, up to the toplevel parent, that isn't being hidden or destroyed.
-            while (SDL_WINDOW_IS_POPUP(new_focus) && new_focus->parent && (new_focus->is_hiding || new_focus->is_destroying)) {
-                new_focus = new_focus->parent;
+        // Find the highest level window, up to the toplevel parent, that isn't being hidden or destroyed.
+        while (SDL_WINDOW_IS_POPUP(new_focus) && (new_focus->is_hiding || new_focus->is_destroying)) {
+            new_focus = new_focus->parent;
+
+            // If some window in the chain currently had focus, set it to the new lowest-level window.
+            if (!set_focus) {
+                set_focus = new_focus == SDL_GetKeyboardFocus();
             }
-
-            SetKeyboardFocus(new_focus);
         }
+
+        SetKeyboardFocus(new_focus, set_focus);
     }
 
     xdg_popup_destroy(popupdata->shell_surface.xdg.popup.xdg_popup);

@@ -399,8 +399,6 @@ should be changed to:
     SDL_Keymod mod = event.key.mod;
 ```
 
-The keycode in key events is affected by modifiers by default. e.g. pressing the A key would generate the keycode `SDLK_A`, or 'a', and pressing it while holding the shift key would generate the keycode `SDLK_A`, or 'A'. This behavior can be customized with `SDL_HINT_KEYCODE_OPTIONS`.
-
 The gamepad event structures caxis, cbutton, cdevice, ctouchpad, and csensor have been renamed gaxis, gbutton, gdevice, gtouchpad, and gsensor.
 
 The mouseX and mouseY fields of SDL_MouseWheelEvent have been renamed mouse_x and mouse_y.
@@ -805,16 +803,18 @@ The environment variables SDL_VIDEO_X11_WMCLASS and SDL_VIDEO_WAYLAND_WMCLASS ha
 The environment variable AUDIODEV is used exclusively to specify the audio device for the OSS and NetBSD audio drivers. Its use in the ALSA driver has been replaced with the hint SDL_HINT_AUDIO_ALSA_DEFAULT_DEVICE and in the sndio driver with the environment variable AUDIODEVICE.
 
 The following hints have been renamed:
-* SDL_HINT_VIDEODRIVER => SDL_HINT_VIDEO_DRIVER
-* SDL_HINT_AUDIODRIVER => SDL_HINT_AUDIO_DRIVER
 * SDL_HINT_ALLOW_TOPMOST => SDL_HINT_WINDOW_ALLOW_TOPMOST
+* SDL_HINT_AUDIODRIVER => SDL_HINT_AUDIO_DRIVER
 * SDL_HINT_DIRECTINPUT_ENABLED => SDL_HINT_JOYSTICK_DIRECTINPUT
 * SDL_HINT_GDK_TEXTINPUT_DEFAULT => SDL_HINT_GDK_TEXTINPUT_DEFAULT_TEXT
 * SDL_HINT_JOYSTICK_GAMECUBE_RUMBLE_BRAKE => SDL_HINT_JOYSTICK_HIDAPI_GAMECUBE_RUMBLE_BRAKE
+* SDL_HINT_JOYSTICK_HIDAPI_PS4_RUMBLE => SDL_HINT_JOYSTICK_ENHANCED_REPORTS
+* SDL_HINT_JOYSTICK_HIDAPI_PS5_RUMBLE => SDL_HINT_JOYSTICK_ENHANCED_REPORTS
 * SDL_HINT_LINUX_DIGITAL_HATS => SDL_HINT_JOYSTICK_LINUX_DIGITAL_HATS
 * SDL_HINT_LINUX_HAT_DEADZONES => SDL_HINT_JOYSTICK_LINUX_HAT_DEADZONES
 * SDL_HINT_LINUX_JOYSTICK_CLASSIC => SDL_HINT_JOYSTICK_LINUX_CLASSIC
 * SDL_HINT_LINUX_JOYSTICK_DEADZONES => SDL_HINT_JOYSTICK_LINUX_DEADZONES
+* SDL_HINT_VIDEODRIVER => SDL_HINT_VIDEO_DRIVER
 * SDL_HINT_VIDEO_WAYLAND_EMULATE_MOUSE_WARP => SDL_HINT_MOUSE_EMULATE_WARP_WITH_RELATIVE
 
 The following hints have been removed:
@@ -1030,6 +1030,9 @@ The following structures have been removed:
 ## SDL_keycode.h
 
 SDL_Keycode is now Uint32 and the SDLK_* constants are now defines instead of an enum, to more clearly reflect that they are a subset of the possible values of an SDL_Keycode.
+
+In addition to the `SDLK_SCANCODE_MASK` bit found on key codes that directly map to scancodes, there is now the
+`SDLK_EXTENDED_MASK` bit used to denote key codes that don't have a corresponding scancode, and aren't a unicode value.
 
 The following symbols have been removed:
 
@@ -2223,6 +2226,10 @@ The following functions have been removed:
 * SDL_SetWindowModalFor() - use SDL_SetWindowParent() with SDL_SetWindowModal() instead
 
 The SDL_Window id type is named SDL_WindowID
+
+The following environment variables have been removed:
+* SDL_VIDEO_GL_DRIVER - replaced with the hint SDL_HINT_OPENGL_LIBRARY
+* SDL_VIDEO_EGL_DRIVER - replaced with the hint SDL_HINT_EGL_LIBRARY
 
 The following symbols have been renamed:
 * SDL_DISPLAYEVENT_DISCONNECTED => SDL_EVENT_DISPLAY_REMOVED

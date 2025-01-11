@@ -22,7 +22,23 @@
 /**
  * # CategoryFilesystem
  *
- * SDL Filesystem API.
+ * SDL offers an API for examining and manipulating the system's filesystem.
+ * This covers most things one would need to do with directories, except for
+ * actual file I/O (which is covered by [CategoryIOStream](CategoryIOStream)
+ * and [CategoryAsyncIO](CategoryAsyncIO) instead).
+ *
+ * There are functions to answer necessary path questions:
+ *
+ * - Where is my app's data? SDL_GetBasePath().
+ * - Where can I safely write files? SDL_GetPrefPath().
+ * - Where are paths like Downloads, Desktop, Music? SDL_GetUserFolder().
+ * - What is this thing at this location? SDL_GetPathInfo().
+ * - What items live in this folder? SDL_EnumerateDirectory().
+ * - What items live in this folder by wildcard? SDL_GlobDirectory().
+ * - What is my current working directory? SDL_GetCurrentDirectory().
+ *
+ * SDL also offers functions to manipulate the directory tree: renaming,
+ * removing, copying files.
  */
 
 #ifndef SDL_filesystem_h_
@@ -425,10 +441,10 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetPathInfo(const char *path, SDL_PathInfo 
  * Enumerate a directory tree, filtered by pattern, and return a list.
  *
  * Files are filtered out if they don't match the string in `pattern`, which
- * may contain wildcard characters '*' (match everything) and '?' (match one
+ * may contain wildcard characters '\*' (match everything) and '?' (match one
  * character). If pattern is NULL, no filtering is done and all results are
  * returned. Subdirectories are permitted, and are specified with a path
- * separator of '/'. Wildcard characters '*' and '?' never match a path
+ * separator of '/'. Wildcard characters '\*' and '?' never match a path
  * separator.
  *
  * `flags` may be set to SDL_GLOB_CASEINSENSITIVE to make the pattern matching
@@ -468,7 +484,7 @@ extern SDL_DECLSPEC char ** SDLCALL SDL_GlobDirectory(const char *path, const ch
  *          platform-dependent notation. NULL if there's a problem. This
  *          should be freed with SDL_free() when it is no longer needed.
  *
- * \since This function is available since SDL 3.2.0.
+ * \since This function is available since SDL 3.1.8.
  */
 extern SDL_DECLSPEC char * SDLCALL SDL_GetCurrentDirectory(void);
 

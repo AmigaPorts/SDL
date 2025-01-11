@@ -1228,10 +1228,12 @@ extern SDL_DECLSPEC SDL_Window * SDLCALL SDL_CreatePopupWindow(SDL_Window *paren
  * - `SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER`: the width of the window
  * - `SDL_PROP_WINDOW_CREATE_X_NUMBER`: the x position of the window, or
  *   `SDL_WINDOWPOS_CENTERED`, defaults to `SDL_WINDOWPOS_UNDEFINED`. This is
- *   relative to the parent for windows with the "parent" property set.
+ *   relative to the parent for windows with the "tooltip" or "menu" property
+ *   set.
  * - `SDL_PROP_WINDOW_CREATE_Y_NUMBER`: the y position of the window, or
  *   `SDL_WINDOWPOS_CENTERED`, defaults to `SDL_WINDOWPOS_UNDEFINED`. This is
- *   relative to the parent for windows with the "parent" property set.
+ *   relative to the parent for windows with the "tooltip" or "menu" property
+ *   set.
  *
  * These are additional supported properties on macOS:
  *
@@ -2785,6 +2787,10 @@ extern SDL_DECLSPEC bool SDLCALL SDL_FlashWindow(SDL_Window *window, SDL_FlashOp
  *
  * Any child windows owned by the window will be recursively destroyed as
  * well.
+ *
+ * Note that on some platforms, the visible window may not actually be removed
+ * from the screen until the SDL event loop is pumped again, even though the
+ * SDL_Window is no longer valid after this call.
  *
  * \param window the window to destroy.
  *

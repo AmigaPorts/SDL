@@ -114,7 +114,8 @@ struct SDL_WaylandInput
         uint32_t idx_ctrl;
         uint32_t idx_alt;
         uint32_t idx_gui;
-        uint32_t idx_mode;
+        uint32_t idx_mod3;
+        uint32_t idx_mod5;
         uint32_t idx_num;
         uint32_t idx_caps;
 
@@ -157,7 +158,8 @@ extern int Wayland_WaitEventTimeout(SDL_VideoDevice *_this, Sint64 timeoutNS);
 
 extern void Wayland_create_data_device(SDL_VideoData *d);
 extern void Wayland_create_primary_selection_device(SDL_VideoData *d);
-extern void Wayland_create_text_input(SDL_VideoData *d);
+
+extern void Wayland_create_text_input_manager(SDL_VideoData *d, uint32_t id);
 
 extern void Wayland_input_initialize_seat(SDL_VideoData *d);
 extern void Wayland_display_destroy_input(SDL_VideoData *d);

@@ -24,6 +24,7 @@
 #include "../SDL_tray_utils.h"
 
 #include <dlfcn.h>
+#include <errno.h>
 
 /* getpid() */
 #include <unistd.h>
@@ -55,6 +56,7 @@ typedef enum
 } GConnectFlags;
 gulong (*g_signal_connect_data)(gpointer instance, const gchar *detailed_signal, GCallback c_handler, gpointer data, GClosureNotify destroy_data, GConnectFlags connect_flags);
 void (*g_object_unref)(gpointer object);
+gchar *(*g_mkdtemp)(gchar *template);
 
 #define g_signal_connect(instance, detailed_signal, c_handler, data) \
     g_signal_connect_data ((instance), (detailed_signal), (c_handler), (data), NULL, (GConnectFlags) 0)
@@ -78,7 +80,7 @@ typedef struct _GtkCheckMenuItem GtkCheckMenuItem;
 
 gboolean (*gtk_init_check)(int *argc, char ***argv);
 void (*gtk_main)(void);
-
+void (*gtk_main_quit)(void);
 GtkWidget* (*gtk_menu_new)(void);
 GtkWidget* (*gtk_separator_menu_item_new)(void);
 GtkWidget* (*gtk_menu_item_new_with_label)(const gchar *label);
@@ -132,6 +134,8 @@ static int main_gtk_thread(void *data)
     return 0;
 }
 
+static bool gtk_thread_active = false;
+
 #ifdef APPINDICATOR_HEADER
 
 static void quit_gtk(void)
@@ -140,7 +144,7 @@ static void quit_gtk(void)
 
 static bool init_gtk(void)
 {
-    SDL_DetachThread(SDL_CreateThread(main_gtk_thread, "tray gtk", NULL));
+
 }
 
 #else
@@ -172,25 +176,31 @@ static void quit_gtk(void)
 }
 
 const char *appindicator_names[] = {
+#ifdef SDL_PLATFORM_OPENBSD
     "libayatana-appindicator3.so",
-    "libayatana-appindicator3.so.1",
-    "libayatana-appindicator.so",
     "libappindicator3.so",
+#else
+    "libayatana-appindicator3.so.1",
     "libappindicator3.so.1",
-    "libappindicator.so",
-    "libappindicator.so.1",
+#endif
     NULL
 };
 
 const char *gtk_names[] = {
+#ifdef SDL_PLATFORM_OPENBSD
     "libgtk-3.so",
+#else
     "libgtk-3.so.0",
+#endif
     NULL
 };
 
 const char *gdk_names[] = {
+#ifdef SDL_PLATFORM_OPENBSD
     "libgdk-3.so",
+#else
     "libgdk-3.so.0",
+#endif
     NULL
 };
 
@@ -223,6 +233,7 @@ static bool init_gtk(void)
 
     gtk_init_check = dlsym(libgtk, "gtk_init_check");
     gtk_main = dlsym(libgtk, "gtk_main");
+    gtk_main_quit = dlsym(libgtk, "gtk_main_quit");
     gtk_menu_new = dlsym(libgtk, "gtk_menu_new");
     gtk_separator_menu_item_new = dlsym(libgtk, "gtk_separator_menu_item_new");
     gtk_menu_item_new_with_label = dlsym(libgtk, "gtk_menu_item_new_with_label");
@@ -239,6 +250,9 @@ static bool init_gtk(void)
     gtk_check_menu_item_get_active = dlsym(libgtk, "gtk_check_menu_item_get_active");
     gtk_widget_get_sensitive = dlsym(libgtk, "gtk_widget_get_sensitive");
 
+    /* Technically these are GLib or GObject functions, but we can find
+     * them via GDK */
+    g_mkdtemp = dlsym(libgdk, "g_mkdtemp");
     g_signal_connect_data = dlsym(libgdk, "g_signal_connect_data");
     g_object_unref = dlsym(libgdk, "g_object_unref");
 
@@ -249,6 +263,7 @@ static bool init_gtk(void)
 
     if (!gtk_init_check ||
         !gtk_main ||
+        !gtk_main_quit ||
         !gtk_menu_new ||
         !gtk_separator_menu_item_new ||
         !gtk_menu_item_new_with_label ||
@@ -260,6 +275,7 @@ static bool init_gtk(void)
         !gtk_menu_shell_append ||
         !gtk_menu_shell_insert ||
         !gtk_widget_destroy ||
+        !g_mkdtemp ||
         !g_signal_connect_data ||
         !g_object_unref ||
         !app_indicator_new ||
@@ -281,8 +297,6 @@ static bool init_gtk(void)
 
     gtk_is_init = true;
 
-    SDL_DetachThread(SDL_CreateThread(main_gtk_thread, "tray gtk", NULL));
-
     return true;
 }
 #endif
@@ -290,7 +304,7 @@ static bool init_gtk(void)
 struct SDL_TrayMenu {
     GtkMenuShell *menu;
 
-    size_t nEntries;
+    int nEntries;
     SDL_TrayEntry **entries;
 
     SDL_Tray *parent_tray;
@@ -311,9 +325,14 @@ struct SDL_TrayEntry {
     SDL_TrayMenu *submenu;
 };
 
+/* Template for g_mkdtemp(). The Xs will get replaced with a random
+ * directory name, which is created safely and atomically. */
+#define ICON_DIR_TEMPLATE "/tmp/SDL-tray-XXXXXX"
+
 struct SDL_Tray {
     AppIndicator *indicator;
     SDL_TrayMenu *menu;
+    char icon_dir[sizeof(ICON_DIR_TEMPLATE)];
     char icon_path[256];
 };
 
@@ -335,19 +354,19 @@ static void call_callback(GtkMenuItem *item, gpointer ptr)
     }
 }
 
-/* Since AppIndicator deals only in filenames, which are inherently subject to
-   timing attacks, don't bother generating a secure filename. */
-static bool get_tmp_filename(char *buffer, size_t size)
+static bool new_tmp_filename(SDL_Tray *tray)
 {
     static int count = 0;
 
-    if (size < 64) {
-        return SDL_SetError("Can't create temporary file for icon: size %u < 64", (unsigned int)size);
+    int would_have_written = SDL_snprintf(tray->icon_path, sizeof(tray->icon_path), "%s/%d.bmp", tray->icon_dir, count++);
+
+    if (would_have_written > 0 && ((unsigned) would_have_written) < sizeof(tray->icon_path) - 1) {
+        return true;
     }
 
-    int would_have_written = SDL_snprintf(buffer, size, "/tmp/sdl_appindicator_icon_%d_%d.bmp", getpid(), count++);
-
-    return would_have_written > 0 && would_have_written < size - 1;
+    tray->icon_path[0] = '\0';
+    SDL_SetError("Failed to format new temporary filename");
+    return false;
 }
 
 static const char *get_appindicator_id(void)
@@ -383,15 +402,32 @@ SDL_Tray *SDL_CreateTray(SDL_Surface *icon, const char *tooltip)
         return NULL;
     }
 
-    SDL_Tray *tray = (SDL_Tray *) SDL_malloc(sizeof(SDL_Tray));
+    if (!gtk_thread_active) {
+        SDL_DetachThread(SDL_CreateThread(main_gtk_thread, "tray gtk", NULL));
+        gtk_thread_active = true;
+    }
 
+    SDL_Tray *tray = (SDL_Tray *)SDL_malloc(sizeof(*tray));
     if (!tray) {
         return NULL;
     }
 
     SDL_memset((void *) tray, 0, sizeof(*tray));
+    /* On success, g_mkdtemp edits its argument in-place to replace the Xs
+     * with a random directory name, which it creates safely and atomically.
+     * On failure, it sets errno. */
+    SDL_strlcpy(tray->icon_dir, ICON_DIR_TEMPLATE, sizeof(tray->icon_dir));
+    if (!g_mkdtemp(tray->icon_dir)) {
+        SDL_SetError("Cannot create directory for tray icon: %s", strerror(errno));
+        SDL_free(tray);
+        return NULL;
+    }
 
-    get_tmp_filename(tray->icon_path, sizeof(tray->icon_path));
+    if (!new_tmp_filename(tray)) {
+        SDL_free(tray);
+        return NULL;
+    }
+
     SDL_SaveBMP(icon, tray->icon_path);
 
     tray->indicator = app_indicator_new(get_appindicator_id(), tray->icon_path,
@@ -412,8 +448,7 @@ void SDL_SetTrayIcon(SDL_Tray *tray, SDL_Surface *icon)
 
     /* AppIndicator caches the icon files; always change filename to avoid caching */
 
-    if (icon) {
-        get_tmp_filename(tray->icon_path, sizeof(tray->icon_path));
+    if (icon && new_tmp_filename(tray)) {
         SDL_SaveBMP(icon, tray->icon_path);
         app_indicator_set_icon(tray->indicator, tray->icon_path);
     } else {
@@ -429,8 +464,7 @@ void SDL_SetTrayTooltip(SDL_Tray *tray, const char *tooltip)
 
 SDL_TrayMenu *SDL_CreateTrayMenu(SDL_Tray *tray)
 {
-    tray->menu = SDL_malloc(sizeof(SDL_TrayMenu));
-
+    tray->menu = (SDL_TrayMenu *)SDL_malloc(sizeof(*tray->menu));
     if (!tray->menu) {
         return NULL;
     }
@@ -463,8 +497,7 @@ SDL_TrayMenu *SDL_CreateTraySubmenu(SDL_TrayEntry *entry)
         return NULL;
     }
 
-    entry->submenu = SDL_malloc(sizeof(SDL_TrayMenu));
-
+    entry->submenu = (SDL_TrayMenu *)SDL_malloc(sizeof(*entry->submenu));
     if (!entry->submenu) {
         return NULL;
     }
@@ -490,8 +523,7 @@ const SDL_TrayEntry **SDL_GetTrayEntries(SDL_TrayMenu *menu, int *size)
     if (size) {
         *size = menu->nEntries;
     }
-
-    return (const SDL_TrayEntry **) menu->entries;
+    return (const SDL_TrayEntry **)menu->entries;
 }
 
 void SDL_RemoveTrayEntry(SDL_TrayEntry *entry)
@@ -518,11 +550,12 @@ void SDL_RemoveTrayEntry(SDL_TrayEntry *entry)
     }
 
     menu->nEntries--;
-    SDL_TrayEntry ** new_entries = SDL_realloc(menu->entries, menu->nEntries * sizeof(SDL_TrayEntry *));
+    SDL_TrayEntry **new_entries = (SDL_TrayEntry **)SDL_realloc(menu->entries, (menu->nEntries + 1) * sizeof(*new_entries));
 
     /* Not sure why shrinking would fail, but even if it does, we can live with a "too big" array */
     if (new_entries) {
         menu->entries = new_entries;
+        menu->entries[menu->nEntries] = NULL;
     }
 
     gtk_widget_destroy(entry->item);
@@ -531,7 +564,7 @@ void SDL_RemoveTrayEntry(SDL_TrayEntry *entry)
 
 SDL_TrayEntry *SDL_InsertTrayEntryAt(SDL_TrayMenu *menu, int pos, const char *label, SDL_TrayEntryFlags flags)
 {
-    if (pos < -1 || pos > (int) menu->nEntries) {
+    if (pos < -1 || pos > menu->nEntries) {
         SDL_InvalidParamError("pos");
         return NULL;
     }
@@ -540,8 +573,7 @@ SDL_TrayEntry *SDL_InsertTrayEntryAt(SDL_TrayMenu *menu, int pos, const char *la
         pos = menu->nEntries;
     }
 
-    SDL_TrayEntry *entry = SDL_malloc(sizeof(SDL_TrayEntry));
-
+    SDL_TrayEntry *entry = (SDL_TrayEntry *)SDL_malloc(sizeof(*entry));
     if (!entry) {
         return NULL;
     }
@@ -566,7 +598,7 @@ SDL_TrayEntry *SDL_InsertTrayEntryAt(SDL_TrayMenu *menu, int pos, const char *la
 
     gtk_widget_set_sensitive(entry->item, !(flags & SDL_TRAYENTRY_DISABLED));
 
-    SDL_TrayEntry **new_entries = (SDL_TrayEntry **) SDL_realloc(menu->entries, (menu->nEntries + 1) * sizeof(SDL_TrayEntry *));
+    SDL_TrayEntry **new_entries = (SDL_TrayEntry **)SDL_realloc(menu->entries, (menu->nEntries + 2) * sizeof(*new_entries));
 
     if (!new_entries) {
         SDL_free(entry);
@@ -581,6 +613,7 @@ SDL_TrayEntry *SDL_InsertTrayEntryAt(SDL_TrayMenu *menu, int pos, const char *la
     }
 
     new_entries[pos] = entry;
+    new_entries[menu->nEntries] = NULL;
 
     gtk_widget_show(entry->item);
     gtk_menu_shell_insert(menu->menu, entry->item, (pos == menu->nEntries) ? -1 : pos);
@@ -638,6 +671,21 @@ void SDL_SetTrayEntryCallback(SDL_TrayEntry *entry, SDL_TrayCallback callback, v
     entry->userdata = userdata;
 }
 
+void SDL_ClickTrayEntry(SDL_TrayEntry *entry)
+{
+	if (!entry) {
+		return;
+	}
+
+	if (entry->flags & SDL_TRAYENTRY_CHECKBOX) {
+		SDL_SetTrayEntryChecked(entry, !SDL_GetTrayEntryChecked(entry));
+	}
+
+	if (entry->callback) {
+		entry->callback(entry->userdata, entry);
+	}
+}
+
 SDL_TrayMenu *SDL_GetTrayEntryParent(SDL_TrayEntry *entry)
 {
     return entry->parent;
@@ -667,9 +715,20 @@ void SDL_DestroyTray(SDL_Tray *tray)
         SDL_RemovePath(tray->icon_path);
     }
 
-    g_object_unref(tray->indicator);
+    if (*tray->icon_dir) {
+        SDL_RemovePath(tray->icon_dir);
+    }
+
+    if (tray->indicator) {
+        g_object_unref(tray->indicator);
+    }
 
     SDL_free(tray);
 
     SDL_DecrementTrayCount();
+
+    if (SDL_HasNoActiveTrays()) {
+        gtk_main_quit();
+        gtk_thread_active = false;
+    }
 }
