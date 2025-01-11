@@ -24,7 +24,8 @@
  *
  * The storage API is a high-level API designed to abstract away the
  * portability issues that come up when using something lower-level (in SDL's
- * case, this sits on top of SDL_filesystem). It is significantly more
+ * case, this sits on top of the [Filesystem](CategoryFilesystem) and
+ * [IOStream](CategoryIOStream) subsystems). It is significantly more
  * restrictive than a typical filesystem API, for a number of reasons:
  *
  * 1. **What to Access:** A common pitfall with existing filesystem APIs is
@@ -46,7 +47,7 @@
  *
  * Consider the following example:
  *
- * ```
+ * ```c
  * void ReadGameData(void)
  * {
  *     extern char** fileNames;
@@ -114,7 +115,7 @@
  * When using, SDL_Storage, these types of problems are virtually impossible
  * to trip over:
  *
- * ```
+ * ```c
  * void ReadGameData(void)
  * {
  *     extern char** fileNames;

@@ -962,6 +962,7 @@ struct D3D12Shader
     void *bytecode;
     size_t bytecodeSize;
 
+    SDL_GPUShaderStage stage;
     Uint32 num_samplers;
     Uint32 numUniformBuffers;
     Uint32 numStorageBuffers;
@@ -2858,6 +2859,15 @@ static SDL_GPUGraphicsPipeline *D3D12_CreateGraphicsPipeline(
     D3D12Shader *vertShader = (D3D12Shader *)createinfo->vertex_shader;
     D3D12Shader *fragShader = (D3D12Shader *)createinfo->fragment_shader;
 
+    if (renderer->debug_mode) {
+        if (vertShader->stage != SDL_GPU_SHADERSTAGE_VERTEX) {
+            SDL_assert_release(!"CreateGraphicsPipeline was passed a fragment shader for the vertex stage");
+        }
+        if (fragShader->stage != SDL_GPU_SHADERSTAGE_FRAGMENT) {
+            SDL_assert_release(!"CreateGraphicsPipeline was passed a vertex shader for the fragment stage");
+        }
+    }
+
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
     SDL_zero(psoDesc);
     psoDesc.VS.pShaderBytecode = vertShader->bytecode;
@@ -3028,6 +3038,7 @@ static SDL_GPUShader *D3D12_CreateShader(
         SDL_free(bytecode);
         return NULL;
     }
+    shader->stage = createinfo->stage;
     shader->num_samplers = createinfo->num_samplers;
     shader->numStorageBuffers = createinfo->num_storage_buffers;
     shader->numStorageTextures = createinfo->num_storage_textures;
@@ -6222,16 +6233,16 @@ static void D3D12_GenerateMipmaps(
             blitInfo.source.layer_or_depth_plane = layerOrDepthIndex;
             blitInfo.source.x = 0;
             blitInfo.source.y = 0;
-            blitInfo.source.w = container->header.info.width >> (levelIndex - 1);
-            blitInfo.source.h = container->header.info.height >> (levelIndex - 1);
+            blitInfo.source.w = SDL_max(container->header.info.width >> (levelIndex - 1), 1);
+            blitInfo.source.h = SDL_max(container->header.info.height >> (levelIndex - 1), 1);
 
             blitInfo.destination.texture = texture;
             blitInfo.destination.mip_level = levelIndex;
             blitInfo.destination.layer_or_depth_plane = layerOrDepthIndex;
             blitInfo.destination.x = 0;
             blitInfo.destination.y = 0;
-            blitInfo.destination.w = container->header.info.width >> levelIndex;
-            blitInfo.destination.h = container->header.info.height >> levelIndex;
+            blitInfo.destination.w = SDL_max(container->header.info.width >> levelIndex, 1);
+            blitInfo.destination.h = SDL_max(container->header.info.height >> levelIndex, 1);
 
             blitInfo.load_op = SDL_GPU_LOADOP_DONT_CARE;
             blitInfo.filter = SDL_GPU_FILTER_LINEAR;

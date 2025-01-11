@@ -23,6 +23,7 @@
 
 #include "../SDL_tray_utils.h"
 #include "../../core/windows/SDL_windows.h"
+#include "../../video/windows/SDL_windowswindow.h"
 
 #include <windowsx.h>
 #include <shellapi.h>
@@ -41,7 +42,7 @@
 struct SDL_TrayMenu {
     HMENU hMenu;
 
-    size_t nEntries;
+    int nEntries;
     SDL_TrayEntry **entries;
 
     SDL_Tray *parent_tray;
@@ -74,7 +75,7 @@ static UINT_PTR get_next_id(void)
 
 static SDL_TrayEntry *find_entry_in_menu(SDL_TrayMenu *menu, UINT_PTR id)
 {
-    for (size_t i = 0; i < menu->nEntries; i++) {
+    for (int i = 0; i < menu->nEntries; i++) {
         SDL_TrayEntry *entry = menu->entries[i];
 
         if (entry->id == id) {
@@ -130,6 +131,12 @@ LRESULT CALLBACK TrayWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             }
             break;
 
+        case WM_SETTINGCHANGE:
+            if (wParam == 0 && lParam != 0 && SDL_wcscmp((wchar_t *)lParam, L"ImmersiveColorSet") == 0) {
+                WIN_UpdateDarkModeForHWND(hwnd);
+            }
+            break;
+
         default:
             return DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
@@ -138,7 +145,7 @@ LRESULT CALLBACK TrayWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 static void DestroySDLMenu(SDL_TrayMenu *menu)
 {
-    for (size_t i = 0; i < menu->nEntries; i++) {
+    for (int i = 0; i < menu->nEntries; i++) {
         if (menu->entries[i] && menu->entries[i]->submenu) {
             DestroySDLMenu(menu->entries[i]->submenu);
         }
@@ -159,8 +166,7 @@ static wchar_t *escape_label(const char *in)
         len += (*c == '&') ? 2 : 1;
     }
 
-    char *escaped = SDL_malloc(SDL_strlen(in) + len + 1);
-
+    char *escaped = (char *)SDL_malloc(SDL_strlen(in) + len + 1);
     if (!escaped) {
         return NULL;
     }
@@ -183,7 +189,7 @@ static wchar_t *escape_label(const char *in)
 
 SDL_Tray *SDL_CreateTray(SDL_Surface *icon, const char *tooltip)
 {
-    SDL_Tray *tray = SDL_malloc(sizeof(SDL_Tray));
+    SDL_Tray *tray = (SDL_Tray *)SDL_malloc(sizeof(*tray));
 
     if (!tray) {
         return NULL;
@@ -192,6 +198,8 @@ SDL_Tray *SDL_CreateTray(SDL_Surface *icon, const char *tooltip)
     tray->menu = NULL;
     tray->hwnd = CreateWindowEx(0, TEXT("Message"), NULL, 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, NULL, NULL);
     SetWindowLongPtr(tray->hwnd, GWLP_WNDPROC, (LONG_PTR) TrayWindowProc);
+
+    WIN_UpdateDarkModeForHWND(tray->hwnd);
 
     SDL_zero(tray->nid);
     tray->nid.cbSize = sizeof(NOTIFYICONDATAW);
@@ -264,7 +272,7 @@ void SDL_SetTrayTooltip(SDL_Tray *tray, const char *tooltip)
 
 SDL_TrayMenu *SDL_CreateTrayMenu(SDL_Tray *tray)
 {
-    tray->menu = SDL_malloc(sizeof(SDL_TrayMenu));
+    tray->menu = (SDL_TrayMenu *)SDL_malloc(sizeof(*tray->menu));
 
     if (!tray->menu) {
         return NULL;
@@ -300,10 +308,9 @@ SDL_TrayMenu *SDL_GetTraySubmenu(SDL_TrayEntry *entry)
 const SDL_TrayEntry **SDL_GetTrayEntries(SDL_TrayMenu *menu, int *size)
 {
     if (size) {
-        *size = (int) menu->nEntries;
+        *size = menu->nEntries;
     }
-
-    return (const SDL_TrayEntry **) menu->entries;
+    return (const SDL_TrayEntry **)menu->entries;
 }
 
 void SDL_RemoveTrayEntry(SDL_TrayEntry *entry)
@@ -315,7 +322,7 @@ void SDL_RemoveTrayEntry(SDL_TrayEntry *entry)
     SDL_TrayMenu *menu = entry->parent;
 
     bool found = false;
-    for (size_t i = 0; i < menu->nEntries - 1; i++) {
+    for (int i = 0; i < menu->nEntries - 1; i++) {
         if (menu->entries[i] == entry) {
             found = true;
         }
@@ -330,11 +337,12 @@ void SDL_RemoveTrayEntry(SDL_TrayEntry *entry)
     }
 
     menu->nEntries--;
-    SDL_TrayEntry ** new_entries = SDL_realloc(menu->entries, menu->nEntries * sizeof(SDL_TrayEntry *));
+    SDL_TrayEntry **new_entries = (SDL_TrayEntry **)SDL_realloc(menu->entries, (menu->nEntries + 1) * sizeof(*new_entries));
 
     /* Not sure why shrinking would fail, but even if it does, we can live with a "too big" array */
     if (new_entries) {
         menu->entries = new_entries;
+        menu->entries[menu->nEntries] = NULL;
     }
 
     if (!DeleteMenu(menu->hMenu, (UINT) entry->id, MF_BYCOMMAND)) {
@@ -347,7 +355,7 @@ void SDL_RemoveTrayEntry(SDL_TrayEntry *entry)
 
 SDL_TrayEntry *SDL_InsertTrayEntryAt(SDL_TrayMenu *menu, int pos, const char *label, SDL_TrayEntryFlags flags)
 {
-    if (pos < -1 || pos > (int) menu->nEntries) {
+    if (pos < -1 || pos > menu->nEntries) {
         SDL_InvalidParamError("pos");
         return NULL;
     }
@@ -355,20 +363,19 @@ SDL_TrayEntry *SDL_InsertTrayEntryAt(SDL_TrayMenu *menu, int pos, const char *la
     int windows_compatible_pos = pos;
 
     if (pos == -1) {
-        pos = (int) menu->nEntries;
+        pos = menu->nEntries;
     } else if (pos == menu->nEntries) {
         windows_compatible_pos = -1;
     }
 
-    SDL_TrayEntry *entry = SDL_malloc(sizeof(SDL_TrayEntry));
-
+    SDL_TrayEntry *entry = (SDL_TrayEntry *)SDL_malloc(sizeof(*entry));
     if (!entry) {
         return NULL;
     }
 
     wchar_t *label_w = NULL;
 
-    if (label && !(label_w = escape_label(label))) {
+    if (label && (label_w = escape_label(label)) == NULL) {
         SDL_free(entry);
         return NULL;
     }
@@ -381,8 +388,7 @@ SDL_TrayEntry *SDL_InsertTrayEntryAt(SDL_TrayMenu *menu, int pos, const char *la
     SDL_snprintf(entry->label_cache, sizeof(entry->label_cache), "%s", label ? label : "");
 
     if (label != NULL && flags & SDL_TRAYENTRY_SUBMENU) {
-        entry->submenu = SDL_malloc(sizeof(SDL_TrayMenu));
-
+        entry->submenu = (SDL_TrayMenu *)SDL_malloc(sizeof(*entry->submenu));
         if (!entry->submenu) {
             SDL_free(entry);
             SDL_free(label_w);
@@ -398,8 +404,7 @@ SDL_TrayEntry *SDL_InsertTrayEntryAt(SDL_TrayMenu *menu, int pos, const char *la
         entry->id = get_next_id();
     }
 
-    SDL_TrayEntry **new_entries = (SDL_TrayEntry **) SDL_realloc(menu->entries, (menu->nEntries + 1) * sizeof(SDL_TrayEntry **));
-
+    SDL_TrayEntry **new_entries = (SDL_TrayEntry **)SDL_realloc(menu->entries, (menu->nEntries + 2) * sizeof(*new_entries));
     if (!new_entries) {
         SDL_free(entry);
         SDL_free(label_w);
@@ -413,11 +418,12 @@ SDL_TrayEntry *SDL_InsertTrayEntryAt(SDL_TrayMenu *menu, int pos, const char *la
     menu->entries = new_entries;
     menu->nEntries++;
 
-    for (int i = (int) menu->nEntries - 1; i > pos; i--) {
+    for (int i = menu->nEntries - 1; i > pos; i--) {
         menu->entries[i] = menu->entries[i - 1];
     }
 
     new_entries[pos] = entry;
+    new_entries[menu->nEntries] = NULL;
 
     if (label == NULL) {
         InsertMenuW(menu->hMenu, windows_compatible_pos, MF_SEPARATOR | MF_BYPOSITION, entry->id, NULL);
@@ -528,6 +534,21 @@ void SDL_SetTrayEntryCallback(SDL_TrayEntry *entry, SDL_TrayCallback callback, v
 {
     entry->callback = callback;
     entry->userdata = userdata;
+}
+
+void SDL_ClickTrayEntry(SDL_TrayEntry *entry)
+{
+	if (!entry) {
+		return;
+	}
+
+	if (entry->flags & SDL_TRAYENTRY_CHECKBOX) {
+		SDL_SetTrayEntryChecked(entry, !SDL_GetTrayEntryChecked(entry));
+	}
+
+	if (entry->callback) {
+		entry->callback(entry->userdata, entry);
+	}
 }
 
 SDL_TrayMenu *SDL_GetTrayEntryParent(SDL_TrayEntry *entry)

@@ -58,31 +58,6 @@ struct SDL_Tray {
     SDL_TrayMenu *menu;
 };
 
-static NSApplication *app = NULL;
-
-@interface AppDelegate: NSObject <NSApplicationDelegate>
-    - (IBAction)menu:(id)sender;
-@end
-
-@implementation AppDelegate{}
-    - (IBAction)menu:(id)sender
-    {
-        SDL_TrayEntry *entry = [[sender representedObject] pointerValue];
-
-        if (!entry) {
-            return;
-        }
-
-        if (entry->flags & SDL_TRAYENTRY_CHECKBOX) {
-            SDL_SetTrayEntryChecked(entry, !SDL_GetTrayEntryChecked(entry));
-        }
-
-        if (entry->callback) {
-            entry->callback(entry->userdata, entry);
-        }
-    }
-@end
-
 static void DestroySDLMenu(SDL_TrayMenu *menu)
 {
     for (int i = 0; i < menu->nEntries; i++) {
@@ -106,11 +81,6 @@ static void DestroySDLMenu(SDL_TrayMenu *menu)
 SDL_Tray *SDL_CreateTray(SDL_Surface *icon, const char *tooltip)
 {
     SDL_Tray *tray = (SDL_Tray *)SDL_calloc(1, sizeof(*tray));
-
-    AppDelegate *delegate = [[AppDelegate alloc] init];
-    app = [NSApplication sharedApplication];
-    [app setDelegate:delegate];
-
     if (!tray) {
         return NULL;
     }
@@ -118,7 +88,7 @@ SDL_Tray *SDL_CreateTray(SDL_Surface *icon, const char *tooltip)
     tray->statusItem = nil;
     tray->statusBar = [NSStatusBar systemStatusBar];
     tray->statusItem = [tray->statusBar statusItemWithLength:NSVariableStatusItemLength];
-    [app activateIgnoringOtherApps:TRUE];
+    [[NSApplication sharedApplication] activateIgnoringOtherApps:TRUE];
 
     if (tooltip) {
         tray->statusItem.button.toolTip = [NSString stringWithUTF8String:tooltip];
@@ -281,8 +251,7 @@ const SDL_TrayEntry **SDL_GetTrayEntries(SDL_TrayMenu *menu, int *size)
     if (size) {
         *size = menu->nEntries;
     }
-
-    return (const SDL_TrayEntry **) menu->entries;
+    return (const SDL_TrayEntry **)menu->entries;
 }
 
 void SDL_RemoveTrayEntry(SDL_TrayEntry *entry)
@@ -309,11 +278,12 @@ void SDL_RemoveTrayEntry(SDL_TrayEntry *entry)
     }
 
     menu->nEntries--;
-    SDL_TrayEntry **new_entries = (SDL_TrayEntry **)SDL_realloc(menu->entries, menu->nEntries * sizeof(*new_entries));
+    SDL_TrayEntry **new_entries = (SDL_TrayEntry **)SDL_realloc(menu->entries, (menu->nEntries + 1) * sizeof(*new_entries));
 
     /* Not sure why shrinking would fail, but even if it does, we can live with a "too big" array */
     if (new_entries) {
         menu->entries = new_entries;
+        menu->entries[menu->nEntries] = NULL;
     }
 
     [menu->nsmenu removeItem:entry->nsitem];
@@ -337,7 +307,7 @@ SDL_TrayEntry *SDL_InsertTrayEntryAt(SDL_TrayMenu *menu, int pos, const char *la
         return NULL;
     }
 
-    SDL_TrayEntry **new_entries = (SDL_TrayEntry **)SDL_realloc(menu->entries, (menu->nEntries + 1) * sizeof(*new_entries));
+    SDL_TrayEntry **new_entries = (SDL_TrayEntry **)SDL_realloc(menu->entries, (menu->nEntries + 2) * sizeof(*new_entries));
     if (!new_entries) {
         SDL_free(entry);
         return NULL;
@@ -351,6 +321,7 @@ SDL_TrayEntry *SDL_InsertTrayEntryAt(SDL_TrayMenu *menu, int pos, const char *la
     }
 
     new_entries[pos] = entry;
+    new_entries[menu->nEntries] = NULL;
 
     NSMenuItem *nsitem;
     if (label == NULL) {
@@ -418,6 +389,21 @@ void SDL_SetTrayEntryCallback(SDL_TrayEntry *entry, SDL_TrayCallback callback, v
 {
     entry->callback = callback;
     entry->userdata = userdata;
+}
+
+void SDL_ClickTrayEntry(SDL_TrayEntry *entry)
+{
+	if (!entry) {
+		return;
+	}
+
+	if (entry->flags & SDL_TRAYENTRY_CHECKBOX) {
+		SDL_SetTrayEntryChecked(entry, !SDL_GetTrayEntryChecked(entry));
+	}
+
+	if (entry->callback) {
+		entry->callback(entry->userdata, entry);
+	}
 }
 
 SDL_TrayMenu *SDL_GetTrayEntryParent(SDL_TrayEntry *entry)

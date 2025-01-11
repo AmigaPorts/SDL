@@ -3003,20 +3003,20 @@ bool SDL_RenderViewportSet(SDL_Renderer *renderer)
 static void GetRenderViewportSize(SDL_Renderer *renderer, SDL_FRect *rect)
 {
     const SDL_RenderViewState *view = renderer->view;
-    const float scale_x = view->logical_scale.x;
-    const float scale_y = view->logical_scale.y;
+    const float scale_x = view->current_scale.x;
+    const float scale_y = view->current_scale.y;
 
     rect->x = 0.0f;
     rect->y = 0.0f;
 
     if (view->viewport.w >= 0) {
-        rect->w = (float)view->viewport.w / scale_x;
+        rect->w = (float)view->viewport.w;
     } else {
         rect->w = view->pixel_w / scale_x;
     }
 
     if (view->viewport.h >= 0) {
-        rect->h = (float)view->viewport.h / scale_y;
+        rect->h = (float)view->viewport.h;
     } else {
         rect->h = view->pixel_h / scale_y;
     }
@@ -3872,9 +3872,6 @@ static bool SDL_RenderTextureInternal(SDL_Renderer *renderer, SDL_Texture *textu
 
 bool SDL_RenderTexture(SDL_Renderer *renderer, SDL_Texture *texture, const SDL_FRect *srcrect, const SDL_FRect *dstrect)
 {
-    SDL_FRect real_srcrect;
-    SDL_FRect real_dstrect;
-
     CHECK_RENDERER_MAGIC(renderer, false);
     CHECK_TEXTURE_MAGIC(texture, false);
 
@@ -3889,6 +3886,7 @@ bool SDL_RenderTexture(SDL_Renderer *renderer, SDL_Texture *texture, const SDL_F
     }
 #endif
 
+    SDL_FRect real_srcrect;
     real_srcrect.x = 0.0f;
     real_srcrect.y = 0.0f;
     real_srcrect.w = (float)texture->w;
@@ -3899,12 +3897,10 @@ bool SDL_RenderTexture(SDL_Renderer *renderer, SDL_Texture *texture, const SDL_F
         }
     }
 
-    GetRenderViewportSize(renderer, &real_dstrect);
-    if (dstrect) {
-        if (!SDL_HasRectIntersectionFloat(dstrect, &real_dstrect)) {
-            return true;
-        }
-        real_dstrect = *dstrect;
+    SDL_FRect full_dstrect;
+    if (!dstrect) {
+        GetRenderViewportSize(renderer, &full_dstrect);
+        dstrect = &full_dstrect;
     }
 
     if (texture->native) {
@@ -3913,7 +3909,7 @@ bool SDL_RenderTexture(SDL_Renderer *renderer, SDL_Texture *texture, const SDL_F
 
     texture->last_command_generation = renderer->render_command_generation;
 
-    return SDL_RenderTextureInternal(renderer, texture, &real_srcrect, &real_dstrect);
+    return SDL_RenderTextureInternal(renderer, texture, &real_srcrect, dstrect);
 }
 
 bool SDL_RenderTextureAffine(SDL_Renderer *renderer, SDL_Texture *texture,
@@ -4038,7 +4034,6 @@ bool SDL_RenderTextureRotated(SDL_Renderer *renderer, SDL_Texture *texture,
                       const double angle, const SDL_FPoint *center, const SDL_FlipMode flip)
 {
     SDL_FRect real_srcrect;
-    SDL_FRect real_dstrect;
     SDL_FPoint real_center;
     bool result;
 
@@ -4074,10 +4069,10 @@ bool SDL_RenderTextureRotated(SDL_Renderer *renderer, SDL_Texture *texture,
     }
 
     // We don't intersect the dstrect with the viewport as RenderCopy does because of potential rotation clipping issues... TODO: should we?
-    if (dstrect) {
-        real_dstrect = *dstrect;
-    } else {
-        GetRenderViewportSize(renderer, &real_dstrect);
+    SDL_FRect full_dstrect;
+    if (!dstrect) {
+        GetRenderViewportSize(renderer, &full_dstrect);
+        dstrect = &full_dstrect;
     }
 
     if (texture->native) {
@@ -4087,8 +4082,8 @@ bool SDL_RenderTextureRotated(SDL_Renderer *renderer, SDL_Texture *texture,
     if (center) {
         real_center = *center;
     } else {
-        real_center.x = real_dstrect.w / 2.0f;
-        real_center.y = real_dstrect.h / 2.0f;
+        real_center.x = dstrect->w / 2.0f;
+        real_center.y = dstrect->h / 2.0f;
     }
 
     texture->last_command_generation = renderer->render_command_generation;
@@ -4122,23 +4117,23 @@ bool SDL_RenderTextureRotated(SDL_Renderer *renderer, SDL_Texture *texture,
         maxu = (real_srcrect.x + real_srcrect.w) / texture->w;
         maxv = (real_srcrect.y + real_srcrect.h) / texture->h;
 
-        centerx = real_center.x + real_dstrect.x;
-        centery = real_center.y + real_dstrect.y;
+        centerx = real_center.x + dstrect->x;
+        centery = real_center.y + dstrect->y;
 
         if (flip & SDL_FLIP_HORIZONTAL) {
-            minx = real_dstrect.x + real_dstrect.w;
-            maxx = real_dstrect.x;
+            minx = dstrect->x + dstrect->w;
+            maxx = dstrect->x;
         } else {
-            minx = real_dstrect.x;
-            maxx = real_dstrect.x + real_dstrect.w;
+            minx = dstrect->x;
+            maxx = dstrect->x + dstrect->w;
         }
 
         if (flip & SDL_FLIP_VERTICAL) {
-            miny = real_dstrect.y + real_dstrect.h;
-            maxy = real_dstrect.y;
+            miny = dstrect->y + dstrect->h;
+            maxy = dstrect->y;
         } else {
-            miny = real_dstrect.y;
-            maxy = real_dstrect.y + real_dstrect.h;
+            miny = dstrect->y;
+            maxy = dstrect->y + dstrect->h;
         }
 
         uv[0] = minu;
@@ -4179,7 +4174,7 @@ bool SDL_RenderTextureRotated(SDL_Renderer *renderer, SDL_Texture *texture,
                                   num_vertices, indices, num_indices, size_indices,
                                   scale_x, scale_y, SDL_TEXTURE_ADDRESS_CLAMP);
     } else {
-        result = QueueCmdCopyEx(renderer, texture, &real_srcrect, &real_dstrect, angle, &real_center, flip, scale_x, scale_y);
+        result = QueueCmdCopyEx(renderer, texture, &real_srcrect, dstrect, angle, &real_center, flip, scale_x, scale_y);
     }
     return result;
 }
@@ -4293,7 +4288,6 @@ static bool SDL_RenderTextureTiled_Iterate(SDL_Renderer *renderer, SDL_Texture *
 bool SDL_RenderTextureTiled(SDL_Renderer *renderer, SDL_Texture *texture, const SDL_FRect *srcrect, float scale, const SDL_FRect *dstrect)
 {
     SDL_FRect real_srcrect;
-    SDL_FRect real_dstrect;
 
     CHECK_RENDERER_MAGIC(renderer, false);
     CHECK_TEXTURE_MAGIC(texture, false);
@@ -4323,12 +4317,10 @@ bool SDL_RenderTextureTiled(SDL_Renderer *renderer, SDL_Texture *texture, const 
         }
     }
 
-    GetRenderViewportSize(renderer, &real_dstrect);
-    if (dstrect) {
-        if (!SDL_HasRectIntersectionFloat(dstrect, &real_dstrect)) {
-            return true;
-        }
-        real_dstrect = *dstrect;
+    SDL_FRect full_dstrect;
+    if (!dstrect) {
+        GetRenderViewportSize(renderer, &full_dstrect);
+        dstrect = &full_dstrect;
     }
 
     if (texture->native) {
@@ -4340,7 +4332,7 @@ bool SDL_RenderTextureTiled(SDL_Renderer *renderer, SDL_Texture *texture, const 
 #ifdef SDL_PLATFORM_AMIGAOS4
     if (SDL_strcmp(renderer->name, "compositing") == 0) {
         // We cannot repeat texture coordinates when using CompositeTags()
-        return SDL_RenderTextureTiled_Iterate(renderer, texture, &real_srcrect, scale, &real_dstrect);
+        return SDL_RenderTextureTiled_Iterate(renderer, texture, &real_srcrect, scale, dstrect);
     }
 #endif
 
@@ -4349,9 +4341,9 @@ bool SDL_RenderTextureTiled(SDL_Renderer *renderer, SDL_Texture *texture, const 
         (!srcrect ||
          (real_srcrect.x == 0.0f && real_srcrect.y == 0.0f &&
           real_srcrect.w == (float)texture->w && real_srcrect.h == (float)texture->h))) {
-        return SDL_RenderTextureTiled_Wrap(renderer, texture, &real_srcrect, scale, &real_dstrect);
+        return SDL_RenderTextureTiled_Wrap(renderer, texture, &real_srcrect, scale, dstrect);
     } else {
-        return SDL_RenderTextureTiled_Iterate(renderer, texture, &real_srcrect, scale, &real_dstrect);
+        return SDL_RenderTextureTiled_Iterate(renderer, texture, &real_srcrect, scale, dstrect);
     }
 }
 

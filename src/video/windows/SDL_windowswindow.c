@@ -162,7 +162,7 @@ static DWORD GetWindowStyle(SDL_Window *window)
     DWORD style = 0;
 
     if (SDL_WINDOW_IS_POPUP(window)) {
-        style |= WS_POPUP | WS_THICKFRAME;
+        style |= WS_POPUP;
     } else if (window->flags & SDL_WINDOW_FULLSCREEN) {
         style |= STYLE_FULLSCREEN;
     } else {
@@ -723,7 +723,7 @@ static void WIN_ConstrainPopup(SDL_Window *window, bool output_to_pending)
     }
 }
 
-static void WIN_SetKeyboardFocus(SDL_Window *window)
+static void WIN_SetKeyboardFocus(SDL_Window *window, bool set_active_focus)
 {
     SDL_Window *toplevel = window;
 
@@ -734,7 +734,7 @@ static void WIN_SetKeyboardFocus(SDL_Window *window)
 
     toplevel->internal->keyboard_focus = window;
 
-    if (!window->is_hiding && !window->is_destroying) {
+    if (set_active_focus && !window->is_hiding && !window->is_destroying) {
     	SDL_SetKeyboardFocus(window);
     }
 }
@@ -768,9 +768,6 @@ bool WIN_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Properties
         WIN_ConstrainPopup(window, false);
         WIN_AdjustWindowRectWithStyle(window, style, styleEx, FALSE, &x, &y, &w, &h, SDL_WINDOWRECT_FLOATING);
 
-        int gx, gy;
-        SDL_RelativeToGlobalForWindow(window, window->floating.x, window->floating.y, &gx, &gy);
-        SDL_Log("Create at: %i,%i (%i,%i)", gx, gy, x, y);
         hwnd = CreateWindowEx(styleEx, SDL_Appname, TEXT(""), style,
                               x, y, w, h, parent, NULL, SDL_Instance, NULL);
         if (!hwnd) {
@@ -1097,9 +1094,7 @@ void WIN_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
     }
 
     if (window->flags & SDL_WINDOW_POPUP_MENU && bActivate) {
-        if (window->parent == SDL_GetKeyboardFocus()) {
-            WIN_SetKeyboardFocus(window);
-        }
+	    WIN_SetKeyboardFocus(window, window->parent == SDL_GetKeyboardFocus());
     }
     if (window->flags & SDL_WINDOW_MODAL) {
         WIN_SetWindowModal(_this, window, true);
@@ -1118,16 +1113,20 @@ void WIN_HideWindow(SDL_VideoDevice *_this, SDL_Window *window)
 
     // Transfer keyboard focus back to the parent
     if (window->flags & SDL_WINDOW_POPUP_MENU) {
-        if (window == SDL_GetKeyboardFocus()) {
-            SDL_Window *new_focus = window->parent;
+        SDL_Window *new_focus = window->parent;
+        bool set_focus = window == SDL_GetKeyboardFocus();
 
-            // Find the highest level window, up to the toplevel parent, that isn't being hidden or destroyed.
-            while (SDL_WINDOW_IS_POPUP(new_focus) && (new_focus->is_hiding || new_focus->is_destroying)) {
-                new_focus = new_focus->parent;
+        // Find the highest level window, up to the toplevel parent, that isn't being hidden or destroyed.
+        while (SDL_WINDOW_IS_POPUP(new_focus) && (new_focus->is_hiding || new_focus->is_destroying)) {
+            new_focus = new_focus->parent;
+
+            // If some window in the chain currently had keyboard focus, set it to the new lowest-level window.
+            if (!set_focus) {
+                set_focus = new_focus == SDL_GetKeyboardFocus();
             }
-
-            WIN_SetKeyboardFocus(new_focus);
         }
+
+        WIN_SetKeyboardFocus(new_focus, set_focus);
     }
 }
 
@@ -1165,9 +1164,7 @@ void WIN_RaiseWindow(SDL_VideoDevice *_this, SDL_Window *window)
     if (bActivate) {
         SetForegroundWindow(hwnd);
         if (window->flags & SDL_WINDOW_POPUP_MENU) {
-            if (window->parent == SDL_GetKeyboardFocus()) {
-                WIN_SetKeyboardFocus(window);
-            }
+            WIN_SetKeyboardFocus(window, window->parent == SDL_GetKeyboardFocus());
         }
     } else {
         SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, data->copybits_flag | SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER | SWP_NOACTIVATE);
@@ -1689,7 +1686,7 @@ void WIN_UpdateClipCursor(SDL_Window *window)
     if (!GetClientScreenRect(data->hwnd, &client)) {
         return;
     }
-    
+
     RECT target = client;
     if (lock_to_ctr) {
         LONG cx = (client.left + client.right ) / 2;
@@ -1713,7 +1710,7 @@ void WIN_UpdateClipCursor(SDL_Window *window)
         }
     }
 
-    if (GetClipCursor(&client) && 
+    if (GetClipCursor(&client) &&
         0 != SDL_memcmp(&target, &client, sizeof(client)) &&
         ClipCursor(&target)) {
         data->cursor_clipped_rect = target; // ClipCursor may fail if rect beyond screen
