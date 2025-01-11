@@ -60,7 +60,7 @@ OS4_CreateWindowFramebuffer(_THIS, SDL_Window * window, Uint32 * format, void **
     *format = SDL_PIXELFORMAT_ARGB8888;
 
     dprintf("Native format %d, SDL format %d (%s)\n", pixf, *format, SDL_GetPixelFormatName(*format));
-    dprintf("Allocating %d*%d*%d bitmap)\n", window->w, window->h, depth);
+    dprintf("Allocating %d*%d*%lu bitmap)\n", window->w, window->h, depth);
 
     data->bitmap = IGraphics->AllocBitMapTags(
         window->w,
@@ -161,7 +161,7 @@ OS4_UpdateWindowFramebuffer(_THIS, SDL_Window * window, const SDL_Rect * rects, 
                 TAG_DONE);
 
             if (ret != -1) {
-                dprintf("BltBitMapTags() returned %d\n", ret);
+                dprintf("BltBitMapTags() returned %ld\n", ret);
             }
         }
 

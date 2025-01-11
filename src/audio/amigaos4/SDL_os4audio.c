@@ -294,7 +294,7 @@ OS4_OpenDevice(_THIS, const char * devname)
             break;
     }
 
-    dprintf("AHI format 0x%X\n", os4data->ahiType);
+    dprintf("AHI format 0x%lX\n", os4data->ahiType);
 
     return result;
 }

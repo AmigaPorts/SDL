@@ -117,8 +117,8 @@ AMIGAINPUT_EnumerateJoysticks(AIN_Device *device, void *UserData)
     BOOL result = FALSE;
 
     if (*count < MAX_JOYSTICKS) {
-        dprintf("ENUMJOY: id=%ld, type=%ld, axes=%ld, buttons=%ld\n",
-            count,
+        dprintf("ENUMJOY: id=%lu, type=%ld, axes=%ld, buttons=%ld\n",
+            *count,
             (int32)device->Type,
             (int32)device->NumAxes,
             (int32)device->NumButtons);
@@ -145,7 +145,7 @@ AMIGAINPUT_EnumerateJoysticks(AIN_Device *device, void *UserData)
                     joy->id   = device->DeviceID;
                     joy->name = SDL_strdup(device->DeviceName);
 
-                    dprintf("Found joystick #%d (AI ID=%d) '%s'\n", *count, joy->id, joy->name);
+                    dprintf("Found joystick #%lu (AI ID=%lu) '%s'\n", *count, joy->id, joy->name);
 
                     (*count)++;
 
@@ -158,10 +158,10 @@ AMIGAINPUT_EnumerateJoysticks(AIN_Device *device, void *UserData)
                     result = TRUE;
                 }
                 else
-                    dprintf("Failed to obtain joystick '%s' (AI ID=%d) - ignoring.\n", device->DeviceName, device->DeviceID);
+                    dprintf("Failed to obtain joystick '%s' (AI ID=%lu) - ignoring.\n", device->DeviceName, device->DeviceID);
             }
             else
-                dprintf("Joystick '%s' (AI ID=%d) has no axes/buttons - ignoring.\n", device->DeviceName, device->DeviceID);
+                dprintf("Joystick '%s' (AI ID=%lu) has no axes/buttons - ignoring.\n", device->DeviceName, device->DeviceID);
         }
     }
     return result;
@@ -222,7 +222,7 @@ AMIGAINPUT_Init(void)
             BOOL result = SDL_IAIN->EnumDevices(joystickContext, AMIGAINPUT_EnumerateJoysticks, &packet);
 #endif
             dprintf("EnumDevices returned %d\n", result);
-            dprintf("Found %d joysticks\n", joystickCount);
+            dprintf("Found %lu joysticks\n", joystickCount);
 
             if (result) {
                 /*
@@ -314,7 +314,7 @@ AMIGAINPUT_Open(SDL_Joystick * joystick, int device_index)
     handle = SDL_IAIN->ObtainDevice(joystickContext, id);
 #endif
 
-    dprintf("Opening joystick #%d (AI ID=%d)\n", joystick->instance_id, id);
+    dprintf("Opening joystick #%d (AI ID=%lu)\n", joystick->instance_id, id);
 
     if (handle) {
         joystick->hwdata = SDL_calloc(1, sizeof(struct joystick_hwdata));
@@ -512,7 +512,7 @@ AMIGAINPUT_Update(SDL_Joystick * joystick)
 static void
 AMIGAINPUT_Close(SDL_Joystick * joystick)
 {
-    dprintf("Closing joystick #%d (AI ID=%d)\n", joystick->instance_id, joystickList[joystick->instance_id].id);
+    dprintf("Closing joystick #%d (AI ID=%lu)\n", joystick->instance_id, joystickList[joystick->instance_id].id);
 
 #if OLDSDK
     SDL_IAIN->AIN_ReleaseDevice(joystick->hwdata->context, joystick->hwdata->handle);

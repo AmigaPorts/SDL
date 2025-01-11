@@ -158,7 +158,7 @@ OS4_GLES_CreateContext(_THIS, SDL_Window * window)
             glViewport(0, 0, window->w, window->h);
             return data->glContext;
         } else {
-            dprintf("Failed to create OpenGL ES 2 context for window '%s' (error code %d)\n",
+            dprintf("Failed to create OpenGL ES 2 context for window '%s' (error code %lu)\n",
                 window->title, errCode);
 
             SDL_SetError("Failed to create OpenGL ES 2 context");

@@ -694,7 +694,7 @@ OS4_LaunchPrefs(void)
 {
     const int32 error = IDOS->System("SDL2", TAG_DONE);
     if (error != 0) {
-        dprintf("System() returned %d\n", error);
+        dprintf("System() returned %ld\n", error);
     }
 }
 
@@ -858,7 +858,7 @@ OS4_HandleIdcmpMessages(_THIS, struct MsgPort * msgPort)
                 break;
 
             default:
-                dprintf("Unknown event received class %d, code %d\n", msg.Class, msg.Code);
+                dprintf("Unknown event received class %lu, code %u\n", msg.Class, msg.Code);
                 break;
         }
     }

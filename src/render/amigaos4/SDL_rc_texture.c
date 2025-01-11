@@ -233,7 +233,7 @@ OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
         TAG_DONE);
 
     if (ret != -1) {
-        dprintf("BltBitMapTags(): %d\n", ret);
+        dprintf("BltBitMapTags(): %ld\n", ret);
         return SDL_SetError("BltBitMapTags failed");
     }
 

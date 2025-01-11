@@ -69,8 +69,7 @@ OS4_GetDisplayMode(_THIS, ULONG id, SDL_DisplayMode * mode)
 
     // We are only interested in RTG modes
     if (dispinfo.PropertyFlags & DIPF_IS_RTG) {
-
-        dprintf("RTG mode %d: w=%d, h=%d, bits=%d\n", id, mode->w, mode->h, diminfo.MaxDepth);
+        dprintf("RTG mode %lu: w=%d, h=%d, bits=%d\n", id, mode->w, mode->h, diminfo.MaxDepth);
 
         switch (diminfo.MaxDepth) {
         case 32:
@@ -150,7 +149,7 @@ OS4_InitModes(_THIS)
 
     IIntuition->GetScreenAttrs(data->publicScreen, SA_DisplayID, &modeid, TAG_DONE);
     if (!OS4_GetDisplayMode(_this, modeid, &current_mode)) {
-        dprintf("Failed to get display mode for %d\n", modeid);
+        dprintf("Failed to get display mode for %lu\n", modeid);
         SDL_free(displaydata);
         return SDL_SetError("Couldn't get display mode\n");
     }
@@ -201,7 +200,7 @@ OS4_GetDisplayModes(_THIS, SDL_VideoDisplay * display)
                 SDL_free(mode.driverdata);
             }
         } else {
-            dprintf("Failed to get display mode for %d\n", id);
+            dprintf("Failed to get display mode for %lu\n", id);
         }
     }
 }
@@ -259,7 +258,7 @@ OS4_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
         SA_Compositing, FALSE,
         TAG_DONE);
 
-    dprintf("Opened screen id %d: %d*%d*%d (address %p)\n",
+    dprintf("Opened screen id %lu: %d*%d*%d (address %p)\n",
         data->modeid, mode->w, mode->h, bpp, displaydata->screen);
 
     if (!displaydata->screen) {

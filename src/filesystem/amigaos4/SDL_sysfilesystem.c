@@ -82,7 +82,7 @@ OS4_CreateDirTree(const char* path)
         IDOS->UnLock(lock);
     } else {
         const int32 err = IDOS->IoErr();
-        dprintf("Failed to create dir tree '%s' (err %d)\n", temp, err);
+        dprintf("Failed to create dir tree '%s' (err %ld)\n", temp, err);
         if (err == ERROR_OBJECT_EXISTS) {
             dprintf("Object already exists -> success\n");
             success = TRUE;
