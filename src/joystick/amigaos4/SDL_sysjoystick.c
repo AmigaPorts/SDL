@@ -22,8 +22,6 @@
 
 #if defined(SDL_JOYSTICK_AMIGAINPUT)
 
-#define OLDSDK 1
-
 #include "SDL_joystick.h"
 #include "../SDL_sysjoystick.h"
 #include "../SDL_joystick_c.h"
@@ -133,11 +131,7 @@ AMIGAINPUT_EnumerateJoysticks(AIN_Device *device, void *UserData)
             if ((device->NumAxes > 0) && (device->NumButtons > 0)) {
                 /* Then, check whether we can actually obtain the device
                  */
-#if OLDSDK
                 AIN_DeviceHandle *handle = SDL_IAIN->AIN_ObtainDevice (context, device->DeviceID);
-#else
-                AIN_DeviceHandle *handle = SDL_IAIN->ObtainDevice (context, device->DeviceID);
-#endif
 
                 if (handle) {
                     /* Okay. This appears to be a valid device. We'll report it to SDL.
@@ -149,11 +143,7 @@ AMIGAINPUT_EnumerateJoysticks(AIN_Device *device, void *UserData)
 
                     (*count)++;
 
-#if OLDSDK
                     SDL_IAIN->AIN_ReleaseDevice (context, handle);
-#else
-                    SDL_IAIN->ReleaseDevice (context, handle);
-#endif
 
                     result = TRUE;
                 }
@@ -203,11 +193,7 @@ static int
 AMIGAINPUT_Init(void)
 {
     if (AMIGAINPUT_OpenLibrary()) {
-#if OLDSDK
         joystickContext = SDL_IAIN->AIN_CreateContext(1, NULL);
-#else
-        joystickContext = SDL_IAIN->CreateContext(1, NULL);
-#endif
 
         if (joystickContext) {
             struct enumPacket packet = {
@@ -216,11 +202,8 @@ AMIGAINPUT_Init(void)
                 &joystickList[0]
             };
 
-#if OLDSDK
             BOOL result = SDL_IAIN->AIN_EnumDevices(joystickContext, AMIGAINPUT_EnumerateJoysticks, &packet);
-#else
-            BOOL result = SDL_IAIN->EnumDevices(joystickContext, AMIGAINPUT_EnumerateJoysticks, &packet);
-#endif
+
             dprintf("EnumDevices returned %d\n", result);
             dprintf("Found %lu joysticks\n", joystickCount);
 
@@ -308,11 +291,7 @@ AMIGAINPUT_Open(SDL_Joystick * joystick, int device_index)
     AIN_DeviceHandle *handle;
     AIN_DeviceID id = joystickList[joystick->instance_id].id;
 
-#if OLDSDK
     handle = SDL_IAIN->AIN_ObtainDevice(joystickContext, id);
-#else
-    handle = SDL_IAIN->ObtainDevice(joystickContext, id);
-#endif
 
     dprintf("Opening joystick #%d (AI ID=%lu)\n", joystick->instance_id, id);
 
@@ -336,15 +315,9 @@ AMIGAINPUT_Open(SDL_Joystick * joystick, int device_index)
             joystick->name  = (char *) joystickList[joystick->instance_id].name;
 
             /* Query number of axes, buttons and hats the device has */
-#if OLDSDK
             result = result && SDL_IAIN->AIN_Query(hwdata->context, id, AINQ_NUMAXES,    0, &num_axes, 4);
             result = result && SDL_IAIN->AIN_Query(hwdata->context, id, AINQ_NUMBUTTONS, 0, &num_buttons, 4);
             result = result && SDL_IAIN->AIN_Query(hwdata->context, id, AINQ_NUMHATS,    0, &num_hats, 4);
-#else
-            result = result && SDL_IAIN->Query(hwdata->context, id, AINQ_NUMAXES,    0, &num_axes, 4);
-            result = result && SDL_IAIN->Query(hwdata->context, id, AINQ_NUMBUTTONS, 0, &num_buttons, 4);
-            result = result && SDL_IAIN->Query(hwdata->context, id, AINQ_NUMHATS,    0, &num_hats, 4);
-#endif
 
 //          dprintf ("Found %d axes, %d buttons, %d hats\n", num_axes, num_buttons, num_hats);
 
@@ -358,13 +331,8 @@ AMIGAINPUT_Open(SDL_Joystick * joystick, int device_index)
 
             /* Query offsets in ReadDevice buffer for axes' data */
             for (i = 0; i < joystick->naxes; i++) {
-#if OLDSDK
                 result = result && SDL_IAIN->AIN_Query(hwdata->context, id, AINQ_AXIS_OFFSET, i, &(hwdata->axisBufferOffset[i]), 4);
                 result = result && SDL_IAIN->AIN_Query(hwdata->context, id, AINQ_AXISNAME,    i, &(hwdata->axisName[i][0]), 32 );
-#else
-                result = result && SDL_IAIN->Query(hwdata->context, id, AINQ_AXIS_OFFSET, i, &(hwdata->axisBufferOffset[i]), 4);
-                result = result && SDL_IAIN->Query(hwdata->context, id, AINQ_AXISNAME,    i, &(hwdata->axisName[i][0]), 32 );
-#endif
             }
 
             // Sort the axes so that X and Y come first
@@ -404,20 +372,12 @@ AMIGAINPUT_Open(SDL_Joystick * joystick, int device_index)
 
             /* Query offsets in ReadDevice buffer for buttons' data */
             for (i = 0; i < joystick->nbuttons; i++) {
-#if OLDSDK
                 result = result && SDL_IAIN->AIN_Query(hwdata->context, id, AINQ_BUTTON_OFFSET, i, &(hwdata->buttonBufferOffset[i]), 4);
-#else
-                result = result && SDL_IAIN->Query(hwdata->context, id, AINQ_BUTTON_OFFSET, i, &(hwdata->buttonBufferOffset[i]), 4);
-#endif
             }
 
             /* Query offsets in ReadDevice buffer for hats' data */
             for (i = 0; i < joystick->nhats; i++) {
-#if OLDSDK
                 result = result && SDL_IAIN->AIN_Query(hwdata->context, id, AINQ_HAT_OFFSET, i, &(hwdata->hatBufferOffset[i]), 4);
-#else
-                result = result && SDL_IAIN->Query(hwdata->context, id, AINQ_HAT_OFFSET, i, &(hwdata->hatBufferOffset[i]), 4);
-#endif
             }
 
             if (result) {
@@ -426,11 +386,7 @@ AMIGAINPUT_Open(SDL_Joystick * joystick, int device_index)
             }
         }
 
-#if OLDSDK
         SDL_IAIN->AIN_ReleaseDevice (joystickContext, handle);
-#else
-        SDL_IAIN->ReleaseDevice (joystickContext, handle);
-#endif
     }
 
     SDL_SetError("Failed to open device\n");
@@ -456,11 +412,7 @@ AMIGAINPUT_Update(SDL_Joystick * joystick)
     /*
      * Poll device for data
      */
-#if OLDSDK
     if (hwdata && SDL_IAIN->AIN_ReadDevice(hwdata->context, hwdata->handle, &buffer))
-#else
-    if (hwdata && SDL_IAIN->ReadDevice(hwdata->context, hwdata->handle, &buffer))
-#endif
     {
         int i;
 
@@ -514,11 +466,7 @@ AMIGAINPUT_Close(SDL_Joystick * joystick)
 {
     dprintf("Closing joystick #%d (AI ID=%lu)\n", joystick->instance_id, joystickList[joystick->instance_id].id);
 
-#if OLDSDK
     SDL_IAIN->AIN_ReleaseDevice(joystick->hwdata->context, joystick->hwdata->handle);
-#else
-    SDL_IAIN->ReleaseDevice(joystick->hwdata->context, joystick->hwdata->handle);
-#endif
 
     SDL_free(joystick->hwdata);
     joystick->hwdata = NULL;
@@ -530,51 +478,13 @@ AMIGAINPUT_Quit(void)
 {
     uint32 i;
 
-#if 0
-
-    // TODO: check whether this kind of work around makes sense anymore. Anyway,
-    // SDL_Joysticks declaration has changed so code needs work in case of still necessary.
-
-    // PG
-    // Close any open joysticks before quitting.
-    // This stops a hang on exit for bad SDL software that doesn't
-    // explicitly close all their joysticks.
-    if (SDL_joysticks) {
-        for (i=0; SDL_joysticks[i]; ++i) {
-            SDL_SYS_JoystickClose( SDL_joysticks[i] );
-
-            /* Free the data associated with this joystick */
-            if ( SDL_joysticks[i]->axes ) {
-                SDL_free(SDL_joysticks[i]->axes);
-            }
-            if ( SDL_joysticks[i]->hats ) {
-                SDL_free(SDL_joysticks[i]->hats);
-            }
-            if ( SDL_joysticks[i]->balls ) {
-                SDL_free(SDL_joysticks[i]->balls);
-            }
-            if ( SDL_joysticks[i]->buttons ) {
-                SDL_free(SDL_joysticks[i]->buttons);
-            }
-
-            SDL_free(SDL_joysticks[i]);
-            SDL_joysticks[i] = NULL;
-        }
-    }
-
-#endif
-
     for (i = 0; i < joystickCount; i++)
         SDL_free((char *)joystickList[i].name);
 
     joystickCount = 0;
 
     if (joystickContext) {
-#if OLDSDK
         SDL_IAIN->AIN_DeleteContext(joystickContext);
-#else
-        SDL_IAIN->DeleteContext(joystickContext);
-#endif
         joystickContext = NULL;
     }
 
