@@ -26,6 +26,7 @@ SOURCES = \
 	./src/audio/dummy/*.c \
 	./src/camera/*.c \
 	./src/cpuinfo/*.c \
+	./src/dialog/*.c \
 	./src/dialog/amigaos4/SDL_amigaos4dialog.c \
 	./src/events/*.c \
 	./src/file/*.c \

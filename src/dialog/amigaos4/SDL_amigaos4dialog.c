@@ -29,6 +29,8 @@ typedef struct
 {
     const SDL_DialogFileFilter *filters;
     const char* title;
+    const char* accept;
+    const char* cancel;
     const char* default_file;
     const char* default_dir;
     SDL_Window* window;
@@ -38,6 +40,17 @@ typedef struct
     SDL_DialogFileCallback callback;
     void* userdata;
 } OS4_DialogArgs;
+
+static void OS4_FreeDialogArgs(OS4_DialogArgs* args)
+{
+    SDL_free((void *)args->title);
+    SDL_free((void *)args->accept);
+    SDL_free((void *)args->cancel);
+    SDL_free((void *)args->default_file);
+    SDL_free((void *)args->default_dir);
+
+    SDL_free(args);
+}
 
 static void OS4_HandleMultiselection(struct FileRequester *req, OS4_DialogArgs *args)
 {
@@ -146,8 +159,10 @@ static void OS4_ShowDialog(OS4_DialogArgs *args)
     struct FileRequester *req = IAsl->AllocAslRequestTags(ASL_FileRequest,
         ASLFR_Window, syswin,
         ASLFR_TitleText, args->title,
-        ASLFR_InitialFile, args->default_file ? args->default_file : "",
-        ASLFR_InitialDrawer, args->default_dir ? args->default_dir : "",
+        ASLFR_PositiveText, args->accept,
+        ASLFR_NegativeText, args->cancel,
+        ASLFR_InitialFile, args->default_file,
+        ASLFR_InitialDrawer, args->default_dir,
         //ASLFR_InitialPattern, TODO: filters
         ASLFR_DoMultiSelect, args->allow_many,
         ASLFR_DoSaveMode, args->save,
@@ -188,11 +203,13 @@ static void OS4_ShowDialog(OS4_DialogArgs *args)
 static int OS4_DialogThread(void* ptr)
 {
     OS4_ShowDialog(ptr);
-    SDL_free(ptr);
+    OS4_FreeDialogArgs(ptr);
     return 0;
 }
 
-void SDL_ShowOpenFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window, const SDL_DialogFileFilter *filters, int nfilters, const char* default_location, bool allow_many)
+static void OS4_ShowFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window,
+                               const SDL_DialogFileFilter *filters, int nfilters, const char* default_location, bool allow_many, bool is_save,
+                               const char* title, const char* accept, const char* cancel)
 {
     OS4_DialogArgs *args = SDL_calloc(sizeof(OS4_DialogArgs), 1);
 
@@ -202,77 +219,103 @@ void SDL_ShowOpenFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL
         return;
     }
 
-    args->title = "Open file...";
+    args->title = title ? title : is_save ? SDL_strdup("Save file...") : SDL_strdup("Open file...");
+    args->accept = accept;
+    args->cancel = cancel;
     args->filters = filters;
     args->default_file = default_location;
-    args->default_dir = NULL;
+    args->default_dir = SDL_strdup("");
+    args->window = window;
+    args->allow_many = allow_many;
+    args->save = is_save;
+    args->dir_only = false;
+    args->callback = callback;
+    args->userdata = userdata;
+
+    SDL_Thread *thread = SDL_CreateThread(OS4_DialogThread, "SDL_ShowFileDialog", (void *) args);
+
+    if (thread == NULL) {
+        callback(userdata, NULL, -1);
+        OS4_FreeDialogArgs(args);
+        return;
+    }
+
+    SDL_DetachThread(thread);
+}
+
+// TODO: probably file + folder code could be merged into one
+static void OS4_ShowFolderDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window,
+                                 const char* default_location, bool allow_many,
+                                 const char* title, const char* accept, const char* cancel)
+{
+    OS4_DialogArgs *args = SDL_calloc(sizeof(OS4_DialogArgs), 1);
+
+    if (args == NULL) {
+        SDL_OutOfMemory();
+        callback(userdata, NULL, -1);
+        return;
+    }
+
+    args->title = title ? title : SDL_strdup("Open folder...");
+    args->accept = accept;
+    args->cancel = cancel;
+    args->filters = NULL;
+    args->default_file = SDL_strdup("");
+    args->default_dir = default_location;
     args->window = window;
     args->allow_many = allow_many;
     args->save = false;
-    args->dir_only = false;
-    args->callback = callback;
-    args->userdata = userdata;
-
-    SDL_Thread *thread = SDL_CreateThread(OS4_DialogThread, "SDL_ShowOpenFileDialog", (void *) args);
-
-    if (thread == NULL) {
-        callback(userdata, NULL, -1);
-    }
-}
-
-void SDL_ShowSaveFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window, const SDL_DialogFileFilter *filters, int nfilters, const char* default_location)
-{
-    OS4_DialogArgs *args = SDL_calloc(sizeof(OS4_DialogArgs), 1);
-
-    if (args == NULL) {
-        SDL_OutOfMemory();
-        callback(userdata, NULL, -1);
-        return;
-    }
-
-    args->title = "Save file...";
-    args->filters = filters;
-    args->default_file = default_location;
-    args->default_dir = NULL;
-    args->window = window;
-    args->allow_many = false;
-    args->save = true;
-    args->dir_only = false;
-    args->callback = callback;
-    args->userdata = userdata;
-
-    SDL_Thread *thread = SDL_CreateThread(OS4_DialogThread, "SDL_ShowSaveFileDialog", (void *) args);
-
-    if (thread == NULL) {
-        callback(userdata, NULL, -1);
-    }
-}
-
-void SDL_ShowOpenFolderDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window, const char* default_location, bool allow_many)
-{
-    OS4_DialogArgs *args = SDL_calloc(sizeof(OS4_DialogArgs), 1);
-
-    if (args == NULL) {
-        SDL_OutOfMemory();
-        callback(userdata, NULL, -1);
-        return;
-    }
-
-    args->title = "Open folder...";
-    args->filters = NULL;
-    args->default_file = NULL;
-    args->default_dir = default_location;
-    args->window = window;
-    args->allow_many = allow_many; // Multi-selection doesn't seem to work in DrawersOnly mode.
-    args->save = true;
     args->dir_only = true;
     args->callback = callback;
     args->userdata = userdata;
 
-    SDL_Thread *thread = SDL_CreateThread(OS4_DialogThread, "SDL_ShowOpenFolderDialog", (void *) args);
+    SDL_Thread *thread = SDL_CreateThread(OS4_DialogThread, "SDL_ShowFolderDialog", (void *) args);
 
     if (thread == NULL) {
         callback(userdata, NULL, -1);
+        OS4_FreeDialogArgs(args);
+        return;
+    }
+
+    SDL_DetachThread(thread);
+}
+
+void SDL_SYS_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFileCallback callback, void *userdata, SDL_PropertiesID props)
+{
+    /* The internal functions will start threads, and the properties may be freed as soon as this function returns.
+       Save a copy of what we need before invoking the functions and starting the threads. */
+    SDL_Window* window = SDL_GetPointerProperty(props, SDL_PROP_FILE_DIALOG_WINDOW_POINTER, NULL);
+    SDL_DialogFileFilter *filters = SDL_GetPointerProperty(props, SDL_PROP_FILE_DIALOG_FILTERS_POINTER, NULL);
+    int nfilters = (int) SDL_GetNumberProperty(props, SDL_PROP_FILE_DIALOG_NFILTERS_NUMBER, 0);
+    bool allow_many = SDL_GetBooleanProperty(props, SDL_PROP_FILE_DIALOG_MANY_BOOLEAN, false);
+
+    const char* default_location = SDL_GetStringProperty(props, SDL_PROP_FILE_DIALOG_LOCATION_STRING, NULL);
+    const char* title = SDL_GetStringProperty(props, SDL_PROP_FILE_DIALOG_TITLE_STRING, NULL);
+    const char* accept = SDL_GetStringProperty(props, SDL_PROP_FILE_DIALOG_ACCEPT_STRING, NULL);
+    const char* cancel = SDL_GetStringProperty(props, SDL_PROP_FILE_DIALOG_CANCEL_STRING, NULL);
+
+    // Copy strings because SDL_Dialog destroys properties
+    default_location = default_location ? SDL_strdup(default_location) : SDL_strdup("");
+
+    if (title) {
+        title = SDL_strdup(title);
+    }
+
+    accept = accept ? SDL_strdup(accept) : SDL_strdup("Ok");
+    cancel = cancel ? SDL_strdup(cancel) : SDL_strdup("Cancel");
+
+    switch (type) {
+    case SDL_FILEDIALOG_SAVEFILE: {
+        const bool is_save = true;
+        OS4_ShowFileDialog(callback, userdata, window, filters, nfilters, default_location, allow_many, is_save, title, accept, cancel);
+    } break;
+    case SDL_FILEDIALOG_OPENFILE: {
+        const bool is_save = false;
+        OS4_ShowFileDialog(callback, userdata, window, filters, nfilters, default_location, allow_many, is_save, title, accept, cancel);
+    } break;
+    case SDL_FILEDIALOG_OPENFOLDER:
+        OS4_ShowFolderDialog(callback, userdata, window, default_location, allow_many, title, accept, cancel);
+        break;
     }
 }
 
