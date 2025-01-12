@@ -644,13 +644,13 @@ OS4_SetWindowBox(SDL_VideoDevice *_this, SDL_Window * window, SDL_Rect * rect)
 bool
 OS4_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    dprintf("New window position %d, %d\n", window->floating.x, window->floating.y);
+    dprintf("New window position %d, %d\n", window->pending.x, window->pending.y);
 
-    OS4_SetWindowBox(_this, window, &window->floating);
+    OS4_SetWindowBox(_this, window, &window->pending);
 
     SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_MOVED,
-        window->floating.x,
-        window->floating.y);
+        window->pending.x,
+        window->pending.y);
 
     return true;
 }
@@ -666,14 +666,14 @@ OS4_SetWindowSize(SDL_VideoDevice *_this, SDL_Window * window)
 
         OS4_GetWindowSize(data->syswin, &width, &height);
 
-        if (width != window->floating.w || height != window->floating.h) {
-            dprintf("New window size %d*%d\n", window->floating.w, window->floating.h);
+        if (width != window->pending.w || height != window->pending.h) {
+            dprintf("New window size %d*%d\n", window->pending.w, window->pending.h);
 
-            OS4_SetWindowBox(_this, window, &window->floating);
+            OS4_SetWindowBox(_this, window, &window->pending);
 
             SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESIZED,
-                window->floating.w,
-                window->floating.h);
+                window->pending.w,
+                window->pending.h);
         } else {
             dprintf("Ignored size request %d*%d\n", width, height);
         }
