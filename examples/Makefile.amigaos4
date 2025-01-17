@@ -1,8 +1,9 @@
-# Makefile to build the AmigaOS4 SDL tests
+# Makefile to build the examples
 
 CC     = ppc-amigaos-gcc
-CFLAGS = -gstabs -O2 -Wall -I../include -I../include/build_config -I../src
-LIBS   = -L.. -lSDL3_test -lSDL3 -athread=native
+CRT   ?= newlib
+CFLAGS = -mcrt=$(CRT) -gstabs -O2 -Wall -I../include -I../include/build_config -I../src
+LIBS   = -mcrt=$(CRT) -L.. -lSDL3_test -lSDL3 -athread=native
 
 SRC_FILES = $(wildcard */*/*.c)
 DEPS = $(SRC_FILES:.c=.d)
@@ -120,7 +121,7 @@ debug-text: renderer/18-debug-text/debug-text.o
 	$(CC) -o $@ $^ $(LIBS)
 
 clean:
-	rm -f $(TARGETS) *.o $(DEPS)
+	rm -f $(TARGETS) */*/*.o $(DEPS)
 
 %.d : %.c
 	@echo Making dependencies for $<
