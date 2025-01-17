@@ -2283,7 +2283,7 @@ extern "C" {
 
 /**
  * A variable controlling whether the libdecor Wayland backend is preferred
- * over native decrations.
+ * over native decorations.
  *
  * When this hint is set, libdecor will be used to provide window decorations,
  * even if xdg-decoration is available. (Note that, by default, libdecor will
@@ -2606,7 +2606,7 @@ extern "C" {
  * Force SDL to use Critical Sections for mutexes on Windows.
  *
  * On Windows 7 and newer, Slim Reader/Writer Locks are available. They offer
- * better performance, allocate no kernel ressources and use less memory. SDL
+ * better performance, allocate no kernel resources and use less memory. SDL
  * will fall back to Critical Sections on older OS versions or if forced to by
  * this hint.
  *
