@@ -1,8 +1,8 @@
 failat 21
 
 echo Copying shared object ...
-copy SDK/local/newlib/lib/libSDL3-3.0.so SObjs:
-copy SDK/local/newlib/lib/libSDL3-3.0_debug.so SObjs:
+copy SDK/local/newlib/lib/libSDL3-3.1.so SObjs:
+copy SDK/local/newlib/lib/libSDL3-3.1_debug.so SObjs:
 
 echo Copying documentation ...
 makedir SYS:Documentation/SDL3/
@@ -32,7 +32,7 @@ If $option eq 1
   protect SDK:local/newlib/bin/sdl3-config +rweds
 
   delete SDK:local/newlib/lib/libSDL3.so
-  makelink from=SDK:local/newlib/lib/libSDL3.so to=SObjs:libSDL3-3.0.so soft
+  makelink from=SDK:local/newlib/lib/libSDL3.so to=SObjs:libSDL3-3.1.so soft
 Else
   echo Skipped SDK installation ...
 EndIf
@@ -40,7 +40,7 @@ EndIf
 echo Setting up link ...
 
 delete SObjs:libSDL3.so
-makelink from=SObjs:libSDL3.so to=SObjs:libSDL3-3.0.so soft
+makelink from=SObjs:libSDL3.so to=SObjs:libSDL3-3.1.so soft
 
 echo SDL3 is installed :)
 

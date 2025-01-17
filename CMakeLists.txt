@@ -5,7 +5,7 @@ if(NOT DEFINED CMAKE_BUILD_TYPE)
 endif()
 
 # See docs/release_checklist.md
-project(SDL3 LANGUAGES C VERSION "3.1.9")
+project(SDL3 LANGUAGES C VERSION "3.1.11")
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   set(SDL3_MAINPROJECT ON)
@@ -308,7 +308,6 @@ dep_option(SDL_SSE4_1              "Use SSE4.1 assembly routines" ON "SDL_ASSEMB
 dep_option(SDL_SSE4_2              "Use SSE4.2 assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_X86 OR SDL_CPU_X64" OFF)
 dep_option(SDL_MMX                 "Use MMX assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_X86 OR SDL_CPU_X64" OFF)
 dep_option(SDL_ALTIVEC             "Use Altivec assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_POWERPC32 OR SDL_CPU_POWERPC64" OFF)
-dep_option(SDL_ARMSIMD             "Use SIMD assembly blitters on ARM" OFF "SDL_ASSEMBLY;SDL_CPU_ARM32" OFF)
 dep_option(SDL_ARMNEON             "Use NEON assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_ARM32 OR SDL_CPU_ARM64" OFF)
 dep_option(SDL_LSX                 "Use LSX assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_LOONGARCH64" OFF)
 dep_option(SDL_LASX                "Use LASX assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_LOONGARCH64" OFF)
@@ -1159,8 +1158,8 @@ sdl_glob_sources(
   "${SDL3_SOURCE_DIR}/src/cpuinfo/*.c"
   "${SDL3_SOURCE_DIR}/src/dynapi/*.c"
   "${SDL3_SOURCE_DIR}/src/events/*.c"
-  "${SDL3_SOURCE_DIR}/src/file/*.c"
-  "${SDL3_SOURCE_DIR}/src/file/generic/*.c"
+  "${SDL3_SOURCE_DIR}/src/io/*.c"
+  "${SDL3_SOURCE_DIR}/src/io/generic/*.c"
   "${SDL3_SOURCE_DIR}/src/filesystem/*.c"
   "${SDL3_SOURCE_DIR}/src/gpu/*.c"
   "${SDL3_SOURCE_DIR}/src/joystick/*.c"
@@ -1775,7 +1774,7 @@ elseif(UNIX AND NOT APPLE AND NOT RISCOS AND NOT HAIKU)
     endif()
 
     if(HAVE_LIBURING_H)
-      sdl_sources("${SDL3_SOURCE_DIR}/src/file/io_uring/SDL_asyncio_liburing.c")
+      sdl_sources("${SDL3_SOURCE_DIR}/src/io/io_uring/SDL_asyncio_liburing.c")
     endif()
 
     # Always compiled for Linux, unconditionally:
@@ -1890,6 +1889,7 @@ elseif(WINDOWS)
 
   sdl_glob_sources("${SDL3_SOURCE_DIR}/src/core/windows/*.c")
   sdl_glob_sources("${SDL3_SOURCE_DIR}/src/main/windows/*.c")
+  sdl_glob_sources("${SDL3_SOURCE_DIR}/src/io/windows/*.c")
 
   if(TARGET SDL3-shared AND MSVC AND NOT SDL_LIBC)
     # Prevent codegen that would use the VC runtime libraries.
@@ -2398,6 +2398,7 @@ elseif(APPLE)
   endif()
   if(SDL_FRAMEWORK_COCOA)
     sdl_link_dependency(cocoa LIBS "$<LINK_LIBRARY:FRAMEWORK,Cocoa>" PKG_CONFIG_LINK_OPTIONS "-Wl,-framework,Cocoa")
+    # macOS 11.0+ iOS 14.0+ tvOS 14.0+
     sdl_link_dependency(uniformtypeidentifiers LIBS "$<LINK_LIBRARY:WEAK_FRAMEWORK,UniformTypeIdentifiers>" PKG_CONFIG_LINK_OPTIONS "-Wl,-weak_framework,UniformTypeIdentifiers")
   endif()
   if(SDL_FRAMEWORK_IOKIT)
@@ -2433,25 +2434,17 @@ elseif(APPLE)
   if(SDL_FRAMEWORK_GAMECONTROLLER)
     find_library(GAMECONTROLLER GameController)
     if(GAMECONTROLLER)
-      sdl_link_dependency(game_controller LIBS "$<LINK_LIBRARY:WEAK_FRAMEWORK,GameController>" PKG_CONFIG_LINK_OPTIONS "-Wl,-weak_framework,GameController")
+      sdl_link_dependency(game_controller LIBS "$<LINK_LIBRARY:WEAK_FRAMEWORK,GameController>" PKG_CONFIG_LINK_OPTIONS "-Wl,-framework,GameController")
     endif()
   endif()
   if(SDL_FRAMEWORK_METAL)
-    if(IOS OR TVOS OR VISIONOS OR WATCHOS)
-      sdl_link_dependency(metal LIBS "$<LINK_LIBRARY:FRAMEWORK,Metal>" PKG_CONFIG_LINK_OPTIONS "-Wl,-framework,Metal")
-    else()
-      sdl_link_dependency(metal LIBS "$<LINK_LIBRARY:WEAK_FRAMEWORK,Metal>" PKG_CONFIG_LINK_OPTIONS "-Wl,-weak_framework,Metal")
-    endif()
+    sdl_link_dependency(metal LIBS "$<LINK_LIBRARY:FRAMEWORK,Metal>" PKG_CONFIG_LINK_OPTIONS "-Wl,-framework,Metal")
   endif()
   if(SDL_FRAMEWORK_OPENGLES)
     sdl_link_dependency(opengles LIBS "$<LINK_LIBRARY:FRAMEWORK,OpenGLES>" PKG_CONFIG_LINK_OPTIONS "-Wl,-framework,OpenGLES")
   endif()
   if(SDL_FRAMEWORK_QUARTZCORE)
-    if(IOS OR TVOS OR VISIONOS OR WATCHOS)
-      sdl_link_dependency(quartz_core LIBS "$<LINK_LIBRARY:FRAMEWORK,QuartzCore>" PKG_CONFIG_LINK_OPTIONS "-Wl,-framework,QuartzCore")
-    else()
-      sdl_link_dependency(metal LIBS "$<LINK_LIBRARY:WEAK_FRAMEWORK,QuartzCore>" PKG_CONFIG_LINK_OPTIONS "-Wl,-weak_framework,QuartzCore")
-    endif()
+    sdl_link_dependency(quartz_core LIBS "$<LINK_LIBRARY:FRAMEWORK,QuartzCore>" PKG_CONFIG_LINK_OPTIONS "-Wl,-framework,QuartzCore")
   endif()
   if(SDL_FRAMEWORK_UIKIT)
     sdl_link_dependency(ui_kit LIBS "$<LINK_LIBRARY:FRAMEWORK,UIKit>" PKG_CONFIG_LINK_OPTIONS "-Wl,-framework,UIKit")
@@ -2459,7 +2452,8 @@ elseif(APPLE)
   if(SDL_FRAMEWORK_COREHAPTICS)
     find_library(COREHAPTICS CoreHaptics)
     if(COREHAPTICS)
-      sdl_link_dependency(core_haptics LIBS "$<LINK_LIBRARY:FRAMEWORK,CoreHaptics>" PKG_CONFIG_LINK_OPTIONS "-Wl,-framework,CoreHaptics")
+      # macOS 10.15+ iOS 13.0+ tvOS 14.0+
+      sdl_link_dependency(core_haptics LIBS "$<LINK_LIBRARY:FRAMEWORK,CoreHaptics>" PKG_CONFIG_LINK_OPTIONS "-Wl,-weak_framework,CoreHaptics")
     endif()
   endif()
 
@@ -2919,7 +2913,7 @@ elseif(N3DS)
   sdl_glob_sources("${SDL3_SOURCE_DIR}/src/locale/n3ds/*.c")
   set(HAVE_SDL_LOCALE TRUE)
 
-  sdl_glob_sources("${SDL3_SOURCE_DIR}/src/file/n3ds/*.c")
+  sdl_glob_sources("${SDL3_SOURCE_DIR}/src/io/n3ds/*.c")
 endif()
 
 sdl_sources(${SDL3_SOURCE_DIR}/src/dialog/SDL_dialog.c)
@@ -3337,8 +3331,8 @@ endif()
 set_source_files_properties(src/dynapi/SDL_dynapi.c PROPERTIES SKIP_PRECOMPILE_HEADERS 1)
 
 set(SDL_FRAMEWORK_RESOURCES
-  Xcode/SDL/pkg-support/resources/ReadMe.txt
   LICENSE.txt
+  README.md
 )
 if(SDL_FRAMEWORK)
   sdl_sources(${SDL_FRAMEWORK_RESOURCES})
