@@ -1,8 +1,9 @@
 # Makefile to build the AmigaOS4 SDL tests
 
 CC	= ppc-amigaos-gcc
-CFLAGS	= -gstabs -O2 -Wall -I../include -DHAVE_OPENGL
-LIBS	= -L.. -use-dynld -lSDL2_test -lSDL2 -athread=native
+CRT    ?= newlib
+CFLAGS	= -mcrt=$(CRT) -gstabs -O2 -Wall -I../include -DHAVE_OPENGL
+LIBS	= -mcrt=$(CRT) -L.. -use-dynld -lSDL2_test -lSDL2 -athread=native
 
 SRC_FILES = $(wildcard *.c)
 DEPS = $(SRC_FILES:.c=.d)
