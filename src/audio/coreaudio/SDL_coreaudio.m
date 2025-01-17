@@ -467,31 +467,16 @@ static bool UpdateAudioSession(SDL_AudioDevice *device, bool open, bool allow_pl
             options |= AVAudioSessionCategoryOptionDuckOthers;
         }
 
-        if ([session respondsToSelector:@selector(setCategory:mode:options:error:)]) {
-            if (![session.category isEqualToString:category] || session.categoryOptions != options) {
-                // Stop the current session so we don't interrupt other application audio
-                PauseAudioDevices();
-                [session setActive:NO error:nil];
-                session_active = false;
+        if (![session.category isEqualToString:category] || session.categoryOptions != options) {
+            // Stop the current session so we don't interrupt other application audio
+            PauseAudioDevices();
+            [session setActive:NO error:nil];
+            session_active = false;
 
-                if (![session setCategory:category mode:mode options:options error:&err]) {
-                    NSString *desc = err.description;
-                    SDL_SetError("Could not set Audio Session category: %s", desc.UTF8String);
-                    return false;
-                }
-            }
-        } else {
-            if (![session.category isEqualToString:category]) {
-                // Stop the current session so we don't interrupt other application audio
-                PauseAudioDevices();
-                [session setActive:NO error:nil];
-                session_active = false;
-
-                if (![session setCategory:category error:&err]) {
-                    NSString *desc = err.description;
-                    SDL_SetError("Could not set Audio Session category: %s", desc.UTF8String);
-                    return false;
-                }
+            if (![session setCategory:category mode:mode options:options error:&err]) {
+                NSString *desc = err.description;
+                SDL_SetError("Could not set Audio Session category: %s", desc.UTF8String);
+                return false;
             }
         }
 
@@ -780,12 +765,40 @@ static bool PrepareAudioQueue(SDL_AudioDevice *device)
         layout.mChannelLayoutTag = kAudioChannelLayoutTag_DVD_12;
         break;
     case 7:
-        // L R C LFE Cs Ls Rs
-        layout.mChannelLayoutTag = kAudioChannelLayoutTag_WAVE_6_1;
+        if (@available(macOS 10.15, iOS 13.0, tvOS 13.0, *)) {
+            // L R C LFE Cs Ls Rs
+            layout.mChannelLayoutTag = kAudioChannelLayoutTag_WAVE_6_1;
+        } else {
+            // L R C LFE Ls Rs Cs
+            layout.mChannelLayoutTag = kAudioChannelLayoutTag_MPEG_6_1_A;
+
+            // Convert from SDL channel layout to kAudioChannelLayoutTag_MPEG_6_1_A
+            static const int swizzle_map[7] = {
+                0, 1, 2, 3, 6, 4, 5
+            };
+            device->chmap = SDL_ChannelMapDup(swizzle_map, SDL_arraysize(swizzle_map));
+            if (!device->chmap) {
+                return false;
+            }
+        }
         break;
     case 8:
-        // L R C LFE Rls Rrs Ls Rs
-        layout.mChannelLayoutTag = kAudioChannelLayoutTag_WAVE_7_1;
+        if (@available(macOS 10.15, iOS 13.0, tvOS 13.0, *)) {
+            // L R C LFE Rls Rrs Ls Rs
+            layout.mChannelLayoutTag = kAudioChannelLayoutTag_WAVE_7_1;
+        } else {
+            // L R C LFE Ls Rs Rls Rrs
+            layout.mChannelLayoutTag = kAudioChannelLayoutTag_MPEG_7_1_C;
+
+            // Convert from SDL channel layout to kAudioChannelLayoutTag_MPEG_7_1_C
+            static const int swizzle_map[8] = {
+                0, 1, 2, 3, 6, 7, 4, 5
+            };
+            device->chmap = SDL_ChannelMapDup(swizzle_map, SDL_arraysize(swizzle_map));
+            if (!device->chmap) {
+                return false;
+            }
+        }
         break;
     default:
         return SDL_SetError("Unsupported audio channels");

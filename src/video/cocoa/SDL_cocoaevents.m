@@ -25,10 +25,6 @@
 #include "SDL_cocoavideo.h"
 #include "../../events/SDL_events_c.h"
 
-#ifndef MAC_OS_X_VERSION_10_12
-#define NSEventTypeApplicationDefined NSApplicationDefined
-#endif
-
 static SDL_Window *FindSDLWindowForNSWindow(NSWindow *win)
 {
     SDL_Window *sdlwindow = NULL;
@@ -80,6 +76,8 @@ static void Cocoa_DispatchEvent(NSEvent *theEvent)
     case NSEventTypeOtherMouseDragged: // usually middle mouse dragged
     case NSEventTypeMouseMoved:
     case NSEventTypeScrollWheel:
+    case NSEventTypeMouseEntered:
+    case NSEventTypeMouseExited:
         Cocoa_HandleMouseEvent(_this, theEvent);
         break;
     case NSEventTypeKeyDown:

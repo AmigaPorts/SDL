@@ -241,9 +241,7 @@ static void WIN_CheckWParamMouseButton(Uint64 timestamp, bool bwParamMousePresse
             data->focus_click_pending &= ~SDL_BUTTON_MASK(button);
             WIN_UpdateClipCursor(data->window);
         }
-        if (WIN_ShouldIgnoreFocusClick(data)) {
-            return;
-        }
+        return;
     }
 
     if (bwParamMousePressed && !(mouseFlags & SDL_BUTTON_MASK(button))) {
@@ -323,7 +321,7 @@ static void WIN_UpdateFocus(SDL_Window *window, bool expect_focus)
     if (has_focus) {
         POINT cursorPos;
 
-        if (!(window->flags & SDL_WINDOW_MOUSE_CAPTURE)) {
+        if (WIN_ShouldIgnoreFocusClick(data) && !(window->flags & SDL_WINDOW_MOUSE_CAPTURE)) {
             bool swapButtons = GetSystemMetrics(SM_SWAPBUTTON) != 0;
             if (GetAsyncKeyState(VK_LBUTTON)) {
                 data->focus_click_pending |= !swapButtons ? SDL_BUTTON_LMASK : SDL_BUTTON_RMASK;
@@ -676,9 +674,7 @@ static void WIN_HandleRawMouseInput(Uint64 timestamp, SDL_VideoData *data, HANDL
                         windowdata->focus_click_pending &= ~SDL_BUTTON_MASK(button);
                         WIN_UpdateClipCursor(window);
                     }
-                    if (WIN_ShouldIgnoreFocusClick(windowdata)) {
-                        continue;
-                    }
+                    continue;
                 }
 
                 SDL_SendMouseButton(timestamp, window, mouseID, button, down);
@@ -1118,6 +1114,16 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     {
         if (SDL_WINDOW_IS_POPUP(data->window)) {
             return MA_NOACTIVATE;
+        }
+
+        // Check parents to see if they are in relative mouse mode and focused
+        SDL_Window *parent = data->window->parent;
+        while (parent) {
+            if ((parent->flags & SDL_WINDOW_INPUT_FOCUS) &&
+                (parent->flags & SDL_WINDOW_MOUSE_RELATIVE_MODE)) {
+                return MA_NOACTIVATE;
+            }
+            parent = parent->parent;
         }
     } break;
 
@@ -1672,6 +1678,11 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     case WM_ENTERSIZEMOVE:
     case WM_ENTERMENULOOP:
     {
+        data->initial_size_rect.left = data->window->x;
+        data->initial_size_rect.right = data->window->x + data->window->w;
+        data->initial_size_rect.top = data->window->y;
+        data->initial_size_rect.bottom = data->window->y + data->window->h;
+
         SetTimer(hwnd, (UINT_PTR)SDL_IterateMainCallbacks, USER_TIMER_MINIMUM, NULL);
     } break;
 
@@ -1765,7 +1776,7 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             case WMSZ_LEFT:
                 clientDragRect.left = clientDragRect.right - w;
                 if (lock_aspect_ratio) {
-                    clientDragRect.top = (clientDragRect.bottom + clientDragRect.top - h) / 2;
+                    clientDragRect.top = (data->initial_size_rect.bottom + data->initial_size_rect.top - h) / 2;
                 }
                 clientDragRect.bottom = h + clientDragRect.top;
                 break;
@@ -1776,7 +1787,7 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             case WMSZ_RIGHT:
                 clientDragRect.right = w + clientDragRect.left;
                 if (lock_aspect_ratio) {
-                    clientDragRect.top = (clientDragRect.bottom + clientDragRect.top - h) / 2;
+                    clientDragRect.top = (data->initial_size_rect.bottom + data->initial_size_rect.top - h) / 2;
                 }
                 clientDragRect.bottom = h + clientDragRect.top;
                 break;
@@ -1786,7 +1797,7 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                 break;
             case WMSZ_TOP:
                 if (lock_aspect_ratio) {
-                    clientDragRect.left = (clientDragRect.right + clientDragRect.left - w) / 2;
+                    clientDragRect.left = (data->initial_size_rect.right + data->initial_size_rect.left - w) / 2;
                 }
                 clientDragRect.right = w + clientDragRect.left;
                 clientDragRect.top = clientDragRect.bottom - h;
@@ -1797,7 +1808,7 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                 break;
             case WMSZ_BOTTOM:
                 if (lock_aspect_ratio) {
-                    clientDragRect.left = (clientDragRect.right + clientDragRect.left - w) / 2;
+                    clientDragRect.left = (data->initial_size_rect.right + data->initial_size_rect.left - w) / 2;
                 }
                 clientDragRect.right = w + clientDragRect.left;
                 clientDragRect.bottom = h + clientDragRect.top;
@@ -2061,7 +2072,19 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         return ret;                                                        \
     }
                 case SDL_HITTEST_DRAGGABLE:
+                {
+                    /* If the mouse button state is something other than none or left button down,
+                     * return HTCLIENT, or Windows will eat the button press.
+                     */
+                    SDL_MouseButtonFlags buttonState = SDL_GetGlobalMouseState(NULL, NULL);
+                    if (buttonState && !(buttonState & SDL_BUTTON_LMASK)) {
+                        // Set focus in case it was lost while previously moving over a draggable area.
+                        SDL_SetMouseFocus(window);
+                        return HTCLIENT;
+                    }
+
                     POST_HIT_TEST(HTCAPTION);
+                }
                 case SDL_HITTEST_RESIZE_TOPLEFT:
                     POST_HIT_TEST(HTTOPLEFT);
                 case SDL_HITTEST_RESIZE_TOP:

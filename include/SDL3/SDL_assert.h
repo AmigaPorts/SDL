@@ -118,8 +118,7 @@ extern "C" {
  *
  * If the program is not running under a debugger, SDL_TriggerBreakpoint will
  * likely terminate the app, possibly without warning. If the current platform
- * isn't supported (SDL doesn't know how to trigger a breakpoint), this macro
- * does nothing.
+ * isn't supported, this macro is left undefined.
  *
  * \threadsafety It is safe to call this macro from any thread.
  *
@@ -153,9 +152,10 @@ extern "C" {
 #elif defined(HAVE_SIGNAL_H) && !defined(__WATCOMC__)
     #include <signal.h>
     #define SDL_TriggerBreakpoint() raise(SIGTRAP)
+#elif defined(SDL_PLATFORM_AMIGAOS4)
+    #define SDL_TriggerBreakpoint() __asm__ __volatile__ ( "trap\n\t" )
 #else
-    /* How do we trigger breakpoints on this platform? */
-    #define SDL_TriggerBreakpoint()
+    /* SDL_TriggerBreakpoint is intentionally left undefined on unknown platforms. */
 #endif
 
 #ifdef SDL_WIKI_DOCUMENTATION_SECTION

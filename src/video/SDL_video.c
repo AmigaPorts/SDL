@@ -51,10 +51,14 @@
 #include <SDL3/SDL_opengles2.h>
 #endif // SDL_VIDEO_OPENGL_ES2 && !SDL_VIDEO_OPENGL
 
-#ifndef SDL_VIDEO_OPENGL
-#ifndef GL_CONTEXT_RELEASE_BEHAVIOR_KHR
-#define GL_CONTEXT_RELEASE_BEHAVIOR_KHR 0x82FB
+// GL_CONTEXT_RELEASE_BEHAVIOR and GL_CONTEXT_RELEASE_BEHAVIOR_KHR have the same number.
+#ifndef GL_CONTEXT_RELEASE_BEHAVIOR
+#define GL_CONTEXT_RELEASE_BEHAVIOR 0x82FB
 #endif
+
+// GL_CONTEXT_RELEASE_BEHAVIOR_FLUSH and GL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_KHR have the same number.
+#ifndef GL_CONTEXT_RELEASE_BEHAVIOR_FLUSH
+#define GL_CONTEXT_RELEASE_BEHAVIOR_FLUSH 0x82FC
 #endif
 
 #ifdef SDL_PLATFORM_EMSCRIPTEN
@@ -177,6 +181,10 @@ static VideoBootStrap *bootstrap[] = {
 // Support for macOS fullscreen spaces
 extern bool Cocoa_IsWindowInFullscreenSpace(SDL_Window *window);
 extern bool Cocoa_SetWindowFullscreenSpace(SDL_Window *window, bool state, bool blocking);
+#endif
+
+#ifdef SDL_VIDEO_DRIVER_UIKIT
+extern void SDL_UpdateLifecycleObserver(void);
 #endif
 
 static void SDL_CheckWindowDisplayChanged(SDL_Window *window);
@@ -2529,6 +2537,10 @@ SDL_Window *SDL_CreateWindowWithProperties(SDL_PropertiesID props)
     // Make sure window pixel size is up to date
     SDL_CheckWindowPixelSizeChanged(window);
 
+#ifdef SDL_VIDEO_DRIVER_UIKIT
+    SDL_UpdateLifecycleObserver();
+#endif
+
     SDL_ClearError();
 
     return window;
@@ -4269,6 +4281,10 @@ void SDL_DestroyWindow(SDL_Window *window)
     }
 
     SDL_free(window);
+
+#ifdef SDL_VIDEO_DRIVER_UIKIT
+    SDL_UpdateLifecycleObserver();
+#endif
 }
 
 bool SDL_ScreenSaverEnabled(void)
@@ -4884,11 +4900,7 @@ bool SDL_GL_GetAttribute(SDL_GLAttr attr, int *value)
         attrib = GL_SAMPLES;
         break;
     case SDL_GL_CONTEXT_RELEASE_BEHAVIOR:
-#ifdef SDL_VIDEO_OPENGL
         attrib = GL_CONTEXT_RELEASE_BEHAVIOR;
-#else
-        attrib = GL_CONTEXT_RELEASE_BEHAVIOR_KHR;
-#endif
         break;
     case SDL_GL_BUFFER_SIZE:
     {
@@ -5033,6 +5045,12 @@ bool SDL_GL_GetAttribute(SDL_GLAttr attr, int *value)
         }
         return SDL_SetError("OpenGL error: %08X", error);
     }
+
+    // convert GL_CONTEXT_RELEASE_BEHAVIOR values back to SDL_GL_CONTEXT_RELEASE_BEHAVIOR values
+    if (attr == SDL_GL_CONTEXT_RELEASE_BEHAVIOR) {
+        *value = (*value == GL_CONTEXT_RELEASE_BEHAVIOR_FLUSH) ? SDL_GL_CONTEXT_RELEASE_BEHAVIOR_FLUSH : SDL_GL_CONTEXT_RELEASE_BEHAVIOR_NONE;
+    }
+
     return true;
 #else
     return SDL_Unsupported();

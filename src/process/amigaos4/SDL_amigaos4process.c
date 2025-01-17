@@ -23,7 +23,7 @@
 #ifdef SDL_PROCESS_AMIGAOS4
 
 #include "../SDL_sysprocess.h"
-#include "../../file/SDL_iostream_c.h"
+#include "../../io/SDL_iostream_c.h"
 #include "../../main/amigaos4/SDL_os4debug.h"
 
 #include <proto/dos.h>
