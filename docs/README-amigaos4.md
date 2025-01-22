@@ -38,7 +38,6 @@ Using SDL 2 in your projects
     #include "SDL2/SDL.h"
     ...do magical SDL2 things...
 
-
     gcc helloworld.c -use-dynld -lSDL2
 
 ================================================================================
@@ -177,7 +176,7 @@ Tips
 If you are already familiar with SDL 1.2, or porting SDL 1.2 code, it's worth
 checking the migration guide at:
 
-https://wiki.libsdl.org/MigrationGuide
+https://wiki.libsdl.org/SDL2/MigrationGuide
 
 Always check the return values of functions and in error case you can get more
 information using SDL_GetError() function!
