@@ -25,36 +25,14 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /* System dependent filesystem routines                                */
 
-#include "SDL_error.h"
-#include "SDL_filesystem.h"
+#include "../SDL_sysfilesystem.h"
+#include "SDL_sysfilesystem_amigaos4.h"
 #include "../../video/amigaos4/SDL_os4library.h"
-
 #include "../../main/amigaos4/SDL_os4debug.h"
 
 #include <proto/dos.h>
 
-const char *
-SDL_SYS_GetBasePath(void)
-{
-    char* buffer = NULL;
-    const char* const basePath = "PROGDIR:";
-
-    size_t len = SDL_strlen(basePath) + 1;
-
-    buffer = (char *) SDL_malloc(len);
-    if (!buffer) {
-        SDL_OutOfMemory();
-        return NULL;
-    }
-
-    SDL_memset(buffer, 0, len);
-    SDL_snprintf(buffer, len, "%s", basePath);
-
-    return buffer;
-}
-
-static bool
-OS4_CreateDirTree(const char* path)
+bool OS4_CreateDirTree(const char *path)
 {
     bool success = false;
 
@@ -99,8 +77,26 @@ OS4_CreateDirTree(const char* path)
     return success;
 }
 
-const char *
-SDL_SYS_GetPrefPath(const char *org, const char *app)
+char *SDL_SYS_GetBasePath(void)
+{
+    char* buffer = NULL;
+    const char* const basePath = "PROGDIR:";
+
+    size_t len = SDL_strlen(basePath) + 1;
+
+    buffer = (char *) SDL_malloc(len);
+    if (!buffer) {
+        SDL_OutOfMemory();
+        return NULL;
+    }
+
+    SDL_memset(buffer, 0, len);
+    SDL_snprintf(buffer, len, "%s", basePath);
+
+    return buffer;
+}
+
+char *SDL_SYS_GetPrefPath(const char *org, const char *app)
 {
     const char* const envPath = "ENVARC:";
     size_t len = SDL_strlen(envPath) + 1;
@@ -139,8 +135,7 @@ SDL_SYS_GetPrefPath(const char *org, const char *app)
     return NULL;
 }
 
-const char *
-SDL_SYS_GetUserFolder(SDL_Folder folder)
+char *SDL_SYS_GetUserFolder(SDL_Folder folder)
 {
     const char* const path = "PROGDIR:";
     const size_t pathLen = strlen(path) + 1;
@@ -195,158 +190,6 @@ char *SDL_SYS_GetCurrentDirectory(void)
     }
 
     return NULL;
-}
-
-int SDL_SYS_EnumerateDirectory(const char *path, const char *dirname, SDL_EnumerateDirectoryCallback cb, void *userdata)
-{
-    if (!IDOS) {
-        dprintf("IDOS nullptr\n");
-        return -1;
-    }
-
-    APTR context = IDOS->ObtainDirContextTags(EX_StringNameInput, path, EX_DataFields, (EXF_NAME|EXF_LINK|EXF_TYPE), TAG_DONE);
-
-    int success = 0;
-
-    if (context) {
-        struct ExamineData *data;
-
-        while ((data = IDOS->ExamineDir(context))) {
-            // TODO: link handling
-            if (EXD_IS_FILE(data) || EXD_IS_DIRECTORY(data)) {
-                const int result = cb(userdata, dirname, data->Name);
-                if (result == 0) {
-                    dprintf("Enumerating dir '%s' stopped after item '%s'\n", dirname, data->Name);
-                    success = 0;
-                    break;
-                } else if (result == -1) {
-                    dprintf("Callback returned error while enumerating dir '%s', item '%s'\n", dirname, data->Name);
-                    SDL_SetError("Callback returned error");
-                    success = -1;
-                    break;
-                }
-            }
-        }
-
-        const int32 err = IDOS->IoErr();
-
-        if (ERROR_NO_MORE_ENTRIES != err) {
-            dprintf("Error %ld while examining path '%s'\n", err, path);
-            SDL_SetError("Error while examining path");
-            success = -1;
-        }
-
-        IDOS->ReleaseDirContext(context);
-    } else {
-        dprintf("Failed to obtain dir context for '%s' (err %ld)\n", path, IDOS->IoErr());
-        SDL_SetError("Failed to obtain dir context");
-        success = -1;
-    }
-
-    return success;
-}
-
-bool SDL_SYS_RemovePath(const char *path)
-{
-    if (!IDOS) {
-        dprintf("IDOS nullptr\n");
-        return false;
-    }
-
-    const int32 success = IDOS->Delete(path);
-
-    if (success) {
-        dprintf("'%s' deleted\n", path);
-    } else {
-        const int32 err = IDOS->IoErr();
-        dprintf("Failed to delete '%s' (err %ld)\n", path, err);
-        if (err == ERROR_OBJECT_NOT_FOUND) {
-            dprintf("Object doesn't exist -> success\n");
-        } else {
-            SDL_SetError("Failed to delete path");
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool SDL_SYS_RenamePath(const char *oldpath, const char *newpath)
-{
-    if (!IDOS) {
-        dprintf("IDOS nullptr\n");
-        return false;
-    }
-
-    const int32 success = IDOS->Rename(oldpath, newpath);
-
-    if (success) {
-        dprintf("'%s' renamed to '%s'\n", oldpath, newpath);
-    } else {
-        dprintf("Failed to rename '%s' to '%s' (err %ld)\n", oldpath, newpath, IDOS->IoErr());
-        SDL_SetError("Failed to rename path");
-        return false;
-    }
-
-    return true;
-}
-
-bool SDL_SYS_CopyFile(const char *oldpath, const char *newpath)
-{
-    if (!IDOS) {
-        dprintf("IDOS nullptr\n");
-        return false;
-    }
-
-    char buffer[1024];
-    snprintf(buffer, sizeof(buffer), "Copy CLONE BUFFER=32768 %s %s", oldpath, newpath);
-
-    const int32 result = IDOS->SystemTags(buffer, TAG_DONE);
-
-    if (result == 0) {
-        dprintf("File %s copied to %s\n", oldpath, newpath);
-        return true;
-    }
-
-    dprintf("System(%s) failed with %ld\n", buffer, result);
-    return false;
-}
-
-bool SDL_SYS_CreateDirectory(const char *path)
-{
-    return OS4_CreateDirTree(path);
-}
-
-bool SDL_SYS_GetPathInfo(const char *path, SDL_PathInfo *info)
-{
-    if (!IDOS) {
-        dprintf("IDOS nullptr\n");
-        return false;
-    }
-
-    struct ExamineData *data = IDOS->ExamineObjectTags(EX_StringNameInput, path, TAG_DONE);
-
-    if (data) {
-        if (EXD_IS_FILE(data)) {
-            info->type = SDL_PATHTYPE_FILE;
-            info->size = data->FileSize;
-        } else if (EXD_IS_DIRECTORY(data)) {
-            info->type = SDL_PATHTYPE_DIRECTORY;
-        } else {
-            info->type = SDL_PATHTYPE_OTHER;
-        }
-
-        // TODO: time fields are nanoseconds since Jan 1, 1970.
-
-        IDOS->FreeDosObject(DOS_EXAMINEDATA, data);
-    } else {
-        dprintf("Failed to examine object '%s' (err %ld)\n", path, IDOS->IoErr());
-        SDL_SetError("Failed to examine object");
-        info->type = SDL_PATHTYPE_NONE;
-        return false;
-    }
-
-    return true;
 }
 
 #endif /* SDL_FILESYSTEM_AMIGAOS4 */

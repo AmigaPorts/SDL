@@ -327,7 +327,11 @@ SDL_Storage *GENERIC_OpenFileStorage(const char *path)
         len += SDL_strlen(path);
     }
     if (len > 0) {
+#ifdef SDL_PLATFORM_AMIGAOS4
+        if (path[len-1] == '/' || path[len-1] == ':') {
+#else
         if (path[len-1] == '/') {
+#endif
             basepath = SDL_strdup(path);
             if (!basepath) {
                 return NULL;
