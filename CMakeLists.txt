@@ -5,7 +5,7 @@ if(NOT DEFINED CMAKE_BUILD_TYPE)
 endif()
 
 # See docs/release_checklist.md
-project(SDL3 LANGUAGES C VERSION "3.1.11")
+project(SDL3 LANGUAGES C VERSION "3.2.1")
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   set(SDL3_MAINPROJECT ON)
@@ -2434,7 +2434,7 @@ elseif(APPLE)
   if(SDL_FRAMEWORK_GAMECONTROLLER)
     find_library(GAMECONTROLLER GameController)
     if(GAMECONTROLLER)
-      sdl_link_dependency(game_controller LIBS "$<LINK_LIBRARY:WEAK_FRAMEWORK,GameController>" PKG_CONFIG_LINK_OPTIONS "-Wl,-framework,GameController")
+      sdl_link_dependency(game_controller LIBS "$<LINK_LIBRARY:FRAMEWORK,GameController>" PKG_CONFIG_LINK_OPTIONS "-Wl,-framework,GameController")
     endif()
   endif()
   if(SDL_FRAMEWORK_METAL)
@@ -2453,7 +2453,7 @@ elseif(APPLE)
     find_library(COREHAPTICS CoreHaptics)
     if(COREHAPTICS)
       # macOS 10.15+ iOS 13.0+ tvOS 14.0+
-      sdl_link_dependency(core_haptics LIBS "$<LINK_LIBRARY:FRAMEWORK,CoreHaptics>" PKG_CONFIG_LINK_OPTIONS "-Wl,-weak_framework,CoreHaptics")
+      sdl_link_dependency(core_haptics LIBS "$<LINK_LIBRARY:WEAK_FRAMEWORK,CoreHaptics>" PKG_CONFIG_LINK_OPTIONS "-Wl,-weak_framework,CoreHaptics")
     endif()
   endif()
 
@@ -3246,7 +3246,6 @@ else()
 endif()
 
 if(SDL_CLANG_TIDY)
-  cmake_minimum_required(VERSION 3.6)
   find_program(CLANG_TIDY_BINARY clang-tidy)
 
   if(CLANG_TIDY_BINARY)
