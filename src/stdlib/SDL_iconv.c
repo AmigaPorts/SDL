@@ -22,6 +22,12 @@
 
 // This file contains portable iconv functions for SDL
 
+#ifdef SDL_PLATFORM_AMIGAOS4
+/* HACK: AmigaOS 4 iconv implementation doesn't support all conversions, making testiconv fail.
+As a workaround, fallback to custom implementation. */
+#undef HAVE_ICONV
+#endif
+
 #if defined(HAVE_ICONV) && defined(HAVE_ICONV_H)
 #ifndef SDL_USE_LIBICONV
 // Define LIBICONV_PLUG to use iconv from the base instead of ports and avoid linker errors.

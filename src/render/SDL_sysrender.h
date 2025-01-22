@@ -332,6 +332,7 @@ extern SDL_RenderDriver METAL_RenderDriver;
 extern SDL_RenderDriver VULKAN_RenderDriver;
 extern SDL_RenderDriver PS2_RenderDriver;
 extern SDL_RenderDriver PSP_RenderDriver;
+extern SDL_RenderDriver OS4_RenderDriver;
 extern SDL_RenderDriver SW_RenderDriver;
 extern SDL_RenderDriver VITA_GXM_RenderDriver;
 extern SDL_RenderDriver GPU_RenderDriver;

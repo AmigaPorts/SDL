@@ -475,4 +475,8 @@
 #undef __3DS__
 #endif
 
+#if defined(__amigaos4__)
+#define SDL_PLATFORM_AMIGAOS4 1
+#endif
+
 #endif /* SDL_platform_defines_h_ */

@@ -50,6 +50,11 @@
 #include <setjmp.h>
 #endif
 
+#if defined(SDL_PLATFORM_AMIGAOS4)
+#include <proto/exec.h>
+#include <exec/exectags.h>
+#endif
+
 #if (defined(SDL_PLATFORM_LINUX) || defined(SDL_PLATFORM_ANDROID)) && defined(__arm__)
 #include <unistd.h>
 #include <sys/types.h>
@@ -336,6 +341,12 @@ static int CPU_haveAltiVec(void)
     int error = sysctl(selectors, 2, &hasVectorUnit, &length, NULL, 0);
     if (0 == error) {
         altivec = (hasVectorUnit != 0);
+#elif defined(SDL_PLATFORM_AMIGAOS4)
+    {
+        uint32 vec_unit;
+
+        IExec->GetCPUInfoTags(GCIT_VectorUnit, &vec_unit, TAG_DONE);
+        altivec = (vec_unit == VECTORTYPE_ALTIVEC);
     }
 #elif defined(SDL_PLATFORM_FREEBSD) && defined(__powerpc__)
     unsigned long cpufeatures = 0;
@@ -858,6 +869,12 @@ int SDL_GetCPUCacheLineSize(void)
         cpuid(0x80000005, a, b, c, d);
         cacheline_size = c & 0xff;
     } else {
+#ifdef SDL_PLATFORM_AMIGAOS4
+        uint32 size;
+
+        IExec->GetCPUInfoTags(GCIT_CacheLineSize, &size, TAG_DONE);
+        return size;
+#endif
 #if defined(HAVE_SYSCONF) && defined(_SC_LEVEL1_DCACHE_LINESIZE)
         if ((cacheline_size = (int)sysconf(_SC_LEVEL1_DCACHE_LINESIZE)) > 0) {
             return cacheline_size;
@@ -1145,6 +1162,11 @@ int SDL_GetSystemRAM(void)
             if (GlobalMemoryStatusEx(&stat)) {
                 SDL_SystemRAM = (int)(stat.ullTotalPhys / (1024 * 1024));
             }
+        }
+#endif
+#if defined(SDL_PLATFORM_AMIGAOS4)
+        if (SDL_SystemRAM <= 0) {
+            SDL_SystemRAM = IExec->AvailMem(MEMF_TOTAL) / (1024 * 1024);
         }
 #endif
 #ifdef SDL_PLATFORM_RISCOS

@@ -31,6 +31,15 @@
 
 #include <SDL3/SDL_platform.h>
 
+#ifdef SDL_PLATFORM_AMIGAOS4
+/* We really need the system headers for MiniGL */
+
+#include <GL/gl.h>
+
+#include "SDL_opengl_glext.h"
+
+#else
+
 #ifndef SDL_PLATFORM_IOS  /* No OpenGL on iOS. */
 
 /*
@@ -3097,5 +3106,7 @@ typedef void (APIENTRYP PFNGLMULTITEXCOORD4SVARBPROC) (GLenum target, const GLsh
 #endif /* __gl_h_ */
 
 #endif /* !SDL_PLATFORM_IOS */
+
+#endif /* SDL_PLATFORM_AMIGAOS4 */
 
 #endif /* SDL_opengl_h_ */

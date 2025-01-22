@@ -71,6 +71,9 @@ static const AudioBootStrap *const bootstrap[] = {
 #ifdef SDL_AUDIO_DRIVER_PSP
     &PSPAUDIO_bootstrap,
 #endif
+#ifdef SDL_AUDIO_DRIVER_AMIGAOS4
+    &AMIGAOS4AUDIO_bootstrap,
+#endif
 #ifdef SDL_AUDIO_DRIVER_VITA
     &VITAAUD_bootstrap,
 #endif

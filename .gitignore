@@ -27,6 +27,7 @@ __pycache__
 *.swp
 *.tmp
 *.rej
+*.d
 
 # for CMake
 .cmake
