@@ -32,9 +32,8 @@ Building SDL 3 library
 Using SDL 3 in your projects
 ================================================================================
 
-    #include "SDL3/SDL.h"
+    #include <SDL3/SDL.h>
     ...do magical SDL3 things...
-
 
     gcc helloworld.c -use-dynld -lSDL3
 
@@ -74,11 +73,6 @@ About ENV variables
 
 Advanced users may use ENV variables to control some things in SDL3.
 Some variables supported by the SDL_Renderer subsystem:
-
-Batch drawing:
-
-setenv SDL_RENDER_BATCHING 1 # Enable
-setenv SDL_RENDER_BATCHING 0 # Disable
 
 Driver selection:
 
@@ -170,7 +164,7 @@ Tips
 If you are already familiar with SDL 2, or porting SDL 2 code, it's worth
 checking the migration guide at:
 
-https://wiki.libsdl.org/MigrationGuide
+https://wiki.libsdl.org/SDL3/README/migration
 
 Always check the return values of functions and in error case you can get more
 information using SDL_GetError() function!
@@ -182,8 +176,8 @@ Limitations
 Altivec support is disabled. It should be possible to enable in private builds
 but it hasn't been tested so far.
 
-Unsupported subsystems include Camera, GPU, Haptic, Power and Sensor. There is
-no Vulkan backend for AmigaOS either.
+Unsupported subsystems include Camera, GPU, Haptic, Pen, Power and Sensor. There
+is no Vulkan backend for AmigaOS either.
 
 "opengl" renderer doesn't exist anymore. This is due to missing features in MiniGL.
 
