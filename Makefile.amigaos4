@@ -72,6 +72,7 @@ SOURCES = \
 	./src/timer/*.c \
 	./src/timer/amigaos4/*.c \
 	./src/tray/SDL_tray_utils.c \
+	./src/tray/dummy/SDL_tray.c \
 	./src/video/*.c \
 	./src/video/dummy/*.c \
 	./src/video/amigaos4/*.c \
