@@ -14,7 +14,7 @@ AMIGADATE = $(shell date +"%-d.%m.%Y")
 CFLAGS  = -mcrt=$(CRT) -gstabs -O2 -Wall -Werror -Wshadow -fPIC -fcommon -I./include -I./include/build_config -I./include/SDL3 -I./src -D__AMIGADATE__=\"$(AMIGADATE)\"
 
 TARGET_STATIC  = libSDL3.a
-TARGET_SHARED  = libSDL3-3.1.so
+TARGET_SHARED  = libSDL3-3.2.so
 TESTLIB_STATIC = libSDL3_test.a
 PREFS_PROGRAM = SDL3
 
