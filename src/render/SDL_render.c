@@ -961,10 +961,8 @@ SDL_Renderer *SDL_CreateRendererWithProperties(SDL_PropertiesID props)
 #ifndef SDL_RENDER_DISABLED
     SDL_Window *window = (SDL_Window *)SDL_GetPointerProperty(props, SDL_PROP_RENDERER_CREATE_WINDOW_POINTER, NULL);
     SDL_Surface *surface = (SDL_Surface *)SDL_GetPointerProperty(props, SDL_PROP_RENDERER_CREATE_SURFACE_POINTER, NULL);
-    const char *name = SDL_GetStringProperty(props, SDL_PROP_RENDERER_CREATE_NAME_STRING, NULL);
-    const int n = SDL_GetNumRenderDrivers();
+    const char *driver_name = SDL_GetStringProperty(props, SDL_PROP_RENDERER_CREATE_NAME_STRING, NULL);
     const char *hint;
-    int i, attempted = 0;
     SDL_PropertiesID new_props;
 
 #ifdef SDL_PLATFORM_ANDROID
@@ -1011,28 +1009,34 @@ SDL_Renderer *SDL_CreateRendererWithProperties(SDL_PropertiesID props)
         }
     } else {
         bool rc = false;
-        if (!name) {
-            name = SDL_GetHint(SDL_HINT_RENDER_DRIVER);
+        if (!driver_name) {
+            driver_name = SDL_GetHint(SDL_HINT_RENDER_DRIVER);
         }
 
-        if (name) {
-            for (i = 0; i < n; i++) {
-                const SDL_RenderDriver *driver = render_drivers[i];
-                if (SDL_strcasecmp(name, driver->name) == 0) {
-                    // Create a new renderer instance
-                    ++attempted;
-                    rc = driver->CreateRenderer(renderer, window, props);
-                    break;
+        if (driver_name && *driver_name != 0) {
+            const char *driver_attempt = driver_name;
+            while (driver_attempt && *driver_attempt != 0 && !rc) {
+                const char *driver_attempt_end = SDL_strchr(driver_attempt, ',');
+                const size_t driver_attempt_len = (driver_attempt_end) ? (driver_attempt_end - driver_attempt) : SDL_strlen(driver_attempt);
+
+                for (int i = 0; render_drivers[i]; i++) {
+                    const SDL_RenderDriver *driver = render_drivers[i];
+                    if ((driver_attempt_len == SDL_strlen(driver->name)) && (SDL_strncasecmp(driver->name, driver_attempt, driver_attempt_len) == 0)) {
+                        rc = driver->CreateRenderer(renderer, window, props);
+                        if (rc) {
+                            break;
+                        }
+                    }
                 }
+
+                driver_attempt = (driver_attempt_end) ? (driver_attempt_end + 1) : NULL;
             }
         } else {
-            for (i = 0; i < n; i++) {
+            for (int i = 0; render_drivers[i]; i++) {
                 const SDL_RenderDriver *driver = render_drivers[i];
-                // Create a new renderer instance
-                ++attempted;
                 rc = driver->CreateRenderer(renderer, window, props);
                 if (rc) {
-                    break;  // Yay, we got one!
+                    break;
                 }
                 SDL_DestroyRendererWithoutFreeing(renderer);
                 SDL_zerop(renderer);  // make sure we don't leave function pointers from a previous CreateRenderer() in this struct.
@@ -1040,7 +1044,9 @@ SDL_Renderer *SDL_CreateRendererWithProperties(SDL_PropertiesID props)
         }
 
         if (!rc) {
-            if (!name || !attempted) {
+            if (driver_name) {
+                SDL_SetError("%s not available", driver_name);
+            } else {
                 SDL_SetError("Couldn't find matching render driver");
             }
             goto error;
@@ -1637,7 +1643,7 @@ SDL_Texture *SDL_CreateTextureFromSurface(SDL_Renderer *renderer, SDL_Surface *s
         }
     }
 
-    texture_colorspace = SDL_GetSurfaceColorspace(surface);
+    surface_colorspace = SDL_GetSurfaceColorspace(surface);
 
     // Try to have the best pixel format for the texture
     // No alpha, but a colorkey => promote to alpha
@@ -2574,7 +2580,12 @@ static void UpdateLogicalPresentation(SDL_Renderer *renderer)
     renderer->logical_src_rect.w = logical_w;
     renderer->logical_src_rect.h = logical_h;
 
-    if (renderer->logical_presentation_mode == SDL_LOGICAL_PRESENTATION_INTEGER_SCALE) {
+    if ((logical_w <= 0.0f) || (logical_h <= 0.0f)) {
+        renderer->logical_dst_rect.x = 0.0f;
+        renderer->logical_dst_rect.y = 0.0f;
+        renderer->logical_dst_rect.w = output_w;
+        renderer->logical_dst_rect.h = output_h;
+    } else if (renderer->logical_presentation_mode == SDL_LOGICAL_PRESENTATION_INTEGER_SCALE) {
         float scale;
         if (want_aspect > real_aspect) {
             scale = (float)((int)output_w / (int)logical_w); // This an integer division!
@@ -2638,8 +2649,8 @@ static void UpdateLogicalPresentation(SDL_Renderer *renderer)
         }
     }
 
-    renderer->main_view.logical_scale.x = (logical_w != 0.0f) ? renderer->logical_dst_rect.w / logical_w : 0.0f;
-    renderer->main_view.logical_scale.y = (logical_h != 0.0f) ? renderer->logical_dst_rect.h / logical_h : 0.0f;
+    renderer->main_view.logical_scale.x = (logical_w > 0.0f) ? renderer->logical_dst_rect.w / logical_w : 0.0f;
+    renderer->main_view.logical_scale.y = (logical_h > 0.0f) ? renderer->logical_dst_rect.h / logical_h : 0.0f;
     renderer->main_view.current_scale.x = renderer->main_view.scale.x * renderer->main_view.logical_scale.x;
     renderer->main_view.current_scale.y = renderer->main_view.scale.y * renderer->main_view.logical_scale.y;
     renderer->main_view.logical_offset.x = renderer->logical_dst_rect.x;
@@ -5011,8 +5022,21 @@ SDL_Surface *SDL_RenderReadPixels(SDL_Renderer *renderer, const SDL_Rect *rect)
         SDL_PropertiesID props = SDL_GetSurfaceProperties(surface);
 
         if (renderer->target) {
-            SDL_SetFloatProperty(props, SDL_PROP_SURFACE_SDR_WHITE_POINT_FLOAT, renderer->target->SDR_white_point);
-            SDL_SetFloatProperty(props, SDL_PROP_SURFACE_HDR_HEADROOM_FLOAT, renderer->target->HDR_headroom);
+            SDL_Texture *target = renderer->target;
+            SDL_Texture *parent = SDL_GetPointerProperty(SDL_GetTextureProperties(target), SDL_PROP_TEXTURE_PARENT_POINTER, NULL);
+            SDL_PixelFormat expected_format = (parent ? parent->format : target->format);
+
+            SDL_SetFloatProperty(props, SDL_PROP_SURFACE_SDR_WHITE_POINT_FLOAT, target->SDR_white_point);
+            SDL_SetFloatProperty(props, SDL_PROP_SURFACE_HDR_HEADROOM_FLOAT, target->HDR_headroom);
+
+            // Set the expected surface format
+            if ((surface->format == SDL_PIXELFORMAT_ARGB8888 && expected_format == SDL_PIXELFORMAT_XRGB8888) ||
+                (surface->format == SDL_PIXELFORMAT_RGBA8888 && expected_format == SDL_PIXELFORMAT_RGBX8888) ||
+                (surface->format == SDL_PIXELFORMAT_ABGR8888 && expected_format == SDL_PIXELFORMAT_XBGR8888) ||
+                (surface->format == SDL_PIXELFORMAT_BGRA8888 && expected_format == SDL_PIXELFORMAT_BGRX8888)) {
+                surface->format = expected_format;
+                surface->fmt = SDL_GetPixelFormatDetails(expected_format);
+            }
         } else {
             SDL_SetFloatProperty(props, SDL_PROP_SURFACE_SDR_WHITE_POINT_FLOAT, renderer->SDR_white_point);
             SDL_SetFloatProperty(props, SDL_PROP_SURFACE_HDR_HEADROOM_FLOAT, renderer->HDR_headroom);

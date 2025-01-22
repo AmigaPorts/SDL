@@ -479,6 +479,7 @@ static VkSamplerAddressMode SDLToVK_SamplerAddressMode[] = {
 typedef struct VulkanMemoryAllocation VulkanMemoryAllocation;
 typedef struct VulkanBuffer VulkanBuffer;
 typedef struct VulkanBufferContainer VulkanBufferContainer;
+typedef struct VulkanUniformBuffer VulkanUniformBuffer;
 typedef struct VulkanTexture VulkanTexture;
 typedef struct VulkanTextureContainer VulkanTextureContainer;
 
@@ -573,6 +574,7 @@ struct VulkanBuffer
     SDL_AtomicInt referenceCount;
     bool transitioned;
     bool markedForDestroy; // so that defrag doesn't double-free
+    VulkanUniformBuffer *uniformBufferForDefrag;
 };
 
 struct VulkanBufferContainer
@@ -4102,7 +4104,7 @@ static VulkanBuffer *VULKAN_INTERNAL_CreateBuffer(
         vulkanUsageFlags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     }
 
-    buffer = SDL_malloc(sizeof(VulkanBuffer));
+    buffer = SDL_calloc(1, sizeof(VulkanBuffer));
 
     buffer->size = size;
     buffer->usage = usageFlags;
@@ -4194,7 +4196,7 @@ static VulkanBufferContainer *VULKAN_INTERNAL_CreateBufferContainer(
         return NULL;
     }
 
-    bufferContainer = SDL_malloc(sizeof(VulkanBufferContainer));
+    bufferContainer = SDL_calloc(1, sizeof(VulkanBufferContainer));
 
     bufferContainer->activeBuffer = buffer;
     buffer->container = bufferContainer;
@@ -4202,8 +4204,7 @@ static VulkanBufferContainer *VULKAN_INTERNAL_CreateBufferContainer(
 
     bufferContainer->bufferCapacity = 1;
     bufferContainer->bufferCount = 1;
-    bufferContainer->buffers = SDL_malloc(
-        bufferContainer->bufferCapacity * sizeof(VulkanBuffer *));
+    bufferContainer->buffers = SDL_calloc(bufferContainer->bufferCapacity, sizeof(VulkanBuffer *));
     bufferContainer->buffers[0] = bufferContainer->activeBuffer;
     bufferContainer->dedicated = dedicated;
     bufferContainer->debugName = NULL;
@@ -6799,7 +6800,7 @@ static VulkanUniformBuffer *VULKAN_INTERNAL_CreateUniformBuffer(
     VulkanRenderer *renderer,
     Uint32 size)
 {
-    VulkanUniformBuffer *uniformBuffer = SDL_malloc(sizeof(VulkanUniformBuffer));
+    VulkanUniformBuffer *uniformBuffer = SDL_calloc(1, sizeof(VulkanUniformBuffer));
 
     uniformBuffer->buffer = VULKAN_INTERNAL_CreateBuffer(
         renderer,
@@ -6811,7 +6812,7 @@ static VulkanUniformBuffer *VULKAN_INTERNAL_CreateUniformBuffer(
 
     uniformBuffer->drawOffset = 0;
     uniformBuffer->writeOffset = 0;
-    uniformBuffer->buffer->container = (VulkanBufferContainer *)uniformBuffer; // little hack for defrag
+    uniformBuffer->buffer->uniformBufferForDefrag = uniformBuffer;
 
     return uniformBuffer;
 }
@@ -6926,6 +6927,7 @@ static void VULKAN_INTERNAL_ReleaseBuffer(
     renderer->buffersToDestroyCount += 1;
 
     vulkanBuffer->markedForDestroy = 1;
+    vulkanBuffer->container = NULL;
 
     SDL_UnlockMutex(renderer->disposeLock);
 }
@@ -6945,6 +6947,7 @@ static void VULKAN_INTERNAL_ReleaseBufferContainer(
     // Containers are just client handles, so we can free immediately
     if (bufferContainer->debugName != NULL) {
         SDL_free(bufferContainer->debugName);
+        bufferContainer->debugName = NULL;
     }
     SDL_free(bufferContainer->buffers);
     SDL_free(bufferContainer);
@@ -9856,24 +9859,7 @@ static bool VULKAN_INTERNAL_AcquireSwapchainTexture(
     }
 
     // Finally, try to acquire!
-    acquireResult = renderer->vkAcquireNextImageKHR(
-        renderer->logicalDevice,
-        windowData->swapchain,
-        SDL_MAX_UINT64,
-        windowData->imageAvailableSemaphore[windowData->frameCounter],
-        VK_NULL_HANDLE,
-        &swapchainImageIndex);
-
-    // Acquisition is invalid, let's try to recreate
-    if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR) {
-        Uint32 recreateSwapchainResult = VULKAN_INTERNAL_RecreateSwapchain(renderer, windowData);
-        if (!recreateSwapchainResult) {
-            return false;
-        } else if (recreateSwapchainResult == VULKAN_INTERNAL_TRY_AGAIN) {
-            // Edge case, texture is filled in with NULL but not an error
-            return true;
-        }
-
+    while (true) {
         acquireResult = renderer->vkAcquireNextImageKHR(
             renderer->logicalDevice,
             windowData->swapchain,
@@ -9882,8 +9868,19 @@ static bool VULKAN_INTERNAL_AcquireSwapchainTexture(
             VK_NULL_HANDLE,
             &swapchainImageIndex);
 
-        if (acquireResult != VK_SUCCESS && acquireResult != VK_SUBOPTIMAL_KHR) {
+        //if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR) { SDL_Log("VULKAN SWAPCHAIN OUT OF DATE"); }
+
+        if (acquireResult == VK_SUCCESS || acquireResult == VK_SUBOPTIMAL_KHR) {
+            break;  // we got the next image!
+        }
+
+        // If acquisition is invalid, let's try to recreate
+        Uint32 recreateSwapchainResult = VULKAN_INTERNAL_RecreateSwapchain(renderer, windowData);
+        if (!recreateSwapchainResult) {
             return false;
+        } else if (recreateSwapchainResult == VULKAN_INTERNAL_TRY_AGAIN) {
+            // Edge case, texture is filled in with NULL but not an error
+            return true;
         }
     }
 
@@ -10691,12 +10688,16 @@ static bool VULKAN_INTERNAL_DefragmentMemory(
             newBuffer->container = currentRegion->vulkanBuffer->container;
             newBuffer->containerIndex = currentRegion->vulkanBuffer->containerIndex;
             if (newBuffer->type == VULKAN_BUFFER_TYPE_UNIFORM) {
-                ((VulkanUniformBuffer *)newBuffer->container)->buffer = newBuffer;
+                currentRegion->vulkanBuffer->uniformBufferForDefrag->buffer = newBuffer;
             } else {
                 newBuffer->container->buffers[newBuffer->containerIndex] = newBuffer;
                 if (newBuffer->container->activeBuffer == currentRegion->vulkanBuffer) {
                     newBuffer->container->activeBuffer = newBuffer;
                 }
+            }
+
+            if (currentRegion->vulkanBuffer->uniformBufferForDefrag) {
+                newBuffer->uniformBufferForDefrag = currentRegion->vulkanBuffer->uniformBufferForDefrag;
             }
 
             VULKAN_INTERNAL_ReleaseBuffer(renderer, currentRegion->vulkanBuffer);

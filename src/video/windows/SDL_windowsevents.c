@@ -174,6 +174,16 @@ static Uint64 WIN_GetEventTimestamp(void)
     return timestamp;
 }
 
+// A message hook called before TranslateMessage()
+static SDL_WindowsMessageHook g_WindowsMessageHook = NULL;
+static void *g_WindowsMessageHookData = NULL;
+
+void SDL_SetWindowsMessageHook(SDL_WindowsMessageHook callback, void *userdata)
+{
+    g_WindowsMessageHook = callback;
+    g_WindowsMessageHookData = userdata;
+}
+
 static SDL_Scancode WindowsScanCodeToSDLScanCode(LPARAM lParam, WPARAM wParam, Uint16 *rawcode, bool *virtual_key)
 {
     SDL_Scancode code;
@@ -1042,6 +1052,25 @@ static bool SkipAltGrLeftControl(WPARAM wParam, LPARAM lParam)
     return false;
 }
 
+static bool DispatchModalLoopMessageHook(HWND *hwnd, UINT *msg, WPARAM *wParam, LPARAM *lParam)
+{
+    MSG dummy;
+
+    SDL_zero(dummy);
+    dummy.hwnd = *hwnd;
+    dummy.message = *msg;
+    dummy.wParam = *wParam;
+    dummy.lParam = *lParam;
+    if (g_WindowsMessageHook(g_WindowsMessageHookData, &dummy)) {
+        // Can't modify the hwnd, but everything else is fair game
+        *msg = dummy.message;
+        *wParam = dummy.wParam;
+        *lParam = dummy.lParam;
+        return true;
+    }
+    return false;
+}
+
 LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     SDL_WindowData *data;
@@ -1070,6 +1099,14 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         OutputDebugStringA(message);
     }
 #endif // WMMSG_DEBUG
+
+
+    if (g_WindowsMessageHook && data->in_modal_loop) {
+        // Synthesize a message for window hooks so they can modify the message if desired
+        if (!DispatchModalLoopMessageHook(&hwnd, &msg, &wParam, &lParam)) {
+            return 0;
+        }
+    }
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
     if (WIN_HandleIMEMessage(hwnd, msg, wParam, &lParam, data->videodata)) {
@@ -1611,13 +1648,17 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                 SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_RESTORED, 0, 0);
             }
             SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_MAXIMIZED, 0, 0);
-            data->force_resizable = true;
+            data->force_ws_maximizebox = true;
         } else if (data->window->flags & (SDL_WINDOW_MAXIMIZED | SDL_WINDOW_MINIMIZED)) {
             SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_RESTORED, 0, 0);
 
-            // If resizable was forced on for the maximized window, clear the style flags now.
-            data->force_resizable = false;
-            WIN_SetWindowResizable(SDL_GetVideoDevice(), data->window, !!(data->window->flags & SDL_WINDOW_RESIZABLE));
+            /* If resizable was forced on for the maximized window, clear the style flags now,
+             * but not if the window is fullscreen, as this needs to be preserved in that case.
+             */
+            if (!(data->window->flags & SDL_WINDOW_FULLSCREEN)) {
+                data->force_ws_maximizebox = false;
+                WIN_SetWindowResizable(SDL_GetVideoDevice(), data->window, !!(data->window->flags & SDL_WINDOW_RESIZABLE));
+            }
         }
 
         if (windowpos->flags & SWP_HIDEWINDOW) {
@@ -1633,23 +1674,25 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             break;
         }
 
-        if (GetClientRect(hwnd, &rect) && !WIN_IsRectEmpty(&rect)) {
-            ClientToScreen(hwnd, (LPPOINT) &rect);
-            ClientToScreen(hwnd, (LPPOINT) &rect + 1);
+        if (!data->disable_move_size_events) {
+            if (GetClientRect(hwnd, &rect) && !WIN_IsRectEmpty(&rect)) {
+                ClientToScreen(hwnd, (LPPOINT) &rect);
+                ClientToScreen(hwnd, (LPPOINT) &rect + 1);
 
-            x = rect.left;
-            y = rect.top;
+                x = rect.left;
+                y = rect.top;
 
-            SDL_GlobalToRelativeForWindow(data->window, x, y, &x, &y);
-            SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_MOVED, x, y);
-        }
+                SDL_GlobalToRelativeForWindow(data->window, x, y, &x, &y);
+                SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_MOVED, x, y);
+            }
 
-        // Moving the window from one display to another can change the size of the window (in the handling of SDL_EVENT_WINDOW_MOVED), so we need to re-query the bounds
-        if (GetClientRect(hwnd, &rect) && !WIN_IsRectEmpty(&rect)) {
-            w = rect.right;
-            h = rect.bottom;
+            // Moving the window from one display to another can change the size of the window (in the handling of SDL_EVENT_WINDOW_MOVED), so we need to re-query the bounds
+            if (GetClientRect(hwnd, &rect) && !WIN_IsRectEmpty(&rect)) {
+                w = rect.right;
+                h = rect.bottom;
 
-            SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_RESIZED, w, h);
+                SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_RESIZED, w, h);
+            }
         }
 
         WIN_UpdateClipCursor(data->window);
@@ -1678,12 +1721,15 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     case WM_ENTERSIZEMOVE:
     case WM_ENTERMENULOOP:
     {
-        data->initial_size_rect.left = data->window->x;
-        data->initial_size_rect.right = data->window->x + data->window->w;
-        data->initial_size_rect.top = data->window->y;
-        data->initial_size_rect.bottom = data->window->y + data->window->h;
+        ++data->in_modal_loop;
+        if (data->in_modal_loop == 1) {
+            data->initial_size_rect.left = data->window->x;
+            data->initial_size_rect.right = data->window->x + data->window->w;
+            data->initial_size_rect.top = data->window->y;
+            data->initial_size_rect.bottom = data->window->y + data->window->h;
 
-        SetTimer(hwnd, (UINT_PTR)SDL_IterateMainCallbacks, USER_TIMER_MINIMUM, NULL);
+            SetTimer(hwnd, (UINT_PTR)SDL_IterateMainCallbacks, USER_TIMER_MINIMUM, NULL);
+        }
     } break;
 
     case WM_TIMER:
@@ -1697,7 +1743,10 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     case WM_EXITSIZEMOVE:
     case WM_EXITMENULOOP:
     {
-        KillTimer(hwnd, (UINT_PTR)SDL_IterateMainCallbacks);
+        --data->in_modal_loop;
+        if (data->in_modal_loop == 0) {
+            KillTimer(hwnd, (UINT_PTR)SDL_IterateMainCallbacks);
+        }
     } break;
 
     case WM_SIZING:
@@ -2022,7 +2071,12 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             WINDOWPLACEMENT placement;
             if (GetWindowPlacement(hwnd, &placement) && placement.showCmd == SW_MAXIMIZE) {
                 // Maximized borderless windows should use the monitor work area.
-                HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+                HMONITOR hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
+                if (!hMonitor) {
+                    // The returned monitor can be null when restoring from minimized, so use the last coordinates.
+                    const POINT pt = { data->window->windowed.x, data->window->windowed.y };
+                    hMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+                }
                 if (hMonitor) {
                     MONITORINFO info;
                     SDL_zero(info);
@@ -2031,7 +2085,7 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                         params->rgrc[0] = info.rcWork;
                     }
                 }
-            } else if (!(window_flags & SDL_WINDOW_RESIZABLE) && !data->force_resizable) {
+            } else if (!(window_flags & SDL_WINDOW_RESIZABLE) && !data->force_ws_maximizebox) {
                 int w, h;
                 if (data->window->last_size_pending) {
                     w = data->window->pending.w;
@@ -2293,16 +2347,6 @@ static void WIN_UpdateMouseCapture(void)
     }
 }
 #endif // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
-
-// A message hook called before TranslateMessage()
-static SDL_WindowsMessageHook g_WindowsMessageHook = NULL;
-static void *g_WindowsMessageHookData = NULL;
-
-void SDL_SetWindowsMessageHook(SDL_WindowsMessageHook callback, void *userdata)
-{
-    g_WindowsMessageHook = callback;
-    g_WindowsMessageHookData = userdata;
-}
 
 int WIN_WaitEventTimeout(SDL_VideoDevice *_this, Sint64 timeoutNS)
 {
