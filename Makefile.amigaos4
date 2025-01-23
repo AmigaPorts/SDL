@@ -54,7 +54,6 @@ SOURCES = \
 	./src/process/*.c \
 	./src/process/amigaos4/*.c \
 	./src/render/amigaos4/*.c \
-	./src/render/opengl/*.c \
 	./src/render/opengles2/*.c \
 	./src/render/software/*.c \
 	./src/sensor/*.c \
