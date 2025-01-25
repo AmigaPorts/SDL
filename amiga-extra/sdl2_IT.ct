@@ -1,51 +1,54 @@
-## version $VER: sdl2.catalog 1.0 (19.02.2024)
+## version $VER: sdl2.catalog 1.0 (21.02.2024)
 ## codeset 4
 ## language italiano
 ;
 ; ATO Italia
-; Italian translation by Samir 'samo79' Hawamdeh
-; Contact: s.hawamdeh@gmail.com
+; Compiled with FlexCat 2.18 PPC (AmigaOS4)
+; flexcat sdl2.cd sdl2.ct catalog=sdl2.catalog
 ;
-; Compiled with FlexCat 2.18 PPC (AmigaOS 4.x)
-; flexcat sdl2prefs.cd sdl2prefs_IT.ct catalog=sdl2prefs.catalog
+; Italian translation of SDL2
 ;
-; ------------------ General ------------------
+; Traduzione italiana di SDL2
+;
+; --- SDL2 application ---
 ;
 MSG_APP_MAIN_MENU
-
+Progetto
 ; Main
 ;
 MSG_APP_MAIN_ICONIFY
-
+I|Iconifica
 ; I|Iconify
 ;
 MSG_APP_MAIN_ABOUT
-
+?|Informazioni...
 ; ?|About...
 ;
 MSG_APP_MAIN_LAUNCH_PREFERENCES
-
+P|Preferenze...
 ; P|Launch preferences...
 ;
 MSG_APP_MAIN_QUIT
-
+Q|Esci
 ; Q|Quit
 ;
 MSG_APP_ABOUT_WINDOW
-
+Informazioni su SDL2
 ; About SDL2 library
 ;
 MSG_APP_OK
-
+_Ok
 ; _Ok
 ;
 MSG_APP_APPLICATION
-
+Applicazione SDL2
 ; SDL2 application
 ;
 MSG_APP_LIBRARY_VERSION
-
+Versione libreria SDL
 ; SDL library version
+;
+; --- SDL2 preferences ---
 ;
 MSG_PREFS_APPLICATION
 Preferenze di SDL2
@@ -54,8 +57,6 @@ Preferenze di SDL2
 MSG_PREFS_OK
 _OK
 ; _OK
-;
-; ------------------ GUI ------------------
 ;
 MSG_PREFS_RENDERER_OPTIONS_GROUP
 Opzioni Render 2D
@@ -78,7 +79,7 @@ opengles2
 ; opengles2
 ;
 MSG_PREFS_DRIVER_OPENGL
-opengl
+opengl (minigl)
 ; opengl
 ;
 MSG_PREFS_DRIVER_SOFTWARE
@@ -185,7 +186,7 @@ MSG_PREFS_CANCEL_GAD
 _Annulla
 ; _Cancel
 ;
-; ------------------ Menu ------------------
+; --- Preferences menu ---
 ;
 MSG_PREFS_MAIN_MENU
 Progetto
@@ -203,27 +204,27 @@ MSG_PREFS_MAIN_QUIT
 Q|Esci
 ; Q|Quit
 ;
-; ------------------ About ------------------
+; --- Preferences about ---
 ;
 MSG_PREFS_ABOUT_WINDOW
-Informazioni su SDL2 Prefs
+Informazioni sulle preferenze SDL2
 ; About SDL2 preferences
 ;
 MSG_PREFS_ABOUT_AUTHOR
-GUI realizzata da Juha Niemimaki
+Realizzata da Juha Niemimaki
 ; Written by Juha Niemimaki
 ;
 MSG_PREFS_ABOUT_TRANSLATOR
 Traduzione a cura di Samir Hawamdeh
 ; (using built-in strings)
 ;
-; ------------------ Help ------------------
+; --- Preferences help ---
 ;
 MSG_PREFS_DRIVER_HELP
 Seleziona un driver da utilizzare con SDL2:\n\
  \033bcompositing: \033nnon supporta determinati modi blend\n\
- \033bopengles2: \033nsupporta la maggior parte delle funzionalità\n\
  \033bopengl: \033n(MiniGL) non supporta le render target e determinati modi blend\n\
+ \033bopengles2: \033nsupporta la maggior parte delle funzionalità\n\
  \033bsoftware: \033ncome \"opengles2\" ma senza accelerazione hardware
 ; Select driver implementation:\n\
 ;  \033bcompositing \033ndoesn't support some blend modes\n\
