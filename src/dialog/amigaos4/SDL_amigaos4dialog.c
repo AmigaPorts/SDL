@@ -33,7 +33,7 @@ typedef struct
     const char* cancel;
     const char* default_file;
     const char* default_dir;
-    SDL_Window* window;
+    struct Window* window;
     bool allow_many;
     bool save;
     bool dir_only;
@@ -43,11 +43,19 @@ typedef struct
 
 static void OS4_FreeDialogArgs(OS4_DialogArgs* args)
 {
+    dprintf("");
+
     SDL_free((void *)args->title);
     SDL_free((void *)args->accept);
     SDL_free((void *)args->cancel);
     SDL_free((void *)args->default_file);
     SDL_free((void *)args->default_dir);
+
+    args->title = NULL;
+    args->accept = NULL;
+    args->cancel = NULL;
+    args->default_file = NULL;
+    args->default_dir = NULL;
 
     SDL_free(args);
 }
@@ -146,18 +154,15 @@ static void OS4_ShowDialog(OS4_DialogArgs *args)
 {
     SDL_DialogFileCallback callback = args->callback;
 
-    struct Window *syswin = NULL;
-
-    if (args->window) {
-        SDL_PropertiesID props = SDL_GetWindowProperties(args->window);
-        syswin = SDL_GetPointerProperty(props, "SDL.window.amigaos4.window", NULL);
-        dprintf("Syswin %p\n", syswin);
-    }
-
-    dprintf("default_dir '%s', default_file '%s'\n", args->default_dir, args->default_file);
+    dprintf("title '%s', accept '%s', cancel '%s', default_dir '%s', default_file '%s'\n",
+            args->title,
+            args->accept,
+            args->cancel,
+            args->default_dir,
+            args->default_file);
 
     struct FileRequester *req = IAsl->AllocAslRequestTags(ASL_FileRequest,
-        ASLFR_Window, syswin,
+        ASLFR_Window, args->window,
         ASLFR_TitleText, args->title,
         ASLFR_PositiveText, args->accept,
         ASLFR_NegativeText, args->cancel,
@@ -207,7 +212,7 @@ static int OS4_DialogThread(void* ptr)
     return 0;
 }
 
-static void OS4_ShowFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window,
+static void OS4_ShowFileDialog(SDL_DialogFileCallback callback, void* userdata, struct Window* window,
                                const SDL_DialogFileFilter *filters, int nfilters, const char* default_location, bool allow_many, bool is_save,
                                const char* title, const char* accept, const char* cancel)
 {
@@ -244,7 +249,7 @@ static void OS4_ShowFileDialog(SDL_DialogFileCallback callback, void* userdata, 
 }
 
 // TODO: probably file + folder code could be merged into one
-static void OS4_ShowFolderDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window,
+static void OS4_ShowFolderDialog(SDL_DialogFileCallback callback, void* userdata, struct Window* window,
                                  const char* default_location, bool allow_many,
                                  const char* title, const char* accept, const char* cancel)
 {
@@ -289,6 +294,14 @@ void SDL_SYS_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFil
     int nfilters = (int) SDL_GetNumberProperty(props, SDL_PROP_FILE_DIALOG_NFILTERS_NUMBER, 0);
     bool allow_many = SDL_GetBooleanProperty(props, SDL_PROP_FILE_DIALOG_MANY_BOOLEAN, false);
 
+    struct Window *syswin = NULL;
+
+    if (window) {
+        SDL_PropertiesID windowProps = SDL_GetWindowProperties(window);
+        syswin = SDL_GetPointerProperty(windowProps, "SDL.window.amigaos4.window", NULL);
+        dprintf("Syswin %p\n", syswin);
+    }
+
     const char* default_location = SDL_GetStringProperty(props, SDL_PROP_FILE_DIALOG_LOCATION_STRING, NULL);
     const char* title = SDL_GetStringProperty(props, SDL_PROP_FILE_DIALOG_TITLE_STRING, NULL);
     const char* accept = SDL_GetStringProperty(props, SDL_PROP_FILE_DIALOG_ACCEPT_STRING, NULL);
@@ -307,14 +320,14 @@ void SDL_SYS_ShowFileDialogWithProperties(SDL_FileDialogType type, SDL_DialogFil
     switch (type) {
     case SDL_FILEDIALOG_SAVEFILE: {
         const bool is_save = true;
-        OS4_ShowFileDialog(callback, userdata, window, filters, nfilters, default_location, allow_many, is_save, title, accept, cancel);
+        OS4_ShowFileDialog(callback, userdata, syswin, filters, nfilters, default_location, allow_many, is_save, title, accept, cancel);
     } break;
     case SDL_FILEDIALOG_OPENFILE: {
         const bool is_save = false;
-        OS4_ShowFileDialog(callback, userdata, window, filters, nfilters, default_location, allow_many, is_save, title, accept, cancel);
+        OS4_ShowFileDialog(callback, userdata, syswin, filters, nfilters, default_location, allow_many, is_save, title, accept, cancel);
     } break;
     case SDL_FILEDIALOG_OPENFOLDER:
-        OS4_ShowFolderDialog(callback, userdata, window, default_location, allow_many, title, accept, cancel);
+        OS4_ShowFolderDialog(callback, userdata, syswin, default_location, allow_many, title, accept, cancel);
         break;
     }
 }
