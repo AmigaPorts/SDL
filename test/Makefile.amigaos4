@@ -14,6 +14,7 @@ TARGETS = \
 	helloworld \
 	loopwave \
 	sdl3benchmark \
+	testasyncio \
 	testatomic \
 	testaudio \
 	testaudiohotplug \
@@ -22,6 +23,7 @@ TARGETS = \
 	testaudiostreamdynamicresample \
 	testautomation \
 	testbounds \
+	testclipboard \
 	testcolorspace \
 	testcontroller \
 	testcustomcursor \
@@ -106,6 +108,9 @@ sdl3benchmark: sdl3benchmark.o
 testresample: testresample.o
 	$(CC) -o $@ $^ $(LIBS)
 
+testasyncio: testasyncio.o
+	$(CC) -o $@ $^ $(LIBS)
+
 testaudio: testaudio.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
@@ -141,6 +146,9 @@ testautomation: testautomation.o \
 		      testautomation_timer.o \
 		      testautomation_video.o
 	$(CC) -o $@ $^ $(LIBS) 
+
+testclipboard: testclipboard.o
+	$(CC) -o $@ $^ $(LIBS)
 
 testcontroller: testcontroller.o gamepadutils.o
 	$(CC) -o $@ $^ $(LIBS)
