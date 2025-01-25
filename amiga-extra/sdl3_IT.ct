@@ -1,51 +1,54 @@
-## version $VER: sdl3.catalog 1.0 (19.02.2024)
+## version $VER: sdl3.catalog 1.0 (21.02.2024)
 ## codeset 4
 ## language italiano
 ;
 ; ATO Italia
-; Italian translation by Samir 'samo79' Hawamdeh
-; Contact: s.hawamdeh@gmail.com
+; Compiled with FlexCat 2.18 PPC (AmigaOS4)
+; flexcat sdl3.cd sdl3.ct catalog=sdl3.catalog
 ;
-; Compiled with FlexCat 2.18 PPC (AmigaOS 4.x)
-; flexcat sdl3.cd sdl3_IT.ct catalog=sdl3.catalog
+; Italian translation of SDL3
 ;
-; ------------------ General ------------------
+; Traduzione italiana di SDL3
+;
+; --- SDL3 application ---
 ;
 MSG_APP_MAIN_MENU
-
+Progetto
 ; Main
 ;
 MSG_APP_MAIN_ICONIFY
-
+I|Iconifica
 ; I|Iconify
 ;
 MSG_APP_MAIN_ABOUT
-
+?|Informazioni...
 ; ?|About...
 ;
 MSG_APP_MAIN_LAUNCH_PREFERENCES
-
+P|Preferenze...
 ; P|Launch preferences...
 ;
 MSG_APP_MAIN_QUIT
-
+Q|Esci
 ; Q|Quit
 ;
 MSG_APP_ABOUT_WINDOW
-
+Informazioni su SDL3
 ; About SDL3 library
 ;
 MSG_APP_OK
-
+_Ok
 ; _Ok
 ;
 MSG_APP_APPLICATION
-
+Applicazione SDL3
 ; SDL3 application
 ;
 MSG_APP_LIBRARY_VERSION
-
+Versione libreria SDL
 ; SDL library version
+;
+; --- SDL3 preferences ---
 ;
 MSG_PREFS_APPLICATION
 Preferenze di SDL3
@@ -54,8 +57,6 @@ Preferenze di SDL3
 MSG_PREFS_OK
 _OK
 ; _OK
-;
-; ------------------ GUI ------------------
 ;
 MSG_PREFS_RENDERER_OPTIONS_GROUP
 Opzioni Render 2D
@@ -133,7 +134,7 @@ MSG_PREFS_CANCEL_GAD
 _Annulla
 ; _Cancel
 ;
-; ------------------ Menu ------------------
+; --- Preferences menu ---
 ;
 MSG_PREFS_MAIN_MENU
 Progetto
@@ -151,21 +152,21 @@ MSG_PREFS_MAIN_QUIT
 Q|Esci
 ; Q|Quit
 ;
-; ------------------ About ------------------
+; --- Preferences about ---
 ;
 MSG_PREFS_ABOUT_WINDOW
-Informazioni su SDL3 Prefs
+Informazioni sulle preferenze SDL3
 ; About SDL3 preferences
 ;
 MSG_PREFS_ABOUT_AUTHOR
-GUI realizzata da Juha Niemimaki
+Realizzata da Juha Niemimaki
 ; Written by Juha Niemimaki
 ;
 MSG_PREFS_ABOUT_TRANSLATOR
 Traduzione a cura di Samir Hawamdeh
 ; (using built-in strings)
 ;
-; ------------------ Help ------------------
+; --- Preferences help ---
 ;
 MSG_PREFS_DRIVER_HELP
 Seleziona un driver da utilizzare con SDL3:\n\
