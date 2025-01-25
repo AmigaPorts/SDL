@@ -831,7 +831,7 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
     } else {
         SDL_WindowData *data = window->internal;
 
-        dprintf("'%s': %s (%d)\n", window->title, OS4_DecodeFullscreenOp(fullscreen), fullscreen);
+        dprintf("'%s': %s (%d), display %p\n", window->title, OS4_DecodeFullscreenOp(fullscreen), fullscreen, display);
 
         if (window->flags & SDL_WINDOW_EXTERNAL) {
             dprintf("Native window '%s' (%p), mode change ignored\n", window->title, data->syswin);
@@ -839,13 +839,22 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
             int oldWidth = 0;
             int oldHeight = 0;
 
-            if (fullscreen == SDL_FULLSCREEN_OP_ENTER) {
-                // Detect dummy transition and keep calm
+            if (display) {
                 SDL_DisplayData *displayData = display->internal;
 
-                if (displayData->screen && data->syswin) {
-                    if (data->syswin->WScreen == displayData->screen) {
-                        dprintf("Same screen, useless mode change ignored\n");
+                // Detect dummy transitions and keep calm
+
+                if (fullscreen == SDL_FULLSCREEN_OP_ENTER) {
+                    if (displayData->screen && data->syswin) {
+                        dprintf("WScreen %p, screen %p\n", data->syswin->WScreen, displayData->screen);
+                        if (data->syswin->WScreen == displayData->screen) {
+                            dprintf("Same screen, useless mode change ignored\n");
+                            return SDL_FULLSCREEN_SUCCEEDED;
+                        }
+                    }
+                } else {
+                    if (!displayData->screen && data->syswin) {
+                        dprintf("Same (NULL) screen, useless mode change ignored\n");
                         return SDL_FULLSCREEN_SUCCEEDED;
                     }
                 }
