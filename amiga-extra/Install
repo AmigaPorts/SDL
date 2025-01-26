@@ -7,7 +7,7 @@ copy SDK/local/newlib/lib/libSDL3-3.2_debug.so SObjs:
 echo Copying documentation ...
 makedir SYS:Documentation/SDL3/
 copy README-amigaos4.md SYS:Documentation/SDL3/
-copy README-SDL.txt SYS:Documentation/SDL3/
+copy README.md SYS:Documentation/SDL3/
 Copy WhatsNew.txt SYS:Documentation/SDL3/
 Copy LICENSE.txt SYS:Documentation/SDL3/
 
@@ -28,9 +28,6 @@ set option `RequestChoice "SDK" "Would you like to install the SDK?" "Yes, pleas
 If $option eq 1
   echo Copying SDK files ...
   copy SDK/#? SDK: all
-
-  protect SDK:local/newlib/bin/sdl3-config +rweds
-
   delete SDK:local/newlib/lib/libSDL3.so
   makelink from=SDK:local/newlib/lib/libSDL3.so to=SObjs:libSDL3-3.2.so soft
 Else
