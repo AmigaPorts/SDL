@@ -690,7 +690,11 @@ OS4_ShowAboutWindow(struct MyIntuiMessage * imsg)
 static void
 OS4_LaunchPrefs(void)
 {
-    const int32 error = IDOS->System("SDL3", TAG_DONE);
+    const int32 error = IDOS->SystemTags("SDL3",
+                                         SYS_Asynch, TRUE,
+                                         SYS_Input, ZERO,
+                                         SYS_Output, ZERO,
+                                         TAG_DONE);
     if (error != 0) {
         dprintf("System() returned %ld\n", error);
     }
