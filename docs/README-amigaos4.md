@@ -71,8 +71,8 @@ available renderers.
 About ENV variables
 ================================================================================
 
-Advanced users may use ENV variables to control some things in SDL3.
-Some variables supported by the SDL_Renderer subsystem:
+Advanced users may use ENV variables to control some things in SDL3. Some
+variables supported by the SDL_Renderer subsystem:
 
 Driver selection:
 
@@ -119,10 +119,8 @@ also the default setup.
 About Joysticks
 ================================================================================
 
-Joysticks that are compatible with AmigaInput can be used with SDL3. In addition
-to legacy joystick API, SDL supports new game controller API which uses a
-predefined database to map joystick axes and buttons. At the moment
-game controller database contains the following entries:
+Joysticks that are compatible with AmigaInput can be used with SDL3. At the
+moment game controller database contains the following entries:
 
 - Speedlink Competition Pro
 - Ewent Joypad EW3170
@@ -143,9 +141,9 @@ game controller database contains the following entries:
 - Game Controller for Android
 - 2In1 USB Joystick
 
-Joysticks can be tested using testjoystick tool. New game controller mappings
-can be generated using controllermap tool. New mappings can be then added to
-the game controller database.
+Joysticks can be tested using testcontroller tool. New game controller mappings
+can be generated using the same tool. Mappings can be then added to the game
+controller database.
 
 ================================================================================
 WinUAE
@@ -179,9 +177,10 @@ but it hasn't been tested so far.
 Unsupported subsystems include Camera, GPU, Haptic, Pen, Power and Sensor. There
 is no Vulkan backend for AmigaOS either.
 
-"opengl" renderer doesn't exist anymore. This is due to missing features in MiniGL.
+"opengl" renderer doesn't exist anymore. This is due to missing features in
+MiniGL.
 
-Compositing renderer doesn't support color modulation for triangle geometry. Use
+Compositing renderer doesn't support triangle geometry API properly. Use
 "software" or "opengles2" driver if you need it.
 
 ================================================================================
