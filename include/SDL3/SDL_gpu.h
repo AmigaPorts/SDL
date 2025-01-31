@@ -1814,6 +1814,7 @@ typedef struct SDL_GPUGraphicsPipelineTargetInfo
  * \since This struct is available since SDL 3.2.0.
  *
  * \sa SDL_CreateGPUGraphicsPipeline
+ * \sa SDL_GPUShader
  * \sa SDL_GPUVertexInputState
  * \sa SDL_GPUPrimitiveType
  * \sa SDL_GPURasterizerState
@@ -1841,6 +1842,7 @@ typedef struct SDL_GPUGraphicsPipelineCreateInfo
  * \since This struct is available since SDL 3.2.0.
  *
  * \sa SDL_CreateGPUComputePipeline
+ * \sa SDL_GPUShaderFormat
  */
 typedef struct SDL_GPUComputePipelineCreateInfo
 {
@@ -2999,6 +3001,9 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUIndexBuffer(
  *
  * The textures must have been created with SDL_GPU_TEXTUREUSAGE_SAMPLER.
  *
+ * Be sure your shader is set up according to the requirements documented in
+ * SDL_CreateGPUShader().
+ *
  * \param render_pass a render pass handle.
  * \param first_slot the vertex sampler slot to begin binding from.
  * \param texture_sampler_bindings an array of texture-sampler binding
@@ -3007,6 +3012,8 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUIndexBuffer(
  *                     array.
  *
  * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_CreateGPUShader
  */
 extern SDL_DECLSPEC void SDLCALL SDL_BindGPUVertexSamplers(
     SDL_GPURenderPass *render_pass,
@@ -3020,12 +3027,17 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUVertexSamplers(
  * These textures must have been created with
  * SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ.
  *
+ * Be sure your shader is set up according to the requirements documented in
+ * SDL_CreateGPUShader().
+ *
  * \param render_pass a render pass handle.
  * \param first_slot the vertex storage texture slot to begin binding from.
  * \param storage_textures an array of storage textures.
  * \param num_bindings the number of storage texture to bind from the array.
  *
  * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_CreateGPUShader
  */
 extern SDL_DECLSPEC void SDLCALL SDL_BindGPUVertexStorageTextures(
     SDL_GPURenderPass *render_pass,
@@ -3039,12 +3051,17 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUVertexStorageTextures(
  * These buffers must have been created with
  * SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ.
  *
+ * Be sure your shader is set up according to the requirements documented in
+ * SDL_CreateGPUShader().
+ *
  * \param render_pass a render pass handle.
  * \param first_slot the vertex storage buffer slot to begin binding from.
  * \param storage_buffers an array of buffers.
  * \param num_bindings the number of buffers to bind from the array.
  *
  * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_CreateGPUShader
  */
 extern SDL_DECLSPEC void SDLCALL SDL_BindGPUVertexStorageBuffers(
     SDL_GPURenderPass *render_pass,
@@ -3057,6 +3074,9 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUVertexStorageBuffers(
  *
  * The textures must have been created with SDL_GPU_TEXTUREUSAGE_SAMPLER.
  *
+ * Be sure your shader is set up according to the requirements documented in
+ * SDL_CreateGPUShader().
+ *
  * \param render_pass a render pass handle.
  * \param first_slot the fragment sampler slot to begin binding from.
  * \param texture_sampler_bindings an array of texture-sampler binding
@@ -3065,6 +3085,8 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUVertexStorageBuffers(
  *                     array.
  *
  * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_CreateGPUShader
  */
 extern SDL_DECLSPEC void SDLCALL SDL_BindGPUFragmentSamplers(
     SDL_GPURenderPass *render_pass,
@@ -3078,12 +3100,17 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUFragmentSamplers(
  * These textures must have been created with
  * SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ.
  *
+ * Be sure your shader is set up according to the requirements documented in
+ * SDL_CreateGPUShader().
+ *
  * \param render_pass a render pass handle.
  * \param first_slot the fragment storage texture slot to begin binding from.
  * \param storage_textures an array of storage textures.
  * \param num_bindings the number of storage textures to bind from the array.
  *
  * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_CreateGPUShader
  */
 extern SDL_DECLSPEC void SDLCALL SDL_BindGPUFragmentStorageTextures(
     SDL_GPURenderPass *render_pass,
@@ -3097,12 +3124,17 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUFragmentStorageTextures(
  * These buffers must have been created with
  * SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ.
  *
+ * Be sure your shader is set up according to the requirements documented in
+ * SDL_CreateGPUShader().
+ *
  * \param render_pass a render pass handle.
  * \param first_slot the fragment storage buffer slot to begin binding from.
  * \param storage_buffers an array of storage buffers.
  * \param num_bindings the number of storage buffers to bind from the array.
  *
  * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_CreateGPUShader
  */
 extern SDL_DECLSPEC void SDLCALL SDL_BindGPUFragmentStorageBuffers(
     SDL_GPURenderPass *render_pass,
@@ -3290,6 +3322,9 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUComputePipeline(
  *
  * The textures must have been created with SDL_GPU_TEXTUREUSAGE_SAMPLER.
  *
+ * Be sure your shader is set up according to the requirements documented in
+ * SDL_CreateGPUShader().
+ *
  * \param compute_pass a compute pass handle.
  * \param first_slot the compute sampler slot to begin binding from.
  * \param texture_sampler_bindings an array of texture-sampler binding
@@ -3298,6 +3333,8 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUComputePipeline(
  *                     array.
  *
  * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_CreateGPUShader
  */
 extern SDL_DECLSPEC void SDLCALL SDL_BindGPUComputeSamplers(
     SDL_GPUComputePass *compute_pass,
@@ -3311,12 +3348,17 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUComputeSamplers(
  * These textures must have been created with
  * SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ.
  *
+ * Be sure your shader is set up according to the requirements documented in
+ * SDL_CreateGPUShader().
+ *
  * \param compute_pass a compute pass handle.
  * \param first_slot the compute storage texture slot to begin binding from.
  * \param storage_textures an array of storage textures.
  * \param num_bindings the number of storage textures to bind from the array.
  *
  * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_CreateGPUShader
  */
 extern SDL_DECLSPEC void SDLCALL SDL_BindGPUComputeStorageTextures(
     SDL_GPUComputePass *compute_pass,
@@ -3330,12 +3372,17 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUComputeStorageTextures(
  * These buffers must have been created with
  * SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ.
  *
+ * Be sure your shader is set up according to the requirements documented in
+ * SDL_CreateGPUShader().
+ *
  * \param compute_pass a compute pass handle.
  * \param first_slot the compute storage buffer slot to begin binding from.
  * \param storage_buffers an array of storage buffer binding structs.
  * \param num_bindings the number of storage buffers to bind from the array.
  *
  * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_CreateGPUShader
  */
 extern SDL_DECLSPEC void SDLCALL SDL_BindGPUComputeStorageBuffers(
     SDL_GPUComputePass *compute_pass,
@@ -3410,7 +3457,9 @@ extern SDL_DECLSPEC void SDLCALL SDL_EndGPUComputePass(
 /**
  * Maps a transfer buffer into application address space.
  *
- * You must unmap the transfer buffer before encoding upload commands.
+ * You must unmap the transfer buffer before encoding upload commands. The
+ * memory is owned by the graphics driver - do NOT call SDL_free() on the
+ * returned pointer.
  *
  * \param device a GPU context.
  * \param transfer_buffer a transfer buffer.
