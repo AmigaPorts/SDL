@@ -39,7 +39,6 @@ TARGETS = \
 	testgl \
 	testgles \
 	testgles2 \
-	testgles2_sdf \
 	testhaptic \
 	testhittesting \
 	testhotplug \
@@ -205,9 +204,6 @@ testgles: testgles.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testgles2: testgles2.o
-	$(CC) -o $@ $^ $(LIBS)
-
-testgles2_sdf: testgles2_sdf.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testhaptic: testhaptic.o
