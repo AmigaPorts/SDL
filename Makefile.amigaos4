@@ -49,10 +49,10 @@ SOURCES = \
 	./src/main/SDL_runapp.c \
 	./src/misc/*.c \
 	./src/misc/amigaos4/*.c \
-	./src/render/*.c \
 	./src/power/*.c \
 	./src/process/*.c \
 	./src/process/amigaos4/*.c \
+	./src/render/*.c \
 	./src/render/amigaos4/*.c \
 	./src/render/opengles2/*.c \
 	./src/render/software/*.c \
@@ -73,8 +73,8 @@ SOURCES = \
 	./src/tray/SDL_tray_utils.c \
 	./src/tray/dummy/SDL_tray.c \
 	./src/video/*.c \
-	./src/video/dummy/*.c \
 	./src/video/amigaos4/*.c \
+	./src/video/dummy/*.c \
 	./src/video/yuv2rgb/*.c \
 
 TESTLIB_SOURCES =./src/test/*.c
@@ -92,7 +92,7 @@ LOCALE_TEMPLATE = amiga-extra/sdl3.ct
 LOCALE_GENERATED = amiga-extra/locale_generated.h
 
 all: info $(TARGET_STATIC) $(TARGET_SHARED) $(TESTLIB_STATIC) $(PREFS_PROGRAM)
-	@echo All done 
+	@echo All done
 
 info:
 	@echo Compiler flags: $(CFLAGS)
@@ -116,7 +116,7 @@ $(TARGET_STATIC): $(OBJECTS)
 $(TARGET_SHARED): $(OBJECTS) $(VERSION_OBJECT)
 	@echo Linking $@
 	@$(CC) -mcrt=$(CRT) -shared -Wl,-soname,$(TARGET_SHARED) -o $(TARGET_SHARED) $(OBJECTS) $(VERSION_OBJECT)
-	
+
 $(PREFS_PROGRAM): $(PREFS_OBJECT) $(DEBUG_OBJECT)
 	$(CC) -o $@ $^
 
@@ -146,7 +146,7 @@ install:
 %.o : %.c
 	@echo Compiling $<
 	@$(CC) -o $@ -c $< $(CFLAGS)
-	
+
 %.d : %.c
 	@echo Making dependencies for $<
 	@$(CC) -MM -MP -MT $(@:.d=.o) -o $@ $< $(CFLAGS)
