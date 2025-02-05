@@ -85,6 +85,9 @@ all: $(TARGETS)
 checkkeys: checkkeys.o
 	$(CC) -o $@ $^ $(LIBS)
 
+controllermap: controllermap.o testutils.o
+	$(CC) -o $@ $^ $(LIBS)
+
 helloworld: helloworld.o
 	$(CC) -o $@ $^ $(LIBS)
 
@@ -97,7 +100,13 @@ loopwavequeue: loopwavequeue.o testutils.o
 sdl2benchmark: sdl2benchmark.o
 	$(CC) -o $@ $^ $(LIBS)
 
-testresample: testresample.o
+testatomic: testatomic.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testaudiocapture: testaudiocapture.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testaudiohotplug: testaudiohotplug.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testaudioinfo: testaudioinfo.o
@@ -127,27 +136,15 @@ testautomation: testautomation.o \
 		      testautomation_syswm.o \
 		      testautomation_timer.o \
 		      testautomation_video.o
-	$(CC) -o $@ $^ $(LIBS) 
-
-testmultiaudio: testmultiaudio.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
-testaudiohotplug: testaudiohotplug.o testutils.o
+testbounds: testbounds.o
 	$(CC) -o $@ $^ $(LIBS)
 
-testaudiocapture: testaudiocapture.o
+testcustomcursor: testcustomcursor.o
 	$(CC) -o $@ $^ $(LIBS)
 
-testatomic: testatomic.o
-	$(CC) -o $@ $^ $(LIBS)
-
-testintersections: testintersections.o
-	$(CC) -o $@ $^ $(LIBS)
-
-testrelative: testrelative.o
-	$(CC) -o $@ $^ $(LIBS)
-
-testhittesting: testhittesting.o
+testdisplayinfo: testdisplayinfo.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testdraw2: testdraw2.o
@@ -165,15 +162,18 @@ testerror: testerror.o
 testfile: testfile.o
 	$(CC) -o $@ $^ $(LIBS)
 
+testfilesystem: testfilesystem.o
+	$(CC) -o $@ $^ $(LIBS)
+
 testgamecontroller: testgamecontroller.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testgeometry: testgeometry.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
- 
+
 testgesture: testgesture.o
 	$(CC) -o $@ $^ $(LIBS)
- 
+
 testgl2: testgl2.o
 	$(CC) -o $@ $^ $(LIBS)
 
@@ -189,19 +189,19 @@ testgles2_sdf: testgles2_sdf.o testutils.o
 testhaptic: testhaptic.o
 	$(CC) -o $@ $^ $(LIBS)
 
+testhittesting: testhittesting.o
+	$(CC) -o $@ $^ $(LIBS)
+
 testhotplug: testhotplug.o
-	$(CC) -o $@ $^ $(LIBS)
-
-testrumble: testrumble.o
-	$(CC) -o $@ $^ $(LIBS)
-
-testthread: testthread.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testiconv: testiconv.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testime: testime.o testutils.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testintersections: testintersections.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testjoystick: testjoystick.o
@@ -219,7 +219,13 @@ testlocale: testlocale.o
 testlock: testlock.o
 	$(CC) -o $@ $^ $(LIBS)
 
+testmessage: testmessage.o
+	$(CC) -o $@ $^ $(LIBS)
+
 testmouse: testmouse.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testmultiaudio: testmultiaudio.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testnative: testnative.o testnativeamigaos4.o testutils.o
@@ -237,10 +243,22 @@ testplatform: testplatform.o
 testpower: testpower.o
 	$(CC) -o $@ $^ $(LIBS)
 
-testfilesystem: testfilesystem.o
+testqsort: testqsort.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testrelative: testrelative.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testrendercopyex: testrendercopyex.o testutils.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testrendertarget: testrendertarget.o testutils.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testresample: testresample.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testrumble: testrumble.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testscale: testscale.o testutils.o
@@ -270,13 +288,22 @@ teststreaming: teststreaming.o testutils.o
 testsurround: testsurround.o
 	$(CC) -o $@ $^ $(LIBS)
 
+testthread: testthread.o
+	$(CC) -o $@ $^ $(LIBS)
+
 testtimer: testtimer.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testurl: testurl.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testver: testver.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testviewport: testviewport.o testutils.o
+	$(CC) -o $@ $^ $(LIBS)
+
+testvulkan: testvulkan.o
 	$(CC) -o $@ $^ $(LIBS)
 
 testwm2: testwm2.o
@@ -286,33 +313,6 @@ testyuv: testyuv.o testyuv_cvt.o
 	$(CC) -o $@ $^ $(LIBS)
 
 torturethread: torturethread.o
-	$(CC) -o $@ $^ $(LIBS)
-
-testrendercopyex: testrendercopyex.o testutils.o
-	$(CC) -o $@ $^ $(LIBS)
-
-testmessage: testmessage.o
-	$(CC) -o $@ $^ $(LIBS)
-
-testdisplayinfo: testdisplayinfo.o
-	$(CC) -o $@ $^ $(LIBS)
-
-testqsort: testqsort.o
-	$(CC) -o $@ $^ $(LIBS)
-
-testbounds: testbounds.o
-	$(CC) -o $@ $^ $(LIBS)
-
-testcustomcursor: testcustomcursor.o
-	$(CC) -o $@ $^ $(LIBS)
-
-controllermap: controllermap.o testutils.o
-	$(CC) -o $@ $^ $(LIBS)
-
-testvulkan: testvulkan.o
-	$(CC) -o $@ $^ $(LIBS)
-
-testurl: testurl.o
 	$(CC) -o $@ $^ $(LIBS)
 
 clean:
@@ -330,4 +330,3 @@ clean:
 ifneq ($(MAKECMDGOALS),clean)
 -include $(DEPS)
 endif
-

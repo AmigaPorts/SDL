@@ -39,8 +39,8 @@ SOURCES = \
 	./src/main/amigaos4/SDL_os4debug.c \
 	./src/misc/*.c \
 	./src/misc/amigaos4/*.c \
-	./src/render/*.c \
 	./src/power/*.c \
+	./src/render/*.c \
 	./src/render/amigaos4/*.c \
 	./src/render/opengl/*.c \
 	./src/render/opengles2/*.c \
@@ -55,8 +55,8 @@ SOURCES = \
 	./src/timer/*.c \
 	./src/timer/amigaos4/*.c \
 	./src/video/*.c \
-	./src/video/dummy/*.c \
 	./src/video/amigaos4/*.c \
+	./src/video/dummy/*.c \
 	./src/video/yuv2rgb/*.c \
 
 TESTLIB_SOURCES =./src/test/*.c
