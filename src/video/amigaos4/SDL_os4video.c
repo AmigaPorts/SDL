@@ -181,7 +181,7 @@ OS4_AllocSystemResources(_THIS)
         return SDL_FALSE;
     }
 
-    OS4_LocaleInit();
+    OS4_InitLocale();
     OS4_FindApplicationName(_this);
     OS4_RegisterApplication(_this);
 
@@ -295,7 +295,7 @@ OS4_FreeSystemResources(_THIS)
         OS4_UnregisterApplication(_this);
     }
 
-    OS4_LocaleQuit();
+    OS4_QuitLocale();
 }
 
 static void

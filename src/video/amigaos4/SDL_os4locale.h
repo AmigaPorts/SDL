@@ -25,8 +25,8 @@
 
 #include <exec/types.h>
 
-extern BOOL OS4_LocaleInit(void);
-extern void OS4_LocaleQuit(void);
+extern BOOL OS4_InitLocale(void);
+extern void OS4_QuitLocale(void);
 extern CONST_STRPTR OS4_GetString(LONG stringNum);
 
 #endif /* _SDL_os4locale_h */
