@@ -58,8 +58,6 @@
 #define CATCOMP_NUMBERS
 #include "../../../amiga-extra/locale_generated.h"
 
-#define OS4VID_DRIVER_NAME "os4"
-
 static int OS4_VideoInit(_THIS);
 static void OS4_VideoQuit(_THIS);
 
@@ -533,7 +531,7 @@ OS4_CreateDevice(void)
 }
 
 VideoBootStrap OS4_bootstrap = {
-    OS4VID_DRIVER_NAME, "SDL AmigaOS 4 video driver",
+    "os4", "SDL AmigaOS 4 video driver",
     OS4_CreateDevice,
     OS4_ShowMessageBox
 };
