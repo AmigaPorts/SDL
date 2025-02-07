@@ -27,7 +27,7 @@ Tietoja SDL2-kirjastosta
 ; About SDL2 library
 ;
 MSG_APP_OK
-
+_Ok
 ; _Ok
 ;
 MSG_APP_APPLICATION
