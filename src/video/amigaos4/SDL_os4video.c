@@ -47,6 +47,9 @@
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
+#define CATCOMP_NUMBERS
+#include "../../../amiga-extra/locale_generated.h"
+
 static bool OS4_VideoInit(SDL_VideoDevice *_this);
 static void OS4_VideoQuit(SDL_VideoDevice *_this);
 
@@ -109,12 +112,27 @@ OS4_RegisterApplication(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->internal;
 
+    const char* description = OS4_GetString(MSG_APP_APPLICATION);
+    const char* hint = SDL_GetHint(SDL_HINT_APP_NAME);
+
+    if (hint) {
+        description = hint;
+    } else {
+        const char* name = SDL_GetStringProperty(SDL_GetGlobalProperties(), SDL_PROP_APP_METADATA_NAME_STRING, NULL);
+        if (name) {
+            description = name;
+        }
+    }
+
     data->appId = IApplication->RegisterApplication(data->appName,
-                                                    REGAPP_Description, "SDL3 application",
+                                                    REGAPP_Description, description,
                                                     TAG_DONE);
 
     if (data->appId) {
-        dprintf("Registered application with id %lu\n", data->appId);
+        dprintf("Registered application '%s' with description '%s' and id %lu\n",
+                data->appName,
+                description,
+                data->appId);
     } else {
         dprintf("Failed to register application\n");
     }
@@ -146,6 +164,7 @@ OS4_AllocSystemResources(SDL_VideoDevice *_this)
         return false;
     }
 
+    OS4_InitLocale();
     OS4_FindApplicationName(_this);
     OS4_RegisterApplication(_this);
 
@@ -258,6 +277,8 @@ OS4_FreeSystemResources(SDL_VideoDevice *_this)
     if (data->appId) {
         OS4_UnregisterApplication(_this);
     }
+
+    OS4_QuitLocale();
 }
 
 static void
@@ -501,7 +522,6 @@ OS4_VideoInit(SDL_VideoDevice *_this)
 
     OS4_InitKeyboard(_this);
     OS4_InitMouse(_this);
-    OS4_LocaleInit();
 
     // We don't want SDL to change  window setup in SDL_OnWindowFocusLost()
     SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0");
@@ -527,7 +547,6 @@ OS4_VideoQuit(SDL_VideoDevice *_this)
 {
     dprintf("Called\n");
 
-    OS4_LocaleQuit();
     OS4_QuitMouse(_this);
     OS4_QuitKeyboard(_this);
     OS4_QuitModes(_this);

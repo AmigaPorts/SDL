@@ -36,7 +36,7 @@ static struct Locale* locale;
 static struct Catalog* catalog;
 static struct LocaleInfo localeInfo;
 
-BOOL OS4_LocaleInit(void)
+BOOL OS4_InitLocale(void)
 {
     if (ILocale) {
         localeInfo.li_ILocale = ILocale;
@@ -62,7 +62,7 @@ BOOL OS4_LocaleInit(void)
     return FALSE;
 }
 
-void OS4_LocaleQuit(void)
+void OS4_QuitLocale(void)
 {
     if (ILocale) {
         if (catalog) {
