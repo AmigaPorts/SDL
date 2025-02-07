@@ -44,6 +44,7 @@
 #include "SDL_os4events.h"
 #include "SDL_os4framebuffer.h"
 #include "SDL_os4mouse.h"
+#include "SDL_os4locale.h"
 #include "SDL_os4opengl.h"
 #include "SDL_os4opengles2.h"
 #include "SDL_os4shape.h"
@@ -53,6 +54,9 @@
 #include "SDL_os4library.h"
 
 #include "../../main/amigaos4/SDL_os4debug.h"
+
+#define CATCOMP_NUMBERS
+#include "../../../amiga-extra/locale_generated.h"
 
 #define OS4VID_DRIVER_NAME "os4"
 
@@ -133,12 +137,21 @@ OS4_RegisterApplication(_THIS)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
+    const char* description = OS4_GetString(MSG_APP_APPLICATION);
+    const char* hint = SDL_GetHint(SDL_HINT_APP_NAME);
+    if (hint) {
+        description = hint;
+    }
+
     data->appId = IApplication->RegisterApplication(data->appName,
-                                                    REGAPP_Description, "SDL2 application",
+                                                    REGAPP_Description, description,
                                                     TAG_DONE);
 
     if (data->appId) {
-        dprintf("Registered application with id %lu\n", data->appId);
+        dprintf("Registered application '%s' with description '%s' and id %lu\n",
+                data->appName,
+                description,
+                data->appId);
     } else {
         dprintf("Failed to register application\n");
     }
@@ -170,6 +183,7 @@ OS4_AllocSystemResources(_THIS)
         return SDL_FALSE;
     }
 
+    OS4_LocaleInit();
     OS4_FindApplicationName(_this);
     OS4_RegisterApplication(_this);
 
@@ -282,6 +296,8 @@ OS4_FreeSystemResources(_THIS)
     if (data->appId) {
         OS4_UnregisterApplication(_this);
     }
+
+    OS4_LocaleQuit();
 }
 
 static void
