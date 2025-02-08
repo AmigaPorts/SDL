@@ -5,13 +5,19 @@ if(NOT DEFINED CMAKE_BUILD_TYPE)
 endif()
 
 # See docs/release_checklist.md
-project(SDL3 LANGUAGES C VERSION "3.2.1")
+project(SDL3 LANGUAGES C VERSION "3.2.5")
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   set(SDL3_MAINPROJECT ON)
 else()
   set(SDL3_MAINPROJECT OFF)
 endif()
+
+# Add UTF-8 encoding support for MSVC compiler.
+# This ensures that the MSVC compiler interprets source files as UTF-8 encoded,
+# which is useful for projects containing non-ASCII characters in source files.
+add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
 # By default, configure SDL3 in RelWithDebInfo configuration
 if(SDL3_MAINPROJECT)
@@ -2881,6 +2887,7 @@ elseif(N3DS)
   set(SDL_THREAD_N3DS 1)
   sdl_glob_sources("${SDL3_SOURCE_DIR}/src/thread/n3ds/*.c")
   sdl_sources(
+    "${SDL3_SOURCE_DIR}/src/thread/generic/SDL_syscond.c"
     "${SDL3_SOURCE_DIR}/src/thread/generic/SDL_systls.c"
     "${SDL3_SOURCE_DIR}/src/thread/generic/SDL_sysrwlock.c"
   )

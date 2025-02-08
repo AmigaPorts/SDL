@@ -1366,6 +1366,7 @@ typedef struct SDL_GPUTextureLocation
  *
  * \sa SDL_UploadToGPUTexture
  * \sa SDL_DownloadFromGPUTexture
+ * \sa SDL_CreateGPUTexture
  */
 typedef struct SDL_GPUTextureRegion
 {
@@ -1497,6 +1498,10 @@ typedef struct SDL_GPUIndirectDispatchCommand
  * \since This function is available since SDL 3.2.0.
  *
  * \sa SDL_CreateGPUSampler
+ * \sa SDL_GPUFilter
+ * \sa SDL_GPUSamplerMipmapMode
+ * \sa SDL_GPUSamplerAddressMode
+ * \sa SDL_GPUCompareOp
  */
 typedef struct SDL_GPUSamplerCreateInfo
 {
@@ -1555,6 +1560,7 @@ typedef struct SDL_GPUVertexBufferDescription
  *
  * \sa SDL_GPUVertexBufferDescription
  * \sa SDL_GPUVertexInputState
+ * \sa SDL_GPUVertexElementFormat
  */
 typedef struct SDL_GPUVertexAttribute
 {
@@ -2111,7 +2117,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GPUSupportsProperties(
  * \sa SDL_DestroyGPUDevice
  * \sa SDL_GPUSupportsShaderFormats
  */
-extern SDL_DECLSPEC SDL_GPUDevice *SDLCALL SDL_CreateGPUDevice(
+extern SDL_DECLSPEC SDL_GPUDevice * SDLCALL SDL_CreateGPUDevice(
     SDL_GPUShaderFormat format_flags,
     bool debug_mode,
     const char *name);
@@ -2159,7 +2165,7 @@ extern SDL_DECLSPEC SDL_GPUDevice *SDLCALL SDL_CreateGPUDevice(
  * \sa SDL_DestroyGPUDevice
  * \sa SDL_GPUSupportsProperties
  */
-extern SDL_DECLSPEC SDL_GPUDevice *SDLCALL SDL_CreateGPUDeviceWithProperties(
+extern SDL_DECLSPEC SDL_GPUDevice * SDLCALL SDL_CreateGPUDeviceWithProperties(
     SDL_PropertiesID props);
 
 #define SDL_PROP_GPU_DEVICE_CREATE_DEBUGMODE_BOOLEAN          "SDL.gpu.device.create.debugmode"
@@ -2282,7 +2288,7 @@ extern SDL_DECLSPEC SDL_GPUShaderFormat SDLCALL SDL_GetGPUShaderFormats(SDL_GPUD
  * \sa SDL_BindGPUComputePipeline
  * \sa SDL_ReleaseGPUComputePipeline
  */
-extern SDL_DECLSPEC SDL_GPUComputePipeline *SDLCALL SDL_CreateGPUComputePipeline(
+extern SDL_DECLSPEC SDL_GPUComputePipeline * SDLCALL SDL_CreateGPUComputePipeline(
     SDL_GPUDevice *device,
     const SDL_GPUComputePipelineCreateInfo *createinfo);
 
@@ -2309,7 +2315,7 @@ extern SDL_DECLSPEC SDL_GPUComputePipeline *SDLCALL SDL_CreateGPUComputePipeline
  * \sa SDL_BindGPUGraphicsPipeline
  * \sa SDL_ReleaseGPUGraphicsPipeline
  */
-extern SDL_DECLSPEC SDL_GPUGraphicsPipeline *SDLCALL SDL_CreateGPUGraphicsPipeline(
+extern SDL_DECLSPEC SDL_GPUGraphicsPipeline * SDLCALL SDL_CreateGPUGraphicsPipeline(
     SDL_GPUDevice *device,
     const SDL_GPUGraphicsPipelineCreateInfo *createinfo);
 
@@ -2336,7 +2342,7 @@ extern SDL_DECLSPEC SDL_GPUGraphicsPipeline *SDLCALL SDL_CreateGPUGraphicsPipeli
  * \sa SDL_BindGPUFragmentSamplers
  * \sa SDL_ReleaseGPUSampler
  */
-extern SDL_DECLSPEC SDL_GPUSampler *SDLCALL SDL_CreateGPUSampler(
+extern SDL_DECLSPEC SDL_GPUSampler * SDLCALL SDL_CreateGPUSampler(
     SDL_GPUDevice *device,
     const SDL_GPUSamplerCreateInfo *createinfo);
 
@@ -2415,7 +2421,7 @@ extern SDL_DECLSPEC SDL_GPUSampler *SDLCALL SDL_CreateGPUSampler(
  * \sa SDL_CreateGPUGraphicsPipeline
  * \sa SDL_ReleaseGPUShader
  */
-extern SDL_DECLSPEC SDL_GPUShader *SDLCALL SDL_CreateGPUShader(
+extern SDL_DECLSPEC SDL_GPUShader * SDLCALL SDL_CreateGPUShader(
     SDL_GPUDevice *device,
     const SDL_GPUShaderCreateInfo *createinfo);
 
@@ -2476,7 +2482,7 @@ extern SDL_DECLSPEC SDL_GPUShader *SDLCALL SDL_CreateGPUShader(
  * \sa SDL_ReleaseGPUTexture
  * \sa SDL_GPUTextureSupportsFormat
  */
-extern SDL_DECLSPEC SDL_GPUTexture *SDLCALL SDL_CreateGPUTexture(
+extern SDL_DECLSPEC SDL_GPUTexture * SDLCALL SDL_CreateGPUTexture(
     SDL_GPUDevice *device,
     const SDL_GPUTextureCreateInfo *createinfo);
 
@@ -2532,7 +2538,7 @@ extern SDL_DECLSPEC SDL_GPUTexture *SDLCALL SDL_CreateGPUTexture(
  * \sa SDL_DispatchGPUComputeIndirect
  * \sa SDL_ReleaseGPUBuffer
  */
-extern SDL_DECLSPEC SDL_GPUBuffer *SDLCALL SDL_CreateGPUBuffer(
+extern SDL_DECLSPEC SDL_GPUBuffer * SDLCALL SDL_CreateGPUBuffer(
     SDL_GPUDevice *device,
     const SDL_GPUBufferCreateInfo *createinfo);
 
@@ -2565,7 +2571,7 @@ extern SDL_DECLSPEC SDL_GPUBuffer *SDLCALL SDL_CreateGPUBuffer(
  * \sa SDL_DownloadFromGPUTexture
  * \sa SDL_ReleaseGPUTransferBuffer
  */
-extern SDL_DECLSPEC SDL_GPUTransferBuffer *SDLCALL SDL_CreateGPUTransferBuffer(
+extern SDL_DECLSPEC SDL_GPUTransferBuffer * SDLCALL SDL_CreateGPUTransferBuffer(
     SDL_GPUDevice *device,
     const SDL_GPUTransferBufferCreateInfo *createinfo);
 
@@ -2793,7 +2799,7 @@ extern SDL_DECLSPEC void SDLCALL SDL_ReleaseGPUGraphicsPipeline(
  * \sa SDL_SubmitGPUCommandBuffer
  * \sa SDL_SubmitGPUCommandBufferAndAcquireFence
  */
-extern SDL_DECLSPEC SDL_GPUCommandBuffer *SDLCALL SDL_AcquireGPUCommandBuffer(
+extern SDL_DECLSPEC SDL_GPUCommandBuffer * SDLCALL SDL_AcquireGPUCommandBuffer(
     SDL_GPUDevice *device);
 
 /* Uniform Data */
@@ -2891,7 +2897,7 @@ extern SDL_DECLSPEC void SDLCALL SDL_PushGPUComputeUniformData(
  *
  * \sa SDL_EndGPURenderPass
  */
-extern SDL_DECLSPEC SDL_GPURenderPass *SDLCALL SDL_BeginGPURenderPass(
+extern SDL_DECLSPEC SDL_GPURenderPass * SDLCALL SDL_BeginGPURenderPass(
     SDL_GPUCommandBuffer *command_buffer,
     const SDL_GPUColorTargetInfo *color_target_infos,
     Uint32 num_color_targets,
@@ -3298,7 +3304,7 @@ extern SDL_DECLSPEC void SDLCALL SDL_EndGPURenderPass(
  *
  * \sa SDL_EndGPUComputePass
  */
-extern SDL_DECLSPEC SDL_GPUComputePass *SDLCALL SDL_BeginGPUComputePass(
+extern SDL_DECLSPEC SDL_GPUComputePass * SDLCALL SDL_BeginGPUComputePass(
     SDL_GPUCommandBuffer *command_buffer,
     const SDL_GPUStorageTextureReadWriteBinding *storage_texture_bindings,
     Uint32 num_storage_texture_bindings,
@@ -3469,7 +3475,7 @@ extern SDL_DECLSPEC void SDLCALL SDL_EndGPUComputePass(
  *
  * \since This function is available since SDL 3.2.0.
  */
-extern SDL_DECLSPEC void *SDLCALL SDL_MapGPUTransferBuffer(
+extern SDL_DECLSPEC void * SDLCALL SDL_MapGPUTransferBuffer(
     SDL_GPUDevice *device,
     SDL_GPUTransferBuffer *transfer_buffer,
     bool cycle);
@@ -3500,7 +3506,7 @@ extern SDL_DECLSPEC void SDLCALL SDL_UnmapGPUTransferBuffer(
  *
  * \since This function is available since SDL 3.2.0.
  */
-extern SDL_DECLSPEC SDL_GPUCopyPass *SDLCALL SDL_BeginGPUCopyPass(
+extern SDL_DECLSPEC SDL_GPUCopyPass * SDLCALL SDL_BeginGPUCopyPass(
     SDL_GPUCommandBuffer *command_buffer);
 
 /**
@@ -3992,7 +3998,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SubmitGPUCommandBuffer(
  * \sa SDL_SubmitGPUCommandBuffer
  * \sa SDL_ReleaseGPUFence
  */
-extern SDL_DECLSPEC SDL_GPUFence *SDLCALL SDL_SubmitGPUCommandBufferAndAcquireFence(
+extern SDL_DECLSPEC SDL_GPUFence * SDLCALL SDL_SubmitGPUCommandBufferAndAcquireFence(
     SDL_GPUCommandBuffer *command_buffer);
 
 /**
@@ -4073,6 +4079,8 @@ extern SDL_DECLSPEC bool SDLCALL SDL_QueryGPUFence(
 
 /**
  * Releases a fence obtained from SDL_SubmitGPUCommandBufferAndAcquireFence.
+ *
+ * You must not reference the fence after calling this function.
  *
  * \param device a GPU context.
  * \param fence a fence.
