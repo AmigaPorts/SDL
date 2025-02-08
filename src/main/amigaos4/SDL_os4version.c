@@ -19,7 +19,11 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifdef __AMIGADATE__
-static const char* const version __attribute__ ((used)) = "\0$VER: libSDL3.so 2.4 (" __AMIGADATE__ ")\0";
-#endif
+#include "SDL_internal.h"
 
+#define TO_STR2(x) #x
+#define TO_STR(x) TO_STR2(x)
+
+#ifdef __AMIGADATE__
+static const char* const version __attribute__ ((used)) = "\0$VER: libSDL3.so " TO_STR(SDL_MINOR_VERSION) "." TO_STR(SDL_MICRO_VERSION) " (" __AMIGADATE__ ")\0";
+#endif
