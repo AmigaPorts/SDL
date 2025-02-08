@@ -2,7 +2,7 @@
 
 CC	= ppc-amigaos-gcc
 CRT    ?= newlib
-CFLAGS	= -mcrt=$(CRT) -gstabs -O2 -Wall -I../include -DHAVE_OPENGL
+CFLAGS	= -mcrt=$(CRT) -gstabs -O3 -Wall -I../include -DHAVE_OPENGL
 LIBS	= -mcrt=$(CRT) -L.. -use-dynld -lSDL2_test -lSDL2 -athread=native
 
 SRC_FILES = $(wildcard *.c)
