@@ -43,5 +43,3 @@ SDL_SYS_DelayNS(Uint64 ns)
 }
 
 #endif /* SDL_TIMER_AMIGAOS4 || SDL_TIMERS_DISABLED */
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -187,5 +187,3 @@ OS4_DestroyWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window)
 }
 
 #endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -20,13 +20,11 @@
 */
 #include "SDL_internal.h"
 
-#ifndef _SDL_os4framebuffer_h
-#define _SDL_os4framebuffer_h
+#ifndef SDL_os4framebuffer_h_
+#define SDL_os4framebuffer_h_
 
 extern bool OS4_CreateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, Uint32 * format, void ** pixels, int *pitch);
 extern bool OS4_UpdateWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window, const SDL_Rect * rects, int numrects);
 extern void OS4_DestroyWindowFramebuffer(SDL_VideoDevice *_this, SDL_Window * window);
 
-#endif /* _SDL_os4framebuffer_h */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif /* SDL_os4framebuffer_h_ */

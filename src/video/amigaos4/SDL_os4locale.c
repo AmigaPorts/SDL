@@ -90,6 +90,3 @@ CONST_STRPTR OS4_GetString(LONG stringNum)
 }
 
 #endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */
-
-/* vi: set ts=4 sw=4 expandtab: */
-

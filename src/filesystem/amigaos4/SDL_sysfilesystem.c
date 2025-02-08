@@ -193,5 +193,3 @@ char *SDL_SYS_GetCurrentDirectory(void)
 }
 
 #endif /* SDL_FILESYSTEM_AMIGAOS4 */
-
-/* vi: set ts=4 sw=4 expandtab: */

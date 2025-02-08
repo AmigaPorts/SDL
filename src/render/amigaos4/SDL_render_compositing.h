@@ -20,8 +20,8 @@
 */
 #include "SDL_internal.h"
 
-#ifndef _SDL_render_compositing_h
-#define _SDL_render_compositing_h
+#ifndef SDL_render_compositing_h_
+#define SDL_render_compositing_h_
 
 #include "../SDL_sysrender.h"
 
@@ -47,6 +47,3 @@ extern struct BitMap * OS4_AllocBitMap(SDL_Renderer * renderer, int width, int h
 extern bool OS4_IsColorModEnabled(SDL_Texture * texture);
 
 #endif
-
-/* vi: set ts=4 sw=4 expandtab: */
-

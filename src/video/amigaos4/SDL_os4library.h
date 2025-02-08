@@ -20,8 +20,8 @@
 */
 #include "SDL_internal.h"
 
-#ifndef _SDL_os4library_h
-#define _SDL_os4library_h
+#ifndef SDL_os4library_h_
+#define SDL_os4library_h_
 
 #include <exec/types.h>
 

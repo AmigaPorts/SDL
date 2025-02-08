@@ -20,8 +20,8 @@
 */
 #include "SDL_internal.h"
 
-#ifndef _SDL_os4window_h
-#define _SDL_os4window_h
+#ifndef SDL_os4window_h_
+#define SDL_os4window_h_
 
 #include "intuition/classusr.h" /* Object */
 
@@ -113,6 +113,4 @@ extern bool OS4_GetWindowBordersSize(SDL_VideoDevice *this, SDL_Window * window,
 extern void OS4_IconifyWindow(SDL_VideoDevice *this, SDL_Window * window);
 extern void OS4_UniconifyWindow(SDL_VideoDevice *this, SDL_Window * window);
 
-#endif /* _SDL_os4window_h */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif /* SDL_os4window_h_ */

@@ -20,8 +20,8 @@
 */
 #include "SDL_internal.h"
 
-#ifndef _SDL_os4modes_h
-#define _SDL_os4modes_h
+#ifndef SDL_os4modes_h_
+#define SDL_os4modes_h_
 
 struct SDL_DisplayData
 {
@@ -43,6 +43,4 @@ extern void OS4_QuitModes(SDL_VideoDevice *_this);
 
 extern void OS4_CloseScreen(SDL_VideoDevice *_this, struct Screen *screen);
 
-#endif /* _SDL_os4modes_h */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif /* SDL_os4modes_h */

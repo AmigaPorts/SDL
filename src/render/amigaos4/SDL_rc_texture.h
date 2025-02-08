@@ -20,8 +20,8 @@
 */
 #include "SDL_internal.h"
 
-#ifndef _SDL_rc_texture_h
-#define _SDL_rc_texture_h
+#ifndef SDL_rc_texture_h_
+#define SDL_rc_texture_h_
 
 #include "../SDL_sysrender.h"
 
@@ -55,6 +55,3 @@ extern void OS4_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture);
 extern void OS4_SetTextureScaleMode(SDL_Renderer *renderer, SDL_Texture *texture, SDL_ScaleMode scaleMode);
 
 #endif
-
-/* vi: set ts=4 sw=4 expandtab: */
-

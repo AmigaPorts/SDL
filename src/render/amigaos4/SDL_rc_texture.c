@@ -344,6 +344,3 @@ OS4_SetTextureScaleMode(SDL_Renderer *renderer, SDL_Texture *texture, SDL_ScaleM
 
 
 #endif /* !SDL_RENDER_DISABLED */
-
-/* vi: set ts=4 sw=4 expandtab: */
-

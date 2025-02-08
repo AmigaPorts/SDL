@@ -19,8 +19,8 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef SDL_SYSTHREAD_C_H
-#define SDL_SYSTHREAD_C_H
+#ifndef SDL_systhread_c_h_
+#define SDL_systhread_c_h_
 
 #include "../../timer/amigaos4/SDL_os4timer_c.h"
 
@@ -32,4 +32,3 @@ void OS4_QuitThreadSubSystem(void);
 OS4_TimerInstance* OS4_ThreadGetTimer(void);
 
 #endif
-

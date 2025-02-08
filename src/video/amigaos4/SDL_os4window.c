@@ -1313,5 +1313,3 @@ OS4_FlashWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_FlashOperation 
 }
 
 #endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */
-
-/* vi: set ts=4 sw=4 expandtab: */

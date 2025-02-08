@@ -262,7 +262,7 @@ OS4_GL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext co
     } else {
         OS4_GL_LogLibraryError();
     }
-    
+
     return false;
 }
 
@@ -457,5 +457,3 @@ OS4_GL_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window)
 }
 
 #endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */
-
-/* vi: set ts=4 sw=4 expandtab: */

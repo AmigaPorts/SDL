@@ -1206,6 +1206,3 @@ SDL_RenderDriver OS4_RenderDriver = {
 };
 
 #endif /* !SDL_RENDER_DISABLED */
-
-/* vi: set ts=4 sw=4 expandtab: */
-

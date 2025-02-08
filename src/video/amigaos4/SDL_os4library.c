@@ -436,5 +436,4 @@ OS4_CheckInterfaces(void)
     return false;
 }
 
-
 #endif

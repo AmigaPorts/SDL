@@ -20,8 +20,8 @@
 */
 #include "SDL_internal.h"
 
-#ifndef _SDL_rc_draw_h
-#define _SDL_rc_draw_h
+#ifndef SDL_rc_draw_h_
+#define SDL_rc_draw_h_
 
 #include "../SDL_sysrender.h"
 
@@ -32,6 +32,3 @@ extern int OS4_RenderDrawLines(SDL_Renderer * renderer,
     const SDL_Point * points, int count, SDL_BlendMode mode, Uint8 a, Uint8 r, Uint8 g, Uint8 b);
 
 #endif
-
-/* vi: set ts=4 sw=4 expandtab: */
-

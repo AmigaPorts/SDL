@@ -552,5 +552,3 @@ SDL_JoystickDriver SDL_AMIGAINPUT_JoystickDriver =
 };
 
 #endif /* SDL_JOYSTICK_AMIGAINPUT */
-
-/* vi: set ts=4 sw=4 expandtab: */

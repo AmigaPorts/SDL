@@ -586,5 +586,3 @@ OS4_QuitMouse(SDL_VideoDevice *_this)
 }
 
 #endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */
-
-/* vi: set ts=4 sw=4 expandtab: */
