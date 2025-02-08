@@ -2,7 +2,7 @@
 
 CC     = ppc-amigaos-gcc
 CRT   ?= newlib
-CFLAGS = -mcrt=$(CRT) -gstabs -O2 -Wall -I../include -I../include/build_config -I../src
+CFLAGS = -mcrt=$(CRT) -gstabs -O3 -Wall -I../include -I../include/build_config -I../src
 LIBS   = -mcrt=$(CRT) -L.. -lSDL3_test -lSDL3 -athread=native
 
 SRC_FILES = $(wildcard */*/*.c)
@@ -135,4 +135,3 @@ clean:
 ifneq ($(MAKECMDGOALS),clean)
 -include $(DEPS)
 endif
-
