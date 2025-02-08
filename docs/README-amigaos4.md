@@ -11,20 +11,20 @@ Installation
 ================================================================================
 
 There is an installer script that can be used to install shared objects, prefs
-program and the SDK. 
+program and the SDK.
 
 Installer script creates soft link from libSDL3.so to the latest libSDL3-x.y.so
-file. 
+file.
 
 ================================================================================
 Building SDL 3 library
 ================================================================================
 
     # non-debug variant
-    gmake -f Makefile.amigaos4    
+    gmake -f Makefile.amigaos4
 
     # with serial debug prints
-    gmake -f Makefile.amigaos4 debug    
+    gmake -f Makefile.amigaos4 debug
 
     At the moment configure script and CMake are not supported.
 
@@ -36,6 +36,15 @@ Using SDL 3 in your projects
     ...do magical SDL3 things...
 
     gcc helloworld.c -use-dynld -lSDL3
+
+Setting REGAPP_Description
+===============================================================================
+
+Set SDL_HINT_APP_NAME before SDL_Init():
+
+    SDL_SetHint(SDL_HINT_APP_NAME, "Some description");
+
+Or set SDL_PROP_APP_METADATA_NAME_STRING property before SDL_Init().
 
 ================================================================================
 About SDL_Renderers
@@ -188,4 +197,3 @@ Project page and bug tracker
 ================================================================================
 
 https://github.com/AmigaPorts/SDL
-
