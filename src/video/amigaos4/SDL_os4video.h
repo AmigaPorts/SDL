@@ -20,8 +20,8 @@
 */
 #include "../../SDL_internal.h"
 
-#ifndef _SDL_os4video_h
-#define _SDL_os4video_h
+#ifndef SDL_os4video_h_
+#define SDL_os4video_h_
 
 #include <exec/types.h>
 #include <intuition/intuition.h>
@@ -60,6 +60,6 @@ extern void OS4_SaveFreeVecPooled(_THIS, void *mem);
 
 extern DECLSPEC struct MsgPort * OS4_GetSharedMessagePort();
 
-#endif /* _SDL_os4video_h */
+#endif /* SDL_os4video_h_ */
 
 /* vi: set ts=4 sw=4 expandtab: */

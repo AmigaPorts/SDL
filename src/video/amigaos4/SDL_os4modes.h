@@ -20,8 +20,8 @@
 */
 #include "../../SDL_internal.h"
 
-#ifndef _SDL_os4modes_h
-#define _SDL_os4modes_h
+#ifndef SDL_os4modes_h_
+#define SDL_os4modes_h_
 
 typedef struct
 {
@@ -43,6 +43,6 @@ extern void OS4_QuitModes(_THIS);
 
 extern void OS4_CloseScreen(_THIS, struct Screen *screen);
 
-#endif /* _SDL_os4modes_h */
+#endif /* SDL_os4modes_h_ */
 
 /* vi: set ts=4 sw=4 expandtab: */

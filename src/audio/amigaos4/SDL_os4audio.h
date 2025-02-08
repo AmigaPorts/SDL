@@ -18,8 +18,8 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#ifndef _SDL_os4audio_h
-#define _SDL_os4audio_h
+#ifndef SDL_os4audio_h_
+#define SDL_os4audio_h_
 
 #include <exec/types.h>
 #include <exec/ports.h>

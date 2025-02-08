@@ -20,8 +20,8 @@
 */
 #include "../../SDL_internal.h"
 
-#ifndef _SDL_os4opengl_h
-#define _SDL_os4opengl_h
+#ifndef SDL_os4opengl_h_
+#define SDL_os4opengl_h_
 
 #include "SDL_os4window.h"
 
@@ -42,6 +42,6 @@ extern void OS4_GL_FreeBuffers(_THIS, SDL_WindowData * data);
 extern SDL_bool OS4_GL_ResizeContext(_THIS, SDL_Window * window);
 extern void OS4_GL_UpdateWindowPointer(_THIS, SDL_Window * window);
 
-#endif /* _SDL_os4opengl_h */
+#endif /* SDL_os4opengl_h_ */
 
 /* vi: set ts=4 sw=4 expandtab: */

@@ -20,12 +20,12 @@
 */
 #include "../../SDL_internal.h"
 
-#ifndef _SDL_os4events_h
-#define _SDL_os4events_h
+#ifndef SDL_os4events_h_
+#define SDL_os4events_h_
 
 extern void OS4_PumpEvents(_THIS);
 extern void OS4_ResetNormalKeys(void);
 
-#endif /* _SDL_os4events_h */
+#endif /* SDL_os4events_h_ */
 
 /* vi: set ts=4 sw=4 expandtab: */

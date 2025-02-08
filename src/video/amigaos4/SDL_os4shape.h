@@ -20,8 +20,8 @@
 */
 #include "../../SDL_internal.h"
 
-#ifndef _SDL_os4shape_h
-#define _SDL_os4shape_h
+#ifndef SDL_os4shape_h_
+#define SDL_os4shape_h_
 
 typedef struct {
 	struct BitMap* sysbm;
@@ -37,6 +37,6 @@ extern int OS4_ResizeWindowShape(SDL_Window * window);
 
 extern void OS4_DestroyShape(_THIS, SDL_Window * window);
 
-#endif /* _SDL_os4shape_h */
+#endif /* SDL_os4shape_h_ */
 
 /* vi: set ts=4 sw=4 expandtab: */

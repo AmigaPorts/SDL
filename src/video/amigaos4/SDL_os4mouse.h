@@ -22,8 +22,8 @@
 #include "SDL_os4video.h"
 #include "SDL_mouse.h"
 
-#ifndef _SDL_os4mouse_h
-#define _SDL_os4mouse_h
+#ifndef SDL_os4mouse_h_
+#define SDL_os4mouse_h_
 
 typedef struct OS4_GlobalMouseState
 {
@@ -40,6 +40,6 @@ extern void OS4_ResetCursorForWindow(struct Window * window);
 extern void OS4_InitMouse(_THIS);
 extern void OS4_QuitMouse(_THIS);
 
-#endif /* _SDL_os4mouse_h */
+#endif /* SDL_os4mouse_h_ */
 
 /* vi: set ts=4 sw=4 expandtab: */
