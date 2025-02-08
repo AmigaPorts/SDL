@@ -20,13 +20,11 @@
 */
 #include "SDL_internal.h"
 
-#ifndef _SDL_os4messagebox_h
-#define _SDL_os4messagebox_h
+#ifndef SDL_os4messagebox_h_
+#define SDL_os4messagebox_h_
 
 struct SDL_MessageBoxData;
 
 extern bool OS4_ShowMessageBox(const SDL_MessageBoxData * messageboxdata, int * buttonid);
 
-#endif /* _SDL_os4messagebox_h */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif /* SDL_os4messagebox_h_ */

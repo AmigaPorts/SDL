@@ -18,8 +18,8 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#ifndef SDL_OS4DEBUG_H
-#define SDL_OS4DEBUG_H
+#ifndef SDL_os4debug_h_
+#define SDL_os4debug_h_
 
 #ifdef DEBUG
 void OS4_DebugPrintF(const char* const fmt, ...) __attribute__ ((format (printf, 1, 2)));
@@ -29,4 +29,4 @@ void OS4_DebugPrintF(const char* const fmt, ...) __attribute__ ((format (printf,
 # define dprintf(format, args...)
 #endif
 
-#endif /* SDL_OS4DEBUG_H */
+#endif /* SDL_os4debug_h_ */

@@ -613,6 +613,3 @@ OS4_RenderDrawLines(SDL_Renderer * renderer, const SDL_Point * points,
 }
 
 #endif /* !SDL_RENDER_DISABLED */
-
-/* vi: set ts=4 sw=4 expandtab: */
-

@@ -346,5 +346,3 @@ OS4_GLES_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window)
 #endif /* SDL_VIDEO_OPENGL_ES2 */
 
 #endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */
-
-/* vi: set ts=4 sw=4 expandtab: */

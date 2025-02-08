@@ -19,8 +19,8 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef SDL_OS4TIMER_C_H
-#define SDL_OS4TIMER_C_H
+#ifndef SDL_os4timer_c_h_
+#define SDL_os4timer_c_h_
 
 #include <exec/types.h>
 
@@ -47,5 +47,4 @@ void OS4_TimerGetTime(struct TimeVal * timeval);
 Uint64 OS4_TimerGetCounter(void);
 Uint64 OS4_TimerGetFrequency(void);
 
-#endif /* SDL_OS4TIMER_C_H */
-
+#endif /* SDL_os4timer_c_h_ */

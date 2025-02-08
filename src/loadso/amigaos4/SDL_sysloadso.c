@@ -40,7 +40,7 @@ typedef struct SDL_SharedObject {
 
 SDL_SharedObject *
 SDL_LoadObject(const char *sofile)
-{        
+{
     if (!IElf) {
         dprintf("IElf nullptr\n");
         return NULL;
@@ -60,13 +60,13 @@ SDL_LoadObject(const char *sofile)
 
             if (eh) {
                 APTR so = IElf->DLOpen(eh, sofile, 0);
-                        
+
                 if (so) {
                     dprintf("'%s' loaded\n", sofile);
 
                     handle->elf_handle = eh;
                     handle->shared_object = so;
-                            
+
                     return handle;
                 } else {
                     dprintf("DLOpen failed for '%s'\n", sofile);
@@ -80,7 +80,7 @@ SDL_LoadObject(const char *sofile)
             dprintf("Failed to get seglist\n");
             SDL_SetError("Failed to get seglist");
         }
-                
+
         SDL_free(handle);
     }
 
@@ -139,5 +139,3 @@ SDL_UnloadObject(SDL_SharedObject *handle)
 }
 
 #endif /* SDL_LOADSO_AMIGAOS4 */
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -20,8 +20,8 @@
 */
 #include "SDL_internal.h"
 
-#ifndef _SDL_os4opengles_h
-#define _SDL_os4opengles_h
+#ifndef SDL_os4opengles_h_
+#define SDL_os4opengles_h_
 
 extern bool OS4_GLES_LoadLibrary(SDL_VideoDevice *_this, const char *path);
 extern SDL_FunctionPointer OS4_GLES_GetProcAddress(SDL_VideoDevice *_this, const char *proc);
@@ -34,6 +34,4 @@ extern bool OS4_GLES_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext contex
 extern bool OS4_GLES_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window);
 extern void OS4_GLES_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window);
 
-#endif /* _SDL_os4opengles_h */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif /* SDL_os4opengles_h_ */

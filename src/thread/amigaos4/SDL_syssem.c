@@ -219,6 +219,3 @@ SDL_SignalSemaphore(SDL_Semaphore * sem)
 }
 
 #endif /* SDL_THREAD_AMIGAOS4 */
-
-/* vi: set ts=4 sw=4 expandtab: */
-

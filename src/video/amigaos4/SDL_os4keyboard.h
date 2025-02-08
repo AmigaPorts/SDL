@@ -20,8 +20,8 @@
 */
 #include "SDL_internal.h"
 
-#ifndef _SDL_os4keyboard_h
-#define _SDL_os4keyboard_h
+#ifndef SDL_os4keyboard_h_
+#define SDL_os4keyboard_h_
 
 extern uint32 OS4_TranslateUnicode(SDL_VideoDevice *_this, uint16 code, uint32 qualifier, APTR iaddress);
 
@@ -32,6 +32,4 @@ extern bool OS4_HasClipboardText(SDL_VideoDevice *_this);
 extern void OS4_InitKeyboard(SDL_VideoDevice *_this);
 extern void OS4_QuitKeyboard(SDL_VideoDevice *_this);
 
-#endif /* _SDL_os4keyboard_h */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif /* SDL_os4keyboard_h_ */

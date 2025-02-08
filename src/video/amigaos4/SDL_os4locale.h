@@ -20,8 +20,8 @@
 */
 #include "SDL_internal.h"
 
-#ifndef _SDL_os4locale_h
-#define _SDL_os4locale_h
+#ifndef SDL_os4locale_h_
+#define SDL_os4locale_h_
 
 #include <exec/types.h>
 
@@ -29,7 +29,4 @@ extern BOOL OS4_InitLocale(void);
 extern void OS4_QuitLocale(void);
 extern CONST_STRPTR OS4_GetString(LONG stringNum);
 
-#endif /* _SDL_os4locale_h */
-
-/* vi: set ts=4 sw=4 expandtab: */
-
+#endif /* SDL_os4locale_h_ */

@@ -22,9 +22,6 @@
 
 #if SDL_AUDIO_DRIVER_AMIGAOS4
 
-#include "SDL_audio.h"
-#include "SDL_timer.h"
-
 #include "../SDL_audio_c.h"
 #include "../SDL_sysaudio.h"
 #include "SDL_os4audio.h"
