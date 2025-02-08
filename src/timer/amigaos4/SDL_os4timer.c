@@ -99,15 +99,15 @@ OS4_TimerCleanup(OS4_TimerInstance * timer)
     }
 }
 
-BOOL
+bool
 OS4_TimerCreate(OS4_TimerInstance * timer)
 {
-    BOOL success = FALSE;
+    bool success = false;
 
     dprintf("Creating timer %p for task %p\n", timer, IExec->FindTask(NULL));
 
     if (!timer) {
-        return FALSE;
+        return false;
     }
 
     timer->port = IExec->AllocSysObject(ASOT_PORT, NULL);
@@ -120,7 +120,7 @@ OS4_TimerCreate(OS4_TimerInstance * timer)
 
         if (timer->request) {
             if (!(IExec->OpenDevice("timer.device", UNIT_WAITUNTIL, (struct IORequest *)timer->request, 0))) {
-                success = TRUE;
+                success = true;
             } else {
                 dprintf("Failed to open timer.device\n");
             }
@@ -131,7 +131,7 @@ OS4_TimerCreate(OS4_TimerInstance * timer)
         dprintf("Failed to allocate timer port\n");
     }
 
-    timer->requestSent = FALSE;
+    timer->requestSent = false;
 
     if (!success) {
         OS4_TimerCleanup(timer);
@@ -156,9 +156,9 @@ OS4_TimerDestroy(OS4_TimerInstance * timer)
 }
 
 ULONG
-OS4_TimerSetAlarm(OS4_TimerInstance * timer, Uint32 alarmTicks)
+OS4_TimerSetAlarmMicro(OS4_TimerInstance * timer, Uint64 alarmTicks)
 {
-    const ULONG seconds = alarmTicks / 1000;
+    const ULONG seconds = alarmTicks / 1000000;
     struct TimeVal now;
 
     if (!SDL3_ITimer) {
@@ -171,14 +171,14 @@ OS4_TimerSetAlarm(OS4_TimerInstance * timer, Uint32 alarmTicks)
     if (timer && timer->request && timer->port) {
         timer->request->Request.io_Command = TR_ADDREQUEST;
         timer->request->Time.Seconds = seconds;
-        timer->request->Time.Microseconds  = (alarmTicks - (seconds * 1000)) * 1000;
+        timer->request->Time.Microseconds  = alarmTicks - (seconds * 1000000);
 
         SDL3_ITimer->GetSysTime(&now);
         SDL3_ITimer->AddTime(&timer->request->Time, &now);
 
         IExec->SetSignal(0, 1L << timer->port->mp_SigBit);
         IExec->SendIO((struct IORequest *)timer->request);
-        timer->requestSent = TRUE;
+        timer->requestSent = true;
 
         // Return the alarm signal for Wait() use
         return 1L << timer->port->mp_SigBit;
@@ -201,23 +201,23 @@ OS4_TimerClearAlarm(OS4_TimerInstance * timer)
     }
 }
 
-BOOL
-OS4_TimerDelay(Uint32 ticks)
+bool
+OS4_TimerDelayMicro(Uint64 ticks)
 {
 	OS4_TimerInstance* timer = OS4_ThreadGetTimer();
 
     if (timer) {
-    	const ULONG alarmSig = OS4_TimerSetAlarm(timer, ticks);
+        const ULONG alarmSig = OS4_TimerSetAlarmMicro(timer, ticks);
         if (alarmSig) {
-        	const ULONG sigsReceived = IExec->Wait(alarmSig | SIGBREAKF_CTRL_C);
+            const ULONG sigsReceived = IExec->Wait(alarmSig | SIGBREAKF_CTRL_C);
 
-        	OS4_TimerClearAlarm(timer);
+            OS4_TimerClearAlarm(timer);
 
         	return (sigsReceived & alarmSig) == alarmSig;
         }
     }
 
-    return FALSE;
+    return false;
 }
 
 void
@@ -261,4 +261,3 @@ OS4_TimerGetFrequency(void)
 }
 
 #endif /* (SDL_TIMER_AMIGAOS4) || defined(SDL_TIMERS_DISABLED) */
-

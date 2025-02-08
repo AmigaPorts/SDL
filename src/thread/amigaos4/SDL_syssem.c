@@ -115,16 +115,14 @@ SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore * sem, Sint64 timeout)
         return SDL_SetError("Passed a NULL sem");
     }
 
-    BOOL wait = TRUE;
+    bool wait = true;
 
     struct Task* task = IExec->FindTask(NULL);
 
     ULONG alarmSignal = 0;
 
     if (timeout > 0) {
-        /* OS4_TimerSetAlarm uses milliseconds (TODO: check
-           if it could be changed to use 64-bit parameter?) */
-        alarmSignal = OS4_TimerSetAlarm(OS4_ThreadGetTimer(), timeout / 1000000);
+        alarmSignal = OS4_TimerSetAlarmMicro(OS4_ThreadGetTimer(), timeout / 1000);
     }
 
     while (wait) {
@@ -134,7 +132,7 @@ SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore * sem, Sint64 timeout)
 
         if (sem->count > 0) {
             sem->count--;
-            wait = FALSE;
+            wait = false;
         } else {
             if (timeout == 0) {
                 //dprintf("Semaphore %p trying timed out\n", sem);
