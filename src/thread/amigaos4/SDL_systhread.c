@@ -103,7 +103,7 @@ void OS4_QuitThreadSubSystem(void)
         }
 
         IExec->MutexRelease(control.children.mutex);
-    } while (TRUE);
+    } while (true);
 
     OS4_TimerDestroy(&control.primary.timer);
 
@@ -294,10 +294,10 @@ SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
     return true;
 }
 
-static BOOL
+static bool
 OS4_StartJoining(OS4_ThreadNode * waiterNode, SDL_Thread * thread)
 {
-    BOOL found = FALSE;
+    bool found = false;
 
     struct MinNode* iter;
 
@@ -310,7 +310,7 @@ OS4_StartJoining(OS4_ThreadNode * waiterNode, SDL_Thread * thread)
     } else {
         for (iter = control.children.list.mlh_Head; iter->mln_Succ; iter = iter->mln_Succ) {
             if (((OS4_ThreadNode *)iter)->thread == thread) {
-                found = TRUE;
+                found = true;
                 IExec->MutexObtain(control.waiters.mutex);
                 IExec->AddTail((struct List *)&control.waiters.list, (struct Node *)waiterNode);
                 IExec->MutexRelease(control.waiters.mutex);
@@ -346,7 +346,7 @@ SDL_SYS_WaitThread(SDL_Thread * thread)
     node.thread = ((OS4_ThreadNode *)node.task->tc_UserData)->thread;
 
     do {
-        const BOOL found = OS4_StartJoining(&node, thread);
+        const bool found = OS4_StartJoining(&node, thread);
 
         if (found) {
             const ULONG signals = IExec->Wait(CHILD_SIGNAL | BREAK_SIGNAL);
@@ -363,7 +363,7 @@ SDL_SYS_WaitThread(SDL_Thread * thread)
             dprintf("Thread '%s' doesn't exist\n", thread->name);
             return;
         }
-    } while (TRUE);
+    } while (true);
 
     dprintf("Waiting over\n");
 }

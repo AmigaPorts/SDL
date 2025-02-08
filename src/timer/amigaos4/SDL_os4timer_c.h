@@ -32,17 +32,17 @@ typedef struct OS4_TimerInstance
 {
     struct MsgPort* port;
     struct TimeRequest* request;
-    BOOL requestSent;
+    bool requestSent;
 } OS4_TimerInstance;
 
 void OS4_InitTimerSubSystem(void);
 void OS4_QuitTimerSubSystem(void);
 
-BOOL OS4_TimerCreate(OS4_TimerInstance * timer);
+bool OS4_TimerCreate(OS4_TimerInstance * timer);
 void OS4_TimerDestroy(OS4_TimerInstance * timer);
-ULONG OS4_TimerSetAlarm(OS4_TimerInstance * timer, Uint32 alarmTicks);
+ULONG OS4_TimerSetAlarmMicro(OS4_TimerInstance * timer, Uint64 alarmTicks);
 void OS4_TimerClearAlarm(OS4_TimerInstance * timer);
-BOOL OS4_TimerDelay(Uint32 ticks);
+bool OS4_TimerDelayMicro(Uint64 ticks);
 void OS4_TimerGetTime(struct TimeVal * timeval);
 Uint64 OS4_TimerGetCounter(void);
 Uint64 OS4_TimerGetFrequency(void);
