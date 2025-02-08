@@ -271,6 +271,11 @@ testnative$(EXE): $(srcdir)/testnative.c \
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS) @XLIB@
 endif
 
+ifeq (@ISAMIGAOS@,true)
+testnative$(EXE): $(srcdir)/testnative.c $(srcdir)/testnativeamigaos4.c
+	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
+endif
+
 ifeq (@ISOS2@,true)
 testnative$(EXE): $(srcdir)/testnative.c \
 			$(srcdir)/testnativeos2.c
@@ -281,6 +286,7 @@ endif
 ifeq (@ISMACOSX@,false)
 ifeq (@ISWINDOWS@,false)
 ifeq (@ISUNIX@,false)
+ifeq (@ISAMIGAOS@,false)
 ifeq (@ISOS2@,false)
 testnative$(EXE): ;
 endif

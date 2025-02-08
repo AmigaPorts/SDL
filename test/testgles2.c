@@ -21,7 +21,7 @@
 #include "SDL_test_common.h"
 
 #if defined(__IPHONEOS__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__) || defined(__NACL__) \
-    || defined(__WINDOWS__) || defined(__LINUX__)
+    || defined(__WINDOWS__) || defined(__LINUX__) || defined(__AMIGAOS4__)
 #ifndef HAVE_OPENGLES2
 #define HAVE_OPENGLES2
 #endif
@@ -33,7 +33,7 @@
 
 typedef struct GLES2_Context
 {
-#define SDL_PROC(ret, func, params) ret (APIENTRY *func) params;
+#define SDL_PROC(ret, func, params) ret (APIENTRY *my##func) params;
 #include "../src/render/opengles2/SDL_gles2funcs.h"
 #undef SDL_PROC
 } GLES2_Context;
@@ -74,12 +74,12 @@ static int LoadContext(GLES2_Context *data)
 #endif
 
 #if defined __SDL_NOGETPROCADDR__
-#define SDL_PROC(ret, func, params) data->func = func;
+#define SDL_PROC(ret, func, params) data->my##func = func;
 #else
 #define SDL_PROC(ret, func, params)                                                            \
     do {                                                                                       \
-        data->func = SDL_GL_GetProcAddress(#func);                                             \
-        if (!data->func) {                                                                     \
+        data->my##func = SDL_GL_GetProcAddress(#func);                                         \
+        if (!data->my##func) {                                                                 \
             return SDL_SetError("Couldn't load GLES2 function %s: %s", #func, SDL_GetError()); \
         }                                                                                      \
     } while (0);
@@ -113,7 +113,7 @@ quit(int rc)
 #define GL_CHECK(x)                                                                         \
     x;                                                                                      \
     {                                                                                       \
-        GLenum glError = ctx.glGetError();                                                  \
+        GLenum glError = ctx.myglGetError();                                                \
         if (glError != GL_NO_ERROR) {                                                       \
             SDL_Log("glGetError() = %i (0x%.8x) at line %i\n", glError, glError, __LINE__); \
             quit(1);                                                                        \
@@ -225,22 +225,22 @@ process_shader(GLuint *shader, const char *source, GLint shader_type)
     GLsizei length = 0;
 
     /* Create shader and load into GL. */
-    *shader = GL_CHECK(ctx.glCreateShader(shader_type));
+    *shader = GL_CHECK(ctx.myglCreateShader(shader_type));
 
     shaders[0] = source;
 
-    GL_CHECK(ctx.glShaderSource(*shader, 1, shaders, NULL));
+    GL_CHECK(ctx.myglShaderSource(*shader, 1, shaders, NULL));
 
     /* Clean up shader source. */
     shaders[0] = NULL;
 
     /* Try compiling the shader. */
-    GL_CHECK(ctx.glCompileShader(*shader));
-    GL_CHECK(ctx.glGetShaderiv(*shader, GL_COMPILE_STATUS, &status));
+    GL_CHECK(ctx.myglCompileShader(*shader));
+    GL_CHECK(ctx.myglGetShaderiv(*shader, GL_COMPILE_STATUS, &status));
 
     /* Dump debug info (source and log) if compilation failed. */
     if (status != GL_TRUE) {
-        ctx.glGetShaderInfoLog(*shader, sizeof(buffer), &length, &buffer[0]);
+        ctx.myglGetShaderInfoLog(*shader, sizeof(buffer), &length, &buffer[0]);
         buffer[length] = '\0';
         SDL_Log("Shader compilation failed: %s", buffer);
         fflush(stderr);
@@ -255,13 +255,13 @@ link_program(struct shader_data *data)
     char buffer[1024];
     GLsizei length = 0;
 
-    GL_CHECK(ctx.glAttachShader(data->shader_program, data->shader_vert));
-    GL_CHECK(ctx.glAttachShader(data->shader_program, data->shader_frag));
-    GL_CHECK(ctx.glLinkProgram(data->shader_program));
-    GL_CHECK(ctx.glGetProgramiv(data->shader_program, GL_LINK_STATUS, &status));
+    GL_CHECK(ctx.myglAttachShader(data->shader_program, data->shader_vert));
+    GL_CHECK(ctx.myglAttachShader(data->shader_program, data->shader_frag));
+    GL_CHECK(ctx.myglLinkProgram(data->shader_program));
+    GL_CHECK(ctx.myglGetProgramiv(data->shader_program, GL_LINK_STATUS, &status));
 
     if (status != GL_TRUE) {
-         ctx.glGetProgramInfoLog(data->shader_program, sizeof(buffer), &length, &buffer[0]);
+         ctx.myglGetProgramInfoLog(data->shader_program, sizeof(buffer), &length, &buffer[0]);
          buffer[length] = '\0';
          SDL_Log("Program linking failed: %s", buffer);
          fflush(stderr);
@@ -498,7 +498,7 @@ Render(unsigned int width, unsigned int height, shader_data *data)
     perspective_matrix(45.0f, (float)width / height, 0.01f, 100.0f, matrix_perspective);
     multiply_matrix(matrix_perspective, matrix_modelview, matrix_mvp);
 
-    GL_CHECK(ctx.glUniformMatrix4fv(data->attr_mvp, 1, GL_FALSE, matrix_mvp));
+    GL_CHECK(ctx.myglUniformMatrix4fv(data->attr_mvp, 1, GL_FALSE, matrix_mvp));
 
     data->angle_x += 3;
     data->angle_y += 2;
@@ -523,9 +523,9 @@ Render(unsigned int width, unsigned int height, shader_data *data)
         data->angle_z += 360;
     }
 
-    GL_CHECK(ctx.glViewport(0, 0, width, height));
-    GL_CHECK(ctx.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
-    GL_CHECK(ctx.glDrawArrays(GL_TRIANGLES, 0, 36));
+    GL_CHECK(ctx.myglViewport(0, 0, width, height));
+    GL_CHECK(ctx.myglClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
+    GL_CHECK(ctx.myglDrawArrays(GL_TRIANGLES, 0, 36));
 }
 
 int done;
@@ -727,10 +727,10 @@ int main(int argc, char *argv[])
     SDL_Log("Threaded  : %s\n", threaded ? "yes" : "no");
     SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode.format));
     SDL_Log("\n");
-    SDL_Log("Vendor     : %s\n", ctx.glGetString(GL_VENDOR));
-    SDL_Log("Renderer   : %s\n", ctx.glGetString(GL_RENDERER));
-    SDL_Log("Version    : %s\n", ctx.glGetString(GL_VERSION));
-    SDL_Log("Extensions : %s\n", ctx.glGetString(GL_EXTENSIONS));
+    SDL_Log("Vendor     : %s\n", ctx.myglGetString(GL_VENDOR));
+    SDL_Log("Renderer   : %s\n", ctx.myglGetString(GL_RENDERER));
+    SDL_Log("Version    : %s\n", ctx.myglGetString(GL_VERSION));
+    SDL_Log("Extensions : %s\n", ctx.myglGetString(GL_EXTENSIONS));
     SDL_Log("\n");
 
     status = SDL_GL_GetAttribute(SDL_GL_RED_SIZE, &value);
@@ -802,7 +802,7 @@ int main(int argc, char *argv[])
             continue;
         }
         SDL_GL_GetDrawableSize(state->windows[i], &w, &h);
-        ctx.glViewport(0, 0, w, h);
+        ctx.myglViewport(0, 0, w, h);
 
         data = &datas[i];
         data->angle_x = 0;
@@ -814,40 +814,40 @@ int main(int argc, char *argv[])
         process_shader(&data->shader_frag, _shader_frag_src, GL_FRAGMENT_SHADER);
 
         /* Create shader_program (ready to attach shaders) */
-        data->shader_program = GL_CHECK(ctx.glCreateProgram());
+        data->shader_program = GL_CHECK(ctx.myglCreateProgram());
 
         /* Attach shaders and link shader_program */
         link_program(data);
 
         /* Get attribute locations of non-fixed attributes like color and texture coordinates. */
-        data->attr_position = GL_CHECK(ctx.glGetAttribLocation(data->shader_program, "av4position"));
-        data->attr_color = GL_CHECK(ctx.glGetAttribLocation(data->shader_program, "av3color"));
+        data->attr_position = GL_CHECK(ctx.myglGetAttribLocation(data->shader_program, "av4position"));
+        data->attr_color = GL_CHECK(ctx.myglGetAttribLocation(data->shader_program, "av3color"));
 
         /* Get uniform locations */
-        data->attr_mvp = GL_CHECK(ctx.glGetUniformLocation(data->shader_program, "mvp"));
+        data->attr_mvp = GL_CHECK(ctx.myglGetUniformLocation(data->shader_program, "mvp"));
 
-        GL_CHECK(ctx.glUseProgram(data->shader_program));
+        GL_CHECK(ctx.myglUseProgram(data->shader_program));
 
         /* Enable attributes for position, color and texture coordinates etc. */
-        GL_CHECK(ctx.glEnableVertexAttribArray(data->attr_position));
-        GL_CHECK(ctx.glEnableVertexAttribArray(data->attr_color));
+        GL_CHECK(ctx.myglEnableVertexAttribArray(data->attr_position));
+        GL_CHECK(ctx.myglEnableVertexAttribArray(data->attr_color));
 
         /* Populate attributes for position, color and texture coordinates etc. */
 
-        GL_CHECK(ctx.glGenBuffers(1, &data->position_buffer));
-        GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, data->position_buffer));
-        GL_CHECK(ctx.glBufferData(GL_ARRAY_BUFFER, sizeof(_vertices), _vertices, GL_STATIC_DRAW));
-        GL_CHECK(ctx.glVertexAttribPointer(data->attr_position, 3, GL_FLOAT, GL_FALSE, 0, 0));
-        GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, 0));
+        GL_CHECK(ctx.myglGenBuffers(1, &data->position_buffer));
+        GL_CHECK(ctx.myglBindBuffer(GL_ARRAY_BUFFER, data->position_buffer));
+        GL_CHECK(ctx.myglBufferData(GL_ARRAY_BUFFER, sizeof(_vertices), _vertices, GL_STATIC_DRAW));
+        GL_CHECK(ctx.myglVertexAttribPointer(data->attr_position, 3, GL_FLOAT, GL_FALSE, 0, 0));
+        GL_CHECK(ctx.myglBindBuffer(GL_ARRAY_BUFFER, 0));
 
-        GL_CHECK(ctx.glGenBuffers(1, &data->color_buffer));
-        GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, data->color_buffer));
-        GL_CHECK(ctx.glBufferData(GL_ARRAY_BUFFER, sizeof(_colors), _colors, GL_STATIC_DRAW));
-        GL_CHECK(ctx.glVertexAttribPointer(data->attr_color, 3, GL_FLOAT, GL_FALSE, 0, 0));
-        GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, 0));
+        GL_CHECK(ctx.myglGenBuffers(1, &data->color_buffer));
+        GL_CHECK(ctx.myglBindBuffer(GL_ARRAY_BUFFER, data->color_buffer));
+        GL_CHECK(ctx.myglBufferData(GL_ARRAY_BUFFER, sizeof(_colors), _colors, GL_STATIC_DRAW));
+        GL_CHECK(ctx.myglVertexAttribPointer(data->attr_color, 3, GL_FLOAT, GL_FALSE, 0, 0));
+        GL_CHECK(ctx.myglBindBuffer(GL_ARRAY_BUFFER, 0));
 
-        GL_CHECK(ctx.glEnable(GL_CULL_FACE));
-        GL_CHECK(ctx.glEnable(GL_DEPTH_TEST));
+        GL_CHECK(ctx.myglEnable(GL_CULL_FACE));
+        GL_CHECK(ctx.myglEnable(GL_DEPTH_TEST));
 
         SDL_GL_MakeCurrent(state->windows[i], NULL);
     }

@@ -41,8 +41,13 @@
  * these should match the defaults selected in SDL_GL_ResetAttributes
  */
 
+#ifdef __AMIGAOS4__
+#define RENDERER_CONTEXT_MAJOR 1
+#define RENDERER_CONTEXT_MINOR 3
+#else
 #define RENDERER_CONTEXT_MAJOR 2
 #define RENDERER_CONTEXT_MINOR 1
+#endif
 
 /* OpenGL renderer implementation */
 
@@ -241,6 +246,12 @@ static int GL_LoadFunctions(GL_RenderData *data)
 #define SDL_PROC(ret, func, params) data->func = func;
 #else
     int retval = 0;
+#ifdef __AMIGAOS4__
+#define SDL_PROC(ret,func,params)                                                             \
+    do {                                                                                      \
+        data->func = SDL_GL_GetProcAddress(#func);                                            \
+    } while ( 0 );
+#else
 #define SDL_PROC(ret, func, params)                                                           \
     do {                                                                                      \
         data->func = SDL_GL_GetProcAddress(#func);                                            \
@@ -248,6 +259,7 @@ static int GL_LoadFunctions(GL_RenderData *data)
             retval = SDL_SetError("Couldn't load GL function %s: %s", #func, SDL_GetError()); \
         }                                                                                     \
     } while (0);
+#endif /* __AMIGAOS4__ */
 #endif /* __SDL_NOGETPROCADDR__ */
 
 #include "SDL_glfuncs.h"
@@ -1027,6 +1039,29 @@ static int GL_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_
     return 0;
 }
 
+static void
+GlBlendModeHack(GL_RenderData * data, const SDL_BlendMode mode)
+{
+    switch (mode) {
+        case SDL_BLENDMODE_NONE:
+            data->glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+            data->glDisable(GL_BLEND);
+            break;
+
+        case SDL_BLENDMODE_ADD:
+            data->glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+            data->glEnable(GL_BLEND);
+            data->glBlendFunc(GL_SRC_ALPHA, GL_DST_COLOR);
+            break;
+
+        default:
+            data->glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+            data->glEnable(GL_BLEND);
+            data->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            break;
+    }
+}
+
 static int SetDrawState(GL_RenderData *data, const SDL_RenderCommand *cmd, const GL_Shader shader)
 {
     const SDL_BlendMode blend = cmd->data.draw.blend;
@@ -1071,16 +1106,22 @@ static int SetDrawState(GL_RenderData *data, const SDL_RenderCommand *cmd, const
     }
 
     if (blend != data->drawstate.blend) {
-        if (blend == SDL_BLENDMODE_NONE) {
-            data->glDisable(GL_BLEND);
+
+        if (data->glBlendFuncSeparate && data->glBlendEquation) {
+            if (blend == SDL_BLENDMODE_NONE) {
+                data->glDisable(GL_BLEND);
+            } else {
+                data->glEnable(GL_BLEND);
+                data->glBlendFuncSeparate(GetBlendFunc(SDL_GetBlendModeSrcColorFactor(blend)),
+                                          GetBlendFunc(SDL_GetBlendModeDstColorFactor(blend)),
+                                          GetBlendFunc(SDL_GetBlendModeSrcAlphaFactor(blend)),
+                                          GetBlendFunc(SDL_GetBlendModeDstAlphaFactor(blend)));
+                data->glBlendEquation(GetBlendEquation(SDL_GetBlendModeColorOperation(blend)));
+            }
         } else {
-            data->glEnable(GL_BLEND);
-            data->glBlendFuncSeparate(GetBlendFunc(SDL_GetBlendModeSrcColorFactor(blend)),
-                                      GetBlendFunc(SDL_GetBlendModeDstColorFactor(blend)),
-                                      GetBlendFunc(SDL_GetBlendModeSrcAlphaFactor(blend)),
-                                      GetBlendFunc(SDL_GetBlendModeDstAlphaFactor(blend)));
-            data->glBlendEquation(GetBlendEquation(SDL_GetBlendModeColorOperation(blend)));
+            GlBlendModeHack(data, blend);
         }
+
         data->drawstate.blend = blend;
     }
 

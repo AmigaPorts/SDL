@@ -1,0 +1,49 @@
+failat 21
+
+echo Copying shared object ...
+copy SDK/local/newlib/lib/libSDL2-2.32.so SObjs:
+copy SDK/local/newlib/lib/libSDL2-2.32_debug.so SObjs:
+
+echo Copying documentation ...
+delete SYS:Documentation/SDL2.txt
+makedir SYS:Documentation/SDL2/
+copy README-amigaos4.md SYS:Documentation/SDL2/
+copy README-SDL.txt SYS:Documentation/SDL2/
+Copy WhatsNew.txt SYS:Documentation/SDL2/
+Copy LICENSE.txt SYS:Documentation/SDL2/
+
+echo Copying prefs program ...
+copy SDL2 SDL2.info SYS:Prefs/
+
+set option `RequestChoice "Localization" "Would you like to install translations?" "Yes, please" "No, thanks"`
+
+If $option eq 1
+  echo Copying translations ...
+  copy Catalogs/#? Locale:Catalogs/ all
+Else
+  echo Skipped translation installation ...
+Endif
+
+set option `RequestChoice "SDK" "Would you like to install the SDK?" "Yes, please" "No, thanks"`
+
+If $option eq 1
+  echo Copying SDK files ...
+  copy SDK/#? SDK: all
+
+  protect SDK:local/newlib/bin/sdl2-config +rweds
+
+  delete SDK:local/newlib/lib/libSDL2.so
+  makelink from=SDK:local/newlib/lib/libSDL2.so to=SObjs:libSDL2-2.32.so soft
+Else
+  echo Skipped SDK installation ...
+EndIf
+
+echo Setting up link ...
+
+delete SObjs:libSDL2.so
+makelink from=SObjs:libSDL2.so to=SObjs:libSDL2-2.32.so soft
+
+echo SDL2 is installed :)
+
+set option `RequestChoice "All done" "Installation finished" "OK"`
+

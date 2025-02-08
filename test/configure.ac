@@ -18,10 +18,14 @@ dnl  (Haiku, for example, sets none of these.)
 ISUNIX="false"
 ISWINDOWS="false"
 ISMACOSX="false"
+ISAMIGAOS="false"
 ISOS2="false"
 
 dnl Figure out which math library to use
 case "$host" in
+    *-*-amigaos*)
+        ISAMIGAOS="true"
+        ;;
     *-*-cygwin* | *-*-mingw*)
         ISWINDOWS="true"
         EXE=".exe"

@@ -54,6 +54,7 @@ static size_t UTF8_TrailingBytes(unsigned char c)
     return 0;
 }
 
+#if !defined(__AMIGAOS4__)
 #if !defined(HAVE_VSSCANF) || !defined(HAVE_STRTOL) || !defined(HAVE_STRTOUL) || !defined(HAVE_STRTOD)
 /**
  * Parses an unsigned long long and returns the unsigned value and sign bit.
@@ -164,7 +165,9 @@ static size_t SDL_ScanLong(const char *text, int count, int radix, long *valuep)
     return len;
 }
 #endif
+#endif // __AMIGAOS4__
 
+#if !defined(__AMIGAOS4__)
 #if !defined(HAVE_VSSCANF) || !defined(HAVE_STRTOUL) || !defined(HAVE_STRTOD)
 static size_t SDL_ScanUnsignedLong(const char *text, int count, int radix, unsigned long *valuep)
 {
@@ -187,6 +190,7 @@ static size_t SDL_ScanUnsignedLong(const char *text, int count, int radix, unsig
     return len;
 }
 #endif
+#endif // __AMIGAOS4__
 
 #ifndef HAVE_VSSCANF
 static size_t SDL_ScanUintPtrT(const char *text, int radix, uintptr_t *valuep)

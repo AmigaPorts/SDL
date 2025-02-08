@@ -112,7 +112,8 @@ int main(int argc, char **argv)
         }
         SDL_free(pictures);
         SDL_VideoQuit();
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not create shaped window for SDL_Shape.");
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not create shaped window for SDL_Shape. %s", SDL_GetError());
+        SDL_Quit();
         exit(-4);
     }
     renderer = SDL_CreateRenderer(window, -1, 0);
@@ -204,6 +205,7 @@ int main(int argc, char **argv)
     SDL_free(pictures);
     /* Call SDL_VideoQuit() before quitting. */
     SDL_VideoQuit();
+    SDL_Quit();
 
     return 0;
 }
