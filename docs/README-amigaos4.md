@@ -3,8 +3,7 @@ SDL 2 requirements
 ================================================================================
 
 AmigaOS 4.1 Final Edition
-MiniGL (optional from SDL2 point of view, but OpenGL context might still be
-        required by the SDL2 application)
+MiniGL (optional)
 OpenGL ES 2.0 (optional)
 
 ================================================================================
@@ -24,10 +23,10 @@ Building SDL 2 library
 ================================================================================
 
     # non-debug variant
-    gmake -f Makefile.amigaos4    
+    gmake -f Makefile.amigaos4
 
     # with serial debug prints
-    gmake -f Makefile.amigaos4 debug    
+    gmake -f Makefile.amigaos4 debug
 
     At the moment configure script and CMake are not supported.
 
@@ -39,6 +38,13 @@ Using SDL 2 in your projects
     ...do magical SDL2 things...
 
     gcc helloworld.c -use-dynld -lSDL2
+
+Setting REGAPP_Description
+===============================================================================
+
+Set SDL_HINT_APP_NAME before SDL_Init():
+
+    SDL_SetHint(SDL_HINT_APP_NAME, "Some description");
 
 ================================================================================
 About SDL_Renderers
@@ -202,4 +208,3 @@ Project page and bug tracker
 ================================================================================
 
 https://github.com/AmigaPorts/SDL
-
