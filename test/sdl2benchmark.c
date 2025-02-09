@@ -17,7 +17,7 @@ TODO:
 
 #include "SDL.h"
 
-#define BENCHMARK_VERSION "0.7"
+#define BENCHMARK_VERSION "0.8"
 
 #define WIDTH 800
 #define HEIGHT 600
@@ -54,6 +54,7 @@ typedef struct {
     SDL_bool running;
     const char* rendname;
     Uint64 bytes;
+    Uint32 seed;
 } Context;
 
 typedef struct {
@@ -263,6 +264,8 @@ prepareTest(Context *ctx, const Test *test)
     ctx->frames = 0;
     ctx->operations = 0;
     ctx->bytes = 0;
+
+    srand(ctx->seed);
 
     return SDL_TRUE;
 }
@@ -648,11 +651,11 @@ initContext(Context *ctx, int argc, char **argv)
     ctx->objects = OBJECTS;
     ctx->sleep = SLEEP;
     ctx->running = SDL_TRUE;
-
+    ctx->seed = 0xA5F05A0F;
     checkParameters(ctx, argc, argv);
 
-    SDL_Log("Parameters: width %d, height %d, renderer name '%s', duration %.3f s, objects %u, sleep %u\n",
-        ctx->width, ctx->height, ctx->rendname, ctx->duration, ctx->objects, ctx->sleep);
+    SDL_Log("Parameters: width %d, height %d, renderer name '%s', duration %.3f s, objects %u, sleep %u, seed 0x%X\n",
+        ctx->width, ctx->height, ctx->rendname, ctx->duration, ctx->objects, ctx->sleep, ctx->seed);
 }
 
 static void
