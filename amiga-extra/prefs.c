@@ -22,12 +22,12 @@
 
 #include "../include/SDL_hints.h"
 
+#include <proto/chooser.h>
 #include <proto/dos.h>
 #include <proto/exec.h>
 #include <proto/icon.h>
 #include <proto/intuition.h>
 #include <proto/locale.h>
-#include <proto/chooser.h>
 
 #include <intuition/classes.h>
 #include <intuition/menuclass.h>
@@ -35,16 +35,17 @@
 #include <classes/requester.h>
 #include <classes/window.h>
 
-#include <gadgets/layout.h>
 #include <gadgets/button.h>
 #include <gadgets/chooser.h>
+#include <gadgets/layout.h>
+#include <images/bitmap.h>
 #include <images/label.h>
 
 #include <stdio.h>
 #include <string.h>
 
 #define NAME "SDL2 preferences"
-#define VERSION "1.6"
+#define VERSION "1.7"
 #define MAX_PATH_LEN 1024
 #define MAX_VARIABLE_NAME_LEN 32
 #define NAME_VERSION_DATE NAME " " VERSION " (" __AMIGADATE__ ")"
@@ -52,12 +53,12 @@
 static const char* const versingString __attribute__((used)) = "$VER: " NAME_VERSION_DATE;
 static const int minVersion = 53;
 
-struct Library *IntuitionBase;
 struct Library *IconBase;
+struct Library *IntuitionBase;
 struct Library *LocaleBase;
 
-struct IntuitionIFace *IIntuition;
 struct IconIFace *IIcon;
+struct IntuitionIFace *IIntuition;
 struct LocaleIFace *ILocale;
 
 #define CATCOMP_NUMBERS
@@ -67,20 +68,23 @@ struct LocaleIFace *ILocale;
 
 static struct LocaleInfo localeInfo;
 
-static struct ClassLibrary* WindowBase;
-static struct ClassLibrary* RequesterBase;
+static struct ClassLibrary* BitMapBase;
 static struct ClassLibrary* ButtonBase;
-static struct ClassLibrary* LayoutBase;
 static struct ClassLibrary* LabelBase;
+static struct ClassLibrary* LayoutBase;
+static struct ClassLibrary* RequesterBase;
+static struct ClassLibrary* WindowBase;
 
 struct Library* ChooserBase;
 struct ChooserIFace* IChooser;
 
-static Class* WindowClass;
-static Class* RequesterClass;
+static Class* BitMapClass;
 static Class* ButtonClass;
-static Class* LayoutClass;
 static Class* LabelClass;
+static Class* LayoutClass;
+static Class* RequesterClass;
+static Class* WindowClass;
+
 Class* ChooserClass;
 
 enum EGadgetID
@@ -285,6 +289,7 @@ GetString(LONG stringNum)
     return GetStringGenerated(&localeInfo, stringNum);
 }
 
+// TODO: drop those auto-opened?
 static BOOL
 OpenLibs()
 {
@@ -319,7 +324,7 @@ OpenLibs()
                                                      OC_PreferExternal, TRUE,
                                                      TAG_END);
     } else {
-        puts("Failed to use catalog system. Using built-in strings.");
+        dprintf("Failed to use catalog system. Using built-in strings\n");
     }
 
     return TRUE;
@@ -348,7 +353,7 @@ MyOpenClass(const char* const name, Class** class)
     struct ClassLibrary* cl = IIntuition->OpenClass(name, minVersion, class);
 
     if (!cl) {
-        dprintf("Failed to open %s", name);
+        dprintf("Failed to open %s\n", name);
     }
 
     return cl;
@@ -364,6 +369,7 @@ OpenClasses()
     ButtonBase = MyOpenClass("gadgets/button.gadget", &ButtonClass);
     LayoutBase = MyOpenClass("gadgets/layout.gadget", &LayoutClass);
     LabelBase = MyOpenClass("images/label.image", &LabelClass);
+    BitMapBase = MyOpenClass("images/bitmap.image", &BitMapClass);
     ChooserBase = (struct Library *)MyOpenClass("gadgets/chooser.gadget", &ChooserClass);
 
     IChooser = (struct ChooserIFace *)IExec->GetInterface(ChooserBase, "main", 1, NULL);
@@ -376,6 +382,7 @@ OpenClasses()
            ButtonBase &&
            LayoutBase &&
            LabelBase &&
+           BitMapBase &&
            ChooserBase &&
            IChooser;
 }
@@ -394,6 +401,7 @@ CloseClasses()
     IIntuition->CloseClass(ButtonBase);
     IIntuition->CloseClass(LayoutBase);
     IIntuition->CloseClass(LabelBase);
+    IIntuition->CloseClass(BitMapBase);
     IIntuition->CloseClass((struct ClassLibrary *)ChooserBase);
 }
 
@@ -669,11 +677,72 @@ CreateLayout()
     return layout;
 }
 
-static Object*
-CreateMenu()
+static BOOL
+HasImagePath(void)
 {
-    dprintf("\n");
+    static BOOL imagePathChecked = FALSE;
+    static BOOL hasImagePath = FALSE;
 
+    if (imagePathChecked) {
+        return hasImagePath;
+    }
+
+    BPTR lock = IDOS->Lock("TBIMAGES:", SHARED_LOCK);
+    if (lock) {
+        IDOS->UnLock(lock);
+        dprintf("TBIMAGES: locked\n");
+        hasImagePath = TRUE;
+    } else {
+        dprintf("Failed to lock TBIMAGES: %ld\n", IDOS->IoErr());
+    }
+
+    imagePathChecked = TRUE;
+
+    return hasImagePath;
+}
+
+static struct Image*
+CreateMenuImage(CONST_STRPTR name)
+{
+    if (!HasImagePath()) {
+        dprintf("No image path\n");
+        return NULL;
+    }
+
+    const int16 size = 24;
+
+    char nameSelect[32];
+    char nameDisabled[32];
+
+    struct Screen *screen = window->WScreen;
+
+    dprintf("window %p, screen %p\n", window, screen);
+
+    snprintf(nameSelect, sizeof(nameSelect), "%s_s", name);
+    snprintf(nameDisabled, sizeof(nameDisabled), "%s_g", name);
+
+    dprintf("nameSelect '%s', nameDisabled '%s'\n", nameSelect, nameDisabled);
+
+    struct Image *image = (struct Image *)IIntuition->NewObject(BitMapClass, NULL,
+        BITMAP_SourceFile,         name,
+        BITMAP_SelectSourceFile,   nameSelect,
+        BITMAP_DisabledSourceFile, nameDisabled,
+        BITMAP_Screen, screen,
+        BITMAP_Masking, TRUE,
+        IA_Width, size,
+        IA_Height, size,
+        TAG_DONE);
+
+    if (!image) {
+        dprintf("Failed to open '%s'\n", name);
+    }
+
+    return image;
+}
+
+static Object*
+CreateMenu(Object *windowObject)
+{
     Object* menuObject = IIntuition->NewObject(NULL, "menuclass",
         MA_Type, T_ROOT,
 
@@ -685,11 +754,13 @@ CreateMenu()
                 MA_Type, T_ITEM,
                 MA_Label, GetString(MSG_PREFS_MAIN_ICONIFY),
                 MA_ID, MID_Iconify,
+                MA_Image, CreateMenuImage("TBIMAGES:iconify"),
                 TAG_DONE),
             MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
                 MA_Type, T_ITEM,
                 MA_Label, GetString(MSG_PREFS_MAIN_ABOUT),
                 MA_ID, MID_About,
+                MA_Image, CreateMenuImage("TBIMAGES:info"),
                 TAG_DONE),
             MA_AddChild, IIntuition->NewObject(NULL, "menuclass",
                 MA_Type, T_ITEM,
@@ -699,11 +770,14 @@ CreateMenu()
                 MA_Type, T_ITEM,
                 MA_Label, GetString(MSG_PREFS_MAIN_QUIT),
                 MA_ID, MID_Quit,
+                MA_Image, CreateMenuImage("TBIMAGES:quit"),
                 TAG_DONE),
             TAG_DONE),
          TAG_DONE); // Main
 
-    if (!menuObject) {
+    if (menuObject) {
+        IIntuition->SetAttrs(windowObject, WA_MenuStrip, menuObject, TAG_DONE);
+    } else {
         dprintf("Failed to create menu object\n");
     }
 
@@ -746,9 +820,9 @@ MyGetDiskObject()
 }
 
 static Object*
-CreateWindow(Object* menuObject, struct MsgPort* appPort)
+CreateWindow(struct MsgPort* appPort)
 {
-    dprintf("menu %p, appPort %p\n", menuObject, appPort);
+    dprintf("appPort %p\n", appPort);
 
     Object* w = IIntuition->NewObject(WindowClass, NULL,
         WA_Activate, TRUE,
@@ -759,7 +833,6 @@ CreateWindow(Object* menuObject, struct MsgPort* appPort)
         WA_DragBar, TRUE,
         WA_DepthGadget, TRUE,
         WA_SizeGadget, TRUE,
-        WA_MenuStrip, menuObject,
         WINDOW_IconifyGadget, TRUE,
         WINDOW_Icon, MyGetDiskObject(),
         WINDOW_AppPort, appPort, // Iconification needs it
@@ -983,13 +1056,15 @@ main(int argc, char** argv)
 
         struct MsgPort* appPort = IExec->AllocSysObjectTags(ASOT_PORT, TAG_DONE);
 
-        Object* menuObject = CreateMenu();
-        Object* windowObject = CreateWindow(menuObject, appPort);
+        Object* menuObject = NULL;
+        Object* windowObject = CreateWindow(appPort);
 
         if (windowObject) {
             window = (struct Window *)IIntuition->IDoMethod(windowObject, WM_OPEN);
 
             if (window) {
+                menuObject = CreateMenu(windowObject);
+
                 do {
                 } while (HandleEvents(windowObject));
             } else {
