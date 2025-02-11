@@ -83,8 +83,6 @@ debug: CFLAGS += -DDEBUG
 
 debug: all
 
-locale: $(LOCALE_TEMPLATE) $(LOCALE_GENERATED)
-
 $(TESTLIB_STATIC): $(TESTLIB_OBJECTS)
 	@echo Creating $@
 	@$(AR) crv $@ $^
@@ -106,11 +104,13 @@ $(PREFS_OBJECT): amiga-extra/prefs.c $(LOCALE_GENERATED)
 
 $(DEBUG_OBJECT): src/main/amigaos4/SDL_os4debug.c
 
-$(LOCALE_GENERATED): $(LOCALE_DESCRIPTOR)
-	$(CATCOMP) $(LOCALE_DESCRIPTOR) CFILE $@
+locale: locale_generated locale_template
 
-$(LOCALE_TEMPLATE): $(LOCALE_DESCRIPTOR)
-	$(CATCOMP) $< CTFILE $(LOCALE_TEMPLATE)
+locale_generated:
+	$(CATCOMP) $(LOCALE_DESCRIPTOR) CFILE $(LOCALE_GENERATED)
+
+locale_template:
+	$(CATCOMP) $(LOCALE_DESCRIPTOR) CTFILE $(LOCALE_TEMPLATE)
 
 clean:
 	@echo Cleaning
