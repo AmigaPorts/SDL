@@ -90,8 +90,6 @@ OS4_LogVersion(void)
 #endif
 }
 
-// This is also called from SDL_InitSubSystem(), in case application is calling
-// SDL_Quit() and then reinitializing something (for example testautomation)
 void OS4_INIT(void)
 {
     // IExec is required for dprintf!
@@ -273,8 +271,6 @@ void OS4_INIT(void)
     dprintf("initCount %d\n", initCount);
 }
 
-// It seems that destructor is not called when RebelSDL application closes. This is also
-// called from SDL_Quit().
 void OS4_QUIT(void)
 {
     if (initCount < 1) {
