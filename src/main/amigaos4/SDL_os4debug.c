@@ -19,8 +19,6 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifdef DEBUG
-
 #include "SDL_os4debug.h"
 
 #include <proto/exec.h>
@@ -28,8 +26,15 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+extern struct Interface* INewlib;
+
 void OS4_DebugPrintF(const char* const fmt, ...)
 {
+    if (!INewlib) {
+        IExec->DebugPrintF("INewlib nullptr\n");
+        return;
+    }
+
     va_list ap;
     va_start(ap, fmt);
 
@@ -46,5 +51,4 @@ void OS4_DebugPrintF(const char* const fmt, ...)
     va_end(ap);
 }
 
-#endif
 
