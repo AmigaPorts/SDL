@@ -548,7 +548,7 @@ static void node_event_info(void *object, const struct pw_node_info *info)
 
         // Need to parse the parameters to get the sample rate
         for (i = 0; i < info->n_params; ++i) {
-            pw_node_enum_params(node->proxy, 0, info->params[i].id, 0, 0, NULL);
+            pw_node_enum_params((struct pw_node*)node->proxy, 0, info->params[i].id, 0, 0, NULL);
         }
 
         hotplug_core_sync(node);
@@ -1337,10 +1337,10 @@ static bool PIPEWIRE_Init(SDL_AudioDriverImpl *impl)
 }
 
 AudioBootStrap PIPEWIRE_PREFERRED_bootstrap = {
-    "pipewire", "Pipewire", PIPEWIRE_PREFERRED_Init, false
+    "pipewire", "Pipewire", PIPEWIRE_PREFERRED_Init, false, true
 };
 AudioBootStrap PIPEWIRE_bootstrap = {
-    "pipewire", "Pipewire", PIPEWIRE_Init, false
+    "pipewire", "Pipewire", PIPEWIRE_Init, false, false
 };
 
 #endif // SDL_AUDIO_DRIVER_PIPEWIRE

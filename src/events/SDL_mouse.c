@@ -748,10 +748,8 @@ static void SDL_PrivateSendMouseMotion(Uint64 timestamp, SDL_Window *window, SDL
 
     // modify internal state
     {
-        if (relative) {
-            mouse->x_accu += xrel;
-            mouse->y_accu += yrel;
-        }
+        mouse->x_accu += xrel;
+        mouse->y_accu += yrel;
 
         if (relative && mouse->has_position) {
             mouse->x += xrel;
@@ -1482,6 +1480,11 @@ SDL_Cursor *SDL_CreateColorCursor(SDL_Surface *surface, int hot_x, int hot_y)
         SDL_InvalidParamError("surface");
         return NULL;
     }
+
+    // Allow specifying the hot spot via properties on the surface
+    SDL_PropertiesID props = SDL_GetSurfaceProperties(surface);
+    hot_x = (int)SDL_GetNumberProperty(props, SDL_PROP_SURFACE_HOTSPOT_X_NUMBER, hot_x);
+    hot_y = (int)SDL_GetNumberProperty(props, SDL_PROP_SURFACE_HOTSPOT_Y_NUMBER, hot_y);
 
     // Sanity check the hot spot
     if ((hot_x < 0) || (hot_y < 0) ||

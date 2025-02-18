@@ -778,8 +778,8 @@ static void AddPulseAudioDevice(const bool recording, const char *description, c
             SDL_free(handle);
         } else {
             handle->device_index = index;
+            SDL_AddAudioDevice(recording, description, &spec, handle);
         }
-        SDL_AddAudioDevice(recording, description, &spec, handle);
     }
 }
 
@@ -1030,7 +1030,7 @@ static bool PULSEAUDIO_Init(SDL_AudioDriverImpl *impl)
 }
 
 AudioBootStrap PULSEAUDIO_bootstrap = {
-    "pulseaudio", "PulseAudio", PULSEAUDIO_Init, false
+    "pulseaudio", "PulseAudio", PULSEAUDIO_Init, false, false
 };
 
 #endif // SDL_AUDIO_DRIVER_PULSEAUDIO
