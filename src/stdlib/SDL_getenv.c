@@ -98,7 +98,7 @@ static ULONG OS4_ScanVars(const struct Hook *hook, CONST_APTR extradata, struct 
                 }
            }
            //dprintf("sv_Name '%s', sv_Var '%s'\n", msg->sv_Name, msg->sv_Var);
-           SDL_InsertIntoHashTable(env->strings, SDL_strdup(msg->sv_Name), SDL_strdup(msg->sv_Var));
+           SDL_InsertIntoHashTable(env->strings, SDL_strdup(msg->sv_Name), SDL_strdup(msg->sv_Var), true);
         } else {
            dprintf("sv_Name %p, sv_Var %p\n", msg->sv_Name, msg->sv_Var);
         }
