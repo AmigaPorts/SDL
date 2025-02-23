@@ -261,6 +261,10 @@ OS4_SetupCompositing(SDL_Texture * dst, OS4_CompositingParams * params, SDL_Scal
 {
     params->flags = COMPFLAG_HardwareOnly;
 
+    if (!dst) {
+        params->flags |= COMPFLAG_IgnoreDestAlpha;
+    }
+
     if (scaleMode != SDL_SCALEMODE_NEAREST) {
         params->flags |= COMPFLAG_SrcFilter;
     }
