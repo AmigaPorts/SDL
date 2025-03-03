@@ -76,10 +76,15 @@ static void SDLCALL UpdateWindowFrameUsableWhileCursorHidden(void *userdata, con
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 static bool WIN_SuspendScreenSaver(SDL_VideoDevice *_this)
 {
+    DWORD result;
     if (_this->suspend_screensaver) {
-        SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
+        result = SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
     } else {
-        SetThreadExecutionState(ES_CONTINUOUS);
+        result = SetThreadExecutionState(ES_CONTINUOUS);
+    }
+    if (result == 0) {
+        SDL_SetError("SetThreadExecutionState() failed");
+        return false;
     }
     return true;
 }
@@ -330,10 +335,11 @@ static SDL_VideoDevice *WIN_CreateDevice(void)
 VideoBootStrap WINDOWS_bootstrap = {
     "windows", "SDL Windows video driver", WIN_CreateDevice,
     #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
-    WIN_ShowMessageBox
+    WIN_ShowMessageBox,
     #else
-    NULL
+    NULL,
     #endif
+    false
 };
 
 static BOOL WIN_DeclareDPIAwareUnaware(SDL_VideoDevice *_this)

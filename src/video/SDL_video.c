@@ -603,6 +603,7 @@ const char *SDL_GetVideoDriver(int index)
     if (index >= 0 && index < SDL_GetNumVideoDrivers()) {
         return deduped_bootstrap[index]->name;
     }
+    SDL_InvalidParamError("index");
     return NULL;
 }
 
@@ -661,7 +662,8 @@ bool SDL_VideoInit(const char *driver_name)
                                                                      : SDL_strlen(driver_attempt);
 
             for (i = 0; bootstrap[i]; ++i) {
-                if ((driver_attempt_len == SDL_strlen(bootstrap[i]->name)) &&
+                if (!bootstrap[i]->is_preferred &&
+                    (driver_attempt_len == SDL_strlen(bootstrap[i]->name)) &&
                     (SDL_strncasecmp(bootstrap[i]->name, driver_attempt, driver_attempt_len) == 0)) {
                     video = bootstrap[i]->create();
                     if (video) {
@@ -2836,9 +2838,16 @@ bool SDL_SetWindowTitle(SDL_Window *window, const char *title)
     if (title == window->title) {
         return true;
     }
+    if (!title) {
+        title = "";
+    }
+    if (window->title && SDL_strcmp(title, window->title) == 0) {
+        return true;
+    }
+
     SDL_free(window->title);
 
-    window->title = SDL_strdup(title ? title : "");
+    window->title = SDL_strdup(title);
 
     if (_this->SetWindowTitle) {
         _this->SetWindowTitle(_this, window);
