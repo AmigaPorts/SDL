@@ -624,7 +624,7 @@ OS4_SetWindowBox(SDL_VideoDevice *_this, SDL_Window * window, SDL_Rect * rect)
     SDL_WindowData *data = window->internal;
 
     if (data->syswin) {
-        LONG ret = IIntuition->SetWindowAttrs(data->syswin,
+        const LONG ret = IIntuition->SetWindowAttrs(data->syswin,
             WA_Left, rect->x,
             WA_Top, rect->y,
             WA_InnerWidth, rect->w,
@@ -646,7 +646,13 @@ OS4_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window * window)
 {
     dprintf("New window position %d, %d\n", window->pending.x, window->pending.y);
 
-    OS4_SetWindowBox(_this, window, &window->pending);
+    SDL_Rect r;
+    r.x = window->pending.x;
+    r.y = window->pending.y;
+    r.w = window->w;
+    r.h = window->h;
+
+    OS4_SetWindowBox(_this, window, &r);
 
     SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_MOVED,
         window->pending.x,
