@@ -206,10 +206,6 @@ OS4_SetupWindowData(SDL_Window * sdlwin, struct Window * syswin)
 
         sdlwin->w = width;
         sdlwin->h = height;
-
-        SDL_PropertiesID props = SDL_GetWindowProperties(sdlwin);
-        //SDL_SetProperty(props, "SDL.window.amigaos4.screen", screen); TODO: set or not?
-        SDL_SetPointerProperty(props, "SDL.window.amigaos4.window", data->syswin);
     }
 
     return true;
@@ -541,6 +537,10 @@ OS4_CreateSystemWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDis
 
     if (syswin) {
         dprintf("Window address %p\n", syswin);
+
+        SDL_PropertiesID props = SDL_GetWindowProperties(window);
+        //SDL_SetProperty(props, "SDL.window.amigaos4.screen", screen); TODO: set or not?
+        SDL_SetPointerProperty(props, "SDL.window.amigaos4.window", syswin);
     } else {
         dprintf("Couldn't create window\n");
         return NULL;
