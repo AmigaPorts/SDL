@@ -1188,7 +1188,6 @@ OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, SDL_PropertiesI
     renderer->DestroyTexture = OS4_DestroyTexture;
     renderer->DestroyRenderer = OS4_DestroyRenderer;
     renderer->SetVSync = OS4_SetVSync;
-    renderer->SetTextureScaleMode = OS4_SetTextureScaleMode;
     renderer->name = OS4_RenderDriver.name;
     renderer->internal = data;
 

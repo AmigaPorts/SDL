@@ -336,11 +336,4 @@ OS4_DestroyTexture(SDL_Renderer * renderer, SDL_Texture * texture)
     }
 }
 
-void
-OS4_SetTextureScaleMode(SDL_Renderer *renderer, SDL_Texture *texture, SDL_ScaleMode scaleMode)
-{
-    // TODO: is implementation required?
-}
-
-
 #endif /* !SDL_RENDER_DISABLED */

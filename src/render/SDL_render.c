@@ -216,93 +216,91 @@ static SDL_INLINE void DebugLogRenderCommands(const SDL_RenderCommand *cmd)
     SDL_Log("Render commands to flush:");
     while (cmd) {
         switch (cmd->command) {
-            case SDL_RENDERCMD_NO_OP:
-                SDL_Log(" %u. no-op", i++);
-                break;
+        case SDL_RENDERCMD_NO_OP:
+            SDL_Log(" %u. no-op", i++);
+            break;
 
-            case SDL_RENDERCMD_SETVIEWPORT:
-                SDL_Log(" %u. set viewport (first=%u, rect={(%d, %d), %dx%d})", i++,
-                        (unsigned int) cmd->data.viewport.first,
-                        cmd->data.viewport.rect.x, cmd->data.viewport.rect.y,
-                        cmd->data.viewport.rect.w, cmd->data.viewport.rect.h);
-                break;
+        case SDL_RENDERCMD_SETVIEWPORT:
+            SDL_Log(" %u. set viewport (first=%u, rect={(%d, %d), %dx%d})", i++,
+                    (unsigned int)cmd->data.viewport.first,
+                    cmd->data.viewport.rect.x, cmd->data.viewport.rect.y,
+                    cmd->data.viewport.rect.w, cmd->data.viewport.rect.h);
+            break;
 
-            case SDL_RENDERCMD_SETCLIPRECT:
-                SDL_Log(" %u. set cliprect (enabled=%s, rect={(%d, %d), %dx%d})", i++,
-                        cmd->data.cliprect.enabled ? "true" : "false",
-                        cmd->data.cliprect.rect.x, cmd->data.cliprect.rect.y,
-                        cmd->data.cliprect.rect.w, cmd->data.cliprect.rect.h);
-                break;
+        case SDL_RENDERCMD_SETCLIPRECT:
+            SDL_Log(" %u. set cliprect (enabled=%s, rect={(%d, %d), %dx%d})", i++,
+                    cmd->data.cliprect.enabled ? "true" : "false",
+                    cmd->data.cliprect.rect.x, cmd->data.cliprect.rect.y,
+                    cmd->data.cliprect.rect.w, cmd->data.cliprect.rect.h);
+            break;
 
-            case SDL_RENDERCMD_SETDRAWCOLOR:
-                SDL_Log(" %u. set draw color (first=%u, r=%d, g=%d, b=%d, a=%d, color_scale=%g)", i++,
-                        (unsigned int) cmd->data.color.first,
-                        (int) cmd->data.color.color.r, (int) cmd->data.color.color.g,
-                        (int) cmd->data.color.color.b, (int) cmd->data.color.color.a, cmd->data.color.color_scale);
-                break;
+        case SDL_RENDERCMD_SETDRAWCOLOR:
+            SDL_Log(" %u. set draw color (first=%u, r=%.2f, g=%.2f, b=%.2f, a=%.2f, color_scale=%g)", i++,
+                    (unsigned int)cmd->data.color.first,
+                    cmd->data.draw.color.r, cmd->data.draw.color.g,
+                    cmd->data.draw.color.b, cmd->data.draw.color.a, cmd->data.color.color_scale);
+            break;
 
-            case SDL_RENDERCMD_CLEAR:
-                SDL_Log(" %u. clear (first=%u, r=%d, g=%d, b=%d, a=%d, color_scale=%g)", i++,
-                        (unsigned int) cmd->data.color.first,
-                        (int) cmd->data.color.color.r, (int) cmd->data.color.color.g,
-                        (int) cmd->data.color.color.b, (int) cmd->data.color.color.a, cmd->data.color.color_scale);
-                break;
+        case SDL_RENDERCMD_CLEAR:
+            SDL_Log(" %u. clear (first=%u, r=%.2f, g=%.2f, b=%.2f, a=%.2f, color_scale=%g)", i++,
+                    (unsigned int)cmd->data.color.first,
+                    cmd->data.draw.color.r, cmd->data.draw.color.g,
+                    cmd->data.draw.color.b, cmd->data.draw.color.a, cmd->data.color.color_scale);
+            break;
 
-            case SDL_RENDERCMD_DRAW_POINTS:
-                SDL_Log(" %u. draw points (first=%u, count=%u, r=%d, g=%d, b=%d, a=%d, blend=%d, color_scale=%g)", i++,
-                        (unsigned int) cmd->data.draw.first,
-                        (unsigned int) cmd->data.draw.count,
-                        (int) cmd->data.draw.color.r, (int) cmd->data.draw.color.g,
-                        (int) cmd->data.draw.color.b, (int) cmd->data.draw.color.a,
-                        (int) cmd->data.draw.blend, cmd->data.draw.color_scale);
-                break;
+        case SDL_RENDERCMD_DRAW_POINTS:
+            SDL_Log(" %u. draw points (first=%u, count=%u, r=%.2f, g=%.2f, b=%.2f, a=%.2f, blend=%d, color_scale=%g)", i++,
+                    (unsigned int)cmd->data.draw.first,
+                    (unsigned int)cmd->data.draw.count,
+                    cmd->data.draw.color.r, cmd->data.draw.color.g,
+                    cmd->data.draw.color.b, cmd->data.draw.color.a,
+                    (int)cmd->data.draw.blend, cmd->data.draw.color_scale);
+            break;
 
-            case SDL_RENDERCMD_DRAW_LINES:
-                SDL_Log(" %u. draw lines (first=%u, count=%u, r=%d, g=%d, b=%d, a=%d, blend=%d, color_scale=%g)", i++,
-                        (unsigned int) cmd->data.draw.first,
-                        (unsigned int) cmd->data.draw.count,
-                        (int) cmd->data.draw.color.r, (int) cmd->data.draw.color.g,
-                        (int) cmd->data.draw.color.b, (int) cmd->data.draw.color.a,
-                        (int) cmd->data.draw.blend, cmd->data.draw.color_scale);
-                break;
+        case SDL_RENDERCMD_DRAW_LINES:
+            SDL_Log(" %u. draw lines (first=%u, count=%u, r=%.2f, g=%.2f, b=%.2f, a=%.2f, blend=%d, color_scale=%g)", i++,
+                    (unsigned int)cmd->data.draw.first,
+                    (unsigned int)cmd->data.draw.count,
+                    cmd->data.draw.color.r, cmd->data.draw.color.g,
+                    cmd->data.draw.color.b, cmd->data.draw.color.a,
+                    (int)cmd->data.draw.blend, cmd->data.draw.color_scale);
+            break;
 
-            case SDL_RENDERCMD_FILL_RECTS:
-                SDL_Log(" %u. fill rects (first=%u, count=%u, r=%d, g=%d, b=%d, a=%d, blend=%d, color_scale=%g)", i++,
-                        (unsigned int) cmd->data.draw.first,
-                        (unsigned int) cmd->data.draw.count,
-                        (int) cmd->data.draw.color.r, (int) cmd->data.draw.color.g,
-                        (int) cmd->data.draw.color.b, (int) cmd->data.draw.color.a,
-                        (int) cmd->data.draw.blend, cmd->data.draw.color_scale);
-                break;
+        case SDL_RENDERCMD_FILL_RECTS:
+            SDL_Log(" %u. fill rects (first=%u, count=%u, r=%.2f, g=%.2f, b=%.2f, a=%.2f, blend=%d, color_scale=%g)", i++,
+                    (unsigned int)cmd->data.draw.first,
+                    (unsigned int)cmd->data.draw.count,
+                    cmd->data.draw.color.r, cmd->data.draw.color.g,
+                    cmd->data.draw.color.b, cmd->data.draw.color.a,
+                    (int)cmd->data.draw.blend, cmd->data.draw.color_scale);
+            break;
 
-            case SDL_RENDERCMD_COPY:
-                SDL_Log(" %u. copy (first=%u, count=%u, r=%d, g=%d, b=%d, a=%d, blend=%d, color_scale=%g, tex=%p)", i++,
-                        (unsigned int) cmd->data.draw.first,
-                        (unsigned int) cmd->data.draw.count,
-                        (int) cmd->data.draw.color.r, (int) cmd->data.draw.color.g,
-                        (int) cmd->data.draw.color.b, (int) cmd->data.draw.color.a,
-                        (int) cmd->data.draw.blend, cmd->data.draw.color_scale, cmd->data.draw.texture);
-                break;
+        case SDL_RENDERCMD_COPY:
+            SDL_Log(" %u. copy (first=%u, count=%u, r=%.2f, g=%.2f, b=%.2f, a=%.2f, blend=%d, color_scale=%g, tex=%p)", i++,
+                    (unsigned int)cmd->data.draw.first,
+                    (unsigned int)cmd->data.draw.count,
+                    cmd->data.draw.color.r, cmd->data.draw.color.g,
+                    cmd->data.draw.color.b, cmd->data.draw.color.a,
+                    (int)cmd->data.draw.blend, cmd->data.draw.color_scale, cmd->data.draw.texture);
+            break;
 
+        case SDL_RENDERCMD_COPY_EX:
+            SDL_Log(" %u. copyex (first=%u, count=%u, r=%.2f, g=%.2f, b=%.2f, a=%.2f, blend=%d, color_scale=%g, tex=%p)", i++,
+                    (unsigned int)cmd->data.draw.first,
+                    (unsigned int)cmd->data.draw.count,
+                    cmd->data.draw.color.r, cmd->data.draw.color.g,
+                    cmd->data.draw.color.b, cmd->data.draw.color.a,
+                    (int)cmd->data.draw.blend, cmd->data.draw.color_scale, cmd->data.draw.texture);
+            break;
 
-            case SDL_RENDERCMD_COPY_EX:
-                SDL_Log(" %u. copyex (first=%u, count=%u, r=%d, g=%d, b=%d, a=%d, blend=%d, color_scale=%g, tex=%p)", i++,
-                        (unsigned int) cmd->data.draw.first,
-                        (unsigned int) cmd->data.draw.count,
-                        (int) cmd->data.draw.color.r, (int) cmd->data.draw.color.g,
-                        (int) cmd->data.draw.color.b, (int) cmd->data.draw.color.a,
-                        (int) cmd->data.draw.blend, cmd->data.draw.color_scale, cmd->data.draw.texture);
-                break;
-
-            case SDL_RENDERCMD_GEOMETRY:
-                SDL_Log(" %u. geometry (first=%u, count=%u, r=%d, g=%d, b=%d, a=%d, blend=%d, color_scale=%g, tex=%p)", i++,
-                        (unsigned int) cmd->data.draw.first,
-                        (unsigned int) cmd->data.draw.count,
-                        (int) cmd->data.draw.color.r, (int) cmd->data.draw.color.g,
-                        (int) cmd->data.draw.color.b, (int) cmd->data.draw.color.a,
-                        (int) cmd->data.draw.blend, cmd->data.draw.color_scale, cmd->data.draw.texture);
-                break;
-
+        case SDL_RENDERCMD_GEOMETRY:
+            SDL_Log(" %u. geometry (first=%u, count=%u, r=%.2f, g=%.2f, b=%.2f, a=%.2f, blend=%d, color_scale=%g, tex=%p)", i++,
+                    (unsigned int)cmd->data.draw.first,
+                    (unsigned int)cmd->data.draw.count,
+                    cmd->data.draw.color.r, cmd->data.draw.color.g,
+                    cmd->data.draw.color.b, cmd->data.draw.color.a,
+                    (int)cmd->data.draw.blend, cmd->data.draw.color_scale, cmd->data.draw.texture);
+            break;
         }
         cmd = cmd->next;
     }
@@ -344,6 +342,16 @@ static bool FlushRenderCommandsIfTextureNeeded(SDL_Texture *texture)
     SDL_Renderer *renderer = texture->renderer;
     if (texture->last_command_generation == renderer->render_command_generation) {
         // the current command queue depends on this texture, flush the queue now before it changes
+        return FlushRenderCommands(renderer);
+    }
+    return true;
+}
+
+static bool FlushRenderCommandsIfGPURenderStateNeeded(SDL_GPURenderState *state)
+{
+    SDL_Renderer *renderer = state->renderer;
+    if (state->last_command_generation == renderer->render_command_generation) {
+        // the current command queue depends on this state, flush the queue now before it changes
         return FlushRenderCommands(renderer);
     }
     return true;
@@ -465,8 +473,8 @@ static void UpdatePixelClipRect(SDL_Renderer *renderer, SDL_RenderViewState *vie
 {
     const float scale_x = view->current_scale.x;
     const float scale_y = view->current_scale.y;
-    view->pixel_clip_rect.x = (int)SDL_floorf((view->clip_rect.x * scale_x) + view->logical_offset.x);
-    view->pixel_clip_rect.y = (int)SDL_floorf((view->clip_rect.y * scale_y) + view->logical_offset.y);
+    view->pixel_clip_rect.x = (int)SDL_floorf(view->clip_rect.x * scale_x);
+    view->pixel_clip_rect.y = (int)SDL_floorf(view->clip_rect.y * scale_y);
     view->pixel_clip_rect.w = (int)SDL_ceilf(view->clip_rect.w * scale_x);
     view->pixel_clip_rect.h = (int)SDL_ceilf(view->clip_rect.h * scale_y);
 }
@@ -576,7 +584,14 @@ static SDL_RenderCommand *PrepQueueCmdDraw(SDL_Renderer *renderer, const SDL_Ren
             cmd->data.draw.color = *color;
             cmd->data.draw.blend = blendMode;
             cmd->data.draw.texture = texture;
+            if (texture) {
+                cmd->data.draw.texture_scale_mode = texture->scaleMode;
+            }
             cmd->data.draw.texture_address_mode = SDL_TEXTURE_ADDRESS_CLAMP;
+            cmd->data.draw.gpu_render_state = renderer->gpu_render_state;
+            if (renderer->gpu_render_state) {
+                renderer->gpu_render_state->last_command_generation = renderer->render_command_generation;
+            }
         }
     }
     return cmd;
@@ -829,6 +844,10 @@ static bool SDL_RendererEventWatch(void *userdata, SDL_Event *event)
 {
     SDL_Renderer *renderer = (SDL_Renderer *)userdata;
     SDL_Window *window = renderer->window;
+
+    if (event->window.windowID != SDL_GetWindowID(window)) {
+        return true;
+    }
 
     if (renderer->WindowEvent) {
         renderer->WindowEvent(renderer, &event->window);
@@ -1084,6 +1103,8 @@ SDL_Renderer *SDL_CreateRendererWithProperties(SDL_PropertiesID props)
         renderer->line_method = SDL_GetRenderLineMethod();
     }
 
+    renderer->scale_mode = SDL_SCALEMODE_LINEAR;
+
     renderer->SDR_white_point = 1.0f;
     renderer->HDR_headroom = 1.0f;
     renderer->desired_color_scale = 1.0f;
@@ -1122,12 +1143,7 @@ SDL_Renderer *SDL_CreateRendererWithProperties(SDL_PropertiesID props)
     }
 
     int vsync = (int)SDL_GetNumberProperty(props, SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_NUMBER, 0);
-    if (!SDL_SetRenderVSync(renderer, vsync)) {
-        if (vsync == 0) {
-            // Some renderers require vsync enabled
-            SDL_SetRenderVSync(renderer, 1);
-        }
-    }
+    SDL_SetRenderVSync(renderer, vsync);
     SDL_CalculateSimulatedVSyncInterval(renderer, window);
 
     SDL_LogInfo(SDL_LOG_CATEGORY_RENDER,
@@ -1395,7 +1411,7 @@ SDL_Texture *SDL_CreateTextureWithProperties(SDL_Renderer *renderer, SDL_Propert
     texture->color.b = 1.0f;
     texture->color.a = 1.0f;
     texture->blendMode = SDL_ISPIXELFORMAT_ALPHA(format) ? SDL_BLENDMODE_BLEND : SDL_BLENDMODE_NONE;
-    texture->scaleMode = SDL_SCALEMODE_LINEAR;
+    texture->scaleMode = renderer->scale_mode;
     texture->view.pixel_w = w;
     texture->view.pixel_h = h;
     texture->view.viewport.w = -1;
@@ -1965,21 +1981,21 @@ bool SDL_GetTextureBlendMode(SDL_Texture *texture, SDL_BlendMode *blendMode)
 
 bool SDL_SetTextureScaleMode(SDL_Texture *texture, SDL_ScaleMode scaleMode)
 {
-    SDL_Renderer *renderer;
-
     CHECK_TEXTURE_MAGIC(texture, false);
 
-    if (scaleMode != SDL_SCALEMODE_NEAREST &&
-        scaleMode != SDL_SCALEMODE_LINEAR) {
+    switch (scaleMode) {
+    case SDL_SCALEMODE_NEAREST:
+    case SDL_SCALEMODE_LINEAR:
+    case SDL_SCALEMODE_PIXELART:
+        break;
+    default:
         return SDL_InvalidParamError("scaleMode");
     }
 
-    renderer = texture->renderer;
     texture->scaleMode = scaleMode;
+
     if (texture->native) {
         return SDL_SetTextureScaleMode(texture->native, scaleMode);
-    } else {
-        renderer->SetTextureScaleMode(renderer, texture, scaleMode);
     }
     return true;
 }
@@ -4533,6 +4549,143 @@ bool SDL_RenderTexture9Grid(SDL_Renderer *renderer, SDL_Texture *texture, const 
     return true;
 }
 
+bool SDL_RenderTexture9GridTiled(SDL_Renderer *renderer, SDL_Texture *texture, const SDL_FRect *srcrect, float left_width, float right_width, float top_height, float bottom_height, float scale, const SDL_FRect *dstrect, float tileScale)
+{
+    SDL_FRect full_src, full_dst;
+    SDL_FRect curr_src, curr_dst;
+    float dst_left_width;
+    float dst_right_width;
+    float dst_top_height;
+    float dst_bottom_height;
+
+    CHECK_RENDERER_MAGIC(renderer, false);
+    CHECK_TEXTURE_MAGIC(texture, false);
+
+    if (renderer != texture->renderer) {
+        return SDL_SetError("Texture was not created with this renderer");
+    }
+
+    if (!srcrect) {
+        full_src.x = 0;
+        full_src.y = 0;
+        full_src.w = (float)texture->w;
+        full_src.h = (float)texture->h;
+        srcrect = &full_src;
+    }
+
+    if (!dstrect) {
+        GetRenderViewportSize(renderer, &full_dst);
+        dstrect = &full_dst;
+    }
+
+    if (scale <= 0.0f || scale == 1.0f) {
+        dst_left_width = SDL_ceilf(left_width);
+        dst_right_width = SDL_ceilf(right_width);
+        dst_top_height = SDL_ceilf(top_height);
+        dst_bottom_height = SDL_ceilf(bottom_height);
+    } else {
+        dst_left_width = SDL_ceilf(left_width * scale);
+        dst_right_width = SDL_ceilf(right_width * scale);
+        dst_top_height = SDL_ceilf(top_height * scale);
+        dst_bottom_height = SDL_ceilf(bottom_height * scale);
+    }
+
+    // Center
+    curr_src.x = srcrect->x + left_width;
+    curr_src.y = srcrect->y + top_height;
+    curr_src.w = srcrect->w - left_width - right_width;
+    curr_src.h = srcrect->h - top_height - bottom_height;
+    curr_dst.x = dstrect->x + dst_left_width;
+    curr_dst.y = dstrect->y + dst_top_height;
+    curr_dst.w = dstrect->w - dst_left_width - dst_right_width;
+    curr_dst.h = dstrect->h - dst_top_height - dst_bottom_height;
+    if (!SDL_RenderTextureTiled(renderer, texture, &curr_src, tileScale, &curr_dst)) {
+        return false;
+    }
+
+    // Upper-left corner
+    curr_src.x = srcrect->x;
+    curr_src.y = srcrect->y;
+    curr_src.w = left_width;
+    curr_src.h = top_height;
+    curr_dst.x = dstrect->x;
+    curr_dst.y = dstrect->y;
+    curr_dst.w = dst_left_width;
+    curr_dst.h = dst_top_height;
+    if (!SDL_RenderTexture(renderer, texture, &curr_src, &curr_dst)) {
+        return false;
+    }
+
+    // Upper-right corner
+    curr_src.x = srcrect->x + srcrect->w - right_width;
+    curr_src.w = right_width;
+    curr_dst.x = dstrect->x + dstrect->w - dst_right_width;
+    curr_dst.w = dst_right_width;
+    if (!SDL_RenderTexture(renderer, texture, &curr_src, &curr_dst)) {
+        return false;
+    }
+
+    // Lower-right corner
+    curr_src.y = srcrect->y + srcrect->h - bottom_height;
+    curr_src.h = bottom_height;
+    curr_dst.y = dstrect->y + dstrect->h - dst_bottom_height;
+    curr_dst.h = dst_bottom_height;
+    if (!SDL_RenderTexture(renderer, texture, &curr_src, &curr_dst)) {
+        return false;
+    }
+
+    // Lower-left corner
+    curr_src.x = srcrect->x;
+    curr_src.w = left_width;
+    curr_dst.x = dstrect->x;
+    curr_dst.w = dst_left_width;
+    if (!SDL_RenderTexture(renderer, texture, &curr_src, &curr_dst)) {
+        return false;
+    }
+
+    // Left
+    curr_src.y = srcrect->y + top_height;
+    curr_src.h = srcrect->h - top_height - bottom_height;
+    curr_dst.y = dstrect->y + dst_top_height;
+    curr_dst.h = dstrect->h - dst_top_height - dst_bottom_height;
+    if (!SDL_RenderTextureTiled(renderer, texture, &curr_src, tileScale, &curr_dst)) {
+        return false;
+    }
+
+    // Right
+    curr_src.x = srcrect->x + srcrect->w - right_width;
+    curr_src.w = right_width;
+    curr_dst.x = dstrect->x + dstrect->w - dst_right_width;
+    curr_dst.w = dst_right_width;
+    if (!SDL_RenderTextureTiled(renderer, texture, &curr_src, tileScale, &curr_dst)) {
+        return false;
+    }
+
+    // Top
+    curr_src.x = srcrect->x + left_width;
+    curr_src.y = srcrect->y;
+    curr_src.w = srcrect->w - left_width - right_width;
+    curr_src.h = top_height;
+    curr_dst.x = dstrect->x + dst_left_width;
+    curr_dst.y = dstrect->y;
+    curr_dst.w = dstrect->w - dst_left_width - dst_right_width;
+    curr_dst.h = dst_top_height;
+    if (!SDL_RenderTextureTiled(renderer, texture, &curr_src, tileScale, &curr_dst)) {
+        return false;
+    }
+
+    // Bottom
+    curr_src.y = srcrect->y + srcrect->h - bottom_height;
+    curr_src.h = bottom_height;
+    curr_dst.y = dstrect->y + dstrect->h - dst_bottom_height;
+    curr_dst.h = dst_bottom_height;
+    if (!SDL_RenderTextureTiled(renderer, texture, &curr_src, tileScale, &curr_dst)) {
+        return false;
+    }
+
+    return true;
+}
+
 bool SDL_RenderGeometry(SDL_Renderer *renderer,
                        SDL_Texture *texture,
                        const SDL_Vertex *vertices, int num_vertices,
@@ -5147,9 +5300,8 @@ bool SDL_RenderPresent(SDL_Renderer *renderer)
 
     CHECK_RENDERER_MAGIC(renderer, false);
 
-    SDL_Texture *target = renderer->target;
-    if (target) {
-        SDL_SetRenderTarget(renderer, NULL);
+    if (renderer->target) {
+        return SDL_SetError("You can't present on a render target");
     }
 
     SDL_RenderLogicalPresentation(renderer);
@@ -5168,10 +5320,6 @@ bool SDL_RenderPresent(SDL_Renderer *renderer)
 #endif
     if (!renderer->RenderPresent(renderer)) {
         presented = false;
-    }
-
-    if (target) {
-        SDL_SetRenderTarget(renderer, target);
     }
 
     if (renderer->simulate_vsync ||
@@ -5503,7 +5651,8 @@ bool SDL_SetRenderVSync(SDL_Renderer *renderer, int vsync)
     }
 #endif
 
-    if (!renderer->SetVSync) {
+    if (!renderer->SetVSync ||
+        !renderer->SetVSync(renderer, vsync)) {
         switch (vsync) {
         case 0:
             renderer->simulate_vsync = false;
@@ -5513,12 +5662,6 @@ bool SDL_SetRenderVSync(SDL_Renderer *renderer, int vsync)
             break;
         default:
             return SDL_Unsupported();
-        }
-    } else if (!renderer->SetVSync(renderer, vsync)) {
-        if (vsync == 1) {
-            renderer->simulate_vsync = true;
-        } else {
-            return false;
         }
     }
     SDL_SetNumberProperty(SDL_GetRendererProperties(renderer), SDL_PROP_RENDERER_VSYNC_NUMBER, vsync);
@@ -5594,7 +5737,7 @@ static bool CreateDebugTextAtlas(SDL_Renderer *renderer)
     // Convert temp surface into texture
     SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, atlas);
     if (texture) {
-        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_PIXELART);
         renderer->debug_char_texture_atlas = texture;
     }
     SDL_DestroySurface(atlas);
@@ -5683,4 +5826,166 @@ bool SDL_RenderDebugTextFormat(SDL_Renderer *renderer, float x, float y, SDL_PRI
     const bool retval = SDL_RenderDebugText(renderer, x, y, str);
     SDL_free(str);
     return retval;
+}
+
+bool SDL_SetDefaultTextureScaleMode(SDL_Renderer *renderer, SDL_ScaleMode scale_mode)
+{
+    CHECK_RENDERER_MAGIC(renderer, false);
+
+    renderer->scale_mode = scale_mode;
+
+    return true;
+}
+
+bool SDL_GetDefaultTextureScaleMode(SDL_Renderer *renderer, SDL_ScaleMode *scale_mode)
+{
+    if (scale_mode) {
+        *scale_mode = SDL_SCALEMODE_LINEAR;
+    }
+
+    CHECK_RENDERER_MAGIC(renderer, false);
+
+    if (scale_mode) {
+        *scale_mode = renderer->scale_mode;
+    }
+    return true;
+}
+
+SDL_GPURenderState *SDL_CreateGPURenderState(SDL_Renderer *renderer, SDL_GPURenderStateDesc *desc)
+{
+    CHECK_RENDERER_MAGIC(renderer, NULL);
+
+    if (!desc) {
+        SDL_InvalidParamError("desc");
+        return NULL;
+    }
+
+    if (desc->version < sizeof(*desc)) {
+        // Update this to handle older versions of this interface
+        SDL_SetError("Invalid desc, should be initialized with SDL_INIT_INTERFACE()");
+        return NULL;
+    }
+
+    if (!desc->fragment_shader) {
+        SDL_SetError("desc->fragment_shader is required");
+        return NULL;
+    }
+
+    SDL_GPUDevice *device = (SDL_GPUDevice *)SDL_GetPointerProperty(renderer->props, SDL_PROP_RENDERER_GPU_DEVICE_POINTER, NULL);
+    if (!device) {
+        SDL_SetError("Renderer isn't associated with a GPU device");
+        return NULL;
+    }
+
+    SDL_GPURenderState *state = (SDL_GPURenderState *)SDL_calloc(1, sizeof(*state));
+    if (!state) {
+        return NULL;
+    }
+
+    state->renderer = renderer;
+    state->fragment_shader = desc->fragment_shader;
+
+    if (desc->num_sampler_bindings > 0) {
+        state->sampler_bindings = (SDL_GPUTextureSamplerBinding *)SDL_calloc(desc->num_sampler_bindings, sizeof(*state->sampler_bindings));
+        if (!state->sampler_bindings) {
+            SDL_DestroyGPURenderState(state);
+            return NULL;
+        }
+        SDL_memcpy(state->sampler_bindings, desc->sampler_bindings, desc->num_sampler_bindings * sizeof(*state->sampler_bindings));
+        state->num_sampler_bindings = desc->num_sampler_bindings;
+    }
+
+    if (desc->num_storage_textures > 0) {
+        state->storage_textures = (SDL_GPUTexture **)SDL_calloc(desc->num_storage_textures, sizeof(*state->storage_textures));
+        if (!state->storage_textures) {
+            SDL_DestroyGPURenderState(state);
+            return NULL;
+        }
+        SDL_memcpy(state->storage_textures, desc->storage_textures, desc->num_storage_textures * sizeof(*state->storage_textures));
+        state->num_storage_textures = desc->num_storage_textures;
+    }
+
+    if (desc->num_storage_buffers > 0) {
+        state->storage_buffers = (SDL_GPUBuffer **)SDL_calloc(desc->num_storage_buffers, sizeof(*state->storage_buffers));
+        if (!state->storage_buffers) {
+            SDL_DestroyGPURenderState(state);
+            return NULL;
+        }
+        SDL_memcpy(state->storage_buffers, desc->storage_buffers, desc->num_storage_buffers * sizeof(*state->storage_buffers));
+        state->num_storage_buffers = desc->num_storage_buffers;
+    }
+
+    return state;
+}
+
+bool SDL_SetGPURenderStateFragmentUniforms(SDL_GPURenderState *state, Uint32 slot_index, const void *data, Uint32 length)
+{
+    if (!state) {
+        return SDL_InvalidParamError("state");
+    }
+
+    if (!FlushRenderCommandsIfGPURenderStateNeeded(state)) {
+        return false;
+    }
+
+    for (int i = 0; i < state->num_uniform_buffers; i++) {
+        SDL_GPURenderStateUniformBuffer *buffer = &state->uniform_buffers[i];
+        if (buffer->slot_index == slot_index) {
+            void *new_data = SDL_realloc(buffer->data, length);
+            if (!new_data) {
+                return false;
+            }
+            SDL_memcpy(new_data, data, length);
+            buffer->data = new_data;
+            buffer->length = length;
+            return true;
+        }
+    }
+
+    SDL_GPURenderStateUniformBuffer *buffers = (SDL_GPURenderStateUniformBuffer *)SDL_realloc(state->uniform_buffers, (state->num_uniform_buffers + 1) * sizeof(*state->uniform_buffers));
+    if (!buffers) {
+        return false;
+    }
+
+    SDL_GPURenderStateUniformBuffer *buffer = &buffers[state->num_uniform_buffers];
+    buffer->slot_index = slot_index;
+    buffer->length = length;
+    buffer->data = SDL_malloc(length);
+    if (!buffer->data) {
+        SDL_free(buffers);
+        return false;
+    }
+    SDL_memcpy(buffer->data, data, length);
+
+    state->uniform_buffers = buffers;
+    ++state->num_uniform_buffers;
+    return true;
+}
+
+bool SDL_SetRenderGPUState(SDL_Renderer *renderer, SDL_GPURenderState *state)
+{
+    CHECK_RENDERER_MAGIC(renderer, false);
+
+    renderer->gpu_render_state = state;
+    return true;
+}
+
+void SDL_DestroyGPURenderState(SDL_GPURenderState *state)
+{
+    if (!state) {
+        return;
+    }
+
+    FlushRenderCommandsIfGPURenderStateNeeded(state);
+
+    if (state->num_uniform_buffers > 0) {
+        for (int i = 0; i < state->num_uniform_buffers; i++) {
+            SDL_free(state->uniform_buffers[i].data);
+        }
+        SDL_free(state->uniform_buffers);
+    }
+    SDL_free(state->sampler_bindings);
+    SDL_free(state->storage_textures);
+    SDL_free(state->storage_buffers);
+    SDL_free(state);
 }

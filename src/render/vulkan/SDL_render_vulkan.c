@@ -211,7 +211,12 @@ typedef struct
     float scRGB_output;
     float input_type;
     float color_scale;
-    float unused_pad0;
+    float pixel_art;
+
+    float texel_width;
+    float texel_height;
+    float texture_width;
+    float texture_height;
 
     float tonemap_method;
     float tonemap_factor1;
@@ -255,7 +260,6 @@ typedef struct
     VkRenderPass mainRenderpasses[VULKAN_RENDERPASS_COUNT];
     VkFramebuffer mainFramebuffer;
     VULKAN_Buffer stagingBuffer;
-    VkFilter scaleMode;
     SDL_Rect lockedRect;
     int width;
     int height;
@@ -2600,7 +2604,6 @@ static bool VULKAN_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, S
     } else {
         textureData->shader = SHADER_ADVANCED;
     }
-    textureData->scaleMode = (texture->scaleMode == SDL_SCALEMODE_NEAREST) ? VK_FILTER_NEAREST : VK_FILTER_LINEAR;
 
 #ifdef SDL_HAVE_YUV
     // YUV textures must have even width and height.  Also create Ycbcr conversion
@@ -3093,17 +3096,6 @@ static void VULKAN_UnlockTexture(SDL_Renderer *renderer, SDL_Texture *texture)
     VULKAN_DestroyBuffer(rendererData, &textureData->stagingBuffer);
 }
 
-static void VULKAN_SetTextureScaleMode(SDL_Renderer *renderer, SDL_Texture *texture, SDL_ScaleMode scaleMode)
-{
-    VULKAN_TextureData *textureData = (VULKAN_TextureData *)texture->internal;
-
-    if (!textureData) {
-        return;
-    }
-
-    textureData->scaleMode = (scaleMode == SDL_SCALEMODE_NEAREST) ? VK_FILTER_NEAREST : VK_FILTER_LINEAR;
-}
-
 static bool VULKAN_SetRenderTarget(SDL_Renderer *renderer, SDL_Texture *texture)
 {
     VULKAN_RenderData *rendererData = (VULKAN_RenderData *)renderer->internal;
@@ -3423,6 +3415,14 @@ static void VULKAN_SetupShaderConstants(SDL_Renderer *renderer, const SDL_Render
                 constants->input_type = INPUTTYPE_UNSPECIFIED;
             }
             break;
+        }
+
+        if (cmd->data.draw.texture_scale_mode == SDL_SCALEMODE_PIXELART) {
+            constants->pixel_art = 1.0f;
+            constants->texture_width = texture->w;
+            constants->texture_height = texture->h;
+            constants->texel_width = 1.0f / constants->texture_width;
+            constants->texel_height = 1.0f / constants->texture_height;
         }
 
         constants->sdr_white_point = texture->SDR_white_point;
@@ -3775,8 +3775,8 @@ static bool VULKAN_SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand 
 
     VULKAN_SetupShaderConstants(renderer, cmd, texture, &constants);
 
-    switch (textureData->scaleMode) {
-    case VK_FILTER_NEAREST:
+    switch (cmd->data.draw.texture_scale_mode) {
+    case SDL_SCALEMODE_NEAREST:
         switch (cmd->data.draw.texture_address_mode) {
         case SDL_TEXTURE_ADDRESS_CLAMP:
             textureSampler = rendererData->samplers[VULKAN_SAMPLER_NEAREST_CLAMP];
@@ -3788,7 +3788,8 @@ static bool VULKAN_SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand 
             return SDL_SetError("Unknown texture address mode: %d", cmd->data.draw.texture_address_mode);
         }
         break;
-    case VK_FILTER_LINEAR:
+    case SDL_SCALEMODE_PIXELART:    // Uses linear sampling
+    case SDL_SCALEMODE_LINEAR:
         switch (cmd->data.draw.texture_address_mode) {
         case SDL_TEXTURE_ADDRESS_CLAMP:
             textureSampler = rendererData->samplers[VULKAN_SAMPLER_LINEAR_CLAMP];
@@ -3801,7 +3802,7 @@ static bool VULKAN_SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand 
         }
         break;
     default:
-        return SDL_SetError("Unknown scale mode: %d", textureData->scaleMode);
+        return SDL_SetError("Unknown scale mode: %d", cmd->data.draw.texture_scale_mode);
     }
 
     if (textureData->mainImage.imageLayout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
@@ -4290,7 +4291,6 @@ static bool VULKAN_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SD
 #endif
     renderer->LockTexture = VULKAN_LockTexture;
     renderer->UnlockTexture = VULKAN_UnlockTexture;
-    renderer->SetTextureScaleMode = VULKAN_SetTextureScaleMode;
     renderer->SetRenderTarget = VULKAN_SetRenderTarget;
     renderer->QueueSetViewport = VULKAN_QueueNoOp;
     renderer->QueueSetDrawColor = VULKAN_QueueNoOp;

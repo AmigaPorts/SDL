@@ -25,6 +25,10 @@
 
 #include "../SDL_syscamera.h"
 
+#ifdef HAVE_DBUS_DBUS_H
+#include "../../core/linux/SDL_dbus.h"
+#endif
+
 #include <spa/utils/type.h>
 #include <spa/pod/builder.h>
 #include <spa/pod/iter.h>
@@ -58,7 +62,9 @@ static bool pipewire_initialized = false;
 
 // Pipewire entry points
 static const char *(*PIPEWIRE_pw_get_library_version)(void);
+#if PW_CHECK_VERSION(0, 3, 75)
 static bool (*PIPEWIRE_pw_check_library_version)(int major, int minor, int micro);
+#endif
 static void (*PIPEWIRE_pw_init)(int *, char ***);
 static void (*PIPEWIRE_pw_deinit)(void);
 static struct pw_main_loop *(*PIPEWIRE_pw_main_loop_new)(const struct spa_dict *loop);
@@ -78,6 +84,9 @@ static int (*PIPEWIRE_pw_thread_loop_start)(struct pw_thread_loop *);
 static struct pw_context *(*PIPEWIRE_pw_context_new)(struct pw_loop *, struct pw_properties *, size_t);
 static void (*PIPEWIRE_pw_context_destroy)(struct pw_context *);
 static struct pw_core *(*PIPEWIRE_pw_context_connect)(struct pw_context *, struct pw_properties *, size_t);
+#ifdef SDL_USE_LIBDBUS
+static struct pw_core *(*PIPEWIRE_pw_context_connect_fd)(struct pw_context *, int, struct pw_properties *, size_t);
+#endif
 static void (*PIPEWIRE_pw_proxy_add_object_listener)(struct pw_proxy *, struct spa_hook *, const void *, void *);
 static void (*PIPEWIRE_pw_proxy_add_listener)(struct pw_proxy *, struct spa_hook *, const struct pw_proxy_events *, void *);
 static void *(*PIPEWIRE_pw_proxy_get_user_data)(struct pw_proxy *);
@@ -151,7 +160,9 @@ static void unload_pipewire_library(void)
 static bool load_pipewire_syms(void)
 {
     SDL_PIPEWIRE_SYM(pw_get_library_version);
+#if PW_CHECK_VERSION(0, 3, 75)
     SDL_PIPEWIRE_SYM(pw_check_library_version);
+#endif
     SDL_PIPEWIRE_SYM(pw_init);
     SDL_PIPEWIRE_SYM(pw_deinit);
     SDL_PIPEWIRE_SYM(pw_main_loop_new);
@@ -171,6 +182,9 @@ static bool load_pipewire_syms(void)
     SDL_PIPEWIRE_SYM(pw_context_new);
     SDL_PIPEWIRE_SYM(pw_context_destroy);
     SDL_PIPEWIRE_SYM(pw_context_connect);
+#ifdef SDL_USE_LIBDBUS
+    SDL_PIPEWIRE_SYM(pw_context_connect_fd);
+#endif
     SDL_PIPEWIRE_SYM(pw_proxy_add_listener);
     SDL_PIPEWIRE_SYM(pw_proxy_add_object_listener);
     SDL_PIPEWIRE_SYM(pw_proxy_get_user_data);
@@ -1021,10 +1035,21 @@ static bool pipewire_server_version_at_least(int major, int minor, int patch)
 static bool hotplug_loop_init(void)
 {
     int res;
+#ifdef SDL_USE_LIBDBUS
+    int fd;
+
+    fd = SDL_DBus_CameraPortalRequestAccess();
+    if (fd == -1)
+        return false;
+#endif
 
     spa_list_init(&hotplug.global_list);
 
+#if PW_CHECK_VERSION(0, 3, 75)
     hotplug.have_1_0_5 = PIPEWIRE_pw_check_library_version(1,0,5);
+#else
+    hotplug.have_1_0_5 = false;
+#endif
 
     hotplug.loop = PIPEWIRE_pw_thread_loop_new("SDLPwCameraPlug", NULL);
     if (!hotplug.loop) {
@@ -1035,8 +1060,15 @@ static bool hotplug_loop_init(void)
     if (!hotplug.context) {
         return SDL_SetError("Pipewire: Failed to create hotplug detection context (%i)", errno);
     }
-
+#ifdef SDL_USE_LIBDBUS
+    if (fd >= 0) {
+        hotplug.core = PIPEWIRE_pw_context_connect_fd(hotplug.context, fd, NULL, 0);
+    } else {
+        hotplug.core = PIPEWIRE_pw_context_connect(hotplug.context, NULL, 0);
+    }
+#else
     hotplug.core = PIPEWIRE_pw_context_connect(hotplug.context, NULL, 0);
+#endif
     if (!hotplug.core) {
         return SDL_SetError("Pipewire: Failed to connect hotplug detection context (%i)", errno);
     }
