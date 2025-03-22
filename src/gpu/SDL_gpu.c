@@ -2359,6 +2359,13 @@ void SDL_CopyGPUTextureToTexture(
             SDL_assert_release(!"Destination texture cannot be NULL!");
             return;
         }
+
+        TextureCommonHeader *srcHeader = (TextureCommonHeader *)source->texture;
+        TextureCommonHeader *dstHeader = (TextureCommonHeader *)destination->texture;
+        if (srcHeader->info.format != dstHeader->info.format) {
+            SDL_assert_release(!"Source and destination textures must have the same format!");
+            return;
+        }
     }
 
     COPYPASS_DEVICE->CopyTextureToTexture(
@@ -2646,8 +2653,11 @@ bool SDL_ClaimWindowForGPUDevice(
 {
     CHECK_DEVICE_MAGIC(device, false);
     if (window == NULL) {
-        SDL_InvalidParamError("window");
-        return false;
+        return SDL_InvalidParamError("window");
+    }
+
+    if ((window->flags & SDL_WINDOW_TRANSPARENT) != 0) {
+        return SDL_SetError("The GPU API doesn't support transparent windows");
     }
 
     return device->ClaimWindow(

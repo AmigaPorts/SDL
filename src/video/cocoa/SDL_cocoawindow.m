@@ -915,7 +915,8 @@ static NSCursor *Cocoa_GetDesiredCursor(void)
 
 - (BOOL)hasPendingWindowOperation
 {
-    return pendingWindowOperation != PENDING_OPERATION_NONE ||
+    // A pending zoom may be deferred until leaving fullscreen, so don't block on it.
+    return (pendingWindowOperation & ~PENDING_OPERATION_ZOOM) != PENDING_OPERATION_NONE ||
            isMiniaturizing || inFullscreenTransition;
 }
 
@@ -1503,9 +1504,10 @@ static NSCursor *Cocoa_GetDesiredCursor(void)
         if ([self windowOperationIsPending:PENDING_OPERATION_ZOOM]) {
             [self clearPendingWindowOperation:PENDING_OPERATION_ZOOM];
             [nswindow zoom:nil];
+            _data.was_zoomed = !_data.was_zoomed;
         }
 
-        if (![nswindow isZoomed]) {
+        if (!_data.was_zoomed) {
             // Apply a pending window size, if not zoomed.
             NSRect rect;
             rect.origin.x = _data.pending_position ? window->pending.x : window->floating.x;
@@ -2125,6 +2127,7 @@ static bool SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, NSWindow
         if (!data) {
             return SDL_OutOfMemory();
         }
+        window->internal = (SDL_WindowData *)CFBridgingRetain(data);
         data.window = window;
         data.nswindow = nswindow;
         data.videodata = videodata;
@@ -2210,6 +2213,7 @@ static bool SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, NSWindow
         } else {
             if (window->flags & SDL_WINDOW_TOOLTIP) {
                 [nswindow setIgnoresMouseEvents:YES];
+                [nswindow setAcceptsMouseMovedEvents:NO];
             } else if (window->flags & SDL_WINDOW_POPUP_MENU) {
                 Cocoa_SetKeyboardFocus(window, window->parent == SDL_GetKeyboardFocus());
             }
@@ -2245,7 +2249,6 @@ static bool SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, NSWindow
         SDL_SetNumberProperty(props, SDL_PROP_WINDOW_COCOA_METAL_VIEW_TAG_NUMBER, SDL_METALVIEW_TAG);
 
         // All done!
-        window->internal = (SDL_WindowData *)CFBridgingRetain(data);
         return true;
     }
 }
@@ -3263,24 +3266,11 @@ bool Cocoa_SyncWindow(SDL_VideoDevice *_this, SDL_Window *window)
     bool result = true;
 
     @autoreleasepool {
-        /* The timeout needs to be high enough that animated fullscreen
-         * spaces transitions won't cause it to time out.
-         */
-        Uint64 timeout = SDL_GetTicksNS() + SDL_MS_TO_NS(2000);
         SDL_CocoaWindowData *data = (__bridge SDL_CocoaWindowData *)window->internal;
-        while (true) {
+
+        do {
             SDL_PumpEvents();
-
-            if (SDL_GetTicksNS() >= timeout) {
-                result = false;
-                break;
-            }
-            if (![data.listener hasPendingWindowOperation]) {
-                break;
-            }
-
-            SDL_Delay(10);
-        }
+        } while ([data.listener hasPendingWindowOperation]);
     }
 
     return result;

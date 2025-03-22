@@ -87,9 +87,13 @@ typedef struct
     // Get absolute mouse coordinates. (x) and (y) are never NULL and set to zero before call.
     SDL_MouseButtonFlags (*GetGlobalMouseState)(float *x, float *y);
 
-    // Platform-specific system mouse transform
-    void (*ApplySystemScale)(void *internal, Uint64 timestamp, SDL_Window *window, SDL_MouseID mouseID, float *x, float *y);
+    // Platform-specific system mouse transform applied in relative mode
+    SDL_MouseMotionTransformCallback ApplySystemScale;
     void *system_scale_data;
+
+    // User-defined mouse input transform applied in relative mode
+    SDL_MouseMotionTransformCallback InputTransform;
+    void *input_transform_data;
 
     // Data common to all mice
     SDL_Window *focus;
@@ -98,8 +102,13 @@ typedef struct
     float x_accu;
     float y_accu;
     float last_x, last_y; // the last reported x and y coordinates
+    float xrel_frac;
+    float yrel_frac;
+    float wheel_x_frac;
+    float wheel_y_frac;
     double click_motion_x;
     double click_motion_y;
+    Uint8 integer_mode;
     bool has_position;
     bool relative_mode;
     bool relative_mode_warp_motion;

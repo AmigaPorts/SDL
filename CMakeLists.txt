@@ -5,7 +5,7 @@ if(NOT DEFINED CMAKE_BUILD_TYPE)
 endif()
 
 # See docs/release_checklist.md
-project(SDL3 LANGUAGES C VERSION "3.2.5")
+project(SDL3 LANGUAGES C VERSION "3.3.0")
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   set(SDL3_MAINPROJECT ON)
@@ -357,6 +357,7 @@ dep_option(SDL_X11_XRANDR          "Enable Xrandr support" "${SDL_X11_XRANDR_DEF
 dep_option(SDL_X11_XSCRNSAVER      "Enable Xscrnsaver support" ON SDL_X11 OFF)
 dep_option(SDL_X11_XSHAPE          "Enable XShape support" ON SDL_X11 OFF)
 dep_option(SDL_X11_XSYNC           "Enable Xsync support" ON SDL_X11 OFF)
+dep_option(SDL_X11_XTEST           "Enable XTest support" ON SDL_X11 OFF)
 dep_option(SDL_WAYLAND             "Use Wayland video driver" ${UNIX_SYS} "SDL_VIDEO" OFF)
 dep_option(SDL_WAYLAND_SHARED      "Dynamically load Wayland support" ON "SDL_WAYLAND;SDL_DEPS_SHARED" OFF)
 dep_option(SDL_WAYLAND_LIBDECOR    "Use client-side window decorations on Wayland" ON "SDL_WAYLAND" OFF)

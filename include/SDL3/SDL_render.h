@@ -59,6 +59,7 @@
 #include <SDL3/SDL_rect.h>
 #include <SDL3/SDL_surface.h>
 #include <SDL3/SDL_video.h>
+#include <SDL3/SDL_gpu.h>
 
 #include <SDL3/SDL_begin_code.h>
 /* Set up for C function definitions, even when using C++ */
@@ -2236,6 +2237,43 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderTextureTiled(SDL_Renderer *renderer, 
 extern SDL_DECLSPEC bool SDLCALL SDL_RenderTexture9Grid(SDL_Renderer *renderer, SDL_Texture *texture, const SDL_FRect *srcrect, float left_width, float right_width, float top_height, float bottom_height, float scale, const SDL_FRect *dstrect);
 
 /**
+ * Perform a scaled copy using the 9-grid algorithm to the current rendering
+ * target at subpixel precision.
+ *
+ * The pixels in the texture are split into a 3x3 grid, using the different
+ * corner sizes for each corner, and the sides and center making up the
+ * remaining pixels. The corners are then scaled using `scale` and fit into
+ * the corners of the destination rectangle. The sides and center are then
+ * tiled into place to cover the remaining destination rectangle.
+ *
+ * \param renderer the renderer which should copy parts of a texture.
+ * \param texture the source texture.
+ * \param srcrect the SDL_Rect structure representing the rectangle to be used
+ *                for the 9-grid, or NULL to use the entire texture.
+ * \param left_width the width, in pixels, of the left corners in `srcrect`.
+ * \param right_width the width, in pixels, of the right corners in `srcrect`.
+ * \param top_height the height, in pixels, of the top corners in `srcrect`.
+ * \param bottom_height the height, in pixels, of the bottom corners in
+ *                      `srcrect`.
+ * \param scale the scale used to transform the corner of `srcrect` into the
+ *              corner of `dstrect`, or 0.0f for an unscaled copy.
+ * \param dstrect a pointer to the destination rectangle, or NULL for the
+ *                entire rendering target.
+ * \param tileScale the scale used to transform the borders and center of
+ *                  `srcrect` into the borders and middle of `dstrect`, or
+ *                  1.0f for an unscaled copy.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety This function should only be called on the main thread.
+ *
+ * \since This function is available since SDL 3.4.0.
+ *
+ * \sa SDL_RenderTexture
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_RenderTexture9GridTiled(SDL_Renderer *renderer, SDL_Texture *texture, const SDL_FRect *srcrect, float left_width, float right_width, float top_height, float bottom_height, float scale, const SDL_FRect *dstrect, float tileScale);
+
+/**
  * Render a list of triangles, optionally using a texture and indices into the
  * vertex array Color and alpha modulation is done per vertex
  * (SDL_SetTextureColorMod and SDL_SetTextureAlphaMod are ignored).
@@ -2348,8 +2386,7 @@ extern SDL_DECLSPEC SDL_Surface * SDLCALL SDL_RenderReadPixels(SDL_Renderer *ren
  * should not be done; you are only required to change back the rendering
  * target to default via `SDL_SetRenderTarget(renderer, NULL)` afterwards, as
  * textures by themselves do not have a concept of backbuffers. Calling
- * SDL_RenderPresent while rendering to a texture will still update the screen
- * with any current drawing that has been done _to the window itself_.
+ * SDL_RenderPresent while rendering to a texture will fail.
  *
  * \param renderer the rendering context.
  * \returns true on success or false on failure; call SDL_GetError() for more
@@ -2636,6 +2673,161 @@ extern SDL_DECLSPEC bool SDLCALL SDL_RenderDebugText(SDL_Renderer *renderer, flo
  * \sa SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_RenderDebugTextFormat(SDL_Renderer *renderer, float x, float y, SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(4);
+
+/**
+ * Set default scale mode for new textures for given renderer.
+ *
+ * When a renderer is created, scale_mode defaults to SDL_SCALEMODE_LINEAR.
+ *
+ * \param renderer the renderer to update.
+ * \param scale_mode the scale mode to change to for new textures.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety This function should only be called on the main thread.
+ *
+ * \since This function is available since SDL 3.4.0.
+ *
+ * \sa SDL_GetDefaultTextureScaleMode
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_SetDefaultTextureScaleMode(SDL_Renderer *renderer, SDL_ScaleMode scale_mode);
+
+/**
+ * Get default texture scale mode of the given renderer.
+ *
+ * \param renderer the renderer to get data from.
+ * \param scale_mode a SDL_ScaleMode filled with current default scale mode.
+ *                   See SDL_SetDefaultTextureScaleMode() for the meaning of
+ *                   the value.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety This function should only be called on the main thread.
+ *
+ * \since This function is available since SDL 3.4.0.
+ *
+ * \sa SDL_SetDefaultTextureScaleMode
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_GetDefaultTextureScaleMode(SDL_Renderer *renderer, SDL_ScaleMode *scale_mode);
+
+/**
+ * GPU render state description.
+ *
+ * This structure should be initialized using SDL_INIT_INTERFACE().
+ *
+ * \since This struct is available since SDL 3.4.0.
+ *
+ * \sa SDL_CreateGPURenderState
+ */
+typedef struct SDL_GPURenderStateDesc
+{
+    Uint32 version;                 /**< the version of this interface */
+
+    SDL_GPUShader *fragment_shader; /**< The fragment shader to use when this render state is active */
+
+    Sint32 num_sampler_bindings;    /**< The number of additional fragment samplers to bind when this render state is active */
+    const SDL_GPUTextureSamplerBinding *sampler_bindings;   /**< Additional fragment samplers to bind when this render state is active */
+
+    Sint32 num_storage_textures;    /**< The number of storage textures to bind when this render state is active */
+    SDL_GPUTexture *const *storage_textures;    /**< Storage textures to bind when this render state is active */
+
+    Sint32 num_storage_buffers;    /**< The number of storage buffers to bind when this render state is active */
+    SDL_GPUBuffer *const *storage_buffers;      /**< Storage buffers to bind when this render state is active */
+} SDL_GPURenderStateDesc;
+
+/* Check the size of SDL_GPURenderStateDesc
+ *
+ * If this assert fails, either the compiler is padding to an unexpected size,
+ * or the interface has been updated and this should be updated to match and
+ * the code using this interface should be updated to handle the old version.
+ */
+SDL_COMPILE_TIME_ASSERT(SDL_GPURenderStateDesc_SIZE,
+    (sizeof(void *) == 4 && sizeof(SDL_GPURenderStateDesc) == 32) ||
+    (sizeof(void *) == 8 && sizeof(SDL_GPURenderStateDesc) == 64));
+
+/**
+ * A custom GPU render state.
+ *
+ * \since This struct is available since SDL 3.4.0.
+ *
+ * \sa SDL_CreateGPURenderState
+ * \sa SDL_SetGPURenderStateFragmentUniforms
+ * \sa SDL_SetRenderGPUState
+ * \sa SDL_DestroyGPURenderState
+ */
+typedef struct SDL_GPURenderState SDL_GPURenderState;
+
+/**
+ * Create custom GPU render state.
+ *
+ * \param renderer the renderer to use.
+ * \param desc GPU render state description, initialized using
+ *             SDL_INIT_INTERFACE().
+ * \returns a custom GPU render state or NULL on failure; call SDL_GetError()
+ *          for more information.
+ *
+ * \threadsafety This function should be called on the thread that created the
+ *               renderer.
+ *
+ * \since This function is available since SDL 3.4.0.
+ *
+ * \sa SDL_SetGPURenderStateFragmentUniforms
+ * \sa SDL_SetRenderGPUState
+ * \sa SDL_DestroyGPURenderState
+ */
+extern SDL_DECLSPEC SDL_GPURenderState * SDLCALL SDL_CreateGPURenderState(SDL_Renderer *renderer, SDL_GPURenderStateDesc *desc);
+
+/**
+ * Set fragment shader uniform variables in a custom GPU render state.
+ *
+ * The data is copied and will be pushed using
+ * SDL_PushGPUFragmentUniformData() during draw call execution.
+ *
+ * \param state the state to modify.
+ * \param slot_index the fragment uniform slot to push data to.
+ * \param data client data to write.
+ * \param length the length of the data to write.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety This function should be called on the thread that created the
+ *               renderer.
+ *
+ * \since This function is available since SDL 3.4.0.
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_SetGPURenderStateFragmentUniforms(SDL_GPURenderState *state, Uint32 slot_index, const void *data, Uint32 length);
+
+/**
+ * Set custom GPU render state.
+ *
+ * This function sets custom GPU render state for subsequent draw calls. This
+ * allows using custom shaders with the GPU renderer.
+ *
+ * \param renderer the renderer to use.
+ * \param state the state to to use, or NULL to clear custom GPU render state.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety This function should be called on the thread that created the
+ *               renderer.
+ *
+ * \since This function is available since SDL 3.4.0.
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_SetRenderGPUState(SDL_Renderer *renderer, SDL_GPURenderState *state);
+
+/**
+ * Destroy custom GPU render state.
+ *
+ * \param state the state to destroy.
+ *
+ * \threadsafety This function should be called on the thread that created the
+ *               renderer.
+ *
+ * \since This function is available since SDL 3.4.0.
+ *
+ * \sa SDL_CreateGPURenderState
+ */
+extern SDL_DECLSPEC void SDLCALL SDL_DestroyGPURenderState(SDL_GPURenderState *state);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

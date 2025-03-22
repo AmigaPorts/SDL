@@ -34,6 +34,7 @@ extern "C" {
 
 typedef enum SDL_TextureAddressMode
 {
+    SDL_TEXTURE_ADDRESS_INVALID = -1,
     SDL_TEXTURE_ADDRESS_AUTO,
     SDL_TEXTURE_ADDRESS_CLAMP,
     SDL_TEXTURE_ADDRESS_WRAP,
@@ -117,6 +118,36 @@ struct SDL_Texture
     SDL_Texture *next;
 };
 
+// Define the GPU render state structure
+typedef struct SDL_GPURenderStateUniformBuffer
+{
+    Uint32 slot_index;
+    void *data;
+    Uint32 length;
+} SDL_GPURenderStateUniformBuffer;
+
+// Define the GPU render state structure
+struct SDL_GPURenderState
+{
+    SDL_Renderer *renderer;
+
+    Uint32 last_command_generation; // last command queue generation this state was in.
+
+    SDL_GPUShader *fragment_shader;
+
+    int num_sampler_bindings;
+    SDL_GPUTextureSamplerBinding *sampler_bindings;
+
+    int num_storage_textures;
+    SDL_GPUTexture **storage_textures;
+
+    int num_storage_buffers;
+    SDL_GPUBuffer **storage_buffers;
+
+    int num_uniform_buffers;
+    SDL_GPURenderStateUniformBuffer *uniform_buffers;
+};
+
 typedef enum
 {
     SDL_RENDERCMD_NO_OP,
@@ -155,7 +186,9 @@ typedef struct SDL_RenderCommand
             SDL_FColor color;
             SDL_BlendMode blend;
             SDL_Texture *texture;
+            SDL_ScaleMode texture_scale_mode;
             SDL_TextureAddressMode texture_address_mode;
+            SDL_GPURenderState *gpu_render_state;
         } draw;
         struct
         {
@@ -224,7 +257,6 @@ struct SDL_Renderer
     bool (*LockTexture)(SDL_Renderer *renderer, SDL_Texture *texture,
                        const SDL_Rect *rect, void **pixels, int *pitch);
     void (*UnlockTexture)(SDL_Renderer *renderer, SDL_Texture *texture);
-    void (*SetTextureScaleMode)(SDL_Renderer *renderer, SDL_Texture *texture, SDL_ScaleMode scaleMode);
     bool (*SetRenderTarget)(SDL_Renderer *renderer, SDL_Texture *texture);
     SDL_Surface *(*RenderReadPixels)(SDL_Renderer *renderer, const SDL_Rect *rect);
     bool (*RenderPresent)(SDL_Renderer *renderer);
@@ -264,6 +296,9 @@ struct SDL_Renderer
     // The method of drawing lines
     SDL_RenderLineMethod line_method;
 
+    // Default scale mode for textures created with this renderer
+    SDL_ScaleMode scale_mode;
+
     // The list of textures
     SDL_Texture *textures;
     SDL_Texture *target;
@@ -278,6 +313,7 @@ struct SDL_Renderer
     SDL_FColor color;        /**< Color for drawing operations values */
     SDL_BlendMode blendMode; /**< The drawing blend mode */
     SDL_TextureAddressMode texture_address_mode;
+    SDL_GPURenderState *gpu_render_state;
 
     SDL_RenderCommand *render_commands;
     SDL_RenderCommand *render_commands_tail;
