@@ -225,8 +225,11 @@
 #cmakedefine HAVE_TPCSHRD_H 1
 #cmakedefine HAVE_ROAPI_H 1
 #cmakedefine HAVE_SHELLSCALINGAPI_H 1
+#cmakedefine HAVE_SHOBJIDL_CORE_H 1
 
 #cmakedefine USE_POSIX_SPAWN 1
+#cmakedefine HAVE_POSIX_SPAWN_FILE_ACTIONS_ADDCHDIR 1
+#cmakedefine HAVE_POSIX_SPAWN_FILE_ACTIONS_ADDCHDIR_NP 1
 
 /* SDL internal assertion support */
 #cmakedefine SDL_DEFAULT_ASSERT_LEVEL_CONFIGURED 1

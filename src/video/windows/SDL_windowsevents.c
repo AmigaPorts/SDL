@@ -51,6 +51,10 @@
 #include "wmmsg.h"
 #endif
 
+#ifdef HAVE_SHOBJIDL_CORE_H
+#include <shobjidl_core.h>
+#endif
+
 #ifdef SDL_PLATFORM_GDK
 #include "../../core/gdk/SDL_gdk.h"
 #endif
@@ -620,7 +624,7 @@ static void WIN_HandleRawMouseInput(Uint64 timestamp, SDL_VideoData *data, HANDL
 
     SDL_WindowData *windowdata = window->internal;
 
-    if (haveMotion) {
+    if (haveMotion && !windowdata->in_modal_loop) {
         if (!isAbsolute) {
             SDL_SendMouseMotion(timestamp, window, mouseID, true, (float)dx, (float)dy);
         } else {
@@ -1861,10 +1865,12 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             SDL_OnWindowLiveResizeUpdate(data->window);
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
+#if 0 // This locks up the Windows compositor when called by Steam; disabling until we understand why
             // Make sure graphics operations are complete for smooth refresh
             if (data->videodata->DwmFlush) {
                 data->videodata->DwmFlush();
             }
+#endif
 #endif
             return 0;
         }
@@ -2430,6 +2436,13 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
 #endif // !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
     }
+
+#ifdef HAVE_SHOBJIDL_CORE_H
+    if (msg == data->videodata->WM_TASKBAR_BUTTON_CREATED) {
+        data->taskbar_button_created = true;
+        WIN_ApplyWindowProgress(SDL_GetVideoDevice(), data->window);
+    }
+#endif
 
     // If there's a window proc, assume it's going to handle messages
     if (data->wndproc) {

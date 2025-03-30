@@ -78,7 +78,8 @@ typedef struct GLES2_TextureData
 #endif
     GLfloat texel_size[4];
     SDL_ScaleMode texture_scale_mode;
-    SDL_TextureAddressMode texture_address_mode;
+    SDL_TextureAddressMode texture_address_mode_u;
+    SDL_TextureAddressMode texture_address_mode_v;
     GLES2_FBOList *fbo;
 } GLES2_TextureData;
 
@@ -173,6 +174,7 @@ typedef struct GLES2_RenderData
 
     bool debug_enabled;
 
+    bool GL_OES_EGL_image_external_supported;
     bool GL_EXT_blend_minmax_supported;
 
 /* AmigaOS 4 workaround: add "my" prefix to function pointer names because glCall gets extended to IOGLES2->glCall
@@ -1093,21 +1095,23 @@ static bool SetTextureScaleMode(GLES2_RenderData *data, GLenum textype, SDL_Scal
     return true;
 }
 
-static bool SetTextureAddressMode(GLES2_RenderData *data, GLenum textype, SDL_TextureAddressMode addressMode)
+static GLint TranslateAddressMode(SDL_TextureAddressMode addressMode)
 {
     switch (addressMode) {
     case SDL_TEXTURE_ADDRESS_CLAMP:
-        data->myglTexParameteri(textype, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        data->myglTexParameteri(textype, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        break;
+        return GL_CLAMP_TO_EDGE;
     case SDL_TEXTURE_ADDRESS_WRAP:
-        data->myglTexParameteri(textype, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        data->myglTexParameteri(textype, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        break;
+        return GL_REPEAT;
     default:
-        return SDL_SetError("Unknown texture address mode: %d", addressMode);
+        SDL_assert(!"Unknown texture address mode");
+        return GL_CLAMP_TO_EDGE;
     }
-    return true;
+}
+
+static void SetTextureAddressMode(GLES2_RenderData *data, GLenum textype, SDL_TextureAddressMode addressModeU, SDL_TextureAddressMode addressModeV)
+{
+    data->myglTexParameteri(textype, GL_TEXTURE_WRAP_S, TranslateAddressMode(addressModeU));
+    data->myglTexParameteri(textype, GL_TEXTURE_WRAP_T, TranslateAddressMode(addressModeV));
 }
 
 static bool SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand *cmd, void *vertices)
@@ -1288,34 +1292,28 @@ static bool SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand *cmd, v
         tdata->texture_scale_mode = cmd->data.draw.texture_scale_mode;
     }
 
-    if (cmd->data.draw.texture_address_mode != tdata->texture_address_mode) {
+    if (cmd->data.draw.texture_address_mode_u != tdata->texture_address_mode_u ||
+        cmd->data.draw.texture_address_mode_v != tdata->texture_address_mode_v) {
 #ifdef SDL_HAVE_YUV
         if (tdata->yuv) {
             data->myglActiveTexture(GL_TEXTURE2);
-            if (!SetTextureAddressMode(data, tdata->texture_type, cmd->data.draw.texture_address_mode)) {
-                return false;
-            }
+            SetTextureAddressMode(data, tdata->texture_type, cmd->data.draw.texture_address_mode_u, cmd->data.draw.texture_address_mode_v);
 
             data->myglActiveTexture(GL_TEXTURE1);
-            if (!SetTextureAddressMode(data, tdata->texture_type, cmd->data.draw.texture_address_mode)) {
-                return false;
-            }
+            SetTextureAddressMode(data, tdata->texture_type, cmd->data.draw.texture_address_mode_u, cmd->data.draw.texture_address_mode_v);
 
             data->myglActiveTexture(GL_TEXTURE0);
         } else if (tdata->nv12) {
             data->myglActiveTexture(GL_TEXTURE1);
-            if (!SetTextureAddressMode(data, tdata->texture_type, cmd->data.draw.texture_address_mode)) {
-                return false;
-            }
+            SetTextureAddressMode(data, tdata->texture_type, cmd->data.draw.texture_address_mode_u, cmd->data.draw.texture_address_mode_v);
 
             data->myglActiveTexture(GL_TEXTURE0);
         }
 #endif
-        if (!SetTextureAddressMode(data, tdata->texture_type, cmd->data.draw.texture_address_mode)) {
-            return false;
-        }
+        SetTextureAddressMode(data, tdata->texture_type, cmd->data.draw.texture_address_mode_u, cmd->data.draw.texture_address_mode_v);
 
-        tdata->texture_address_mode = cmd->data.draw.texture_address_mode;
+        tdata->texture_address_mode_u = cmd->data.draw.texture_address_mode_u;
+        tdata->texture_address_mode_v = cmd->data.draw.texture_address_mode_v;
     }
 
     return ret;
@@ -1494,7 +1492,8 @@ static bool GLES2_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd
             SDL_Texture *thistexture = cmd->data.draw.texture;
             SDL_BlendMode thisblend = cmd->data.draw.blend;
             SDL_ScaleMode thisscalemode = cmd->data.draw.texture_scale_mode;
-            SDL_TextureAddressMode thisaddressmode = cmd->data.draw.texture_address_mode;
+            SDL_TextureAddressMode thisaddressmode_u = cmd->data.draw.texture_address_mode_u;
+            SDL_TextureAddressMode thisaddressmode_v = cmd->data.draw.texture_address_mode_v;
             const SDL_RenderCommandType thiscmdtype = cmd->command;
             SDL_RenderCommand *finalcmd = cmd;
             SDL_RenderCommand *nextcmd = cmd->next;
@@ -1506,7 +1505,8 @@ static bool GLES2_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd
                     break; // can't go any further on this draw call, different render command up next.
                 } else if (nextcmd->data.draw.texture != thistexture ||
                            nextcmd->data.draw.texture_scale_mode != thisscalemode ||
-                           nextcmd->data.draw.texture_address_mode != thisaddressmode ||
+                           nextcmd->data.draw.texture_address_mode_u != thisaddressmode_u ||
+                           nextcmd->data.draw.texture_address_mode_v != thisaddressmode_v ||
                            nextcmd->data.draw.blend != thisblend) {
                     break; // can't go any further on this draw call, different texture/blendmode copy up next.
                 } else {
@@ -1625,9 +1625,12 @@ static bool GLES2_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
 #endif
 #ifdef GL_TEXTURE_EXTERNAL_OES
     case SDL_PIXELFORMAT_EXTERNAL_OES:
-        format = GL_NONE;
-        type = GL_NONE;
-        break;
+        if (renderdata->GL_OES_EGL_image_external_supported) {
+            format = GL_NONE;
+            type = GL_NONE;
+            break;
+        }
+        SDL_FALLTHROUGH;
 #endif
     default:
         return SDL_SetError("Texture format not supported");
@@ -1658,7 +1661,8 @@ static bool GLES2_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
     data->texture_v = 0;
 #endif
     data->texture_scale_mode = SDL_SCALEMODE_INVALID;
-    data->texture_address_mode = SDL_TEXTURE_ADDRESS_INVALID;
+    data->texture_address_mode_u = SDL_TEXTURE_ADDRESS_INVALID;
+    data->texture_address_mode_v = SDL_TEXTURE_ADDRESS_INVALID;
 
     // Allocate a blob for image renderdata
     if (texture->access == SDL_TEXTUREACCESS_STREAMING) {
@@ -2251,7 +2255,11 @@ static bool GLES2_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL
     SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_NV21);
 #endif
 #ifdef GL_TEXTURE_EXTERNAL_OES
-    if (GLES2_CacheShader(data, GLES2_SHADER_FRAGMENT_TEXTURE_EXTERNAL_OES, GL_FRAGMENT_SHADER)) {
+    if (SDL_GL_ExtensionSupported("GL_OES_EGL_image_external")) {
+        data->GL_OES_EGL_image_external_supported = true;
+        if (!GLES2_CacheShader(data, GLES2_SHADER_FRAGMENT_TEXTURE_EXTERNAL_OES, GL_FRAGMENT_SHADER)) {
+            goto error;
+        }
         SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_EXTERNAL_OES);
     }
 #endif
