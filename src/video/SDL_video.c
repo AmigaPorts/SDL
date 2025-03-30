@@ -3992,6 +3992,60 @@ bool SDL_FlashWindow(SDL_Window *window, SDL_FlashOperation operation)
     return SDL_Unsupported();
 }
 
+bool SDL_SetWindowProgressState(SDL_Window *window, SDL_ProgressState state)
+{
+    CHECK_WINDOW_MAGIC(window, false);
+    CHECK_WINDOW_NOT_POPUP(window, false);
+
+    if (state < SDL_PROGRESS_STATE_NONE || state > SDL_PROGRESS_STATE_ERROR) {
+        return SDL_InvalidParamError("state");
+    }
+
+    window->progress_state = state;
+
+    if (_this->ApplyWindowProgress) {
+        if (!_this->ApplyWindowProgress(_this, window)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+SDL_ProgressState SDL_GetWindowProgressState(SDL_Window *window)
+{
+    CHECK_WINDOW_MAGIC(window, SDL_PROGRESS_STATE_INVALID);
+    CHECK_WINDOW_NOT_POPUP(window, SDL_PROGRESS_STATE_INVALID);
+
+    return window->progress_state;
+}
+
+bool SDL_SetWindowProgressValue(SDL_Window *window, float value)
+{
+    CHECK_WINDOW_MAGIC(window, false);
+    CHECK_WINDOW_NOT_POPUP(window, false);
+
+    value = SDL_clamp(value, 0.0f, 1.f);
+
+    window->progress_value = value;
+
+    if (_this->ApplyWindowProgress) {
+        if (!_this->ApplyWindowProgress(_this, window)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+float SDL_GetWindowProgressValue(SDL_Window *window)
+{
+    CHECK_WINDOW_MAGIC(window, -1.0f);
+    CHECK_WINDOW_NOT_POPUP(window, -1.0f);
+
+    return window->progress_value;
+}
+
 void SDL_OnWindowShown(SDL_Window *window)
 {
     // Set window state if we have pending window flags cached
