@@ -304,15 +304,19 @@ OS4_ResetCursorForWindow(struct Window * window)
 void
 OS4_RestoreSdlCursorForWindow(struct Window * window)
 {
-    dprintf("Called\n");
-
     // Restore SDL-configured cursor (possibly hidden)
 
     Object* object = NULL;
     ULONG type = POINTERTYPE_NONE;
 
     SDL_Mouse* mouse = SDL_GetMouse();
-    if (mouse->cursor_shown) {
+
+    dprintf("cursor shown %d, relative mode %d, relative mode cursor visible %d\n",
+            mouse->cursor_shown,
+            mouse->relative_mode,
+            mouse->relative_mode_cursor_visible);
+
+    if (mouse->cursor_shown && (!mouse->relative_mode || mouse->relative_mode_cursor_visible)) {
         SDL_Cursor *cursor = mouse->cur_cursor;
         if (cursor) {
             SDL_CursorData *data = cursor->driverdata;
@@ -539,6 +543,8 @@ OS4_GetGlobalMouseState(int * x, int * y)
     if (globalMouseState.buttonPressed[SDL_BUTTON_RIGHT]) {
         buttons |= SDL_BUTTON_RMASK;
     }
+
+    // TODO: 4th and 5th mouse buttons
 
     return buttons;
 }
