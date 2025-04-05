@@ -540,6 +540,14 @@ OS4_GetGlobalMouseState(float * x, float * y)
         buttons |= SDL_BUTTON_RMASK;
     }
 
+    if (globalMouseState.buttonPressed[SDL_BUTTON_X1]) {
+        buttons |= SDL_BUTTON_X1MASK;
+    }
+
+    if (globalMouseState.buttonPressed[SDL_BUTTON_X2]) {
+        buttons |= SDL_BUTTON_X2MASK;
+    }
+
     return buttons;
 }
 

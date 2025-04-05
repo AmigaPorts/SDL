@@ -29,7 +29,7 @@ typedef struct OS4_GlobalMouseState
 {
     float x;
     float y;
-    int buttonPressed[SDL_BUTTON_RIGHT+1];
+    int buttonPressed[SDL_BUTTON_X2+1];
 } OS4_GlobalMouseState;
 
 extern void OS4_RefreshCursorState(void);
