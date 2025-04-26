@@ -211,9 +211,13 @@
  *
  * ## System Requirements
  *
- * **Vulkan:** Supported on Windows, Linux, Nintendo Switch, and certain
- * Android devices. Requires Vulkan 1.0 with the following extensions and
- * device features:
+ * ### Vulkan
+ *
+ * SDL driver name: "vulkan" (for use in SDL_CreateGPUDevice() and
+ * SDL_PROP_GPU_DEVICE_CREATE_NAME_STRING)
+ *
+ * Supported on Windows, Linux, Nintendo Switch, and certain Android devices.
+ * Requires Vulkan 1.0 with the following extensions and device features:
  *
  * - `VK_KHR_swapchain`
  * - `VK_KHR_maintenance1`
@@ -224,18 +228,45 @@
  * - `drawIndirectFirstInstance`
  * - `sampleRateShading`
  *
- * **D3D12:** Supported on Windows 10 or newer, Xbox One (GDK), and Xbox
- * Series X|S (GDK). Requires a GPU that supports DirectX 12 Feature Level
- * 11_1.
+ * ### D3D12
  *
- * **Metal:** Supported on macOS 10.14+ and iOS/tvOS 13.0+. Hardware
- * requirements vary by operating system:
+ * SDL driver name: "direct3d12"
+ *
+ * Supported on Windows 10 or newer, Xbox One (GDK), and Xbox Series X|S
+ * (GDK). Requires a GPU that supports DirectX 12 Feature Level 11_1.
+ *
+ * ### Metal
+ *
+ * SDL driver name: "metal"
+ *
+ * Supported on macOS 10.14+ and iOS/tvOS 13.0+. Hardware requirements vary by
+ * operating system:
  *
  * - macOS requires an Apple Silicon or
  *   [Intel Mac2 family](https://developer.apple.com/documentation/metal/mtlfeatureset/mtlfeatureset_macos_gpufamily2_v1?language=objc)
  *   GPU
  * - iOS/tvOS requires an A9 GPU or newer
  * - iOS Simulator and tvOS Simulator are unsupported
+ *
+ * ## Coordinate System
+ *
+ * The GPU API uses a left-handed coordinate system, following the convention
+ * of D3D12 and Metal. Specifically:
+ *
+ * - **Normalized Device Coordinates:** The lower-left corner has an x,y
+ *   coordinate of `(-1.0, -1.0)`. The upper-right corner is `(1.0, 1.0)`. Z
+ *   values range from `[0.0, 1.0]` where 0 is the near plane.
+ * - **Viewport Coordinates:** The top-left corner has an x,y coordinate of
+ *   `(0, 0)` and extends to the bottom-right corner at `(viewportWidth,
+ *   viewportHeight)`. +Y is down.
+ * - **Texture Coordinates:** The top-left corner has an x,y coordinate of
+ *   `(0, 0)` and extends to the bottom-right corner at `(1.0, 1.0)`. +Y is
+ *   down.
+ *
+ * If the backend driver differs from this convention (e.g. Vulkan, which has
+ * an NDC that assumes +Y is down), SDL will automatically convert the
+ * coordinate system behind the scenes, so you don't need to perform any
+ * coordinate flipping logic in your shaders.
  *
  * ## Uniform Data
  *
@@ -1312,10 +1343,15 @@ typedef struct SDL_GPUViewport
  * texture.
  *
  * If either of `pixels_per_row` or `rows_per_layer` is zero, then width and
- * height of passed SDL_GPUTextureRegion to SDL_UploadToGPUTexture
+ * height of passed SDL_GPUTextureRegion to SDL_UploadToGPUTexture or
+ * SDL_DownloadFromGPUTexture are used as default values respectively and data
+ * is considered to be tightly packed.
  *
- * / SDL_DownloadFromGPUTexture are used as default values respectively and
- * data is considered to be tightly packed.
+ * **WARNING**: Direct3D 12 requires texture data row pitch to be 256 byte
+ * aligned, and offsets to be aligned to 512 bytes. If they are not, SDL will
+ * make a temporary copy of the data that is properly aligned, but this adds
+ * overhead to the transfer process. Apps can avoid this by aligning their
+ * data appropriately, or using a different GPU backend than Direct3D 12.
  *
  * \since This struct is available since SDL 3.2.0.
  *
@@ -2118,6 +2154,13 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GPUSupportsProperties(
 /**
  * Creates a GPU context.
  *
+ * The GPU driver name can be one of the following:
+ *
+ * - "vulkan": [Vulkan](CategoryGPU#vulkan)
+ * - "direct3d12": [D3D12](CategoryGPU#d3d12)
+ * - "metal": [Metal](CategoryGPU#metal)
+ * - NULL: let SDL pick the optimal driver
+ *
  * \param format_flags a bitflag indicating which shader formats the app is
  *                     able to provide.
  * \param debug_mode enable debug mode properties and validations.
@@ -2128,6 +2171,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GPUSupportsProperties(
  *
  * \since This function is available since SDL 3.2.0.
  *
+ * \sa SDL_CreateGPUDeviceWithProperties
  * \sa SDL_GetGPUShaderFormats
  * \sa SDL_GetGPUDeviceDriver
  * \sa SDL_DestroyGPUDevice
@@ -2587,9 +2631,9 @@ extern SDL_DECLSPEC SDL_GPUShader * SDLCALL SDL_CreateGPUShader(
  * - `SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_DEPTH_FLOAT`: (Direct3D 12 only)
  *   if the texture usage is SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET, clear
  *   the texture to a depth of this value. Defaults to zero.
- * - `SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_STENCIL_UINT8`: (Direct3D 12
+ * - `SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_STENCIL_NUMBER`: (Direct3D 12
  *   only) if the texture usage is SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
- *   clear the texture to a stencil of this value. Defaults to zero.
+ *   clear the texture to a stencil of this Uint8 value. Defaults to zero.
  * - `SDL_PROP_GPU_TEXTURE_CREATE_NAME_STRING`: a name that can be displayed
  *   in debugging tools.
  *
@@ -2615,13 +2659,13 @@ extern SDL_DECLSPEC SDL_GPUTexture * SDLCALL SDL_CreateGPUTexture(
     SDL_GPUDevice *device,
     const SDL_GPUTextureCreateInfo *createinfo);
 
-#define SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_R_FLOAT       "SDL.gpu.texture.create.d3d12.clear.r"
-#define SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_G_FLOAT       "SDL.gpu.texture.create.d3d12.clear.g"
-#define SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_B_FLOAT       "SDL.gpu.texture.create.d3d12.clear.b"
-#define SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_A_FLOAT       "SDL.gpu.texture.create.d3d12.clear.a"
-#define SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_DEPTH_FLOAT   "SDL.gpu.texture.create.d3d12.clear.depth"
-#define SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_STENCIL_UINT8 "SDL.gpu.texture.create.d3d12.clear.stencil"
-#define SDL_PROP_GPU_TEXTURE_CREATE_NAME_STRING               "SDL.gpu.texture.create.name"
+#define SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_R_FLOAT         "SDL.gpu.texture.create.d3d12.clear.r"
+#define SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_G_FLOAT         "SDL.gpu.texture.create.d3d12.clear.g"
+#define SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_B_FLOAT         "SDL.gpu.texture.create.d3d12.clear.b"
+#define SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_A_FLOAT         "SDL.gpu.texture.create.d3d12.clear.a"
+#define SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_DEPTH_FLOAT     "SDL.gpu.texture.create.d3d12.clear.depth"
+#define SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_STENCIL_NUMBER  "SDL.gpu.texture.create.d3d12.clear.stencil"
+#define SDL_PROP_GPU_TEXTURE_CREATE_NAME_STRING                 "SDL.gpu.texture.create.name"
 
 /**
  * Creates a buffer object to be used in graphics or compute workflows.
@@ -3895,7 +3939,7 @@ extern SDL_DECLSPEC void SDLCALL SDL_ReleaseWindowFromGPUDevice(
  * supported via SDL_WindowSupportsGPUPresentMode /
  * SDL_WindowSupportsGPUSwapchainComposition prior to calling this function.
  *
- * SDL_GPU_PRESENTMODE_VSYNC and SDL_GPU_SWAPCHAINCOMPOSITION_SDR are always
+ * SDL_GPU_PRESENTMODE_VSYNC with SDL_GPU_SWAPCHAINCOMPOSITION_SDR are always
  * supported.
  *
  * \param device a GPU context.

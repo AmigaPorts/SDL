@@ -376,6 +376,10 @@ bool WIN_SetWindowPositionInternal(SDL_Window *window, UINT flags, SDL_WindowRec
 
     // Update any child windows
     for (child_window = window->first_child; child_window; child_window = child_window->next_sibling) {
+        if (!child_window->internal) {
+            // This child window is not yet fully initialized.
+            continue;
+        }
         if (!WIN_SetWindowPositionInternal(child_window, flags, SDL_WINDOWRECT_CURRENT)) {
             result = false;
         }
@@ -1623,7 +1627,7 @@ void WIN_UnclipCursorForWindow(SDL_Window *window) {
 void WIN_UpdateClipCursor(SDL_Window *window)
 {
     SDL_WindowData *data = window->internal;
-    if (data->in_title_click || data->focus_click_pending || data->skip_update_clipcursor) {
+    if (data->in_title_click || data->focus_click_pending || data->postpone_clipcursor) {
         return;
     }
 
