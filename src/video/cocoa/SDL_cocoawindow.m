@@ -2104,7 +2104,9 @@ static void Cocoa_SendMouseButtonClicks(SDL_Mouse *mouse, NSEvent *theEvent, SDL
 
 - (BOOL)acceptsFirstMouse:(NSEvent *)theEvent
 {
-    if (SDL_GetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH)) {
+    if (_sdlWindow->flags & SDL_WINDOW_POPUP_MENU) {
+        return YES;
+    } else if (SDL_GetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH)) {
         return SDL_GetHintBoolean(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, false);
     } else {
         return SDL_GetHintBoolean("SDL_MAC_MOUSE_FOCUS_CLICKTHROUGH", false);
@@ -2532,8 +2534,8 @@ void Cocoa_SetWindowMaximumSize(SDL_VideoDevice *_this, SDL_Window *window)
         SDL_CocoaWindowData *windata = (__bridge SDL_CocoaWindowData *)window->internal;
 
         NSSize maxSize;
-        maxSize.width = window->max_w;
-        maxSize.height = window->max_h;
+        maxSize.width = window->max_w ? window->max_w : CGFLOAT_MAX;
+        maxSize.height = window->max_h ? window->max_h : CGFLOAT_MAX;
 
         [windata.nswindow setContentMaxSize:maxSize];
     }

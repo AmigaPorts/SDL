@@ -94,7 +94,7 @@ OS4_TranslateUnicode(SDL_VideoDevice *_this, uint16 code, uint32 qualifier, APTR
 static void
 OS4_UpdateKeymap(SDL_VideoDevice *_this)
 {
-    SDL_Keymap *keymap = SDL_CreateKeymap();
+    SDL_Keymap *keymap = SDL_CreateKeymap(true);
 
     for (int i = 0; i < SDL_arraysize(amiga_scancode_table); i++) {
         /* Make sure this scancode is a valid character scancode */

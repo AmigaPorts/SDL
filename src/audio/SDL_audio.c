@@ -1150,7 +1150,20 @@ bool SDL_PlaybackAudioThreadIterate(SDL_AudioDevice *device)
             // We should have updated this elsewhere if the format changed!
             SDL_assert(SDL_AudioSpecsEqual(&stream->dst_spec, &device->spec, NULL, NULL));
 
-            const int br = SDL_GetAtomicInt(&logdev->paused) ? 0 : SDL_GetAudioStreamDataAdjustGain(stream, device_buffer, buffer_size, logdev->gain);
+            int br = 0;
+
+            if (!SDL_GetAtomicInt(&logdev->paused)) {
+                if (logdev->iteration_start) {
+                    logdev->iteration_start(logdev->iteration_userdata, logdev->instance_id, true);
+                }
+
+                br = SDL_GetAudioStreamDataAdjustGain(stream, device_buffer, buffer_size, logdev->gain);
+
+                if (logdev->iteration_end) {
+                    logdev->iteration_end(logdev->iteration_userdata, logdev->instance_id, false);
+                }
+            }
+
             if (br < 0) {  // Probably OOM. Kill the audio device; the whole thing is likely dying soon anyhow.
                 failed = true;
                 SDL_memset(device_buffer, device->silence_value, buffer_size);  // just supply silence to the device before we die.
@@ -1188,6 +1201,10 @@ bool SDL_PlaybackAudioThreadIterate(SDL_AudioDevice *device)
                     SDL_memset(mix_buffer, '\0', work_buffer_size);  // start with silence.
                 }
 
+                if (logdev->iteration_start) {
+                    logdev->iteration_start(logdev->iteration_userdata, logdev->instance_id, true);
+                }
+
                 for (SDL_AudioStream *stream = logdev->bound_streams; stream; stream = stream->next_binding) {
                     // We should have updated this elsewhere if the format changed!
                     SDL_assert(SDL_AudioSpecsEqual(&stream->dst_spec, &outspec, NULL, NULL));
@@ -1208,6 +1225,10 @@ bool SDL_PlaybackAudioThreadIterate(SDL_AudioDevice *device)
                         }
                         MixFloat32Audio(mix_buffer, (float *) device->work_buffer, br);
                     }
+                }
+
+                if (logdev->iteration_end) {
+                    logdev->iteration_end(logdev->iteration_userdata, logdev->instance_id, false);
                 }
 
                 if (postmix) {
@@ -1506,11 +1527,24 @@ SDL_AudioDevice *SDL_FindPhysicalAudioDeviceByHandle(void *handle)
 const char *SDL_GetAudioDeviceName(SDL_AudioDeviceID devid)
 {
     const char *result = NULL;
-    SDL_AudioDevice *device = ObtainPhysicalAudioDevice(devid);
-    if (device) {
-        result = SDL_GetPersistentString(device->name);
+    SDL_AudioDevice *device = NULL;
+
+    if (!SDL_GetCurrentAudioDriver()) {
+        SDL_SetError("Audio subsystem is not initialized");
+    } else {
+        // This does not call ObtainPhysicalAudioDevice() because the device's name never changes, so
+        // it doesn't have to lock the whole device. However, just to make sure the device pointer itself
+        // remains valid (in case the device is unplugged at the wrong moment), we hold the
+        // device_hash_lock while we copy the string.
+        SDL_LockRWLockForReading(current_audio.device_hash_lock);
+        SDL_FindInHashTable(current_audio.device_hash, (const void *) (uintptr_t) devid, (const void **) &device);
+        if (!device) {
+            SDL_SetError("Invalid audio device instance ID");
+        } else {
+            result = SDL_GetPersistentString(device->name);
+        }
+        SDL_UnlockRWLock(current_audio.device_hash_lock);
     }
-    ReleaseAudioDevice(device);
 
     return result;
 }
@@ -1892,8 +1926,9 @@ bool SDL_SetAudioPostmixCallback(SDL_AudioDeviceID devid, SDL_AudioPostmixCallba
 {
     SDL_AudioDevice *device = NULL;
     SDL_LogicalAudioDevice *logdev = ObtainLogicalAudioDevice(devid, &device);
-    bool result = true;
+    bool result = false;
     if (logdev) {
+        result = true;
         if (callback && !device->postmix_buffer) {
             device->postmix_buffer = (float *)SDL_aligned_alloc(SDL_GetSIMDAlignment(), device->work_buffer_size);
             if (!device->postmix_buffer) {
@@ -1907,6 +1942,21 @@ bool SDL_SetAudioPostmixCallback(SDL_AudioDeviceID devid, SDL_AudioPostmixCallba
         }
 
         UpdateAudioStreamFormatsPhysical(device);
+    }
+    ReleaseAudioDevice(device);
+    return result;
+}
+
+bool SDL_SetAudioIterationCallbacks(SDL_AudioDeviceID devid, SDL_AudioIterationCallback iter_start, SDL_AudioIterationCallback iter_end, void *userdata)
+{
+    SDL_AudioDevice *device = NULL;
+    SDL_LogicalAudioDevice *logdev = ObtainLogicalAudioDevice(devid, &device);
+    bool result = false;
+    if (logdev) {
+        logdev->iteration_start = iter_start;
+        logdev->iteration_end = iter_end;
+        logdev->iteration_userdata = userdata;
+        result = true;
     }
     ReleaseAudioDevice(device);
     return result;

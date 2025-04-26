@@ -987,29 +987,26 @@ void X11_HandleKeyEvent(SDL_VideoDevice *_this, SDL_WindowData *windowdata, SDL_
         }
     }
 
-    if (!handled_by_ime) {
-        if (pressed) {
-            X11_HandleModifierKeys(videodata, scancode, true, true);
-            SDL_SendKeyboardKeyIgnoreModifiers(timestamp, keyboardID, keycode, scancode, true);
-
-            if (*text && !(SDL_GetModState() & (SDL_KMOD_CTRL | SDL_KMOD_ALT))) {
-                text[text_length] = '\0';
-                X11_ClearComposition(windowdata);
-                SDL_SendKeyboardText(text);
-            }
-        } else {
-            if (X11_KeyRepeat(display, xevent)) {
-                // We're about to get a repeated key down, ignore the key up
-                return;
-            }
-
-            X11_HandleModifierKeys(videodata, scancode, false, true);
-            SDL_SendKeyboardKeyIgnoreModifiers(timestamp, keyboardID, keycode, scancode, false);
-        }
-    }
-
     if (pressed) {
+        X11_HandleModifierKeys(videodata, scancode, true, true);
+        SDL_SendKeyboardKeyIgnoreModifiers(timestamp, keyboardID, keycode, scancode, true);
+
+        // Synthesize a text event if the IME didn't consume a printable character
+        if (*text && !(SDL_GetModState() & (SDL_KMOD_CTRL | SDL_KMOD_ALT))) {
+            text[text_length] = '\0';
+            X11_ClearComposition(windowdata);
+            SDL_SendKeyboardText(text);
+        }
+
         X11_UpdateUserTime(windowdata, xevent->xkey.time);
+    } else {
+        if (X11_KeyRepeat(display, xevent)) {
+            // We're about to get a repeated key down, ignore the key up
+            return;
+        }
+
+        X11_HandleModifierKeys(videodata, scancode, false, true);
+        SDL_SendKeyboardKeyIgnoreModifiers(timestamp, keyboardID, keycode, scancode, false);
     }
 }
 
@@ -1109,6 +1106,41 @@ void X11_GetBorderValues(SDL_WindowData *data)
     } else {
         data->border_left = data->border_top = data->border_right = data->border_bottom = 0;
     }
+}
+
+void X11_EmitConfigureNotifyEvents(SDL_WindowData *data, XConfigureEvent *xevent)
+{
+    if (xevent->x != data->last_xconfigure.x ||
+        xevent->y != data->last_xconfigure.y) {
+        if (!data->size_move_event_flags) {
+            SDL_Window *w;
+            int x = xevent->x;
+            int y = xevent->y;
+
+            data->pending_operation &= ~X11_PENDING_OP_MOVE;
+            SDL_GlobalToRelativeForWindow(data->window, x, y, &x, &y);
+            SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_MOVED, x, y);
+
+            for (w = data->window->first_child; w; w = w->next_sibling) {
+                // Don't update hidden child popup windows, their relative position doesn't change
+                if (SDL_WINDOW_IS_POPUP(w) && !(w->flags & SDL_WINDOW_HIDDEN)) {
+                    X11_UpdateWindowPosition(w, true);
+                }
+            }
+        }
+    }
+
+    if (xevent->width != data->last_xconfigure.width ||
+        xevent->height != data->last_xconfigure.height) {
+        if (!data->size_move_event_flags) {
+            data->pending_operation &= ~X11_PENDING_OP_RESIZE;
+            SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_RESIZED,
+                                xevent->width,
+                                xevent->height);
+        }
+    }
+
+    SDL_copyp(&data->last_xconfigure, xevent);
 }
 
 static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
@@ -1462,9 +1494,8 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
                xevent->xconfigure.x, xevent->xconfigure.y,
                xevent->xconfigure.width, xevent->xconfigure.height);
 #endif
-            // Real configure notify events are relative to the parent, synthetic events are absolute.
-            if (!xevent->xconfigure.send_event)
-        {
+        // Real configure notify events are relative to the parent, synthetic events are absolute.
+        if (!xevent->xconfigure.send_event) {
             unsigned int NumChildren;
             Window ChildReturn, Root, Parent;
             Window *Children;
@@ -1477,41 +1508,23 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
                                       &ChildReturn);
         }
 
-        if (xevent->xconfigure.x != data->last_xconfigure.x ||
-            xevent->xconfigure.y != data->last_xconfigure.y) {
-            if (!data->size_move_event_flags) {
-                SDL_Window *w;
-                int x = xevent->xconfigure.x;
-                int y = xevent->xconfigure.y;
+        /* Xfce sends ConfigureNotify before PropertyNotify when toggling fullscreen and maximized, which
+         * is backwards from every other window manager, as well as what is expected by SDL and its clients.
+         * Defer emitting the size/move events until the corresponding PropertyNotify arrives.
+         */
+        const Uint32 changed = X11_GetNetWMState(_this, data->window, xevent->xproperty.window) ^ data->window->flags;
+        if (changed & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MAXIMIZED)) {
+            SDL_copyp(&data->pending_xconfigure, &xevent->xconfigure);
+            data->emit_size_move_after_property_notify = true;
+        }
 
-                data->pending_operation &= ~X11_PENDING_OP_MOVE;
-                SDL_GlobalToRelativeForWindow(data->window, x, y, &x, &y);
-                SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_MOVED, x, y);
-
-                for (w = data->window->first_child; w; w = w->next_sibling) {
-                    // Don't update hidden child popup windows, their relative position doesn't change
-                    if (SDL_WINDOW_IS_POPUP(w) && !(w->flags & SDL_WINDOW_HIDDEN)) {
-                        X11_UpdateWindowPosition(w, true);
-                    }
-                }
-            }
+        if (!data->emit_size_move_after_property_notify) {
+            X11_EmitConfigureNotifyEvents(data, &xevent->xconfigure);
         }
 
 #ifdef SDL_VIDEO_DRIVER_X11_XSYNC
         X11_HandleConfigure(data->window, &xevent->xconfigure);
 #endif /* SDL_VIDEO_DRIVER_X11_XSYNC */
-
-        if (xevent->xconfigure.width != data->last_xconfigure.width ||
-            xevent->xconfigure.height != data->last_xconfigure.height) {
-            if (!data->size_move_event_flags) {
-                data->pending_operation &= ~X11_PENDING_OP_RESIZE;
-                SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_RESIZED,
-                                    xevent->xconfigure.width,
-                                    xevent->xconfigure.height);
-            }
-        }
-
-        data->last_xconfigure = xevent->xconfigure;
     } break;
 
         // Have we been requested to quit (or another client message?)
@@ -1908,6 +1921,10 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
                             X11_XResizeWindow(display, data->xwindow, data->window->pending.w, data->window->pending.h);
                         }
                     }
+                }
+                if (data->emit_size_move_after_property_notify) {
+                    X11_EmitConfigureNotifyEvents(data, &data->pending_xconfigure);
+                    data->emit_size_move_after_property_notify = false;
                 }
                 if ((flags & SDL_WINDOW_INPUT_FOCUS)) {
                     if (data->pending_move) {
