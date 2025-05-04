@@ -354,7 +354,7 @@ static void WIN_UpdateFocus(SDL_Window *window, bool expect_focus, DWORD pos)
             }
         }
 
-        SDL_SetKeyboardFocus(data->keyboard_focus ? data->keyboard_focus : window);
+        SDL_SetKeyboardFocus(window->keyboard_focus ? window->keyboard_focus : window);
 
         // In relative mode we are guaranteed to have mouse focus if we have keyboard focus
         if (!SDL_GetMouse()->relative_mode) {
@@ -441,11 +441,6 @@ static SDL_MOUSE_EVENT_SOURCE GetMouseMessageSource(ULONG extrainfo)
         } else {
             return SDL_MOUSE_EVENT_SOURCE_PEN;
         }
-    }
-    /* Sometimes WM_INPUT events won't have the correct touch signature,
-      so we have to rely purely on the touch bit being set. */
-    if (SDL_TouchDevicesAvailable() && extrainfo & 0x80) {
-        return SDL_MOUSE_EVENT_SOURCE_TOUCH;
     }
     return SDL_MOUSE_EVENT_SOURCE_MOUSE;
 }
@@ -584,7 +579,8 @@ static void WIN_HandleRawMouseInput(Uint64 timestamp, SDL_VideoData *data, HANDL
         return;
     }
 
-    if (GetMouseMessageSource(rawmouse->ulExtraInformation) != SDL_MOUSE_EVENT_SOURCE_MOUSE) {
+    if (GetMouseMessageSource(rawmouse->ulExtraInformation) != SDL_MOUSE_EVENT_SOURCE_MOUSE ||
+        (SDL_TouchDevicesAvailable() && (rawmouse->ulExtraInformation & 0x80) == 0x80)) {
         return;
     }
 
@@ -1328,8 +1324,10 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         const Uint64 timestamp = WIN_GetEventTimestamp();
         SDL_Window *window = data->window;
 
+        const bool istouching = IS_POINTER_INCONTACT_WPARAM(wParam) && IS_POINTER_FIRSTBUTTON_WPARAM(wParam);
+
         // if lifting off, do it first, so any motion changes don't cause app issues.
-        if (msg == WM_POINTERUP) {
+        if (!istouching) {
             SDL_SendPenTouch(timestamp, pen, window, (pen_info.penFlags & PEN_FLAG_INVERTED) != 0, false);
         }
 
@@ -1359,7 +1357,7 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         }
 
         // if setting down, do it last, so the pen is positioned correctly from the first contact.
-        if (msg == WM_POINTERDOWN) {
+        if (istouching) {
             SDL_SendPenTouch(timestamp, pen, window, (pen_info.penFlags & PEN_FLAG_INVERTED) != 0, true);
         }
 

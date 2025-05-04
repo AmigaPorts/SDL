@@ -196,7 +196,7 @@ static DBusHandlerResult Wayland_DBusCursorMessageFilter(DBusConnection *conn, D
 
             if (dbus_cursor_size != new_cursor_size) {
                 dbus_cursor_size = new_cursor_size;
-                SDL_SetCursor(NULL); // Force cursor update
+                SDL_RedrawCursor(); // Force cursor update
             }
         } else if (SDL_strcmp(CURSOR_THEME_KEY, key) == 0) {
             const char *new_cursor_theme = NULL;
@@ -223,7 +223,7 @@ static DBusHandlerResult Wayland_DBusCursorMessageFilter(DBusConnection *conn, D
 
                 // Purge the current cached themes and force a cursor refresh.
                 Wayland_FreeCursorThemes(vdata);
-                SDL_SetCursor(NULL);
+                SDL_RedrawCursor();
             }
         } else {
             goto not_our_signal;
@@ -958,16 +958,22 @@ static bool Wayland_SetRelativeMouseMode(bool enabled)
  */
 static SDL_MouseButtonFlags SDLCALL Wayland_GetGlobalMouseState(float *x, float *y)
 {
-    SDL_Mouse *mouse = SDL_GetMouse();
+    const SDL_Mouse *mouse = SDL_GetMouse();
     SDL_MouseButtonFlags result = 0;
 
     // If there is no window with mouse focus, we have no idea what the actual position or button state is.
     if (mouse->focus) {
+        SDL_VideoData *video_data = SDL_GetVideoDevice()->internal;
+        SDL_WaylandSeat *seat;
         int off_x, off_y;
         SDL_RelativeToGlobalForWindow(mouse->focus, mouse->focus->x, mouse->focus->y, &off_x, &off_y);
-        result = SDL_GetMouseState(x, y);
         *x = mouse->x + off_x;
         *y = mouse->y + off_y;
+
+        // Query the buttons from the seats directly, as this may be called from within a hit test handler.
+        wl_list_for_each (seat, &video_data->seat_list, link) {
+            result |= seat->pointer.buttons_pressed;
+        }
     } else {
         *x = 0.f;
         *y = 0.f;
@@ -1025,7 +1031,7 @@ void Wayland_RecreateCursors(void)
     }
     if (mouse->cur_cursor) {
         Wayland_RecreateCursor(mouse->cur_cursor, vdata);
-        if (mouse->cursor_shown) {
+        if (mouse->cursor_visible) {
             Wayland_ShowCursor(mouse->cur_cursor);
         }
     }
@@ -1118,7 +1124,7 @@ void Wayland_SeatUpdateCursor(SDL_WaylandSeat *seat)
     if (pointer_focus) {
         const bool has_relative_focus = Wayland_SeatHasRelativePointerFocus(seat);
 
-        if (!seat->display->relative_mode_enabled || !has_relative_focus || mouse->relative_mode_cursor_visible) {
+        if (!seat->display->relative_mode_enabled || !has_relative_focus || !mouse->relative_mode_hide_cursor) {
             const SDL_HitTestResult rc = pointer_focus->hit_test_result;
 
             if ((seat->display->relative_mode_enabled && has_relative_focus) ||

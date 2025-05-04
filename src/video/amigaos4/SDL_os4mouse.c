@@ -309,12 +309,12 @@ OS4_RestoreSdlCursorForWindow(struct Window * window)
 
     SDL_Mouse* mouse = SDL_GetMouse();
 
-    dprintf("cursor shown %d, relative mode %d, relative mode cursor visible %d\n",
-            mouse->cursor_shown,
+    dprintf("cursor visible %d, relative mode %d, relative mode hide cursor %d\n",
+            mouse->cursor_visible,
             mouse->relative_mode,
-            mouse->relative_mode_cursor_visible);
+            mouse->relative_mode_hide_cursor);
 
-    if (mouse->cursor_shown && (!mouse->relative_mode || mouse->relative_mode_cursor_visible)) {
+    if (mouse->cursor_visible && (!mouse->relative_mode || !mouse->relative_mode_hide_cursor)) {
         SDL_Cursor *cursor = mouse->cur_cursor;
         if (cursor) {
             SDL_CursorData *data = cursor->internal;
@@ -411,7 +411,7 @@ OS4_RefreshCursorState(void)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     if (mouse) {
-        dprintf("Mouse shown %d\n", mouse->cursor_shown);
+        dprintf("Mouse visible %d\n", mouse->cursor_visible);
         // Force cursor redraw
         SDL_SetCursor(NULL);
     }
