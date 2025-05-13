@@ -350,6 +350,11 @@ static int SDLCALL process_testKill(void *arg)
     int result;
     int exit_code;
 
+#ifdef SDL_PLATFORM_AMIGAOS4
+    SDLTest_AssertPass("Process killing is not supported on AmigaOS");
+    return TEST_SKIPPED;
+#endif
+
     SDLTest_AssertPass("About to call SDL_CreateProcess(true)");
     process = SDL_CreateProcess(process_args, true);
     if (!process) {
