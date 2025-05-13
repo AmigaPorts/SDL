@@ -211,7 +211,7 @@ static bool OS4_Close(BPTR *bptr, const char *name)
 
 static bool OS4_CreatePipe(BPTR *pipe, const char *reason)
 {
-    pipe[WRITE_END] = IDOS->FOpen("PIPE:/UNIQUE/32000", MODE_NEWFILE, 0);
+    pipe[WRITE_END] = IDOS->FOpen("PIPE:/32000/UNIQUE", MODE_NEWFILE, 0);
 
     if (!pipe[WRITE_END]) {
         dprintf("Failed to open %s pipe for writing (error %ld)\n", reason, IDOS->IoErr());
