@@ -42,9 +42,9 @@ static void OS4_CleanupStream(void *userdata, void *value)
     SDL_ClearProperty(process->props, property);
 }
 
-static bool OS4_SetupStream(SDL_Process *process, BPTR bptr, const char *mode, const char *property)
+static bool OS4_SetupStream(SDL_Process *process, BPTR bptr, const char* name, const char *mode, const char *property)
 {
-    dprintf("Setting %p to non-blocking mode\n", (void*)bptr);
+    dprintf("Setting %p (%s) to non-blocking mode\n", (void*)bptr, name);
     const int32 oldBlockingMode = IDOS->SetBlockingMode(bptr, SBM_NON_BLOCKING);
 
     if (oldBlockingMode <= 0) {
@@ -469,7 +469,7 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
     SDL_SetNumberProperty(process->props, SDL_PROP_PROCESS_PID_NUMBER, data->pid);
 
     if (stdin_option == SDL_PROCESS_STDIO_APP) {
-        if (!OS4_SetupStream(process, stdin_pipe[WRITE_END], "wb", SDL_PROP_PROCESS_STDIN_POINTER)) {
+        if (!OS4_SetupStream(process, stdin_pipe[WRITE_END], "stdin_pipe's write end", "wb", SDL_PROP_PROCESS_STDIN_POINTER)) {
             dprintf("Failed to setup STDIN pointer\n");
             OS4_Close(&stdin_pipe[WRITE_END], "stdin_pipe's write end");
         }
@@ -477,7 +477,7 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
     }
 
     if (stdout_option == SDL_PROCESS_STDIO_APP) {
-        if (!OS4_SetupStream(process, stdout_pipe[READ_END], "rb", SDL_PROP_PROCESS_STDOUT_POINTER)) {
+        if (!OS4_SetupStream(process, stdout_pipe[READ_END], "stdout_pipe's read end", "rb", SDL_PROP_PROCESS_STDOUT_POINTER)) {
             dprintf("Failed to setup STDOUT pointer\n");
             OS4_Close(&stdout_pipe[READ_END], "stdout_pipe's read end");
         }
@@ -485,7 +485,7 @@ bool SDL_SYS_CreateProcessWithProperties(SDL_Process *process, SDL_PropertiesID 
     }
 
     if (stderr_option == SDL_PROCESS_STDIO_APP) {
-        if (!OS4_SetupStream(process, stderr_pipe[READ_END], "rb", SDL_PROP_PROCESS_STDERR_POINTER)) {
+        if (!OS4_SetupStream(process, stderr_pipe[READ_END], "stderr_pipe's read end", "rb", SDL_PROP_PROCESS_STDERR_POINTER)) {
             dprintf("Failed to setup STDERR pointer\n");
             OS4_Close(&stderr_pipe[READ_END], "stderr_pipe's read end");
         }
