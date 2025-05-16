@@ -732,7 +732,7 @@ typedef struct WindowData
 
     // Synchronization primitives
     VkSemaphore imageAvailableSemaphore[MAX_FRAMES_IN_FLIGHT];
-    VkSemaphore renderFinishedSemaphore[MAX_FRAMES_IN_FLIGHT];
+    VkSemaphore *renderFinishedSemaphore;
     SDL_GPUFence *inFlightFences[MAX_FRAMES_IN_FLIGHT];
 
     Uint32 frameCounter;
@@ -3217,7 +3217,6 @@ static void VULKAN_INTERNAL_DestroySwapchain(
         SDL_free(windowData->textureContainers[i].activeTexture->subresources);
         SDL_free(windowData->textureContainers[i].activeTexture);
     }
-    windowData->imageCount = 0;
 
     SDL_free(windowData->textureContainers);
     windowData->textureContainers = NULL;
@@ -3246,7 +3245,8 @@ static void VULKAN_INTERNAL_DestroySwapchain(
                 NULL);
             windowData->imageAvailableSemaphore[i] = VK_NULL_HANDLE;
         }
-
+    }
+    for (i = 0; i < windowData->imageCount; i += 1) {
         if (windowData->renderFinishedSemaphore[i]) {
             renderer->vkDestroySemaphore(
                 renderer->logicalDevice,
@@ -3255,6 +3255,10 @@ static void VULKAN_INTERNAL_DestroySwapchain(
             windowData->renderFinishedSemaphore[i] = VK_NULL_HANDLE;
         }
     }
+    SDL_free(windowData->renderFinishedSemaphore);
+    windowData->renderFinishedSemaphore = NULL;
+
+    windowData->imageCount = 0;
 }
 
 static void VULKAN_INTERNAL_DestroyGraphicsPipelineResourceLayout(
@@ -4812,6 +4816,12 @@ static Uint32 VULKAN_INTERNAL_CreateSwapchain(
             CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateSemaphore, false);
         }
 
+        windowData->inFlightFences[i] = NULL;
+    }
+
+    windowData->renderFinishedSemaphore = SDL_malloc(
+        sizeof(VkSemaphore) * windowData->imageCount);
+    for (i = 0; i < windowData->imageCount; i += 1) {
         vulkanResult = renderer->vkCreateSemaphore(
             renderer->logicalDevice,
             &semaphoreCreateInfo,
@@ -4831,8 +4841,6 @@ static Uint32 VULKAN_INTERNAL_CreateSwapchain(
             windowData->swapchain = VK_NULL_HANDLE;
             CHECK_VULKAN_ERROR_AND_RETURN(vulkanResult, vkCreateSemaphore, false);
         }
-
-        windowData->inFlightFences[i] = NULL;
     }
 
     windowData->needsSwapchainRecreate = false;
@@ -8150,7 +8158,7 @@ static void VULKAN_BeginComputePass(
             vulkanCommandBuffer,
             bufferContainer,
             storageBufferBindings[i].cycle,
-            VULKAN_BUFFER_USAGE_MODE_COMPUTE_STORAGE_READ);
+            VULKAN_BUFFER_USAGE_MODE_COMPUTE_STORAGE_READ_WRITE);
 
         vulkanCommandBuffer->readWriteComputeStorageBuffers[i] = buffer;
 
@@ -10021,7 +10029,7 @@ static bool VULKAN_INTERNAL_AcquireSwapchainTexture(
     }
 
     vulkanCommandBuffer->signalSemaphores[vulkanCommandBuffer->signalSemaphoreCount] =
-        windowData->renderFinishedSemaphore[windowData->frameCounter];
+        windowData->renderFinishedSemaphore[swapchainImageIndex];
     vulkanCommandBuffer->signalSemaphoreCount += 1;
 
     *swapchainTexture = (SDL_GPUTexture *)swapchainTextureContainer;
@@ -10562,7 +10570,7 @@ static bool VULKAN_Submit(
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.pNext = NULL;
         presentInfo.pWaitSemaphores =
-            &presentData->windowData->renderFinishedSemaphore[presentData->windowData->frameCounter];
+            &presentData->windowData->renderFinishedSemaphore[presentData->swapchainImageIndex];
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pSwapchains = &presentData->windowData->swapchain;
         presentInfo.swapchainCount = 1;
@@ -11601,7 +11609,7 @@ static bool VULKAN_PrepareDriver(SDL_VideoDevice *_this)
 {
     // Set up dummy VulkanRenderer
     VulkanRenderer *renderer;
-    Uint8 result;
+    bool result = false;
 
     if (_this->Vulkan_CreateSurface == NULL) {
         return false;
@@ -11611,16 +11619,16 @@ static bool VULKAN_PrepareDriver(SDL_VideoDevice *_this)
         return false;
     }
 
-    renderer = (VulkanRenderer *)SDL_malloc(sizeof(VulkanRenderer));
-    SDL_memset(renderer, '\0', sizeof(VulkanRenderer));
-
-    result = VULKAN_INTERNAL_PrepareVulkan(renderer);
-
-    if (result) {
-        renderer->vkDestroyInstance(renderer->instance, NULL);
+    renderer = (VulkanRenderer *)SDL_calloc(1, sizeof(*renderer));
+    if (renderer) {
+        result = VULKAN_INTERNAL_PrepareVulkan(renderer);
+        if (result) {
+            renderer->vkDestroyInstance(renderer->instance, NULL);
+        }
+        SDL_free(renderer);
     }
-    SDL_free(renderer);
     SDL_Vulkan_UnloadLibrary();
+
     return result;
 }
 
@@ -11636,8 +11644,12 @@ static SDL_GPUDevice *VULKAN_CreateDevice(bool debugMode, bool preferLowPower, S
         return NULL;
     }
 
-    renderer = (VulkanRenderer *)SDL_malloc(sizeof(VulkanRenderer));
-    SDL_memset(renderer, '\0', sizeof(VulkanRenderer));
+    renderer = (VulkanRenderer *)SDL_calloc(1, sizeof(*renderer));
+    if (!renderer) {
+        SDL_Vulkan_UnloadLibrary();
+        return false;
+    }
+
     renderer->debugMode = debugMode;
     renderer->preferLowPower = preferLowPower;
     renderer->allowedFramesInFlight = 2;
