@@ -405,8 +405,7 @@ struct SDL_VideoDevice
     bool checked_texture_framebuffer;
     bool is_dummy;
     bool suspend_screensaver;
-    SDL_Window *wakeup_window;
-    SDL_Mutex *wakeup_lock; // Initialized only if WaitEventTimeout/SendWakeupEvent are supported
+    void *wakeup_window;
     int num_displays;
     SDL_VideoDisplay **displays;
     SDL_Rect desktop_bounds;
@@ -531,6 +530,7 @@ extern VideoBootStrap PSP_bootstrap;
 extern VideoBootStrap VITA_bootstrap;
 extern VideoBootStrap RISCOS_bootstrap;
 extern VideoBootStrap N3DS_bootstrap;
+extern VideoBootStrap NGAGE_bootstrap;
 extern VideoBootStrap RPI_bootstrap;
 extern VideoBootStrap KMSDRM_bootstrap;
 extern VideoBootStrap DUMMY_bootstrap;

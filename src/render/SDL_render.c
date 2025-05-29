@@ -123,6 +123,9 @@ static const SDL_RenderDriver *render_drivers[] = {
 #ifdef SDL_VIDEO_RENDER_METAL
     &METAL_RenderDriver,
 #endif
+#ifdef SDL_VIDEO_RENDER_NGAGE
+    &NGAGE_RenderDriver,
+#endif
 #ifdef SDL_VIDEO_RENDER_OGL
     &GL_RenderDriver,
 #endif
@@ -2630,11 +2633,12 @@ static void UpdateLogicalPresentation(SDL_Renderer *renderer)
     const float logical_h = view->logical_h;
     int iwidth, iheight;
 
-    if (renderer->target) {
+    if (is_main_view) {
+        SDL_GetRenderOutputSize(renderer, &iwidth, &iheight);
+    } else {
+        SDL_assert(renderer->target != NULL);
         iwidth = (int)renderer->target->w;
         iheight = (int)renderer->target->h;
-    } else {
-        SDL_GetRenderOutputSize(renderer, &iwidth, &iheight);
     }
 
     view->logical_src_rect.x = 0.0f;

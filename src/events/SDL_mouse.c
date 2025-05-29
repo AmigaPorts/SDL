@@ -138,21 +138,25 @@ static void SDLCALL SDL_TouchMouseEventsChanged(void *userdata, const char *name
 #ifdef SDL_PLATFORM_VITA
 static void SDLCALL SDL_VitaTouchMouseDeviceChanged(void *userdata, const char *name, const char *oldValue, const char *hint)
 {
+    Uint8 vita_touch_mouse_device = 1;
+
     SDL_Mouse *mouse = (SDL_Mouse *)userdata;
     if (hint) {
         switch (*hint) {
-        default:
         case '0':
-            mouse->vita_touch_mouse_device = 1;
+            vita_touch_mouse_device = 1;
             break;
         case '1':
-            mouse->vita_touch_mouse_device = 2;
+            vita_touch_mouse_device = 2;
             break;
         case '2':
-            mouse->vita_touch_mouse_device = 3;
+            vita_touch_mouse_device = 3;
+            break;
+        default:
             break;
         }
     }
+    mouse->vita_touch_mouse_device = vita_touch_mouse_device;
 }
 #endif
 
@@ -1314,8 +1318,9 @@ static void SDL_MaybeEnableWarpEmulation(SDL_Window *window, float x, float y)
                 // Require two consecutive warps to the center within a certain timespan to enter warp emulation mode.
                 const Uint64 now = SDL_GetTicksNS();
                 if (now - mouse->last_center_warp_time_ns < WARP_EMULATION_THRESHOLD_NS) {
-                    if (SDL_SetRelativeMouseMode(true)) {
-                        mouse->warp_emulation_active = true;
+                    mouse->warp_emulation_active = true;
+                    if (!SDL_SetRelativeMouseMode(true)) {
+                        mouse->warp_emulation_active = false;
                     }
                 }
 
