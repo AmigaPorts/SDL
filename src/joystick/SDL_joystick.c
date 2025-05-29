@@ -1364,9 +1364,35 @@ SDL_Joystick *SDL_OpenJoystick(SDL_JoystickID instance_id)
 
     // If this joystick is known to have all zero centered axes, skip the auto-centering code
     if (SDL_JoystickAxesCenteredAtZero(joystick)) {
-        int i;
+        for (int i = 0; i < joystick->naxes; ++i) {
+            joystick->axes[i].has_initial_value = true;
+        }
+    }
 
-        for (i = 0; i < joystick->naxes; ++i) {
+    // We know the initial values for HIDAPI and XInput joysticks
+    if ((SDL_IsJoystickHIDAPI(joystick->guid) ||
+         SDL_IsJoystickXInput(joystick->guid) ||
+         SDL_IsJoystickRAWINPUT(joystick->guid) ||
+         SDL_IsJoystickWGI(joystick->guid)) &&
+        joystick->naxes >= SDL_GAMEPAD_AXIS_COUNT) {
+        int left_trigger, right_trigger;
+        if (SDL_IsJoystickXInput(joystick->guid)) {
+            left_trigger = 2;
+            right_trigger = 5;
+        } else {
+            left_trigger = SDL_GAMEPAD_AXIS_LEFT_TRIGGER;
+            right_trigger = SDL_GAMEPAD_AXIS_RIGHT_TRIGGER;
+        }
+        for (int i = 0; i < SDL_GAMEPAD_AXIS_COUNT; ++i) {
+            int initial_value;
+            if (i == left_trigger || i == right_trigger) {
+                initial_value = SDL_MIN_SINT16;
+            } else {
+                initial_value = 0;
+            }
+            joystick->axes[i].value = initial_value;
+            joystick->axes[i].zero = initial_value;
+            joystick->axes[i].initial_value = initial_value;
             joystick->axes[i].has_initial_value = true;
         }
     }
@@ -3178,9 +3204,9 @@ bool SDL_IsJoystickHoriSteamController(Uint16 vendor_id, Uint16 product_id)
     return vendor_id == USB_VENDOR_HORI && (product_id == USB_PRODUCT_HORI_STEAM_CONTROLLER || product_id == USB_PRODUCT_HORI_STEAM_CONTROLLER_BT);
 }
 
-bool SDL_IsJoystick8BitDoController(Uint16 vendor_id, Uint16 product_id)
+bool SDL_IsJoystickFlydigiController(Uint16 vendor_id, Uint16 product_id)
 {
-    return vendor_id == USB_VENDOR_8BITDO && (product_id == USB_PRODUCT_8BITDO_ULTIMATE2_WIRELESS);
+    return vendor_id == USB_VENDOR_FLYDIGI && product_id == USB_PRODUCT_FLYDIGI_GAMEPAD;
 }
 
 bool SDL_IsJoystickSteamDeck(Uint16 vendor_id, Uint16 product_id)

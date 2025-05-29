@@ -123,6 +123,9 @@ static VideoBootStrap *bootstrap[] = {
 #ifdef SDL_VIDEO_DRIVER_N3DS
     &N3DS_bootstrap,
 #endif
+#ifdef SDL_VIDEO_DRIVER_NGAGE
+    &NGAGE_bootstrap,
+#endif
 #ifdef SDL_VIDEO_DRIVER_KMSDRM
     &KMSDRM_bootstrap,
 #endif
@@ -2328,6 +2331,12 @@ static void SDL_FinishWindowCreation(SDL_Window *window, SDL_WindowFlags flags)
             SDL_ShowWindow(window);
         }
     }
+
+#if defined(SDL_PLATFORM_LINUX)
+    // On Linux the progress state is persisted throughout multiple program runs, so reset state on window creation
+    SDL_SetWindowProgressState(window, SDL_PROGRESS_STATE_NONE);
+    SDL_SetWindowProgressValue(window, 0.0f);
+#endif
 }
 
 static bool SDL_ContextNotSupported(const char *name)
@@ -2834,7 +2843,7 @@ SDL_Window *SDL_GetWindowFromID(SDL_WindowID id)
             }
         }
     }
-    SDL_SetError("Invalid window ID");                                 \
+    SDL_SetError("Invalid window ID");
     return NULL;
 }
 
@@ -4458,9 +4467,7 @@ void SDL_DestroyWindow(SDL_Window *window)
         _this->current_glwin = NULL;
     }
 
-    if (_this->wakeup_window == window) {
-        _this->wakeup_window = NULL;
-    }
+    SDL_CompareAndSwapAtomicPointer(&_this->wakeup_window, window, NULL);
 
     // Now invalidate magic
     SDL_SetObjectValid(window, SDL_OBJECT_TYPE_WINDOW, false);
@@ -5218,8 +5225,7 @@ bool SDL_GL_GetAttribute(SDL_GLAttr attr, int *value)
             }
             if (fbo_type != GL_NONE) {
                 glGetFramebufferAttachmentParameterivFunc(GL_FRAMEBUFFER, attachment, attachmentattrib, (GLint *)value);
-            }
-            else {
+            } else {
                 *value = 0;
             }
             if (glBindFramebufferFunc && (current_fbo != 0)) {
@@ -5450,7 +5456,7 @@ bool SDL_GL_SwapWindow(SDL_Window *window)
 bool SDL_GL_DestroyContext(SDL_GLContext context)
 {
     if (!_this) {
-        return SDL_UninitializedVideo();                                       \
+        return SDL_UninitializedVideo();
     }
     if (!context) {
         return SDL_InvalidParamError("context");

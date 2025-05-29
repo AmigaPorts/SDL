@@ -3346,7 +3346,7 @@ static D3D12Texture *D3D12_INTERNAL_CreateTexture(
 
     if (createinfo->type != SDL_GPU_TEXTURETYPE_3D) {
         desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        desc.Alignment = isSwapchainTexture ? 0 : D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+        desc.Alignment = isSwapchainTexture ? 0 : isMultisample ? D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT : D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
         desc.Width = createinfo->width;
         desc.Height = createinfo->height;
         desc.DepthOrArraySize = (UINT16)createinfo->layer_count_or_depth;
@@ -4957,6 +4957,8 @@ static void D3D12_INTERNAL_BindGraphicsResources(
             0,
             commandBuffer->vertexBufferCount,
             vertexBufferViews);
+
+        commandBuffer->needVertexBufferBind = false;
     }
 
     if (commandBuffer->needVertexSamplerBind) {
@@ -8317,7 +8319,7 @@ static void D3D12_INTERNAL_InitBlitResources(
     }
 }
 
-static bool D3D12_PrepareDriver(SDL_VideoDevice *_this)
+static bool D3D12_PrepareDriver(SDL_VideoDevice *_this, SDL_PropertiesID props)
 {
 #if defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)
     return true;
@@ -8332,6 +8334,17 @@ static bool D3D12_PrepareDriver(SDL_VideoDevice *_this)
     IDXGIFactory4 *factory4;
     IDXGIFactory6 *factory6;
     IDXGIAdapter1 *adapter;
+
+    // Early check to see if the app has _any_ D3D12 formats, if not we don't
+    // have to fuss with loading D3D in the first place.
+    bool has_dxbc = SDL_GetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_DXBC_BOOLEAN, false);
+    bool has_dxil = SDL_GetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_DXIL_BOOLEAN, false);
+    bool supports_dxil = false;
+    // TODO SM7: bool has_spirv = SDL_GetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOLEAN, false);
+    // TODO SM7: bool supports_spirv = false;
+    if (!has_dxbc && !has_dxil) {
+        return false;
+    }
 
     // Can we load D3D12?
 
@@ -8427,6 +8440,18 @@ static bool D3D12_PrepareDriver(SDL_VideoDevice *_this)
         (void **)&device);
 
     if (SUCCEEDED(res)) {
+        D3D12_FEATURE_DATA_SHADER_MODEL shaderModel;
+        shaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_0;
+
+        res = ID3D12Device_CheckFeatureSupport(
+            device,
+            D3D12_FEATURE_SHADER_MODEL,
+            &shaderModel,
+            sizeof(shaderModel));
+        if (SUCCEEDED(res) && shaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_0) {
+            supports_dxil = true;
+        }
+
         ID3D12Device_Release(device);
     }
     IDXGIAdapter1_Release(adapter);
@@ -8434,6 +8459,11 @@ static bool D3D12_PrepareDriver(SDL_VideoDevice *_this)
 
     SDL_UnloadObject(d3d12Dll);
     SDL_UnloadObject(dxgiDll);
+
+    if (!supports_dxil && !has_dxbc) {
+        SDL_LogWarn(SDL_LOG_CATEGORY_GPU, "D3D12: DXIL is not supported and DXBC is not being provided");
+        return false;
+    }
 
     if (FAILED(res)) {
         SDL_LogWarn(SDL_LOG_CATEGORY_GPU, "D3D12: Could not create D3D12Device with feature level " D3D_FEATURE_LEVEL_CHOICE_STR);
@@ -8842,6 +8872,12 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
     // Initialize the D3D12 debug layer, if applicable
     if (debugMode) {
         bool hasD3d12Debug = D3D12_INTERNAL_TryInitializeD3D12Debug(renderer);
+#if (defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES))
+        if (hasD3d12Debug) {
+            SDL_LogInfo(
+                SDL_LOG_CATEGORY_GPU,
+                "Validation layers enabled, expect debug level performance!");
+#else
         if (hasDxgiDebug && hasD3d12Debug) {
             SDL_LogInfo(
                 SDL_LOG_CATEGORY_GPU,
@@ -8850,6 +8886,7 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
             SDL_LogWarn(
                 SDL_LOG_CATEGORY_GPU,
                 "Validation layers partially enabled, some warnings may not be available");
+#endif
         } else {
             SDL_LogWarn(
                 SDL_LOG_CATEGORY_GPU,
@@ -9182,8 +9219,23 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
         return NULL;
     }
 
+    SDL_GPUShaderFormat shaderFormats = SDL_GPU_SHADERFORMAT_DXBC;
+
+    D3D12_FEATURE_DATA_SHADER_MODEL shaderModel;
+    shaderModel.HighestShaderModel = D3D_SHADER_MODEL_6_0;
+
+    res = ID3D12Device_CheckFeatureSupport(
+        renderer->device,
+        D3D12_FEATURE_SHADER_MODEL,
+        &shaderModel,
+        sizeof(shaderModel));
+    if (SUCCEEDED(res) && shaderModel.HighestShaderModel >= D3D_SHADER_MODEL_6_0) {
+        shaderFormats |= SDL_GPU_SHADERFORMAT_DXIL;
+    }
+
     ASSIGN_DRIVER(D3D12)
     result->driverData = (SDL_GPURenderer *)renderer;
+    result->shader_formats = shaderFormats;
     result->debug_mode = debugMode;
     renderer->sdlGPUDevice = result;
 
@@ -9192,7 +9244,6 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
 
 SDL_GPUBootstrap D3D12Driver = {
     "direct3d12",
-    SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_DXBC,
     D3D12_PrepareDriver,
     D3D12_CreateDevice
 };

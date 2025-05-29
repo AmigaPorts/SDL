@@ -42,17 +42,18 @@ enum SDL_WaylandAxisEvent
 
 typedef struct
 {
-    int32_t repeat_rate;     // Repeat rate in range of [1, 1000] character(s) per second
-    int32_t repeat_delay_ms; // Time to first repeat event in milliseconds
-    Uint32 keyboard_id;      // ID of the source keyboard.
+    Sint32 repeat_rate;     // Repeat rate in range of [1, 1000] character(s) per second
+    Sint32 repeat_delay_ms; // Time to first repeat event in milliseconds
+    Uint32 keyboard_id;     // ID of the source keyboard.
     bool is_initialized;
 
     bool is_key_down;
-    uint32_t key;
-    Uint64 wl_press_time_ns;  // Key press time as reported by the Wayland API
+    Uint32 key;
+    Uint32 wl_press_time_ms;  // Key press time as reported by the Wayland API in milliseconds
+    Uint64 base_time_ns;      // Key press time as reported by the Wayland API in nanoseconds
     Uint64 sdl_press_time_ns; // Key press time expressed in SDL ticks
     Uint64 next_repeat_ns;    // Next repeat event in nanoseconds
-    uint32_t scancode;
+    Uint32 scancode;
     char text[8];
 } SDL_WaylandKeyboardRepeat;
 
@@ -170,7 +171,8 @@ typedef struct SDL_WaylandSeat
     struct
     {
         struct zwp_text_input_v3 *zwp_text_input;
-        SDL_Rect cursor_rect;
+        SDL_Rect text_input_rect;
+        int text_input_cursor;
         bool enabled;
         bool has_preedit;
     } text_input;
@@ -191,7 +193,6 @@ extern int Wayland_WaitEventTimeout(SDL_VideoDevice *_this, Sint64 timeoutNS);
 
 extern void Wayland_DisplayInitInputTimestampManager(SDL_VideoData *display);
 extern void Wayland_DisplayInitCursorShapeManager(SDL_VideoData *display);
-extern void Wayland_DisplayInitRelativePointerManager(SDL_VideoData *display);
 extern void Wayland_DisplayInitTabletManager(SDL_VideoData *display);
 extern void Wayland_DisplayInitDataDeviceManager(SDL_VideoData *display);
 extern void Wayland_DisplayInitPrimarySelectionDeviceManager(SDL_VideoData *display);
@@ -201,10 +202,10 @@ extern void Wayland_DisplayCreateTextInputManager(SDL_VideoData *d, uint32_t id)
 extern void Wayland_DisplayCreateSeat(SDL_VideoData *display, struct wl_seat *wl_seat, Uint32 id);
 extern void Wayland_SeatDestroy(SDL_WaylandSeat *seat, bool send_events);
 
-extern bool Wayland_SeatHasRelativePointerFocus(SDL_WaylandSeat *seat);
 extern void Wayland_SeatUpdatePointerGrab(SDL_WaylandSeat *seat);
 extern void Wayland_DisplayUpdatePointerGrabs(SDL_VideoData *display, SDL_WindowData *window);
 extern void Wayland_DisplayUpdateKeyboardGrabs(SDL_VideoData *display, SDL_WindowData *window);
+extern void Wayland_DisplayRemoveWindowReferencesFromSeats(SDL_VideoData *display, SDL_WindowData *window);
 
 /* The implicit grab serial needs to be updated on:
  * - Keyboard key down/up
