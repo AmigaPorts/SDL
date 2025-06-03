@@ -2575,7 +2575,9 @@ SDL_Window *SDL_CreateWindowWithProperties(SDL_PropertiesID props)
     SDL_UpdateWindowHierarchy(window, parent);
 
     if (_this->CreateSDLWindow && !_this->CreateSDLWindow(_this, window, props)) {
+        PUSH_SDL_ERROR()
         SDL_DestroyWindow(window);
+        POP_SDL_ERROR()
         return NULL;
     }
 
@@ -2832,7 +2834,7 @@ SDL_Window *SDL_GetWindowFromID(SDL_WindowID id)
             }
         }
     }
-    SDL_SetError("Invalid window ID");                                 \
+    SDL_SetError("Invalid window ID");
     return NULL;
 }
 
@@ -4350,9 +4352,7 @@ void SDL_DestroyWindow(SDL_Window *window)
         _this->current_glwin = NULL;
     }
 
-    if (_this->wakeup_window == window) {
-        _this->wakeup_window = NULL;
-    }
+    SDL_CompareAndSwapAtomicPointer(&_this->wakeup_window, window, NULL);
 
     // Now invalidate magic
     SDL_SetObjectValid(window, SDL_OBJECT_TYPE_WINDOW, false);
@@ -5110,8 +5110,7 @@ bool SDL_GL_GetAttribute(SDL_GLAttr attr, int *value)
             }
             if (fbo_type != GL_NONE) {
                 glGetFramebufferAttachmentParameterivFunc(GL_FRAMEBUFFER, attachment, attachmentattrib, (GLint *)value);
-            }
-            else {
+            } else {
                 *value = 0;
             }
             if (glBindFramebufferFunc && (current_fbo != 0)) {
@@ -5342,7 +5341,7 @@ bool SDL_GL_SwapWindow(SDL_Window *window)
 bool SDL_GL_DestroyContext(SDL_GLContext context)
 {
     if (!_this) {
-        return SDL_UninitializedVideo();                                       \
+        return SDL_UninitializedVideo();
     }
     if (!context) {
         return SDL_InvalidParamError("context");
