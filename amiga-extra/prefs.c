@@ -42,10 +42,11 @@
 #include <images/label.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define NAME "SDL2 preferences"
-#define VERSION "1.7"
+#define VERSION "1.8"
 #define MAX_PATH_LEN 1024
 #define MAX_VARIABLE_NAME_LEN 32
 #define NAME_VERSION_DATE NAME " " VERSION " (" __AMIGADATE__ ")"
@@ -701,6 +702,23 @@ HasImagePath(void)
     return hasImagePath;
 }
 
+static int16
+ReadMenuImageSize(int16 defaultSize)
+{
+    int16 size = defaultSize;
+
+    const char* userSize = GetVariable("MenuImageSize");
+    const int intSize = atoi(userSize);
+
+    if (intSize >= 8 && intSize <= 40) {
+        size = intSize;
+    }
+
+    dprintf("Menu image size set to %d\n", size);
+
+    return size;
+}
+
 static struct Image*
 CreateMenuImage(CONST_STRPTR name)
 {
@@ -709,7 +727,8 @@ CreateMenuImage(CONST_STRPTR name)
         return NULL;
     }
 
-    const int16 size = 24;
+    const int16 defaultSize = 24;
+    const int16 size = ReadMenuImageSize(defaultSize);
 
     char nameSelect[32];
     char nameDisabled[32];
@@ -731,6 +750,7 @@ CreateMenuImage(CONST_STRPTR name)
         BITMAP_Masking, TRUE,
         IA_Width, size,
         IA_Height, size,
+        IA_Scalable, size == defaultSize ? TAG_IGNORE : TRUE,
         TAG_DONE);
 
     if (!image) {
