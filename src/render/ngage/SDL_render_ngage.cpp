@@ -512,6 +512,7 @@ void CRenderer::Flip()
         return;
     }
 
+#ifdef SDL_VIDEO_RENDER_NGAGE_FPS
     iRenderer->Gc()->UseFont(iFont);
 
     if (iShowFPS && iRenderer->Gc()) {
@@ -536,6 +537,7 @@ void CRenderer::Flip()
         iRenderer->Gc()->DrawText(_L(""), TPoint(0, 0));
     }
     iRenderer->Gc()->DiscardFont();
+#endif // SDL_VIDEO_RENDER_NGAGE_FPS
     iRenderer->Flip(iDirectScreen);
 
     // Keep the backlight on.
@@ -569,6 +571,7 @@ void CRenderer::SetClipRect(TInt aX, TInt aY, TInt aWidth, TInt aHeight)
     }
 }
 
+#ifdef SDL_VIDEO_RENDER_NGAGE_FPS
 void CRenderer::UpdateFPS()
 {
     static TTime lastTime;
@@ -590,6 +593,7 @@ void CRenderer::UpdateFPS()
         lastTime = currentTime;
     }
 }
+#endif
 
 void CRenderer::SuspendScreenSaver(TBool aSuspend)
 {
@@ -684,6 +688,7 @@ void CRenderer::HandleEvent(const TWsEvent &aWsEvent)
         timestamp = SDL_GetPerformanceCounter();
         SDL_SendKeyboardKey(timestamp, 1, aWsEvent.Key()->iCode, ConvertScancode(aWsEvent.Key()->iScanCode), true);
 
+#ifdef SDL_VIDEO_RENDER_NGAGE_FPS
         if (aWsEvent.Key()->iScanCode == EStdKeyHash) {
             if (iShowFPS) {
                 iShowFPS = EFalse;
@@ -691,6 +696,7 @@ void CRenderer::HandleEvent(const TWsEvent &aWsEvent)
                 iShowFPS = ETrue;
             }
         }
+#endif
 
         break;
     case EEventKeyUp: /* Key events */
