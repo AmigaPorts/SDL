@@ -191,6 +191,8 @@ GetVariable(const char* const name)
     static char buffer[MAX_VARIABLE_NAME_LEN];
     buffer[0] = '\0';
 
+    dprintf("name '%s'\n", name);
+
     const int32 len = IDOS->GetVar(name, buffer, sizeof(buffer), GVF_GLOBAL_ONLY);
 
     if (len > 0) {
@@ -750,7 +752,7 @@ CreateMenuImage(CONST_STRPTR name)
         BITMAP_Masking, TRUE,
         IA_Width, size,
         IA_Height, size,
-        IA_Scalable, size == defaultSize ? TAG_IGNORE : TRUE,
+        (size == defaultSize) ? TAG_IGNORE : IA_Scalable, TRUE,
         TAG_DONE);
 
     if (!image) {
