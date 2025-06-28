@@ -17,7 +17,7 @@ TODO:
 
 #include "SDL.h"
 
-#define BENCHMARK_VERSION "0.8"
+#define BENCHMARK_VERSION "1.0"
 
 #define WIDTH 800
 #define HEIGHT 600
@@ -38,6 +38,7 @@ typedef struct {
     SDL_Window *window;
     SDL_Texture *texture;
     SDL_Surface *surface;
+    SDL_Surface *windowSurface;
     SDL_BlendMode mode;
     Uint32 width;
     Uint32 height;
@@ -79,6 +80,9 @@ static SDL_bool testColorModulation(Context *);
 static SDL_bool testAlphaModulation(Context *);
 static SDL_bool testUpdateTexture(Context *);
 static SDL_bool testReadPixels(Context *);
+static SDL_bool testBlitSurface(Context *);
+static SDL_bool testBlitSurfaceScaledNearest(Context *);
+static SDL_bool testBlitSurfaceScaledLinear(Context *);
 
 /* Insert here new tests */
 static const Test tests[] = {
@@ -93,6 +97,12 @@ static const Test tests[] = {
     { "ReadPixels", testReadPixels, SDL_TRUE, SDL_FALSE }
 };
 
+static const Test framebufferTests[] = {
+    { "BlitSurface", testBlitSurface, SDL_FALSE, SDL_TRUE },
+    { "BlitSurfaceScaledNearest", testBlitSurfaceScaledNearest, SDL_FALSE, SDL_TRUE },
+    { "BlitSurfaceScaledLinear", testBlitSurfaceScaledLinear, SDL_FALSE, SDL_TRUE }
+};
+
 static const BlendMode modes[] = {
     { "None", SDL_BLENDMODE_NONE },
     { "Blend", SDL_BLENDMODE_BLEND },
@@ -105,11 +115,9 @@ static const BlendMode modes[] = {
 static const char *
 getModeName(SDL_BlendMode mode)
 {
-    int i;
-
     static const char *unknown = "Unknown";
 
-    for (i = 0; i < sizeof(modes) / sizeof(modes[0]); i++)
+    for (int i = 0; i < sizeof(modes) / sizeof(modes[0]); i++)
     {
         if (modes[i].mode == mode) {
             return modes[i].name;
@@ -138,13 +146,37 @@ printInfo(Context *ctx)
 static void
 render(Context *ctx)
 {
-    SDL_RenderPresent(ctx->renderer);
+    if (ctx->windowSurface) {
+        const int result = SDL_UpdateWindowSurface(ctx->window);
+        if (result) {
+            SDL_Log("[%s]Failed to update window surface: %s\n", __FUNCTION__, SDL_GetError());
+        }
+    } else {
+        SDL_RenderPresent(ctx->renderer);
+    }
+
     ctx->frames++;
 }
 
 static SDL_bool
 clearDisplay(Context *ctx)
 {
+    if (ctx->windowSurface) {
+        int result = SDL_FillRect(ctx->windowSurface, NULL, SDL_MapRGBA(ctx->windowSurface->format, 0, 0, 0, 255));
+        if (result) {
+            SDL_Log("[%s]Failed to clear surface: %s\n", __FUNCTION__, SDL_GetError());
+            return SDL_FALSE;
+        }
+
+        result = SDL_UpdateWindowSurface(ctx->window);
+        if (result) {
+            SDL_Log("[%s]Failed to update window surface: %s\n", __FUNCTION__, SDL_GetError());
+            return SDL_FALSE;
+        }
+
+        return SDL_TRUE;
+    }
+
     int result;
 
     if (ctx->mode != SDL_BLENDMODE_MOD) {
@@ -186,11 +218,9 @@ getRand(Uint32 max)
 static void
 makeRandomTexture(Context *ctx)
 {
-    int i;
-
     SDL_memset(ctx->buffer, 0, ctx->texturewidth * ctx->textureheight * sizeof(Uint32));
 
-    for (i = 0; i < 100; i++) {
+    for (int i = 0; i < 100; i++) {
         ctx->buffer[
             getRand(ctx->texturewidth) +
             getRand(ctx->textureheight) * ctx->texturewidth] = 0xFFFFFFFF;
@@ -200,9 +230,7 @@ makeRandomTexture(Context *ctx)
 static SDL_bool
 prepareTexture(Context *ctx)
 {
-    int result;
-
-    result = SDL_SetColorKey(ctx->surface, 1, 0);
+    int result = SDL_SetColorKey(ctx->surface, 1, 0);
 
     if (result) {
         SDL_Log("[%s]Failed to set color key: %s\n", __FUNCTION__, SDL_GetError());
@@ -210,7 +238,7 @@ prepareTexture(Context *ctx)
     }
 
     if (ctx->texture) {
-        SDL_Log("Old texture!\n");
+        SDL_Log("[%s]Old texture!\n", __FUNCTION__);
     }
 
     ctx->texture = SDL_CreateTextureFromSurface(ctx->renderer, ctx->surface);
@@ -579,6 +607,87 @@ testReadPixels(Context *ctx)
     return result;
 }
 
+static SDL_bool
+testBlitSurface(Context *ctx)
+{
+    int result = SDL_SetSurfaceBlendMode(ctx->surface, ctx->mode);
+
+    if (result) {
+        SDL_Log("[%s]Failed to set blend mode: %s\n", __FUNCTION__, SDL_GetError());
+        return SDL_FALSE;
+    }
+
+    SDL_Rect rect;
+    rect.x = getRand(ctx->width - ctx->texturewidth);
+    rect.y = getRand(ctx->height - ctx->textureheight);
+    rect.w = ctx->texturewidth;
+    rect.h = ctx->textureheight;
+
+    result = SDL_BlitSurface(ctx->surface, NULL, ctx->windowSurface, &rect);
+
+    if (result) {
+        SDL_Log("[%s]Failed to blit surface: %s\n", __FUNCTION__, SDL_GetError());
+        return SDL_FALSE;
+    }
+
+    ctx->operations++;
+    render(ctx);
+
+    return SDL_TRUE;
+}
+
+// HACK: enables us to choose scale mode
+int SDL_PrivateUpperBlitScaled(SDL_Surface *src, const SDL_Rect *srcrect,
+                               SDL_Surface *dst, SDL_Rect *dstrect, SDL_ScaleMode scaleMode);
+
+static SDL_bool
+testBlitSurfaceScaled(Context *ctx, SDL_ScaleMode scaleMode)
+{
+    int result = SDL_SetSurfaceBlendMode(ctx->surface, ctx->mode);
+
+    if (result) {
+        SDL_Log("[%s]Failed to set blend mode: %s\n", __FUNCTION__, SDL_GetError());
+        return SDL_FALSE;
+    }
+
+    const float scale = (getRand(4) + 1) / 2.0f;
+
+    const int w = ctx->texturewidth * scale;
+    const int h = ctx->textureheight * scale;
+
+    //printf("%d, %d\n", w, h);
+
+    SDL_Rect rect;
+    rect.x = getRand(ctx->width - w);
+    rect.y = getRand(ctx->height - h);
+    rect.w = w;
+    rect.h = h;
+
+    result = SDL_PrivateUpperBlitScaled(ctx->surface, NULL, ctx->windowSurface, &rect, scaleMode);
+
+    if (result) {
+        SDL_Log("[%s]Failed to blit surface scaled: %s\n", __FUNCTION__, SDL_GetError());
+        return SDL_FALSE;
+    }
+
+    ctx->operations++;
+    render(ctx);
+
+    return SDL_TRUE;
+}
+
+static SDL_bool
+testBlitSurfaceScaledNearest(Context *ctx)
+{
+    return testBlitSurfaceScaled(ctx, SDL_ScaleModeNearest);
+}
+
+static SDL_bool
+testBlitSurfaceScaledLinear(Context *ctx)
+{
+    return testBlitSurfaceScaled(ctx, SDL_ScaleModeLinear);
+}
+
 static void
 checkEvents(Context *ctx)
 {
@@ -599,10 +708,8 @@ checkEvents(Context *ctx)
 static void
 runTestSuite(Context *ctx)
 {
-    int m, t;
-
-    for (t = 0; t < sizeof(tests) / sizeof(tests[0]); t++) {
-        for (m = 0; m < sizeof(modes) / sizeof(modes[0]); m++) {
+    for (int t = 0; t < sizeof(tests) / sizeof(tests[0]); t++) {
+        for (int m = 0; m < sizeof(modes) / sizeof(modes[0]); m++) {
             ctx->mode = modes[m].mode;
 
             runTest(ctx, &tests[t]);
@@ -615,6 +722,24 @@ runTestSuite(Context *ctx)
 
             if (!tests[t].testBlendModes) {
                 break; // Skip the rest
+            }
+        }
+    }
+}
+
+static void
+runFramebufferTestSuite(Context *ctx)
+{
+    for (int t = 0; t < sizeof(framebufferTests) / sizeof(framebufferTests[0]); t++) {
+        for (int m = 0; m < sizeof(modes) / sizeof(modes[0]); m++) {
+            ctx->mode = modes[m].mode;
+
+            runTest(ctx, &framebufferTests[t]);
+
+            checkEvents(ctx);
+
+            if (!ctx->running) {
+                return;
             }
         }
     }
@@ -652,6 +777,8 @@ initContext(Context *ctx, int argc, char **argv)
     ctx->sleep = SLEEP;
     ctx->running = SDL_TRUE;
     ctx->seed = 0xA5F05A0F;
+    ctx->windowSurface = NULL;
+
     checkParameters(ctx, argc, argv);
 
     SDL_Log("Parameters: width %d, height %d, renderer name '%s', duration %.3f s, objects %u, sleep %u, seed 0x%X\n",
@@ -661,9 +788,7 @@ initContext(Context *ctx, int argc, char **argv)
 static void
 checkPixelFormat(Context *ctx)
 {
-    Uint32 pf;
-
-    pf = SDL_GetWindowPixelFormat(ctx->window);
+    const Uint32 pf = SDL_GetWindowPixelFormat(ctx->window);
 
     SDL_Log("Pixel format 0x%X (%s)\n", pf, SDL_GetPixelFormatName(pf));
 
@@ -699,10 +824,7 @@ testSpecificRenderer(Context *ctx)
 static void
 testAllRenderers(Context *ctx)
 {
-    int r;
-
-    for (r = 0; r < SDL_GetNumRenderDrivers(); r++) {
-
+    for (int r = 0; r < SDL_GetNumRenderDrivers(); r++) {
         ctx->renderer = SDL_CreateRenderer(ctx->window, r, 0);
 
         testRenderer(ctx);
@@ -711,6 +833,29 @@ testAllRenderers(Context *ctx)
             break;
         }
     }
+}
+
+static void
+testFramebuffer(Context *ctx)
+{
+    SDL_Log("SDL_HINT_FRAMEBUFFER_ACCELERATION value %s\n", SDL_GetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION));
+
+    ctx->windowSurface = SDL_GetWindowSurface(ctx->window);
+    if (!ctx->windowSurface) {
+        SDL_Log("Failed to get window surface: %s\n", SDL_GetError());
+        return;
+    }
+
+    SDL_Surface* converted = SDL_ConvertSurface(ctx->surface, ctx->windowSurface->format, 0);
+    if (!converted) {
+        SDL_Log("Failed to convert surface: %s\n", SDL_GetError());
+        return;
+    }
+
+    SDL_FreeSurface(ctx->surface);
+    ctx->surface = converted;
+
+    runFramebufferTestSuite(ctx);
 }
 
 int
@@ -746,10 +891,9 @@ main(int argc, char **argv)
             SDL_WINDOWPOS_CENTERED,
             ctx.width,
             ctx.height,
-            SDL_WINDOW_FULLSCREEN);
+            0 /*SDL_WINDOW_FULLSCREEN*/);
 
         if (ctx.window) {
-
             checkPixelFormat(&ctx);
 
             if (ctx.rendname) {
@@ -757,6 +901,8 @@ main(int argc, char **argv)
             } else {
                 testAllRenderers(&ctx);
             }
+
+            testFramebuffer(&ctx);
 
             SDL_DestroyWindow(ctx.window);
         } else {
