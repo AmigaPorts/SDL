@@ -19,7 +19,7 @@ TODO:
 
 #include "SDL3/SDL.h"
 
-#define BENCHMARK_VERSION "1.1"
+#define BENCHMARK_VERSION "1.2"
 
 #define WIDTH 800
 #define HEIGHT 600
@@ -40,6 +40,7 @@ typedef struct {
     SDL_Window *window;
     SDL_Texture *texture;
     SDL_Surface *surface;
+    SDL_Surface *windowSurface;
     SDL_BlendMode mode;
     Uint32 width;
     Uint32 height;
@@ -81,6 +82,9 @@ static bool testColorModulation(Context *);
 static bool testAlphaModulation(Context *);
 static bool testUpdateTexture(Context *);
 static bool testReadPixels(Context *);
+static bool testBlitSurface(Context *);
+static bool testBlitSurfaceScaledNearest(Context *);
+static bool testBlitSurfaceScaledLinear(Context *);
 
 /* Insert here new tests */
 static const Test tests[] = {
@@ -93,6 +97,12 @@ static const Test tests[] = {
     { "Alpha modulation", testAlphaModulation, true, true },
     { "UpdateTexture", testUpdateTexture, true, false },
     { "ReadPixels", testReadPixels, true, false }
+};
+
+static const Test framebufferTests[] = {
+    { "BlitSurface", testBlitSurface, false, true },
+    { "BlitSurfaceScaledNearest", testBlitSurfaceScaledNearest, false, true },
+    { "BlitSurfaceScaledLinear", testBlitSurfaceScaledLinear, false, true }
 };
 
 static const BlendMode modes[] = {
@@ -130,14 +140,39 @@ printInfo(Context *ctx)
 static void
 render(Context *ctx)
 {
-    SDL_RenderPresent(ctx->renderer);
+    if (ctx->windowSurface) {
+        const bool result = SDL_UpdateWindowSurface(ctx->window);
+        if (!result) {
+            SDL_Log("[%s]Failed to update window surface: %s\n", __FUNCTION__, SDL_GetError());
+        }
+    } else {
+        const bool result = SDL_RenderPresent(ctx->renderer);
+        if (!result) {
+            SDL_Log("[%s]Failed to render: %s\n", __FUNCTION__, SDL_GetError());
+        }
+    }
+
     ctx->frames++;
 }
 
 static bool
 clearDisplay(Context *ctx)
 {
-    int result;
+    if (ctx->windowSurface) {
+        bool result = SDL_ClearSurface(ctx->windowSurface, 0.0f, 0.0f, 0.0f, 1.0f);
+        if (!result) {
+            SDL_Log("[%s]Failed to clear surface: %s\n", __FUNCTION__, SDL_GetError());
+            return false;
+        }
+        result = SDL_UpdateWindowSurface(ctx->window);
+        if (!result) {
+            SDL_Log("[%s]Failed to update window surface: %s\n", __FUNCTION__, SDL_GetError());
+            return false;
+        }
+        return true;
+    }
+
+    bool result;
 
     if (ctx->mode != SDL_BLENDMODE_MOD) {
         result = SDL_SetRenderDrawColor(ctx->renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
@@ -172,6 +207,11 @@ static float interpolate(float min, float max, float percentage)
 static Uint32
 getRand(Uint32 max)
 {
+    if (max == 0) {
+        SDL_Log("Invalid max value 0\n");
+        return 0;
+    }
+
     return rand() % max;
 }
 
@@ -190,7 +230,7 @@ makeRandomTexture(Context *ctx)
 static bool
 prepareTexture(Context *ctx)
 {
-    int result = SDL_SetSurfaceColorKey(ctx->surface, 1, 0);
+    bool result = SDL_SetSurfaceColorKey(ctx->surface, 1, 0);
 
     if (!result) {
         SDL_Log("[%s]Failed to set color key: %s\n", __FUNCTION__, SDL_GetError());
@@ -308,7 +348,7 @@ runTest(Context *ctx, const Test *test)
 
     fps = ctx->frames / duration;
     ops = ctx->operations / duration;
-    bps = ctx->bytes / duration / (1000000);
+    bps = ctx->bytes / duration / 1000000;
 
     if (fps == ops) {
         SDL_Log("%s [mode: %s]...%d frames drawn in %.3f seconds => %.1f frames/s\n",
@@ -331,7 +371,7 @@ runTest(Context *ctx, const Test *test)
 static bool
 setRandomColor(Context *ctx)
 {
-    const int result = SDL_SetRenderDrawColor(ctx->renderer,
+    const bool result = SDL_SetRenderDrawColor(ctx->renderer,
         getRand(256), getRand(256), getRand(256), getRand(256));
 
     if (!result) {
@@ -344,7 +384,7 @@ setRandomColor(Context *ctx)
 
 static bool testPointsInner(Context *ctx, bool linemode)
 {
-    int result = SDL_SetRenderDrawBlendMode(ctx->renderer, ctx->mode);
+    bool result = SDL_SetRenderDrawBlendMode(ctx->renderer, ctx->mode);
 
     if (!result) {
         SDL_Log("[%s]Failed to set blend mode: %s\n", __FUNCTION__, SDL_GetError());
@@ -393,7 +433,7 @@ testLines(Context *ctx)
 static bool
 testFillRects(Context *ctx)
 {
-    int result = SDL_SetRenderDrawBlendMode(ctx->renderer, ctx->mode);
+    bool result = SDL_SetRenderDrawBlendMode(ctx->renderer, ctx->mode);
 
     if (!result) {
         SDL_Log("[%s]Failed to set blend mode: %s\n", __FUNCTION__, SDL_GetError());
@@ -432,14 +472,14 @@ testFillRects(Context *ctx)
 static bool
 testRenderCopyInner(Context *ctx, bool ex)
 {
-    int result;
+    bool result;
 
     //int object;
     //const float scale = interpolate(0.5f, 2.0f, (float)ctx->iteration / ctx->iterations);
     const float scale = (getRand(4) + 1) / 2.0f;
 
-    int w = ctx->texturewidth * scale;
-    int h = ctx->textureheight * scale;
+    const int w = ctx->texturewidth * scale;
+    const int h = ctx->textureheight * scale;
 
     //for (object = 0; object < ctx->objects; object++) {
         SDL_FRect rect;
@@ -562,6 +602,81 @@ testReadPixels(Context *ctx)
     return result;
 }
 
+static bool
+testBlitSurface(Context *ctx)
+{
+    bool result = SDL_SetSurfaceBlendMode(ctx->surface, ctx->mode);
+
+    if (!result) {
+        SDL_Log("[%s]Failed to set blend mode: %s\n", __FUNCTION__, SDL_GetError());
+        return false;
+    }
+
+    SDL_Rect rect;
+    rect.x = getRand(ctx->width - ctx->texturewidth);
+    rect.y = getRand(ctx->height - ctx->textureheight);
+    rect.w = ctx->texturewidth;
+    rect.h = ctx->textureheight;
+
+    result = SDL_BlitSurface(ctx->surface, NULL, ctx->windowSurface, &rect);
+
+    if (!result) {
+        SDL_Log("[%s]Failed to blit surface: %s\n", __FUNCTION__, SDL_GetError());
+    }
+
+    ctx->operations++;
+    render(ctx);
+
+    return result;
+}
+
+static bool
+testBlitSurfaceScaled(Context *ctx, SDL_ScaleMode scaleMode)
+{
+    bool result = SDL_SetSurfaceBlendMode(ctx->surface, ctx->mode);
+
+    if (!result) {
+        SDL_Log("[%s]Failed to set blend mode: %s\n", __FUNCTION__, SDL_GetError());
+        return false;
+    }
+
+    const float scale = (getRand(4) + 1) / 2.0f;
+
+    const int w = ctx->texturewidth * scale;
+    const int h = ctx->textureheight * scale;
+
+    //printf("%d, %d\n", w, h);
+
+    SDL_Rect rect;
+    rect.x = getRand(ctx->width - w);
+    rect.y = getRand(ctx->height - h);
+    rect.w = w;
+    rect.h = h;
+
+    result = SDL_BlitSurfaceScaled(ctx->surface, NULL, ctx->windowSurface, &rect, scaleMode);
+
+    if (!result) {
+        SDL_Log("[%s]Failed to blit surface scaled: %s\n", __FUNCTION__, SDL_GetError());
+    }
+
+    ctx->operations++;
+    render(ctx);
+
+    return result;
+}
+
+static bool
+testBlitSurfaceScaledNearest(Context *ctx)
+{
+    return testBlitSurfaceScaled(ctx, SDL_SCALEMODE_NEAREST);
+}
+
+static bool
+testBlitSurfaceScaledLinear(Context *ctx)
+{
+    return testBlitSurfaceScaled(ctx, SDL_SCALEMODE_LINEAR);
+}
+
 static void
 checkEvents(Context *ctx)
 {
@@ -605,6 +720,24 @@ runTestSuite(Context *ctx)
     }
 }
 
+static void
+runFramebufferTestSuite(Context *ctx)
+{
+    for (int t = 0; t < sizeof(framebufferTests) / sizeof(framebufferTests[0]); t++) {
+        for (int m = 0; m < sizeof(modes) / sizeof(modes[0]); m++) {
+            ctx->mode = modes[m].mode;
+
+            runTest(ctx, &framebufferTests[t]);
+
+            checkEvents(ctx);
+
+            if (!ctx->running) {
+                return;
+            }
+        }
+    }
+}
+
 /* TODO: need proper handling */
 static void
 checkParameters(Context *ctx, int argc, char **argv)
@@ -637,6 +770,8 @@ initContext(Context *ctx, int argc, char **argv)
     ctx->sleep = SLEEP;
     ctx->running = true;
     ctx->seed = 0xA5F05A0F;
+    ctx->windowSurface = NULL;
+
     checkParameters(ctx, argc, argv);
 
     SDL_Log("Parameters: width %d, height %d, renderer name '%s', duration %.3f s, objects %u, sleep %u, seed 0x%X\n",
@@ -693,6 +828,29 @@ testAllRenderers(Context *ctx)
     }
 }
 
+static void
+testFramebuffer(Context *ctx)
+{
+    SDL_Log("SDL_HINT_FRAMEBUFFER_ACCELERATION value %s\n", SDL_GetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION));
+
+    ctx->windowSurface = SDL_GetWindowSurface(ctx->window);
+    if (!ctx->windowSurface) {
+        SDL_Log("Failed to get window surface: %s\n", SDL_GetError());
+        return;
+    }
+
+    SDL_Surface* converted = SDL_ConvertSurface(ctx->surface, ctx->windowSurface->format);
+    if (!converted) {
+        SDL_Log("Failed to convert surface: %s\n", SDL_GetError());
+        return;
+    }
+
+    SDL_DestroySurface(ctx->surface);
+    ctx->surface = converted;
+
+    runFramebufferTestSuite(ctx);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -732,6 +890,8 @@ main(int argc, char **argv)
             } else {
                 testAllRenderers(&ctx);
             }
+
+            testFramebuffer(&ctx);
 
             SDL_DestroyWindow(ctx.window);
         } else {
