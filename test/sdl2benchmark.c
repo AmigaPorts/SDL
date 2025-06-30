@@ -40,8 +40,8 @@ typedef struct {
     SDL_Surface *surface;
     SDL_Surface *windowSurface;
     SDL_BlendMode mode;
-    Uint32 width;
-    Uint32 height;
+    Sint32 width;
+    Sint32 height;
     Uint32 rectsize;
     Uint32 texturewidth;
     Uint32 textureheight;
@@ -117,7 +117,7 @@ getModeName(SDL_BlendMode mode)
 {
     static const char *unknown = "Unknown";
 
-    for (int i = 0; i < sizeof(modes) / sizeof(modes[0]); i++)
+    for (size_t i = 0; i < sizeof(modes) / sizeof(modes[0]); i++)
     {
         if (modes[i].mode == mode) {
             return modes[i].name;
@@ -210,8 +210,15 @@ static float interpolate(float min, float max, float percentage)
 */
 
 static Uint32
-getRand(Uint32 max)
+getRand(const Uint32 max)
 {
+    if (max == 0) {
+        return 0;
+    } else if (max > (SDL_MAX_SINT32 / 2)) {
+        SDL_Log("Too large max value %u\n", max);
+        return 0;
+    }
+
     return rand() % max;
 }
 
@@ -256,6 +263,15 @@ prepareTexture(Context *ctx)
         SDL_DestroyTexture(ctx->texture);
         ctx->texture = NULL;
 
+        return SDL_FALSE;
+    }
+
+    result = SDL_SetTextureScaleMode(ctx->texture, SDL_ScaleModeNearest);
+
+    if (result) {
+        SDL_Log("[%s]Failed to set texture scale mode: %s\n", __FUNCTION__, SDL_GetError());
+        SDL_DestroyTexture(ctx->texture);
+        ctx->texture = NULL;
         return SDL_FALSE;
     }
 
@@ -320,8 +336,7 @@ static SDL_bool
 runTest(Context *ctx, const Test *test)
 {
     Uint64 start, finish;
-    double duration;
-    float fps, ops, bps;
+    double duration, fps, ops, bps;
 
     if (!prepareTest(ctx, test)) {
         return SDL_FALSE;
@@ -392,13 +407,12 @@ static SDL_bool testPointsInner(Context *ctx, SDL_bool linemode)
     }
 
     SDL_Point points[ctx->objects];
-    int object;
 
     if (!setRandomColor(ctx)) {
         return SDL_FALSE;
     }
 
-    for (object = 0; object < ctx->objects; object++) {
+    for (size_t object = 0; object < ctx->objects; object++) {
         points[object].x = getRand(ctx->width);
         points[object].y = getRand(ctx->height);
     }
@@ -442,7 +456,6 @@ testFillRects(Context *ctx)
     }
 
     SDL_Rect rects[ctx->objects];
-    int object;
 
     if (!setRandomColor(ctx)) {
         return SDL_FALSE;
@@ -450,9 +463,9 @@ testFillRects(Context *ctx)
 
     const int rectsize = ctx->rectsize + getRand(100); // + iteration
 
-    for (object = 0; object < ctx->objects; object++) {
-        rects[object].x = getRand(ctx->width - rectsize);
-        rects[object].y = getRand(ctx->height - rectsize);
+    for (size_t object = 0; object < ctx->objects; object++) {
+        rects[object].x = getRand(SDL_max(ctx->width - rectsize, 0));
+        rects[object].y = getRand(SDL_max(ctx->height - rectsize, 0));
         rects[object].w = rectsize;
         rects[object].h = rectsize;
     }
@@ -480,14 +493,14 @@ testRenderCopyInner(Context *ctx, SDL_bool ex)
     //const float scale = interpolate(0.5f, 2.0f, (float)ctx->iteration / ctx->iterations);
     const float scale = (getRand(4) + 1) / 2.0f;
 
-    int w = ctx->texturewidth * scale;
-    int h = ctx->textureheight * scale;
+    const int w = SDL_lround(ctx->texturewidth * scale);
+    const int h = SDL_lround(ctx->textureheight * scale);
 
     //for (object = 0; object < ctx->objects; object++) {
         SDL_Rect rect;
 
-        rect.x = getRand(ctx->width - w);
-        rect.y = getRand(ctx->height - h);
+        rect.x = getRand(SDL_max(ctx->width - w, 0));
+        rect.y = getRand(SDL_max(ctx->height - h, 0));
         rect.w = w;
         rect.h = h;
 
@@ -584,8 +597,8 @@ testReadPixels(Context *ctx)
     SDL_bool result = SDL_TRUE;
 
     SDL_Rect rect;
-    rect.x = getRand(ctx->width - ctx->texturewidth);
-    rect.y = getRand(ctx->height - ctx->textureheight);
+    rect.x = getRand(SDL_max(ctx->width - ctx->texturewidth, 0));
+    rect.y = getRand(SDL_max(ctx->height - ctx->textureheight, 0));
     rect.w = ctx->texturewidth;
     rect.h = ctx->textureheight;
 
@@ -618,8 +631,8 @@ testBlitSurface(Context *ctx)
     }
 
     SDL_Rect rect;
-    rect.x = getRand(ctx->width - ctx->texturewidth);
-    rect.y = getRand(ctx->height - ctx->textureheight);
+    rect.x = getRand(SDL_max(ctx->width - ctx->texturewidth, 0));
+    rect.y = getRand(SDL_max(ctx->height - ctx->textureheight, 0));
     rect.w = ctx->texturewidth;
     rect.h = ctx->textureheight;
 
@@ -652,14 +665,12 @@ testBlitSurfaceScaled(Context *ctx, SDL_ScaleMode scaleMode)
 
     const float scale = (getRand(4) + 1) / 2.0f;
 
-    const int w = ctx->texturewidth * scale;
-    const int h = ctx->textureheight * scale;
-
-    //printf("%d, %d\n", w, h);
+    const int w = SDL_lround(ctx->texturewidth * scale);
+    const int h = SDL_lround(ctx->textureheight * scale);
 
     SDL_Rect rect;
-    rect.x = getRand(ctx->width - w);
-    rect.y = getRand(ctx->height - h);
+    rect.x = getRand(SDL_max(ctx->width - w, 0));
+    rect.y = getRand(SDL_max(ctx->height - h, 0));
     rect.w = w;
     rect.h = h;
 
@@ -708,8 +719,8 @@ checkEvents(Context *ctx)
 static void
 runTestSuite(Context *ctx)
 {
-    for (int t = 0; t < sizeof(tests) / sizeof(tests[0]); t++) {
-        for (int m = 0; m < sizeof(modes) / sizeof(modes[0]); m++) {
+    for (size_t t = 0; t < sizeof(tests) / sizeof(tests[0]); t++) {
+        for (size_t m = 0; m < sizeof(modes) / sizeof(modes[0]); m++) {
             ctx->mode = modes[m].mode;
 
             runTest(ctx, &tests[t]);
@@ -730,8 +741,8 @@ runTestSuite(Context *ctx)
 static void
 runFramebufferTestSuite(Context *ctx)
 {
-    for (int t = 0; t < sizeof(framebufferTests) / sizeof(framebufferTests[0]); t++) {
-        for (int m = 0; m < sizeof(modes) / sizeof(modes[0]); m++) {
+    for (size_t t = 0; t < sizeof(framebufferTests) / sizeof(framebufferTests[0]); t++) {
+        for (size_t m = 0; m < sizeof(modes) / sizeof(modes[0]); m++) {
             ctx->mode = modes[m].mode;
 
             runTest(ctx, &framebufferTests[t]);
