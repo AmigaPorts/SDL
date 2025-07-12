@@ -1566,6 +1566,7 @@ SDL_GPUCommandBuffer *SDL_AcquireGPUCommandBuffer(
         commandBufferHeader->copy_pass.in_progress = false;
         commandBufferHeader->swapchain_texture_acquired = false;
         commandBufferHeader->submitted = false;
+        commandBufferHeader->ignore_render_pass_texture_validation = false;
         SDL_zeroa(commandBufferHeader->render_pass.vertex_sampler_bound);
         SDL_zeroa(commandBufferHeader->render_pass.vertex_storage_texture_bound);
         SDL_zeroa(commandBufferHeader->render_pass.vertex_storage_buffer_bound);
@@ -1954,7 +1955,7 @@ void SDL_BindGPUVertexSamplers(
     if (RENDERPASS_DEVICE->debug_mode) {
         CHECK_RENDERPASS
 
-        if (!((CommandBufferCommonHeader*)RENDERPASS_COMMAND_BUFFER)->ignore_render_pass_texture_validation)
+        if (!((CommandBufferCommonHeader *)RENDERPASS_COMMAND_BUFFER)->ignore_render_pass_texture_validation)
         {
             CHECK_SAMPLER_TEXTURES
         }
@@ -2050,7 +2051,7 @@ void SDL_BindGPUFragmentSamplers(
     if (RENDERPASS_DEVICE->debug_mode) {
         CHECK_RENDERPASS
 
-        if (!((CommandBufferCommonHeader*)RENDERPASS_COMMAND_BUFFER)->ignore_render_pass_texture_validation) {
+        if (!((CommandBufferCommonHeader *)RENDERPASS_COMMAND_BUFFER)->ignore_render_pass_texture_validation) {
             CHECK_SAMPLER_TEXTURES
         }
 
@@ -2536,7 +2537,7 @@ void SDL_EndGPUComputePass(
     if (COMPUTEPASS_DEVICE->debug_mode) {
         commandBufferCommonHeader = (CommandBufferCommonHeader *)COMPUTEPASS_COMMAND_BUFFER;
         commandBufferCommonHeader->compute_pass.in_progress = false;
-        commandBufferCommonHeader->compute_pass.compute_pipeline = false;
+        commandBufferCommonHeader->compute_pass.compute_pipeline = NULL;
         SDL_zeroa(commandBufferCommonHeader->compute_pass.sampler_bound);
         SDL_zeroa(commandBufferCommonHeader->compute_pass.read_only_storage_texture_bound);
         SDL_zeroa(commandBufferCommonHeader->compute_pass.read_only_storage_buffer_bound);

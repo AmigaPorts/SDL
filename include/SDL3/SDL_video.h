@@ -180,6 +180,12 @@ typedef struct SDL_Window SDL_Window;
  * changed on existing windows by the app, and some of it might be altered by
  * the user or system outside of the app's control.
  *
+ * When creating windows with `SDL_WINDOW_RESIZABLE`, SDL will constrain
+ * resizable windows to the dimensions recommended by the compositor to fit it
+ * within the usable desktop space, although some compositors will do this
+ * automatically without intervention as well. Use `SDL_SetWindowResizable`
+ * after creation instead if you wish to create a window with a specific size.
+ *
  * \since This datatype is available since SDL 3.2.0.
  *
  * \sa SDL_GetWindowFlags
@@ -545,7 +551,8 @@ extern SDL_DECLSPEC int SDLCALL SDL_GetNumVideoDrivers(void);
  * to be proper names.
  *
  * \param index the index of a video driver.
- * \returns the name of the video driver with the given **index**.
+ * \returns the name of the video driver with the given **index**, or NULL if
+ *          index is out of bounds.
  *
  * \threadsafety This function should only be called on the main thread.
  *
@@ -1894,7 +1901,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_GetWindowSafeArea(SDL_Window *window, SDL_R
 extern SDL_DECLSPEC bool SDLCALL SDL_SetWindowAspectRatio(SDL_Window *window, float min_aspect, float max_aspect);
 
 /**
- * Get the size of a window's client area.
+ * Get the aspect ratio of a window's client area.
  *
  * \param window the window to query the width and height from.
  * \param min_aspect a pointer filled in with the minimum aspect ratio of the

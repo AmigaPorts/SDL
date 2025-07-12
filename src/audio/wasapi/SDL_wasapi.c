@@ -337,7 +337,7 @@ typedef struct
 static bool mgmtthrtask_DetectDevices(void *userdata)
 {
     mgmtthrtask_DetectDevicesData *data = (mgmtthrtask_DetectDevicesData *)userdata;
-    SDL_IMMDevice_EnumerateEndpoints(data->default_playback, data->default_recording);
+    SDL_IMMDevice_EnumerateEndpoints(data->default_playback, data->default_recording, SDL_AUDIO_F32);
     return true;
 }
 
@@ -750,7 +750,7 @@ static bool mgmtthrtask_PrepDevice(void *userdata)
     // Try querying IAudioClient3 if sharemode is AUDCLNT_SHAREMODE_SHARED
     if (sharemode == AUDCLNT_SHAREMODE_SHARED) {
         IAudioClient3 *client3 = NULL;
-        ret = IAudioClient_QueryInterface(client, &SDL_IID_IAudioClient3, (void**)&client3);
+        ret = IAudioClient_QueryInterface(client, &SDL_IID_IAudioClient3, (void **)&client3);
         if (SUCCEEDED(ret)) {
             UINT32 default_period_in_frames = 0;
             UINT32 fundamental_period_in_frames = 0;

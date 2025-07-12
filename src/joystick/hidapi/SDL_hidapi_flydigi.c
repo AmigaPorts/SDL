@@ -64,7 +64,7 @@ typedef struct
     bool sensors_supported;
     bool sensors_enabled;
     Uint16 firmware_version;
-    Uint64 sensor_timestamp_ns; // Simulate onboard clock. Advance by known time step. Nanoseconds. 
+    Uint64 sensor_timestamp_ns; // Simulate onboard clock. Advance by known time step. Nanoseconds.
     Uint64 sensor_timestamp_step_ns; // Based on observed rate of receipt of IMU sensor packets.
     float accelScale;
     Uint8 last_state[USB_PACKET_LENGTH];
@@ -95,19 +95,18 @@ static void UpdateDeviceIdentity(SDL_HIDAPI_Device *device)
 {
     SDL_DriverFlydigi_Context *ctx = (SDL_DriverFlydigi_Context *)device->context;
 
-    for (int attempt = 0; ctx->deviceID == 0 && attempt < 3; ++attempt) {
+    // Detecting the Vader 2 can take over 1000 read retries, so be generous here
+    for (int attempt = 0; ctx->deviceID == 0 && attempt < 30; ++attempt) {
         const Uint8 request[] = { FLYDIGI_CMD_REPORT_ID, FLYDIGI_GET_INFO_COMMAND, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-        int size = SDL_hid_write(device->dev, request, sizeof(request));
-        if (size < 0) {
-            break;
-        }
+        // This write will occasionally return -1, so ignore failure here and try again
+        (void)SDL_hid_write(device->dev, request, sizeof(request));
 
         // Read the reply
         for (int i = 0; i < 100; ++i) {
             SDL_Delay(1);
 
             Uint8 data[USB_PACKET_LENGTH];
-            size = SDL_hid_read_timeout(device->dev, data, sizeof(data), 0);
+            int size = SDL_hid_read_timeout(device->dev, data, sizeof(data), 0);
             if (size < 0) {
                 break;
             }
@@ -211,6 +210,7 @@ static void UpdateDeviceIdentity(SDL_HIDAPI_Device *device)
         ctx->sensor_timestamp_step_ns = ctx->wireless ? SENSOR_INTERVAL_VADER4_PRO_DONGLE_NS : SENSOR_INTERVAL_VADER_PRO4_WIRED_NS;
         break;
     case 85:
+    case 105:
         HIDAPI_SetDeviceName(device, "Flydigi Vader 4 Pro");
         ctx->has_cz = true;
         ctx->sensors_supported = true;
@@ -218,6 +218,7 @@ static void UpdateDeviceIdentity(SDL_HIDAPI_Device *device)
         ctx->sensor_timestamp_step_ns = ctx->wireless ? SENSOR_INTERVAL_VADER4_PRO_DONGLE_NS : SENSOR_INTERVAL_VADER_PRO4_WIRED_NS;
         break;
     default:
+        SDL_LogDebug(SDL_LOG_CATEGORY_INPUT, "Unknown FlyDigi controller with ID %d, name '%s'", ctx->deviceID, device->name);
         break;
     }
 }
