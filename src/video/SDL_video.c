@@ -3412,9 +3412,7 @@ void SDL_DestroyWindow(SDL_Window *window)
         _this->current_glwin = NULL;
     }
 
-    if (_this->wakeup_window == window) {
-        _this->wakeup_window = NULL;
-    }
+    SDL_AtomicCASPtr(&_this->wakeup_window, window, NULL);
 
     /* Now invalidate magic */
     window->magic = NULL;
