@@ -364,6 +364,9 @@ SDL_IOStream *SDL_IOFromHandle(HANDLE handle, const char *mode, bool autoclose)
 
 #if defined(SDL_PLATFORM_AMIGAOS4)
 
+// Lite-XL seems faster with unbuffered file I/O.
+// #define USE_BUFFERED_IO 1
+
 typedef struct IOStreamAmigaOS4Data
 {
     BPTR bptr;
@@ -401,8 +404,12 @@ static BPTR SDLCALL amigaos4_file_open(const char *filename, const char *mode)
 
     dprintf("filename '%s' mode '%s' accessMode %ld\n", filename, mode, accessMode);
 
+#ifdef USE_BUFFERED_IO
     const int32 defaultBufferSize = 0;
     BPTR bptr = IDOS->FOpen(filename, accessMode, defaultBufferSize);
+#else
+    BPTR bptr = IDOS->Open(filename, accessMode);
+#endif
 
     dprintf("BPTR %p\n", (void *)bptr);
 
@@ -499,7 +506,11 @@ static size_t SDLCALL amigaos4_file_read(void *userdata, void *ptr, size_t size,
         return 0;
     }
 
+#ifdef USE_BUFFERED_IO
     const uint32 count = IDOS->FRead(iodata->bptr, ptr, 1, size);
+#else
+    const uint32 count = IDOS->Read(iodata->bptr, ptr, size);
+#endif
 
     if (count < size) {
         SDL_SetError("Error reading from datastream, read %lu of %zu", count, size);
@@ -534,7 +545,11 @@ static size_t SDLCALL amigaos4_file_write(void *userdata, const void *ptr, size_
         }
     }
 
+#ifdef USE_BUFFERED_IO
     const uint32 count = IDOS->FWrite(iodata->bptr, ptr, 1, size);
+#else
+    const uint32 count = IDOS->Write(iodata->bptr, ptr, size);
+#endif
 
     // TODO: status
 
@@ -554,6 +569,7 @@ static bool SDLCALL amigaos4_file_flush(void *userdata, SDL_IOStatus *status)
         return false;
     }
 
+#ifdef USE_BUFFERED_IO
     IOStreamAmigaOS4Data *iodata = (IOStreamAmigaOS4Data *) userdata;
 
     // TODO: status
@@ -563,6 +579,8 @@ static bool SDLCALL amigaos4_file_flush(void *userdata, SDL_IOStatus *status)
     if (!IDOS->FFlush(iodata->bptr)) {
         return SDL_SetError("Error flushing datastream (error %ld)", IDOS->IoErr());
     }
+#endif
+
     return true;
 }
 
@@ -579,7 +597,11 @@ static bool SDLCALL amigaos4_file_close(void *userdata)
 
     bool status = true;
     if (iodata->autoclose) {
+#ifdef USE_BUFFERED_IO
         if (!IDOS->FClose(iodata->bptr)) {
+#else
+        if (!IDOS->Close(iodata->bptr)) {
+#endif
             status = SDL_SetError("Error closing datastream (error %ld)", IDOS->IoErr());
         }
         iodata->bptr = ZERO;
@@ -602,7 +624,11 @@ SDL_IOStream *SDL_IOFromBPTR(BPTR bptr, const char *mode, bool autoclose)
         dprintf("Failed to allocate iodata\n");
         if (autoclose) {
             dprintf("Auto-closing %p\n", (void *)bptr);
+#ifdef USE_BUFFERED_IO
             IDOS->FClose(bptr);
+#else
+            IDOS->Close(bptr);
+#endif
         }
         return NULL;
     }
