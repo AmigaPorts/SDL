@@ -14,6 +14,9 @@
    integration with native windows
 */
 
+#ifndef testnative_h_
+#define testnative_h_
+
 #include <SDL3/SDL.h>
 
 #include "SDL_build_config.h"
@@ -49,3 +52,5 @@ extern NativeWindowFactory AmigaOS4WindowFactory;
 #define TEST_NATIVE_COCOA
 extern NativeWindowFactory CocoaWindowFactory;
 #endif
+
+#endif /* testnative_h_ */

@@ -64,6 +64,7 @@ struct SDL_GLDriverData
     bool HAS_WGL_ARB_context_flush_control;
     bool HAS_WGL_ARB_create_context_robustness;
     bool HAS_WGL_ARB_create_context_no_error;
+    bool HAS_WGL_ARB_pixel_format_float;
 
     /* Max version of OpenGL ES context that can be created if the
        implementation supports WGL_EXT_create_context_es2_profile.
@@ -85,8 +86,6 @@ struct SDL_GLDriverData
     BOOL (WINAPI *wglGetPixelFormatAttribivARB)(HDC hdc, int iPixelFormat, int iLayerPlane, UINT nAttributes, const int *piAttributes, int *piValues);
     BOOL (WINAPI *wglSwapIntervalEXT)(int interval);
     int (WINAPI *wglGetSwapIntervalEXT)(void);
-    BOOL (WINAPI *wglSwapLayerBuffers)(HDC hdc, UINT flags);
-
 #if defined(SDL_PLATFORM_XBOXONE) || defined(SDL_PLATFORM_XBOXSERIES)
     BOOL (WINAPI *wglSwapBuffers)(HDC hdc);
     int (WINAPI *wglDescribePixelFormat)(HDC hdc,
