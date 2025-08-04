@@ -1066,7 +1066,9 @@ SDL_Renderer *SDL_CreateRendererWithProperties(SDL_PropertiesID props)
             }
         }
 
-        if (!rc) {
+        if (rc) {
+            SDL_DebugLogBackend("render", renderer->name);
+        } else {
             if (driver_name) {
                 SDL_SetError("%s not available", driver_name);
             } else {
@@ -4880,7 +4882,7 @@ static bool SDLCALL SDL_SW_RenderGeometryRaw(SDL_Renderer *renderer,
             continue;
         }
 
-        /* Two triangles forming a quadialateral,
+        /* Two triangles forming a quadrilateral,
          * prev and current triangles must have exactly 2 common vertices */
         {
             int cnt = 0, j = 3;
@@ -5006,6 +5008,22 @@ static bool SDLCALL SDL_SW_RenderGeometryRaw(SDL_Renderer *renderer,
 #if DEBUG_SW_RENDER_GEOMETRY
                 is_uniform = 0;
 #endif
+            }
+        }
+
+        // Check if UVs within range
+        if (is_quad) {
+            const float *uv0_ = (const float *)((const char *)uv + A * color_stride);
+            const float *uv1_ = (const float *)((const char *)uv + B * color_stride);
+            const float *uv2_ = (const float *)((const char *)uv + C * color_stride);
+            const float *uv3_ = (const float *)((const char *)uv + C2 * color_stride);
+            if (uv0_[0] >= 0.0f && uv0_[0] <= 1.0f &&
+                uv1_[0] >= 0.0f && uv1_[0] <= 1.0f &&
+                uv2_[0] >= 0.0f && uv2_[0] <= 1.0f &&
+                uv3_[0] >= 0.0f && uv3_[0] <= 1.0f) {
+                // ok
+            } else {
+                is_quad = 0;
             }
         }
 
@@ -5188,7 +5206,7 @@ bool SDL_RenderGeometryRaw(SDL_Renderer *renderer,
     texture_address_mode_v = renderer->texture_address_mode_v;
     if (texture &&
         (texture_address_mode_u == SDL_TEXTURE_ADDRESS_AUTO ||
-         texture_address_mode_u == SDL_TEXTURE_ADDRESS_AUTO)) {
+         texture_address_mode_v == SDL_TEXTURE_ADDRESS_AUTO)) {
         for (i = 0; i < num_vertices; ++i) {
             const float *uv_ = (const float *)((const char *)uv + i * uv_stride);
             float u = uv_[0];

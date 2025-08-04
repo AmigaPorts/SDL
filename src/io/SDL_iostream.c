@@ -1038,6 +1038,7 @@ typedef struct IOStreamMemData
     Uint8 *base;
     Uint8 *here;
     Uint8 *stop;
+    SDL_PropertiesID props;
 } IOStreamMemData;
 
 static Sint64 SDLCALL mem_size(void *userdata)
@@ -1101,6 +1102,11 @@ static size_t SDLCALL mem_write(void *userdata, const void *ptr, size_t size, SD
 
 static bool SDLCALL mem_close(void *userdata)
 {
+    IOStreamMemData *iodata = (IOStreamMemData *) userdata;
+    SDL_free_func free_func = SDL_GetPointerProperty(iodata->props, SDL_PROP_IOSTREAM_MEMORY_FREE_FUNC_POINTER, NULL);
+    if (free_func) {
+        free_func(iodata->base);
+    }
     SDL_free(userdata);
     return true;
 }
@@ -1278,6 +1284,7 @@ SDL_IOStream *SDL_IOFromMem(void *mem, size_t size)
     } else {
         const SDL_PropertiesID props = SDL_GetIOProperties(iostr);
         if (props) {
+            iodata->props = props;
             SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_MEMORY_POINTER, mem);
             SDL_SetNumberProperty(props, SDL_PROP_IOSTREAM_MEMORY_SIZE_NUMBER, size);
         }
@@ -1318,6 +1325,7 @@ SDL_IOStream *SDL_IOFromConstMem(const void *mem, size_t size)
     } else {
         const SDL_PropertiesID props = SDL_GetIOProperties(iostr);
         if (props) {
+            iodata->props = props;
             SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_MEMORY_POINTER, (void *)mem);
             SDL_SetNumberProperty(props, SDL_PROP_IOSTREAM_MEMORY_SIZE_NUMBER, size);
         }
