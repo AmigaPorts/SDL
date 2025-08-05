@@ -1653,6 +1653,8 @@ static bool GLES2_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
         } else {
             renderdata->myglGenTextures(1, &data->texture_v);
             if (!GL_CheckError("glGenTexures()", renderer)) {
+                SDL_free(data->pixel_data);
+                SDL_free(data);
                 return false;
             }
         }
@@ -1667,6 +1669,8 @@ static bool GLES2_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
         } else {
             renderdata->myglGenTextures(1, &data->texture_u);
             if (!GL_CheckError("glGenTexures()", renderer)) {
+                SDL_free(data->pixel_data);
+                SDL_free(data);
                 return false;
             }
         }
@@ -1674,11 +1678,15 @@ static bool GLES2_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
         renderdata->myglBindTexture(data->texture_type, data->texture_u);
         renderdata->myglTexImage2D(data->texture_type, 0, format, (texture->w + 1) / 2, (texture->h + 1) / 2, 0, format, type, NULL);
         if (!GL_CheckError("glTexImage2D()", renderer)) {
+            SDL_free(data->pixel_data);
+            SDL_free(data);
             return false;
         }
         SDL_SetNumberProperty(SDL_GetTextureProperties(texture), SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_U_NUMBER, data->texture_u);
 
         if (!SDL_GetYCbCRtoRGBConversionMatrix(texture->colorspace, texture->w, texture->h, 8)) {
+            SDL_free(data->pixel_data);
+            SDL_free(data);
             return SDL_SetError("Unsupported YUV colorspace");
         }
     } else if (data->nv12) {
@@ -1688,6 +1696,8 @@ static bool GLES2_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
         } else {
             renderdata->myglGenTextures(1, &data->texture_u);
             if (!GL_CheckError("glGenTexures()", renderer)) {
+                SDL_free(data->pixel_data);
+                SDL_free(data);
                 return false;
             }
         }
@@ -1695,11 +1705,15 @@ static bool GLES2_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
         renderdata->myglBindTexture(data->texture_type, data->texture_u);
         renderdata->myglTexImage2D(data->texture_type, 0, GL_LUMINANCE_ALPHA, (texture->w + 1) / 2, (texture->h + 1) / 2, 0, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, NULL);
         if (!GL_CheckError("glTexImage2D()", renderer)) {
+            SDL_free(data->pixel_data);
+            SDL_free(data);
             return false;
         }
         SDL_SetNumberProperty(SDL_GetTextureProperties(texture), SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_UV_NUMBER, data->texture_u);
 
         if (!SDL_GetYCbCRtoRGBConversionMatrix(texture->colorspace, texture->w, texture->h, 8)) {
+            SDL_free(data->pixel_data);
+            SDL_free(data);
             return SDL_SetError("Unsupported YUV colorspace");
         }
     }
@@ -1711,6 +1725,8 @@ static bool GLES2_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
     } else {
         renderdata->myglGenTextures(1, &data->texture);
         if (!GL_CheckError("glGenTexures()", renderer)) {
+            SDL_free(data->pixel_data);
+            SDL_free(data);
             return false;
         }
     }
