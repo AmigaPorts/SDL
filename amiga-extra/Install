@@ -1,16 +1,23 @@
 failat 21
 
+echo Sanity checks ...
+version C:version full
+version C:copy full
+version C:makedir full
+version C:delete full
+version C:makelink full
+
 echo Copying shared object ...
 copy SDK/local/newlib/lib/libSDL2-2.32.so SObjs:
 copy SDK/local/newlib/lib/libSDL2-2.32_debug.so SObjs:
 
 echo Copying documentation ...
 delete SYS:Documentation/SDL2.txt
-makedir SYS:Documentation/SDL2/
+makedir SYS:Documentation/SDL2
 copy README-amigaos4.md SYS:Documentation/SDL2/
 copy README-SDL.txt SYS:Documentation/SDL2/
-Copy WhatsNew.txt SYS:Documentation/SDL2/
-Copy LICENSE.txt SYS:Documentation/SDL2/
+copy WhatsNew.txt SYS:Documentation/SDL2/
+copy LICENSE.txt SYS:Documentation/SDL2/
 
 echo Copying prefs program ...
 copy SDL2 SDL2.info SYS:Prefs/
