@@ -155,6 +155,16 @@ can be generated using the same tool. Mappings can be then added to the game
 controller database.
 
 ================================================================================
+Buffered File I/O
+================================================================================
+
+File I/O is in unbuffered mode by default. To go into buffered mode, call
+
+SDL_SetBooleanProperty(SDL_GetGlobalProperties(), SDL_PROP_IOSTREAM_AMIGAOS4_USE_BUFFERED, true);
+
+before opening iostreams. Buffered mode uses FOpen() instead of Open().
+
+================================================================================
 WinUAE
 ================================================================================
 

@@ -364,9 +364,6 @@ SDL_IOStream *SDL_IOFromHandle(HANDLE handle, const char *mode, bool autoclose)
 
 #if defined(SDL_PLATFORM_AMIGAOS4)
 
-// Lite-XL seems faster with unbuffered file I/O.
-// #define USE_BUFFERED_IO 1
-
 typedef struct IOStreamAmigaOS4Data
 {
     BPTR bptr;
@@ -374,7 +371,13 @@ typedef struct IOStreamAmigaOS4Data
     bool write;
     bool read;
     bool autoclose;
+    bool buffered;
 } IOStreamAmigaOS4Data;
+
+static bool amigaos4_buffered(void)
+{
+    return SDL_GetBooleanProperty(SDL_GetGlobalProperties(), SDL_PROP_IOSTREAM_AMIGAOS4_USE_BUFFERED, false);
+}
 
 static BPTR SDLCALL amigaos4_file_open(const char *filename, const char *mode)
 {
@@ -402,14 +405,13 @@ static BPTR SDLCALL amigaos4_file_open(const char *filename, const char *mode)
         accessMode = MODE_READWRITE;
     }
 
-    dprintf("filename '%s' mode '%s' accessMode %ld\n", filename, mode, accessMode);
+    const bool buffered = amigaos4_buffered();
 
-#ifdef USE_BUFFERED_IO
+    dprintf("filename '%s' mode '%s' accessMode %ld, buffered %d\n", filename, mode, accessMode, buffered);
+
     const int32 defaultBufferSize = 0;
-    BPTR bptr = IDOS->FOpen(filename, accessMode, defaultBufferSize);
-#else
-    BPTR bptr = IDOS->Open(filename, accessMode);
-#endif
+    BPTR bptr = buffered ? IDOS->FOpen(filename, accessMode, defaultBufferSize) :
+                           IDOS->Open(filename, accessMode);
 
     dprintf("BPTR %p\n", (void *)bptr);
 
@@ -506,11 +508,8 @@ static size_t SDLCALL amigaos4_file_read(void *userdata, void *ptr, size_t size,
         return 0;
     }
 
-#ifdef USE_BUFFERED_IO
-    const uint32 count = IDOS->FRead(iodata->bptr, ptr, 1, size);
-#else
-    const uint32 count = IDOS->Read(iodata->bptr, ptr, size);
-#endif
+    const uint32 count = iodata->buffered ? IDOS->FRead(iodata->bptr, ptr, 1, size) :
+                                            IDOS->Read(iodata->bptr, ptr, size);
 
     if (count < size) {
         SDL_SetError("Error reading from datastream, read %lu of %zu", count, size);
@@ -545,11 +544,8 @@ static size_t SDLCALL amigaos4_file_write(void *userdata, const void *ptr, size_
         }
     }
 
-#ifdef USE_BUFFERED_IO
-    const uint32 count = IDOS->FWrite(iodata->bptr, ptr, 1, size);
-#else
-    const uint32 count = IDOS->Write(iodata->bptr, ptr, size);
-#endif
+    const uint32 count = iodata->buffered ? IDOS->FWrite(iodata->bptr, ptr, 1, size) :
+                                            IDOS->Write(iodata->bptr, ptr, size);
 
     // TODO: status
 
@@ -569,17 +565,17 @@ static bool SDLCALL amigaos4_file_flush(void *userdata, SDL_IOStatus *status)
         return false;
     }
 
-#ifdef USE_BUFFERED_IO
     IOStreamAmigaOS4Data *iodata = (IOStreamAmigaOS4Data *) userdata;
 
     // TODO: status
 
-    dprintf("BPTR %p\n", (void *)iodata->bptr);
+    if (iodata->buffered) {
+        dprintf("BPTR %p\n", (void *)iodata->bptr);
 
-    if (!IDOS->FFlush(iodata->bptr)) {
-        return SDL_SetError("Error flushing datastream (error %ld)", IDOS->IoErr());
+        if (!IDOS->FFlush(iodata->bptr)) {
+            return SDL_SetError("Error flushing datastream (error %ld)", IDOS->IoErr());
+        }
     }
-#endif
 
     return true;
 }
@@ -597,12 +593,14 @@ static bool SDLCALL amigaos4_file_close(void *userdata)
 
     bool status = true;
     if (iodata->autoclose) {
-#ifdef USE_BUFFERED_IO
-        if (!IDOS->FClose(iodata->bptr)) {
-#else
-        if (!IDOS->Close(iodata->bptr)) {
-#endif
-            status = SDL_SetError("Error closing datastream (error %ld)", IDOS->IoErr());
+        if (iodata->buffered) {
+            if (!IDOS->FClose(iodata->bptr)) {
+                status = SDL_SetError("Error closing datastream (error %ld)", IDOS->IoErr());
+            }
+        } else {
+            if (!IDOS->Close(iodata->bptr)) {
+                status = SDL_SetError("Error closing datastream (error %ld)", IDOS->IoErr());
+            }
         }
         iodata->bptr = ZERO;
     }
@@ -617,21 +615,25 @@ SDL_IOStream *SDL_IOFromBPTR(BPTR bptr, const char *mode, bool autoclose)
         return NULL;
     }
 
-    dprintf("BPTR %p, autoclose %d\n", (void *)bptr, autoclose);
+    const bool buffered = amigaos4_buffered();
+
+    dprintf("BPTR %p, autoclose %d, buffered %d\n", (void *)bptr, autoclose, buffered);
 
     IOStreamAmigaOS4Data *iodata = (IOStreamAmigaOS4Data *) SDL_calloc(1, sizeof (*iodata));
     if (!iodata) {
         dprintf("Failed to allocate iodata\n");
         if (autoclose) {
             dprintf("Auto-closing %p\n", (void *)bptr);
-#ifdef USE_BUFFERED_IO
-            IDOS->FClose(bptr);
-#else
-            IDOS->Close(bptr);
-#endif
+            if (buffered) {
+                IDOS->FClose(bptr);
+            } else {
+                IDOS->Close(bptr);
+            }
         }
         return NULL;
     }
+
+    iodata->buffered = buffered;
 
     SDL_IOStreamInterface iface;
     SDL_INIT_INTERFACE(&iface);
