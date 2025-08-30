@@ -119,7 +119,7 @@ typedef struct SDL_CameraSpec
     int width;                  /**< Frame width */
     int height;                 /**< Frame height */
     int framerate_numerator;     /**< Frame rate numerator ((num / denom) == FPS, (denom / num) == duration in seconds) */
-    int framerate_denominator;   /**< Frame rate demoninator ((num / denom) == FPS, (denom / num) == duration in seconds) */
+    int framerate_denominator;   /**< Frame rate denominator ((num / denom) == FPS, (denom / num) == duration in seconds) */
 } SDL_CameraSpec;
 
 /**
@@ -135,6 +135,20 @@ typedef enum SDL_CameraPosition
     SDL_CAMERA_POSITION_FRONT_FACING,
     SDL_CAMERA_POSITION_BACK_FACING
 } SDL_CameraPosition;
+
+/**
+ * The current state of a request for camera access.
+ *
+ * \since This enum is available since SDL 3.4.0.
+ *
+ * \sa SDL_GetCameraPermissionState
+ */
+typedef enum SDL_CameraPermissionState
+{
+    SDL_CAMERA_PERMISSION_STATE_DENIED = -1,
+    SDL_CAMERA_PERMISSION_STATE_PENDING,
+    SDL_CAMERA_PERMISSION_STATE_APPROVED,
+} SDL_CameraPermissionState;
 
 
 /**
@@ -368,7 +382,7 @@ extern SDL_DECLSPEC SDL_Camera * SDLCALL SDL_OpenCamera(SDL_CameraID instance_id
  * \sa SDL_OpenCamera
  * \sa SDL_CloseCamera
  */
-extern SDL_DECLSPEC int SDLCALL SDL_GetCameraPermissionState(SDL_Camera *camera);
+extern SDL_DECLSPEC SDL_CameraPermissionState SDLCALL SDL_GetCameraPermissionState(SDL_Camera *camera);
 
 /**
  * Get the instance ID of an opened camera.
