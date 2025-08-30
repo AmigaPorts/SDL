@@ -410,4 +410,6 @@
 
 #define SDL_GPU_DISABLED 1
 
+#define SDL_TRAY_DUMMY 1
+
 #endif /* SDL_config_amigaos4_h_ */

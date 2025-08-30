@@ -61,6 +61,7 @@ struct SDL_Window
     bool fullscreen_exclusive;  // The window is currently fullscreen exclusive
     SDL_DisplayID last_fullscreen_exclusive_display;  // The last fullscreen_exclusive display
     SDL_DisplayID last_displayID;
+    SDL_DisplayID pending_displayID;
 
     /* Stored position and size for the window in the non-fullscreen state,
      * including when the window is maximized or tiled.
@@ -313,6 +314,7 @@ struct SDL_VideoDevice
     bool (*ApplyWindowProgress)(SDL_VideoDevice *_this, SDL_Window *window);
     bool (*SetWindowFocusable)(SDL_VideoDevice *_this, SDL_Window *window, bool focusable);
     bool (*SyncWindow)(SDL_VideoDevice *_this, SDL_Window *window);
+    bool (*ReconfigureWindow)(SDL_VideoDevice *_this, SDL_Window *window, SDL_WindowFlags flags);
 
     /* * * */
     /*
@@ -574,6 +576,7 @@ extern void SDL_SetWindowSafeAreaInsets(SDL_Window *window, int left, int right,
 extern void SDL_GL_DeduceMaxSupportedESProfile(int *major, int *minor);
 
 extern bool SDL_RecreateWindow(SDL_Window *window, SDL_WindowFlags flags);
+extern bool SDL_ReconfigureWindow(SDL_Window *window, SDL_WindowFlags flags);
 extern bool SDL_HasWindows(void);
 extern void SDL_RelativeToGlobalForWindow(SDL_Window *window, int rel_x, int rel_y, int *abs_x, int *abs_y);
 extern void SDL_GlobalToRelativeForWindow(SDL_Window *window, int abs_x, int abs_y, int *rel_x, int *rel_y);

@@ -42,10 +42,10 @@ enum
     SDL_GAMEPAD_NUM_BASE_FLYDIGI_BUTTONS
 };
 
-/* Rate of IMU Sensor Packets over wireless Dongle observed in testcontroller tool at 1000hz */
+/* Rate of IMU Sensor Packets over wireless dongle observed in testcontroller at 1000hz */
 #define SENSOR_INTERVAL_VADER4_PRO_DONGLE_RATE_HZ 1000
 #define SENSOR_INTERVAL_VADER4_PRO_DONGLE_NS    (SDL_NS_PER_SECOND / SENSOR_INTERVAL_VADER4_PRO_DONGLE_RATE_HZ)
-/* Rate of IMU Sensor Packets over wired observed in testcontroller tool connection at 500hz */
+/* Rate of IMU Sensor Packets over wired connection observed in testcontroller at 500hz */
 #define SENSOR_INTERVAL_VADER_PRO4_WIRED_RATE_HZ  500
 #define SENSOR_INTERVAL_VADER_PRO4_WIRED_NS     (SDL_NS_PER_SECOND / SENSOR_INTERVAL_VADER_PRO4_WIRED_RATE_HZ)
 
@@ -270,7 +270,6 @@ static bool HIDAPI_DriverFlydigi_OpenJoystick(SDL_HIDAPI_Device *device, SDL_Joy
     }
 
     if (ctx->sensors_supported) {
-
         const float flSensorRate = ctx->wireless ? (float)SENSOR_INTERVAL_VADER4_PRO_DONGLE_RATE_HZ : (float)SENSOR_INTERVAL_VADER_PRO4_WIRED_RATE_HZ;
         SDL_PrivateJoystickAddSensor(joystick, SDL_SENSOR_GYRO, flSensorRate);
         SDL_PrivateJoystickAddSensor(joystick, SDL_SENSOR_ACCEL, flSensorRate);
@@ -324,7 +323,7 @@ static void HIDAPI_DriverFlydigi_HandleStatePacket(SDL_Joystick *joystick, SDL_D
 {
     Sint16 axis;
     Uint64 timestamp = SDL_GetTicksNS();
-    if (data[0] != 0x04 && data[0] != 0xFE) {
+    if (data[0] != 0x04 || data[1] != 0xFE) {
         // We don't know how to handle this report
         return;
     }
@@ -437,10 +436,10 @@ static void HIDAPI_DriverFlydigi_HandleStatePacket(SDL_Joystick *joystick, SDL_D
         // These values were estimated using the testcontroller tool in lieux of hard data sheet references.
         const float flPitchAndYawScale = DEG2RAD(72000.0f);
         const float flRollScale = DEG2RAD(1200.0f);
+
         values[0] = HIDAPI_RemapVal(-1.0f * LOAD16(data[26], data[27]), INT16_MIN, INT16_MAX, -flPitchAndYawScale, flPitchAndYawScale);
         values[1] = HIDAPI_RemapVal(-1.0f * LOAD16(data[18], data[20]), INT16_MIN, INT16_MAX, -flPitchAndYawScale, flPitchAndYawScale);
         values[2] = HIDAPI_RemapVal(-1.0f * LOAD16(data[29], data[30]), INT16_MIN, INT16_MAX, -flRollScale, flRollScale);
-
         SDL_SendJoystickSensor(timestamp, joystick, SDL_SENSOR_GYRO, sensor_timestamp, values, 3);
 
         values[0] = -LOAD16(data[11], data[12])  * ctx->accelScale; // Acceleration along pitch axis
