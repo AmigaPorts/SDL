@@ -17,7 +17,7 @@ TODO:
 
 #include <stdlib.h>
 
-#include "SDL3/SDL.h"
+#include <SDL3/SDL.h>
 
 #define BENCHMARK_VERSION "1.2"
 
