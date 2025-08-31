@@ -20,7 +20,7 @@
 
 #include "../src/main/amigaos4/SDL_os4debug.h"
 
-#include "SDL3/SDL_hints.h"
+#include <SDL3/SDL_hints.h>
 
 #include <proto/chooser.h>
 #include <proto/dos.h>
