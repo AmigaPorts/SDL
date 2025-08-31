@@ -317,7 +317,7 @@ bool SDL_InitSubSystem(SDL_InitFlags flags)
     Uint32 flags_initialized = 0;
 
 #if defined(SDL_PLATFORM_AMIGAOS4)
-    OS4_INIT();
+    AMIGAOS4_INIT();
 #endif
 
     if (!SDL_MainIsReady) {
@@ -704,9 +704,9 @@ void SDL_Quit(void)
     SDL_bInMainQuit = false;
 
 #if defined(SDL_PLATFORM_AMIGAOS4)
-    /* OS4_QUIT() destructor is not triggering when quitting RebelSDL applications.
+    /* AMIGAOS4_QUIT() destructor is not triggering when quitting RebelSDL applications.
        Quit explicitly to avoid unfreed signals. */
-    OS4_QUIT();
+    AMIGAOS4_QUIT();
 #endif
 }
 

@@ -25,8 +25,8 @@
 
 #include <exec/types.h>
 
-extern void OS4_INIT(void) __attribute__((constructor(101)));
-extern void OS4_QUIT(void) __attribute__((destructor(101)));
+extern void AMIGAOS4_INIT(void) __attribute__((constructor(101)));
+extern void AMIGAOS4_QUIT(void) __attribute__((destructor(101)));
 
 // A couple of helper functions for dealing with AmigaOS libraries
 

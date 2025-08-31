@@ -61,7 +61,7 @@ typedef struct OS4_ThreadControl
 
 static OS4_ThreadControl control;
 
-// Called from OS4_INIT() constructor.
+// Called from AMIGAOS4_INIT() constructor.
 void OS4_InitThreadSubSystem(void)
 {
     control.primary.task = IExec->FindTask(NULL);
@@ -82,7 +82,7 @@ void OS4_InitThreadSubSystem(void)
     control.primary.task->tc_UserData = &control.primary; // Timer lookup requires this
 }
 
-// Called from OS4_QUIT() destructor function.
+// Called from AMIGAOS4_QUIT() destructor function.
 void OS4_QuitThreadSubSystem(void)
 {
     struct MinNode* iter;
