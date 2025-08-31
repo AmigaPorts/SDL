@@ -1153,7 +1153,7 @@ OS4_PrecalculateIndices(void)
     }
 }
 
-bool
+static bool
 OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, SDL_PropertiesID create_props)
 {
     OS4_RenderData *data;
@@ -1188,7 +1188,7 @@ OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, SDL_PropertiesI
     renderer->DestroyTexture = OS4_DestroyTexture;
     renderer->DestroyRenderer = OS4_DestroyRenderer;
     renderer->SetVSync = OS4_SetVSync;
-    renderer->name = OS4_RenderDriver.name;
+    renderer->name = AMIGAOS4_RenderDriver.name;
     renderer->internal = data;
 
     SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_ARGB8888);
@@ -1204,7 +1204,7 @@ OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, SDL_PropertiesI
     return true;
 }
 
-SDL_RenderDriver OS4_RenderDriver = {
+SDL_RenderDriver AMIGAOS4_RenderDriver = {
     OS4_CreateRenderer, "compositing"
 };
 
