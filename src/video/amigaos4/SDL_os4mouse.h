@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 #include "SDL_os4video.h"
-#include "SDL_mouse.h"
+#include <SDL3/SDL_mouse.h>
 
 #ifndef SDL_os4mouse_h_
 #define SDL_os4mouse_h_

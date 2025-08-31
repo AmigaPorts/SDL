@@ -24,7 +24,7 @@
 
 /* AmigaOS 4 thread management routines for SDL */
 
-#include "SDL_thread.h"
+#include <SDL3/SDL_thread.h>
 #include "../SDL_thread_c.h"
 #include "../SDL_systhread.h"
 #include "SDL_systhread_c.h"

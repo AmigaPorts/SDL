@@ -26,7 +26,7 @@
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
-#include "SDL_mutex.h"
+#include <SDL3/SDL_mutex.h>
 
 #include <proto/exec.h>
 

@@ -26,8 +26,8 @@
 #include <proto/application.h>
 #include <proto/dos.h>
 
-#include "SDL_video.h"
-#include "SDL_hints.h"
+#include <SDL3/SDL_video.h>
+#include <SDL3/SDL_hints.h>
 
 #include "../SDL_sysvideo.h"
 #include "../SDL_pixels_c.h"

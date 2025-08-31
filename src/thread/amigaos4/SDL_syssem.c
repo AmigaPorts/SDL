@@ -24,7 +24,7 @@
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
-#include "SDL_thread.h"
+#include <SDL3/SDL_thread.h>
 #include "../../timer/amigaos4/SDL_os4timer_c.h"
 #include "../../thread/amigaos4/SDL_systhread_c.h"
 

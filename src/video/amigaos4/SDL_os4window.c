@@ -42,7 +42,7 @@
 #include "SDL_os4events.h"
 #include "SDL_os4locale.h"
 
-#include "SDL_timer.h"
+#include <SDL3/SDL_timer.h>
 
 #include "../../events/SDL_keyboard_c.h"
 #include "../../events/SDL_events_c.h"

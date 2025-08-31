@@ -23,7 +23,7 @@
 #if SDL_VIDEO_DRIVER_AMIGAOS4
 
 #include "SDL_os4library.h"
-#include "SDL_version.h"
+#include <SDL3/SDL_version.h>
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 #include "../../thread/amigaos4/SDL_systhread_c.h"

@@ -30,7 +30,7 @@
 #include "SDL_os4video.h"
 #include "SDL_os4window.h"
 
-#include "SDL_hints.h"
+#include <SDL3/SDL_hints.h>
 #include "../../events/SDL_mouse_c.h"
 
 #include "../../main/amigaos4/SDL_os4debug.h"

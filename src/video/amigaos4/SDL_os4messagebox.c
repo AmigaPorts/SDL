@@ -24,7 +24,7 @@
 
 #include <proto/intuition.h>
 
-#include "SDL_messagebox.h"
+#include <SDL3/SDL_messagebox.h>
 #include "SDL_os4messagebox.h"
 #include "SDL_os4window.h"
 #include "SDL_os4library.h"

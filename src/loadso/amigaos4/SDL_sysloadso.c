@@ -28,7 +28,7 @@
 #include <proto/elf.h>
 #include <proto/dos.h>
 
-#include "SDL_loadso.h"
+#include <SDL3/SDL_loadso.h>
 #include "../../video/amigaos4/SDL_os4library.h"
 
 #include "../../main/amigaos4/SDL_os4debug.h"
