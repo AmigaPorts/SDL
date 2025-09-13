@@ -51,6 +51,7 @@ compile_commands.json
 *.pc
 test/*.test
 wayland-generated-protocols
+CMakeSettings.json
 
 # for CLion
 .idea
@@ -99,6 +100,7 @@ src/render/direct3d12/D3D12_*_One.h
 src/render/direct3d12/D3D12_*_Series.h
 src/gpu/d3d12/D3D12_*_One.h
 src/gpu/d3d12/D3D12_*_Series.h
+out/
 
 # for Android
 android-project/local.properties
