@@ -830,7 +830,6 @@ OS4_DecodeFullscreenOp(SDL_FullscreenOp fullscreen)
 SDL_FullscreenResult
 OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDisplay * display, SDL_FullscreenOp fullscreen)
 {
-    // TODO: SDL_FULLSCREEN_OP_UPDATE
     if (window->is_destroying) {
         // This function gets also called during window closing
         dprintf("Window '%s' is being destroyed, mode change ignored\n", window->title);
@@ -882,7 +881,7 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
                 SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_ENTER_FULLSCREEN, 0, 0);
             }
 
-            data->syswin = OS4_CreateSystemWindow(_this, window, (fullscreen == SDL_FULLSCREEN_OP_ENTER) ? display : NULL);
+            data->syswin = OS4_CreateSystemWindow(_this, window, (fullscreen != SDL_FULLSCREEN_OP_LEAVE) ? display : NULL);
 
             if (data->syswin) {
                 OS4_CreateControls(_this, window);

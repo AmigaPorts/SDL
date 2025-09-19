@@ -1920,6 +1920,8 @@ bool SDL_UpdateFullscreenMode(SDL_Window *window, SDL_FullscreenOp fullscreen, b
             fullscreen_mode.h = window->h;
             fullscreen_mode.pixel_density = 1.0f;
             fullscreen_mode.refresh_rate = 60.0f;
+            fullscreen_mode.refresh_rate_numerator = 0;
+            fullscreen_mode.refresh_rate_denominator = 0;
             fullscreen_mode.internal = NULL;
 
             SDL_memcpy(&window->requested_fullscreen_mode, &fullscreen_mode, sizeof(window->requested_fullscreen_mode));

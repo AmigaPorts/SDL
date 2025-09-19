@@ -62,11 +62,15 @@ OS4_GetDisplayMode(ULONG id, SDL_DisplayMode * mode)
     data->modeid = id;
     data->x = diminfo.Nominal.MinX;
     data->y = diminfo.Nominal.MinY;
+
+    mode->displayID = 1;
     mode->w = diminfo.Nominal.MaxX - diminfo.Nominal.MinX + 1;
     mode->h = diminfo.Nominal.MaxY - diminfo.Nominal.MinY + 1;
     mode->pixel_density = 1.0f;
     mode->refresh_rate = 60.0f; // grab DTAG_MNTR?
     mode->format = SDL_PIXELFORMAT_UNKNOWN;
+    mode->refresh_rate_numerator = 0;
+    mode->refresh_rate_denominator = 0;
 
     // We are only interested in RTG modes
     if (dispinfo.PropertyFlags & DIPF_IS_RTG) {
@@ -132,13 +136,13 @@ OS4_InitModes(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->internal;
     SDL_VideoDisplay display;
-    static SDL_DisplayMode current_mode; // TODO: test me
+    static SDL_DisplayMode current_mode;
     SDL_DisplayData *displaydata;
-    ULONG modeid;
+    ULONG modeid = 0;
 
     dprintf("Called\n");
 
-    displaydata = (SDL_DisplayData *) SDL_malloc(sizeof(*displaydata));
+    displaydata = (SDL_DisplayData *) SDL_calloc(sizeof(*displaydata), 1);
     if (!displaydata) {
         return SDL_OutOfMemory();
     }
@@ -157,9 +161,10 @@ OS4_InitModes(SDL_VideoDevice *_this)
 
     /* OS4 has no multi-monitor support */
     SDL_zero(display);
+    display.id = 1;
     display.desktop_mode = current_mode;
-    display.current_mode = &current_mode; // TODO: test me
-    display.internal = displaydata;
+    display.current_mode = &current_mode;
+    display.internal = displaydata; // TODO: it's uninitialized!
     displaydata->screen = NULL;
 
     SDL_AddVideoDisplay(&display, false);
@@ -237,7 +242,7 @@ OS4_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_Displ
     SDL_DisplayData *displaydata = (SDL_DisplayData *) display->internal;
     SDL_DisplayModeData *data = (SDL_DisplayModeData *) mode->internal;
     ULONG openError = 0;
-    int bpp = SDL_BITSPERPIXEL(mode->format);
+    const int bpp = SDL_BITSPERPIXEL(mode->format);
 
     displaydata->screen = IIntuition->OpenScreenTags(NULL,
         SA_Width,       mode->w,
