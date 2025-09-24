@@ -374,7 +374,7 @@ OS4_UpdateMousePointer(SDL_VideoDevice * _this, SDL_Window * sdlwin, struct MyIn
 {
     // Resets mouse pointer when it leaves its window area. For example,
     // a hidden pointer becomes visible outside.
-    const BOOL focus = SDL_GetMouse()->focus == sdlwin;
+    const BOOL focus = SDL_GetMouseFocus() == sdlwin;
 
     if (focus) {
         OS4_RestoreSdlCursorForWindow(imsg->IDCMPWindow);
@@ -590,6 +590,8 @@ OS4_HandleActivation(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg, bool 
             if (SDL_GetKeyboardFocus() != sdlwin) {
                 SDL_SetKeyboardFocus(sdlwin);
             }
+
+            SDL_SetMouseFocus(sdlwin);
         } else {
             if (SDL_GetKeyboardFocus() == sdlwin) {
                 SDL_SetKeyboardFocus(NULL);
@@ -618,7 +620,7 @@ OS4_HandleTicks(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
     SDL_Window *sdlwin = OS4_FindWindow(_this, imsg->IDCMPWindow);
 
     if (sdlwin) {
-        if (((sdlwin->flags & SDL_WINDOW_MOUSE_GRABBED) || SDL_GetMouse()->relative_mode) &&
+        if (((sdlwin->flags & SDL_WINDOW_MOUSE_GRABBED) || SDL_GetRelativeMouseMode()) &&
             !(sdlwin->flags & SDL_WINDOW_FULLSCREEN) && (SDL_GetKeyboardFocus() == sdlwin)) {
             SDL_WindowData *data = sdlwin->internal;
 

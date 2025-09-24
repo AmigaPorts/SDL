@@ -66,7 +66,7 @@ OS4_GetDoubleClickTimeInMillis(SDL_VideoDevice *_this)
     interval =  preferences.DoubleClick.Seconds * 1000 +
                 preferences.DoubleClick.Microseconds / 1000;
 
-    dprintf("Doubleclick time %d ms\n", interval);
+    dprintf("Doubleclick time %u ms\n", interval);
 
     return interval;
 }
@@ -209,6 +209,24 @@ OS4_CreateHiddenCursor()
     }
 }
 
+static Object*
+OS4_GetHiddenCursorObject()
+{
+    Object* object = NULL;
+
+    if (hiddenCursor) {
+        SDL_CursorData *data = hiddenCursor->internal;
+        if (data) {
+            object = data->object;
+        } else {
+            dprintf("NULL data\n");
+        }
+    } else {
+        dprintf("Hidden cursor is NULL\n");
+    }
+
+    return object;
+}
 
 static ULONG
 OS4_MapCursorIdToNative(SDL_SystemCursor id)
@@ -328,12 +346,7 @@ OS4_RestoreSdlCursorForWindow(struct Window * window)
             dprintf("NULL cursor\n");
         }
     } else {
-        SDL_CursorData *data = hiddenCursor->internal;
-        if (data) {
-            object = data->object;
-        } else {
-            dprintf("NULL data\n");
-        }
+        object = OS4_GetHiddenCursorObject();
     }
 
     OS4_SetPointerObjectOrTypeForWindow(window, type, object);
@@ -361,14 +374,7 @@ OS4_ShowCursor(SDL_Cursor * cursor)
         dprintf("Hiding cursor\n");
 
         type = POINTERTYPE_NONE;
-
-        if (hiddenCursor) {
-            SDL_CursorData *data = hiddenCursor->internal;
-
-            if (data) {
-                object = data->object;
-            }
-        }
+        object = OS4_GetHiddenCursorObject();
     }
 
     OS4_SetPointerForEachWindow(type, object);
@@ -483,7 +489,7 @@ OS4_WarpMouse(SDL_Window * window, float x, float y)
     SDL_WindowData *winData = window->internal;
     struct Window *syswin = winData->syswin;
 
-    bool relativeMouseMode = SDL_GetRelativeMouseMode();
+    const bool relativeMouseMode = SDL_GetRelativeMouseMode();
 
     /* If the host mouse pointer is outside of the SDL window or the SDL
      * window is inactive then we just need to warp SDL's notion of where
