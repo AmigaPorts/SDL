@@ -188,6 +188,7 @@ static void testWindow()
         );
 
     if (w) {
+        SDL_StartTextInput(w);
 #if 0
         SDL_SetWindowMinimumSize(w, 50, 50);
         SDL_SetWindowMaximumSize(w, 200, 200);
@@ -236,6 +237,9 @@ static void testManyWindows()
     SDL_Window * w2 = SDL_CreateWindow("blah2", 100, 100, 0/*SDL_WINDOW_FULLSCREEN*/);
 
     if (w && w2) {
+        SDL_StartTextInput(w);
+        SDL_StartTextInput(w2);
+
         SDL_SetWindowMouseGrab(w, true);
 
         eventLoop();
@@ -250,6 +254,7 @@ static void testRelativeMouse()
     SDL_Window * w = SDL_CreateWindow("relative", 100, 100, 0);
 
     if (w) {
+        SDL_StartTextInput(w);
         //SDL_SetRelativeMouseMode(false);
         //SDL_SetRelativeMouseMode(true);
 
@@ -266,6 +271,7 @@ static void testFullscreen()
         SDL_WINDOW_FULLSCREEN);
 
     if (w) {
+        SDL_StartTextInput(w);
         //SDL_SetWindowSize(w, 1280, 960);
         //SDL_SetWindowSize(w, 640, 480);
         //SDL_SetWindowSize(w, 800, 600);
@@ -462,7 +468,10 @@ static void testFullscreenOpenGL()
         900,
         SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL);
 
-    drawUsingFixedFunctionPipeline(w);
+    if (w) {
+        SDL_StartTextInput(w);
+        drawUsingFixedFunctionPipeline(w);
+    }
 }
 
 static void testOpenGLVersion()
@@ -491,6 +500,10 @@ static void testRenderer()
     //SDL_SetRenderLogicalSize(br, 90, 90);
 
     if (r && g && b && rr && gr && br) {
+        SDL_StartTextInput(r);
+        SDL_StartTextInput(g);
+        SDL_StartTextInput(b);
+
         while (eventLoopInner()) {
             SDL_SetRenderDrawColor(rr, 255, 0, 0, 255);
             SDL_RenderClear(rr);
@@ -524,6 +537,8 @@ static void testDraw()
     SDL_Renderer * r = SDL_CreateRenderer(w, NULL);
 
     if (w && r) {
+        SDL_StartTextInput(w);
+
         while (eventLoopInner()) {
             SDL_FRect rect;
 
@@ -556,6 +571,8 @@ static void testRenderVsync()
     SDL_Renderer * r = SDL_CreateRenderer(w, NULL);
 
     if (w && r) {
+        SDL_StartTextInput(w);
+
         while (eventLoopInner()) {
             SDL_FRect rect;
 
@@ -642,6 +659,8 @@ static void testSystemCursors()
     if (w) {
         int c = 0;
 
+        SDL_StartTextInput(w);
+
         while (eventLoopInner()) {
 
             char buf[32];
@@ -695,7 +714,7 @@ static void testCustomCursor()
         SDL_Window * w = SDL_CreateWindow("Custom cursor", 100, 100, 0);
 
         if (w) {
-
+            SDL_StartTextInput(w);
             SDL_SetCursor( SDL_CreateColorCursor(surface, 0, 0));
 
             while (eventLoopInner()) {
@@ -718,6 +737,7 @@ static void testHiddenCursor()
     SDL_Window * w = SDL_CreateWindow("Hidden cursor", 640, 480, SDL_WINDOW_FULLSCREEN);
 
     if (w) {
+        SDL_StartTextInput(w);
         while (eventLoopInner()) {
             SDL_Delay(1000);
         }
@@ -732,6 +752,7 @@ static void testClipboard()
     SDL_Window * w = SDL_CreateWindow("Clipboard", 100, 100, 0);
 
     if (w) {
+        SDL_StartTextInput(w);
 
         while (eventLoopInner()) {
 
@@ -763,6 +784,7 @@ static void testGlobalMouseState()
     SDL_Window * w = SDL_CreateWindow("Global Mouse State", 100, 100, 0);
 
     if (w) {
+        SDL_StartTextInput(w);
 
         while (eventLoopInner()) {
 
@@ -782,6 +804,7 @@ static void testGlobalMouseWarp()
     SDL_Window * w = SDL_CreateWindow("Global Mouse Warp", 100, 100, 0);
 
     if (w) {
+        SDL_StartTextInput(w);
 
         while (eventLoopInner()) {
 
@@ -803,6 +826,7 @@ static void testOpaqueWindow()
     SDL_Window * w = SDL_CreateWindow("Opaque window", 100, 100, 0);
 
     if (w) {
+        SDL_StartTextInput(w);
 
         while (eventLoopInner()) {
             float opacity = 0.0f;
@@ -824,6 +848,7 @@ static void testWindowBordersSize()
     SDL_Window * w = SDL_CreateWindow("BorderSizes window", 100, 100, SDL_WINDOW_RESIZABLE);
 
     if (w) {
+        SDL_StartTextInput(w);
 
         int top, left, bottom, right;
 
@@ -845,6 +870,8 @@ static void testHiddenWindow()
 
     if (w) {
         int i = 0;
+
+        SDL_StartTextInput(w);
 
         while (eventLoopInner()) {
 
