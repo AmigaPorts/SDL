@@ -40,21 +40,23 @@ OS4_GetDisplayMode(ULONG id, SDL_DisplayMode * mode)
 
     handle = IGraphics->FindDisplayInfo(id);
     if (!handle) {
+        dprintf("Failed to get display info handle\n");
         return false;
     }
 
     if (!IGraphics->GetDisplayInfoData(handle, (UBYTE *)&diminfo, sizeof(diminfo), DTAG_DIMS, 0)) {
-        dprintf("Failed to get dim info\n");
+        dprintf("Failed to get dimension info\n");
         return false;
     }
 
     if (!IGraphics->GetDisplayInfoData(handle, (UBYTE *)&dispinfo, sizeof(dispinfo), DTAG_DISP, 0)) {
-        dprintf("Failed to get disp info\n");
+        dprintf("Failed to get display info\n");
         return false;
     }
 
     data = (SDL_DisplayModeData *) SDL_malloc(sizeof(*data));
     if (!data) {
+        dprintf("Failed to allocate memory\n");
         return false;
     }
 
@@ -74,8 +76,10 @@ OS4_GetDisplayMode(ULONG id, SDL_DisplayMode * mode)
 
     // We are only interested in RTG modes
     if (dispinfo.PropertyFlags & DIPF_IS_RTG) {
-        dprintf("RTG mode %lu: w=%d, h=%d, bits=%d\n", id, mode->w, mode->h, diminfo.MaxDepth);
+        dprintf("RTG mode 0x%lX (%lu): w %d, h %d, bits %u, pixel format %lu\n",
+                id, id, mode->w, mode->h, diminfo.MaxDepth, dispinfo.PixelFormat);
 
+        // TODO: could map PixelFormat to SDL_PIXELFORMAT directly
         switch (diminfo.MaxDepth) {
         case 32:
             mode->format = SDL_PIXELFORMAT_ARGB8888;
@@ -154,7 +158,7 @@ OS4_InitModes(SDL_VideoDevice *_this)
 
     IIntuition->GetScreenAttrs(data->publicScreen, SA_DisplayID, &modeid, TAG_DONE);
     if (!OS4_GetDisplayMode(modeid, &current_mode)) {
-        dprintf("Failed to get display mode for %lu\n", modeid);
+        dprintf("Failed to get display mode for 0x%lX (%lu)\n", modeid, modeid);
         SDL_free(displaydata);
         return SDL_SetError("Couldn't get display mode");
     }
@@ -182,7 +186,7 @@ OS4_GetDisplayBounds(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_Rec
     rect->w = display->current_mode->w;
     rect->h = display->current_mode->h;
 
-    dprintf("x=%d, y=%d, w=%d, h=%d\n", rect->x, rect->y, rect->w, rect->h);
+    dprintf("x %d, y %d, w %d, h %d\n", rect->x, rect->y, rect->w, rect->h);
 
     return true;
 }
@@ -205,7 +209,7 @@ OS4_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay * display)
                 SDL_free(mode.internal);
             }
         } else {
-            dprintf("Failed to get display mode for %lu\n", id);
+            dprintf("Failed to get display mode for 0x%lX (%lu)\n", id, id);
             return false;
         }
     }
@@ -257,8 +261,8 @@ OS4_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_Displ
         SA_Compositing, FALSE,
         TAG_DONE);
 
-    dprintf("Opened screen id %lu: %d*%d*%d (address %p)\n",
-        data->modeid, mode->w, mode->h, bpp, displaydata->screen);
+    dprintf("Opened screen id 0x%lX (%lu): %d*%d*%d (address %p)\n",
+        data->modeid, data->modeid, mode->w, mode->h, bpp, displaydata->screen);
 
     if (!displaydata->screen) {
         switch (openError) {
