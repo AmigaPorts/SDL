@@ -1618,8 +1618,8 @@ static bool GLES2_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
     data->texture_u = 0;
     data->texture_v = 0;
 #endif
-    data->texture_scale_mode = SDL_SCALEMODE_INVALID;
-    data->texture_address_mode = SDL_TEXTURE_ADDRESS_INVALID;
+    data->texture_scale_mode = texture->scaleMode;
+    data->texture_address_mode = SDL_TEXTURE_ADDRESS_CLAMP;
 
     // Allocate a blob for image renderdata
     if (texture->access == SDL_TEXTUREACCESS_STREAMING) {
@@ -1661,6 +1661,13 @@ static bool GLES2_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
         renderdata->myglActiveTexture(GL_TEXTURE2);
         renderdata->myglBindTexture(data->texture_type, data->texture_v);
         renderdata->myglTexImage2D(data->texture_type, 0, format, (texture->w + 1) / 2, (texture->h + 1) / 2, 0, format, type, NULL);
+        if (!GL_CheckError("glTexImage2D()", renderer)) {
+            SDL_free(data->pixel_data);
+            SDL_free(data);
+            return false;
+        }
+        SetTextureScaleMode(renderdata, data->texture_type, data->texture_scale_mode);
+        SetTextureAddressMode(renderdata, data->texture_type, data->texture_address_mode);
         SDL_SetNumberProperty(SDL_GetTextureProperties(texture), SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_V_NUMBER, data->texture_v);
 
         data->texture_u = (GLuint)SDL_GetNumberProperty(create_props, SDL_PROP_TEXTURE_CREATE_OPENGLES2_TEXTURE_U_NUMBER, 0);
@@ -1682,6 +1689,8 @@ static bool GLES2_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
             SDL_free(data);
             return false;
         }
+        SetTextureScaleMode(renderdata, data->texture_type, data->texture_scale_mode);
+        SetTextureAddressMode(renderdata, data->texture_type, data->texture_address_mode);
         SDL_SetNumberProperty(SDL_GetTextureProperties(texture), SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_U_NUMBER, data->texture_u);
 
         if (!SDL_GetYCbCRtoRGBConversionMatrix(texture->colorspace, texture->w, texture->h, 8)) {
@@ -1709,6 +1718,8 @@ static bool GLES2_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
             SDL_free(data);
             return false;
         }
+        SetTextureScaleMode(renderdata, data->texture_type, data->texture_scale_mode);
+        SetTextureAddressMode(renderdata, data->texture_type, data->texture_address_mode);
         SDL_SetNumberProperty(SDL_GetTextureProperties(texture), SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_UV_NUMBER, data->texture_u);
 
         if (!SDL_GetYCbCRtoRGBConversionMatrix(texture->colorspace, texture->w, texture->h, 8)) {
@@ -1739,6 +1750,8 @@ static bool GLES2_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SD
             return false;
         }
     }
+    SetTextureScaleMode(renderdata, data->texture_type, data->texture_scale_mode);
+    SetTextureAddressMode(renderdata, data->texture_type, data->texture_address_mode);
     SDL_SetNumberProperty(SDL_GetTextureProperties(texture), SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_NUMBER, data->texture);
     SDL_SetNumberProperty(SDL_GetTextureProperties(texture), SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_TARGET_NUMBER, data->texture_type);
 
