@@ -3,43 +3,43 @@
 ## language spanish
 ;
 MSG_APP_MAIN_MENU
-
+Proyecto
 ; Main
 ;
 MSG_APP_MAIN_ICONIFY
-
+I|Iconificar
 ; I|Iconify
 ;
 MSG_APP_MAIN_ABOUT
-
+?|Acerca de SDL...
 ; ?|About...
 ;
 MSG_APP_MAIN_LAUNCH_PREFERENCES
-
+P|Preferencias de SDL...
 ; P|Launch preferences...
 ;
 MSG_APP_MAIN_QUIT
-
+Q|Salir
 ; Q|Quit
 ;
 MSG_APP_ABOUT_WINDOW
-
+Acerca de SDL3.library
 ; About SDL3 library
 ;
 MSG_APP_OK
-
+_Aceptar
 ; _Ok
 ;
 MSG_APP_APPLICATION
-
+Aplicación SDL3
 ; SDL3 application
 ;
 MSG_APP_LIBRARY_VERSION
-
+SDL3.library versión
 ; SDL library version
 ;
 MSG_PREFS_APPLICATION
-
+Preferencias de SDL3
 ; SDL3 preferences
 ;
 MSG_PREFS_OK
