@@ -61,7 +61,7 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
     private static final String TAG = "SDL";
     private static final int SDL_MAJOR_VERSION = 3;
     private static final int SDL_MINOR_VERSION = 3;
-    private static final int SDL_MICRO_VERSION = 0;
+    private static final int SDL_MICRO_VERSION = 3;
 /*
     // Display InputType.SOURCE/CLASS of events and devices
     //
@@ -229,9 +229,11 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
     private static SDLFileDialogState mFileDialogState = null;
     protected static boolean mDispatchingKeyEvent = false;
 
-    protected static SDLGenericMotionListener_API14 getMotionListener() {
+    public static SDLGenericMotionListener_API14 getMotionListener() {
         if (mMotionListener == null) {
-            if (Build.VERSION.SDK_INT >= 26 /* Android 8.0 (O) */) {
+            if (Build.VERSION.SDK_INT >= 29 /* Android 10 (Q) */) {
+                mMotionListener = new SDLGenericMotionListener_API29();
+            } else if (Build.VERSION.SDK_INT >= 26 /* Android 8.0 (O) */) {
                 mMotionListener = new SDLGenericMotionListener_API26();
             } else if (Build.VERSION.SDK_INT >= 24 /* Android 7.0 (N) */) {
                 mMotionListener = new SDLGenericMotionListener_API24();
@@ -1063,7 +1065,7 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
     public static native void onNativeTouch(int touchDevId, int pointerFingerId,
                                             int action, float x,
                                             float y, float p);
-    public static native void onNativePen(int penId, int button, int action, float x, float y, float p);
+    public static native void onNativePen(int penId, int device_type, int button, int action, float x, float y, float p);
     public static native void onNativeAccel(float x, float y, float z);
     public static native void onNativeClipboardChanged();
     public static native void onNativeSurfaceCreated();
@@ -1084,6 +1086,9 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
     public static native boolean nativeAllowRecreateActivity();
     public static native int nativeCheckSDLThreadCounter();
     public static native void onNativeFileDialog(int requestCode, String[] filelist, int filter);
+    public static native void onNativePinchStart();
+    public static native void onNativePinchUpdate(float scale);
+    public static native void onNativePinchEnd();
 
     /**
      * This method is called by SDL using JNI.

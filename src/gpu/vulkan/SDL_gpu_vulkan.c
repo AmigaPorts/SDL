@@ -4958,9 +4958,7 @@ static void VULKAN_DestroyDevice(
                 j);
         }
 
-        if (renderer->memoryAllocator->subAllocators[i].allocations != NULL) {
-            SDL_free(renderer->memoryAllocator->subAllocators[i].allocations);
-        }
+        SDL_free(renderer->memoryAllocator->subAllocators[i].allocations);
 
         SDL_free(renderer->memoryAllocator->subAllocators[i].sortedFreeRegions);
     }
@@ -5888,7 +5886,10 @@ static VulkanTexture *VULKAN_INTERNAL_CreateTexture(
             VULKAN_TEXTURE_USAGE_MODE_UNINITIALIZED,
             texture);
         VULKAN_INTERNAL_TrackTexture(barrierCommandBuffer, texture);
-        VULKAN_Submit((SDL_GPUCommandBuffer *)barrierCommandBuffer);
+        if (!VULKAN_Submit((SDL_GPUCommandBuffer *)barrierCommandBuffer)) {
+            VULKAN_INTERNAL_DestroyTexture(renderer, texture);
+            return NULL;
+        }
     }
 
     return texture;
@@ -6987,9 +6988,7 @@ static void VULKAN_ReleaseTexture(
     SDL_DestroyProperties(vulkanTextureContainer->header.info.props);
 
     // Containers are just client handles, so we can destroy immediately
-    if (vulkanTextureContainer->debugName != NULL) {
-        SDL_free(vulkanTextureContainer->debugName);
-    }
+    SDL_free(vulkanTextureContainer->debugName);
     SDL_free(vulkanTextureContainer->textures);
     SDL_free(vulkanTextureContainer);
 
@@ -9915,7 +9914,12 @@ static Uint32 VULKAN_INTERNAL_RecreateSwapchain(
         }
     }
 
+#ifdef SDL_VIDEO_DRIVER_PRIVATE
+    // Private platforms also invalidate the window, so don't try to preserve the surface/swapchain
+    VULKAN_INTERNAL_DestroySwapchain(renderer, windowData);
+#else
     VULKAN_INTERNAL_DestroySwapchainImage(renderer, windowData);
+#endif
     return VULKAN_INTERNAL_CreateSwapchain(renderer, windowData);
 }
 
@@ -11769,6 +11773,9 @@ static bool VULKAN_PrepareDriver(SDL_VideoDevice *_this, SDL_PropertiesID props)
 
     renderer = (VulkanRenderer *)SDL_calloc(1, sizeof(*renderer));
     if (renderer) {
+        // This needs to be set early for log filtering
+        renderer->debugMode = SDL_GetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_DEBUGMODE_BOOLEAN, false);
+
         // Opt out device features (higher compatibility in exchange for reduced functionality)
         renderer->desiredDeviceFeatures.samplerAnisotropy = SDL_GetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_FEATURE_ANISOTROPY_BOOLEAN, true) ? VK_TRUE : VK_FALSE;
         renderer->desiredDeviceFeatures.depthClamp = SDL_GetBooleanProperty(props, SDL_PROP_GPU_DEVICE_CREATE_FEATURE_DEPTH_CLAMPING_BOOLEAN, true) ? VK_TRUE : VK_FALSE;

@@ -5,7 +5,7 @@ if(NOT DEFINED CMAKE_BUILD_TYPE)
 endif()
 
 # See docs/release_checklist.md
-project(SDL3 LANGUAGES C VERSION "3.3.0")
+project(SDL3 LANGUAGES C VERSION "3.3.3")
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   set(SDL3_MAINPROJECT ON)
@@ -1151,7 +1151,7 @@ if(SDL_LIBC)
     check_symbol_exists(sysctlbyname "sys/types.h;sys/sysctl.h" HAVE_SYSCTLBYNAME)
     check_symbol_exists(getauxval "sys/auxv.h" HAVE_GETAUXVAL)
     check_symbol_exists(elf_aux_info "sys/auxv.h" HAVE_ELF_AUX_INFO)
-    check_symbol_exists(poll "poll.h" HAVE_POLL)
+    check_symbol_exists(ppoll "poll.h" HAVE_PPOLL)
     check_symbol_exists(memfd_create "sys/mman.h" HAVE_MEMFD_CREATE)
     check_symbol_exists(posix_fallocate "fcntl.h" HAVE_POSIX_FALLOCATE)
     check_symbol_exists(posix_spawn_file_actions_addchdir "spawn.h" HAVE_POSIX_SPAWN_FILE_ACTIONS_ADDCHDIR)
@@ -1713,6 +1713,15 @@ elseif(EMSCRIPTEN)
 
   if(SDL_CLOCK_GETTIME)
     set(HAVE_CLOCK_GETTIME 1)
+  endif()
+
+  if(SDL_SENSOR)
+    set(SDL_SENSOR_EMSCRIPTEN 1)
+    set(HAVE_SDL_SENSORS TRUE)
+    sdl_glob_sources(
+      "${SDL3_SOURCE_DIR}/src/sensor/emscripten/*.c"
+      "${SDL3_SOURCE_DIR}/src/sensor/emscripten/*.h"
+    )
   endif()
 
   if(SDL_VIDEO)
@@ -3452,7 +3461,10 @@ int main(void)
     return 0;
 }
 " HAVE_POSIX_SPAWN)
-  if(HAVE_POSIX_SPAWN)
+  if(NOT APPLE)
+    check_symbol_exists(vfork "unistd.h" LIBC_HAS_VFORK)
+  endif()
+  if(HAVE_POSIX_SPAWN AND (APPLE OR LIBC_HAS_VFORK))
     sdl_glob_sources(
       "${SDL3_SOURCE_DIR}/src/process/posix/*.c"
       "${SDL3_SOURCE_DIR}/src/process/posix/*.h"

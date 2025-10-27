@@ -693,6 +693,9 @@
     <ClInclude Include="..\..\src\video\SDL_RLEaccel_c.h">
       <Filter>video</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\video\SDL_rotate.h">
+      <Filter>video</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\video\SDL_surface_c.h">
       <Filter>video</Filter>
     </ClInclude>
@@ -883,9 +886,6 @@
       <Filter>render\software</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\render\software\SDL_render_sw_c.h">
-      <Filter>render\software</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\render\software\SDL_rotate.h">
       <Filter>render\software</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\render\software\SDL_triangle.h">
@@ -1380,6 +1380,9 @@
     <ClCompile Include="..\..\src\video\SDL_rect.c">
       <Filter>video</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\video\SDL_rotate.c">
+      <Filter>video</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\video\SDL_stb.c">
       <Filter>video</Filter>
     </ClCompile>
@@ -1536,7 +1539,6 @@
     <ClCompile Include="..\..\src\sensor\windows\SDL_windowssensor.c">
       <Filter>sensor\windows</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\render\SDL_d3dmath.c">
       <Filter>render</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\render\SDL_render.c">
@@ -1588,9 +1590,6 @@
       <Filter>render\software</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\render\software\SDL_render_sw.c">
-      <Filter>render\software</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\render\software\SDL_rotate.c">
       <Filter>render\software</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\render\software\SDL_triangle.c">
