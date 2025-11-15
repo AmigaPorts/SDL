@@ -127,7 +127,7 @@ typedef struct GLES2_ProgramCacheEntry
     GLuint fragment_shader;
     GLuint uniform_locations[NUM_GLES2_UNIFORMS];
     GLfloat projection[4][4];
-    const float *shader_params;
+    float *shader_params;
     struct GLES2_ProgramCacheEntry *prev;
     struct GLES2_ProgramCacheEntry *next;
 } GLES2_ProgramCacheEntry;
@@ -468,6 +468,7 @@ static GLES2_ProgramCacheEntry *GLES2_CacheProgram(GLES2_RenderData *data, GLuin
     data->myglGetProgramiv(entry->id, GL_LINK_STATUS, &linkSuccessful);
     if (!linkSuccessful) {
         data->myglDeleteProgram(entry->id);
+        SDL_free(entry->shader_params);
         SDL_free(entry);
         SDL_SetError("Failed to link shader program");
         return NULL;
@@ -507,12 +508,11 @@ static GLES2_ProgramCacheEntry *GLES2_CacheProgram(GLES2_RenderData *data, GLuin
 
     // Evict the last entry from the cache if we exceed the limit
     if (data->program_cache.count > GLES2_MAX_CACHED_PROGRAMS) {
-        data->myglDeleteProgram(data->program_cache.tail->id);
-        data->program_cache.tail = data->program_cache.tail->prev;
-        if (data->program_cache.tail) {
-            SDL_free(data->program_cache.tail->next);
-            data->program_cache.tail->next = NULL;
-        }
+        GLES2_ProgramCacheEntry *oldest = data->program_cache.tail;
+        data->program_cache.tail = oldest->prev;
+        data->myglDeleteProgram(oldest->id);
+        SDL_free(oldest->shader_params);
+        SDL_free(oldest);
         --data->program_cache.count;
     }
     return entry;
@@ -631,6 +631,7 @@ static bool GLES2_SelectProgram(GLES2_RenderData *data, SDL_Texture *texture, GL
     GLES2_ProgramCacheEntry *program;
     GLES2_TextureData *tdata = texture ? (GLES2_TextureData *)texture->internal : NULL;
     const float *shader_params = NULL;
+    int shader_params_len = 0;
 
     // Select an appropriate shader pair for the specified modes
     vtype = GLES2_SHADER_VERTEX_DEFAULT;
@@ -646,10 +647,12 @@ static bool GLES2_SelectProgram(GLES2_RenderData *data, SDL_Texture *texture, GL
         case SDL_SCALEMODE_LINEAR:
             ftype = GLES2_SHADER_FRAGMENT_TEXTURE_PALETTE_LINEAR;
             shader_params = tdata->texel_size;
+            shader_params_len = 4 * sizeof(float);
             break;
         case SDL_SCALEMODE_PIXELART:
             ftype = GLES2_SHADER_FRAGMENT_TEXTURE_PALETTE_PIXELART;
             shader_params = tdata->texel_size;
+            shader_params_len = 4 * sizeof(float);
             break;
         default:
             SDL_assert(!"Unknown scale mode");
@@ -660,6 +663,7 @@ static bool GLES2_SelectProgram(GLES2_RenderData *data, SDL_Texture *texture, GL
         if (scale_mode == SDL_SCALEMODE_PIXELART) {
             ftype = GLES2_SHADER_FRAGMENT_TEXTURE_ABGR_PIXELART;
             shader_params = tdata->texel_size;
+            shader_params_len = 4 * sizeof(float);
         } else {
             ftype = GLES2_SHADER_FRAGMENT_TEXTURE_ABGR;
         }
@@ -668,6 +672,7 @@ static bool GLES2_SelectProgram(GLES2_RenderData *data, SDL_Texture *texture, GL
         if (scale_mode == SDL_SCALEMODE_PIXELART) {
             ftype = GLES2_SHADER_FRAGMENT_TEXTURE_ARGB_PIXELART;
             shader_params = tdata->texel_size;
+            shader_params_len = 4 * sizeof(float);
         } else {
             ftype = GLES2_SHADER_FRAGMENT_TEXTURE_ARGB;
         }
@@ -676,6 +681,7 @@ static bool GLES2_SelectProgram(GLES2_RenderData *data, SDL_Texture *texture, GL
         if (scale_mode == SDL_SCALEMODE_PIXELART) {
             ftype = GLES2_SHADER_FRAGMENT_TEXTURE_RGB_PIXELART;
             shader_params = tdata->texel_size;
+            shader_params_len = 4 * sizeof(float);
         } else {
             ftype = GLES2_SHADER_FRAGMENT_TEXTURE_RGB;
         }
@@ -684,6 +690,7 @@ static bool GLES2_SelectProgram(GLES2_RenderData *data, SDL_Texture *texture, GL
         if (scale_mode == SDL_SCALEMODE_PIXELART) {
             ftype = GLES2_SHADER_FRAGMENT_TEXTURE_BGR_PIXELART;
             shader_params = tdata->texel_size;
+            shader_params_len = 4 * sizeof(float);
         } else {
             ftype = GLES2_SHADER_FRAGMENT_TEXTURE_BGR;
         }
@@ -696,6 +703,7 @@ static bool GLES2_SelectProgram(GLES2_RenderData *data, SDL_Texture *texture, GL
             SDL_SetError("Unsupported YUV colorspace");
             goto fault;
         }
+        shader_params_len = 16 * sizeof(float);
         break;
     case GLES2_IMAGESOURCE_TEXTURE_NV12:
         if (SDL_GetHintBoolean("SDL_RENDER_OPENGL_NV12_RG_SHADER", false)) {
@@ -708,6 +716,7 @@ static bool GLES2_SelectProgram(GLES2_RenderData *data, SDL_Texture *texture, GL
             SDL_SetError("Unsupported YUV colorspace");
             goto fault;
         }
+        shader_params_len = 16 * sizeof(float);
         break;
     case GLES2_IMAGESOURCE_TEXTURE_NV21:
         if (SDL_GetHintBoolean("SDL_RENDER_OPENGL_NV12_RG_SHADER", false)) {
@@ -720,6 +729,7 @@ static bool GLES2_SelectProgram(GLES2_RenderData *data, SDL_Texture *texture, GL
             SDL_SetError("Unsupported YUV colorspace");
             goto fault;
         }
+        shader_params_len = 16 * sizeof(float);
         break;
 #endif // SDL_HAVE_YUV
     case GLES2_IMAGESOURCE_TEXTURE_EXTERNAL_OES:
@@ -764,7 +774,11 @@ static bool GLES2_SelectProgram(GLES2_RenderData *data, SDL_Texture *texture, GL
     // Select that program in OpenGL
     data->myglUseProgram(program->id);
 
-    if (shader_params && shader_params != program->shader_params) {
+    SDL_assert(!shader_params || shader_params_len > 0);
+
+    if (shader_params &&
+        (!program->shader_params ||
+         SDL_memcmp(shader_params,  program->shader_params, shader_params_len) != 0)) {
 #ifdef SDL_HAVE_YUV
         if (ftype >= GLES2_SHADER_FRAGMENT_TEXTURE_YUV) {
             // YUV shader params are Yoffset, 0, Rcoeff, 0, Gcoeff, 0, Bcoeff, 0
@@ -791,7 +805,13 @@ static bool GLES2_SelectProgram(GLES2_RenderData *data, SDL_Texture *texture, GL
         if (shader_params) {
             data->myglUniform4f(program->uniform_locations[GLES2_UNIFORM_TEXEL_SIZE], shader_params[0], shader_params[1], shader_params[2], shader_params[3]);
         }
-        program->shader_params = shader_params;
+
+        if (!program->shader_params) {
+            program->shader_params = (float *)SDL_malloc(shader_params_len);
+        }
+        if (program->shader_params) {
+            SDL_memcpy(program->shader_params, shader_params, shader_params_len);
+        }
     }
 
     // Set the current program
@@ -1638,8 +1658,9 @@ static void GLES2_DestroyRenderer(SDL_Renderer *renderer)
             GLES2_ProgramCacheEntry *next;
             entry = data->program_cache.head;
             while (entry) {
-                data->myglDeleteProgram(entry->id);
                 next = entry->next;
+                data->myglDeleteProgram(entry->id);
+                SDL_free(entry->shader_params);
                 SDL_free(entry);
                 entry = next;
             }
@@ -2198,6 +2219,7 @@ static void GLES2_DestroyTexture(SDL_Renderer *renderer, SDL_Texture *texture)
 
     if (data->drawstate.texture == texture) {
         data->drawstate.texture = NULL;
+        data->drawstate.shader_params = NULL;
     }
     if (data->drawstate.target == texture) {
         data->drawstate.target = NULL;
@@ -2284,11 +2306,18 @@ static bool GLES2_SetVSync(SDL_Renderer *renderer, const int vsync)
 static bool GLES2_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_PropertiesID create_props)
 {
     GLES2_RenderData *data = NULL;
-    SDL_WindowFlags window_flags = 0; // -Wconditional-uninitialized
+    SDL_WindowFlags window_flags = 0;
     GLint window_framebuffer;
     GLint value;
     int profile_mask = 0, major = 0, minor = 0;
     bool changed_window = false;
+
+    SDL_SetupRendererColorspace(renderer, create_props);
+
+    if (renderer->output_colorspace != SDL_COLORSPACE_SRGB) {
+        SDL_SetError("Unsupported output colorspace");
+        goto error;
+    }
 
     if (!SDL_GL_GetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, &profile_mask)) {
         goto error;
@@ -2315,13 +2344,6 @@ static bool GLES2_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL
         if (!SDL_ReconfigureWindow(window, (window_flags & ~(SDL_WINDOW_VULKAN | SDL_WINDOW_METAL)) | SDL_WINDOW_OPENGL)) {
             goto error;
         }
-    }
-
-    SDL_SetupRendererColorspace(renderer, create_props);
-
-    if (renderer->output_colorspace != SDL_COLORSPACE_SRGB) {
-        SDL_SetError("Unsupported output colorspace");
-        goto error;
     }
 
     data = (GLES2_RenderData *)SDL_calloc(1, sizeof(GLES2_RenderData));
@@ -2397,10 +2419,10 @@ static bool GLES2_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL
     data->myglGetIntegerv(GL_FRAMEBUFFER_BINDING, &window_framebuffer);
     data->window_framebuffer = (GLuint)window_framebuffer;
 
-    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_BGRA32);
-    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_RGBA32);
-    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_BGRX32);
-    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_RGBX32);
+    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_ARGB8888);
+    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_ABGR8888);
+    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_XRGB8888);
+    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_XBGR8888);
     SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_INDEX8);
 #ifdef SDL_HAVE_YUV
     SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_YV12);

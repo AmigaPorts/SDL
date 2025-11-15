@@ -437,6 +437,7 @@ static bool SDL_CreateWindowTexture(SDL_VideoDevice *_this, SDL_Window *window, 
         if (!SDL_ISPIXELFORMAT_FOURCC(texture_format) &&
             !SDL_ISPIXELFORMAT_10BIT(texture_format) &&
             !SDL_ISPIXELFORMAT_FLOAT(texture_format) &&
+            !SDL_ISPIXELFORMAT_INDEXED(texture_format) &&
             transparent == SDL_ISPIXELFORMAT_ALPHA(texture_format)) {
             *format = texture_format;
             break;
@@ -4125,16 +4126,21 @@ bool SDL_SetWindowMouseRect(SDL_Window *window, const SDL_Rect *rect)
 {
     CHECK_WINDOW_MAGIC(window, false);
 
-    if (rect) {
-        SDL_memcpy(&window->mouse_rect, rect, sizeof(*rect));
-    } else {
-        SDL_zero(window->mouse_rect);
+    if (!_this->SetWindowMouseRect) {
+        return SDL_Unsupported();
     }
 
-    if (_this->SetWindowMouseRect) {
-        return _this->SetWindowMouseRect(_this, window);
+    SDL_Rect zero = { 0, 0, 0, 0 };
+    if (!rect) {
+        rect = &zero;
     }
-    return true;
+
+    if (SDL_memcmp(&window->mouse_rect, rect, sizeof(*rect)) == 0) {
+        return true;
+    }
+    SDL_memcpy(&window->mouse_rect, rect, sizeof(*rect));
+
+    return _this->SetWindowMouseRect(_this, window);
 }
 
 const SDL_Rect *SDL_GetWindowMouseRect(SDL_Window *window)
@@ -4167,8 +4173,15 @@ bool SDL_SetWindowRelativeMouseMode(SDL_Window *window, bool enabled)
     } else {
         window->flags &= ~SDL_WINDOW_MOUSE_RELATIVE_MODE;
     }
-    SDL_UpdateRelativeMouseMode();
 
+    if (!SDL_UpdateRelativeMouseMode()) {
+        if (enabled) {
+            window->flags &= ~SDL_WINDOW_MOUSE_RELATIVE_MODE;
+        } else {
+            window->flags |= SDL_WINDOW_MOUSE_RELATIVE_MODE;
+        }
+        return false;
+    }
     return true;
 }
 
@@ -5013,7 +5026,7 @@ void SDL_GL_ResetAttributes(void)
     }
 
     _this->gl_config.flags = 0;
-    _this->gl_config.framebuffer_srgb_capable = 0;
+    _this->gl_config.framebuffer_srgb_capable = -1;
     _this->gl_config.no_error = 0;
     _this->gl_config.release_behavior = SDL_GL_CONTEXT_RELEASE_BEHAVIOR_FLUSH;
     _this->gl_config.reset_notification = SDL_GL_CONTEXT_RESET_NO_NOTIFICATION;

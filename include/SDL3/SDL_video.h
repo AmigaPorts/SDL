@@ -97,6 +97,8 @@ typedef Uint32 SDL_WindowID;
  * uninitialized will either return the user provided value, if one was set
  * prior to initialization, or NULL. See docs/README-wayland.md for more
  * information.
+ *
+ * \since This macro is available since SDL 3.2.0.
  */
 #define SDL_PROP_GLOBAL_VIDEO_WAYLAND_WL_DISPLAY_POINTER "SDL.video.wayland.wl_display"
 
@@ -488,7 +490,7 @@ typedef enum SDL_GLAttr
     SDL_GL_CONTEXT_FLAGS,               /**< some combination of 0 or more of elements of the SDL_GLContextFlag enumeration; defaults to 0. */
     SDL_GL_CONTEXT_PROFILE_MASK,        /**< type of GL context (Core, Compatibility, ES). See SDL_GLProfile; default value depends on platform. */
     SDL_GL_SHARE_WITH_CURRENT_CONTEXT,  /**< OpenGL context sharing; defaults to 0. */
-    SDL_GL_FRAMEBUFFER_SRGB_CAPABLE,    /**< requests sRGB capable visual; defaults to 0. */
+    SDL_GL_FRAMEBUFFER_SRGB_CAPABLE,    /**< requests sRGB-capable visual if 1. Defaults to -1 ("don't care"). This is a request; GL drivers might not comply! */
     SDL_GL_CONTEXT_RELEASE_BEHAVIOR,    /**< sets context the release behavior. See SDL_GLContextReleaseFlag; defaults to FLUSH. */
     SDL_GL_CONTEXT_RESET_NOTIFICATION,  /**< set context reset notification. See SDL_GLContextResetNotification; defaults to NO_NOTIFICATION. */
     SDL_GL_CONTEXT_NO_ERROR,
@@ -1866,6 +1868,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetWindowSize(SDL_Window *window, int w, in
  * \sa SDL_GetRenderOutputSize
  * \sa SDL_GetWindowSizeInPixels
  * \sa SDL_SetWindowSize
+ * \sa SDL_EVENT_WINDOW_RESIZED
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_GetWindowSize(SDL_Window *window, int *w, int *h);
 

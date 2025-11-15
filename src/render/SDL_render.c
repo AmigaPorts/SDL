@@ -1114,7 +1114,12 @@ SDL_Renderer *SDL_CreateRendererWithProperties(SDL_PropertiesID props)
                 for (int i = 0; render_drivers[i]; i++) {
                     const SDL_RenderDriver *driver = render_drivers[i];
                     if ((driver_attempt_len == SDL_strlen(driver->name)) && (SDL_strncasecmp(driver->name, driver_attempt, driver_attempt_len) == 0)) {
-                        SDL_free(driver_error);
+                        if (driver_error) {
+                            // Free any previous driver error
+                            SDL_free(driver_error);
+                            driver_error = NULL;
+                        }
+
                         rc = driver->CreateRenderer(renderer, window, props);
                         if (rc) {
                             break;
@@ -1585,7 +1590,8 @@ SDL_Texture *SDL_CreateTextureWithProperties(SDL_Renderer *renderer, SDL_Propert
             SDL_SetNumberProperty(native_props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, SDL_COLORSPACE_JPEG);
         } else {
             default_colorspace = SDL_GetDefaultColorspaceForFormat(closest_format);
-            if (SDL_COLORSPACETYPE(texture->colorspace) == SDL_COLORSPACETYPE(default_colorspace)) {
+            if (SDL_COLORSPACETYPE(texture->colorspace) == SDL_COLORSPACETYPE(default_colorspace) &&
+                SDL_COLORSPACETRANSFER(texture->colorspace) == SDL_COLORSPACETRANSFER(default_colorspace)) {
                 SDL_SetNumberProperty(native_props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, texture->colorspace);
             } else {
                 SDL_SetNumberProperty(native_props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, default_colorspace);

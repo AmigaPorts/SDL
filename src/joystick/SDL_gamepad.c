@@ -34,9 +34,10 @@
 #include "hidapi/SDL_hidapi_sinput.h"
 #include "../events/SDL_events_c.h"
 
-
-#ifdef SDL_PLATFORM_ANDROID
+#ifdef SDL_PLATFORM_WIN32
+#include "../core/windows/SDL_windows.h"
 #endif
+
 
 // Many gamepads turn the center button into an instantaneous button press
 #define SDL_MINIMUM_GUIDE_BUTTON_DELAY_MS 250
@@ -1179,7 +1180,7 @@ static GamepadMapping_t *SDL_CreateMappingForHIDAPIGamepad(SDL_GUID guid)
             SDL_strlcat(mapping_string, "a:b0,b:b1,back:b4,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,leftshoulder:b9,lefttrigger:a4,rightshoulder:b10,righttrigger:a5,start:b6,x:b2,y:b3,hint:!SDL_GAMECONTROLLER_USE_BUTTON_LABELS:=1,", sizeof(mapping_string));
             break;
         case k_eSwitchDeviceInfoControllerType_N64:
-            SDL_strlcat(mapping_string, "a:b0,b:b1,back:b4,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b5,leftshoulder:b9,leftstick:b7,lefttrigger:a4,leftx:a0,lefty:a1,rightshoulder:b10,righttrigger:a5,start:b6,x:b2,y:b3,misc1:b11,", sizeof(mapping_string));
+            SDL_strlcat(mapping_string, "a:b0,b:b1,back:b3,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b5,leftshoulder:b9,lefttrigger:a4,leftx:a0,lefty:a1,misc1:b11,misc2:b4,rightshoulder:b10,righttrigger:b7,start:b6,x:a5,y:b2,", sizeof(mapping_string));
             break;
         case k_eSwitchDeviceInfoControllerType_SEGA_Genesis:
             SDL_strlcat(mapping_string, "a:b0,b:b1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b5,leftshoulder:b9,rightshoulder:b10,righttrigger:a5,start:b6,x:b2,y:b3,misc1:b11,", sizeof(mapping_string));
@@ -1251,7 +1252,10 @@ static GamepadMapping_t *SDL_CreateMappingForHIDAPIGamepad(SDL_GUID guid)
 
         if (SDL_IsJoystickSteamController(vendor, product)) {
             // Steam controllers have 2 back paddle buttons
-            SDL_strlcat(mapping_string, "paddle1:b12,paddle2:b11,", sizeof(mapping_string));
+            SDL_strlcat(mapping_string, "paddle1:b11,paddle2:b12,", sizeof(mapping_string));
+        } else if (SDL_IsJoystickSteamTriton(vendor, product)) {
+            // Second generation Steam controllers have 4 back paddle buttons
+            SDL_strlcat(mapping_string, "misc1:b11,paddle1:b12,paddle2:b13,paddle3:b14,paddle4:b15", sizeof(mapping_string));
         } else if (SDL_IsJoystickNintendoSwitchPro(vendor, product) ||
                    SDL_IsJoystickNintendoSwitchProInputOnly(vendor, product)) {
             // Nintendo Switch Pro controllers have a screenshot button
@@ -1280,6 +1284,9 @@ static GamepadMapping_t *SDL_CreateMappingForHIDAPIGamepad(SDL_GUID guid)
             SDL_strlcat(mapping_string, "paddle1:b11,paddle2:b12,paddle3:b13,paddle4:b14,", sizeof(mapping_string));
             if (guid.data[15] >= SDL_FLYDIGI_VADER2) {
                 // Vader series of controllers have C/Z buttons
+                SDL_strlcat(mapping_string, "misc2:b15,misc3:b16,", sizeof(mapping_string));
+            } else if (guid.data[15] == SDL_FLYDIGI_APEX5) {
+                // Apex 5 has additional shoulder macro buttons
                 SDL_strlcat(mapping_string, "misc2:b15,misc3:b16,", sizeof(mapping_string));
             }
         } else if (vendor == USB_VENDOR_8BITDO && product == USB_PRODUCT_8BITDO_ULTIMATE2_WIRELESS) {
@@ -3173,7 +3180,7 @@ char *SDL_GetGamepadMappingForID(SDL_JoystickID instance_id)
 }
 
 /*
- * Return 1 if the joystick with this name and GUID is a supported gamepad
+ * Return true if the joystick with this name and GUID is a supported gamepad
  */
 bool SDL_IsGamepadNameAndGUID(const char *name, SDL_GUID guid)
 {
@@ -3193,7 +3200,7 @@ bool SDL_IsGamepadNameAndGUID(const char *name, SDL_GUID guid)
 }
 
 /*
- * Return 1 if the joystick at this device index is a supported gamepad
+ * Return true if the joystick at this device index is a supported gamepad
  */
 bool SDL_IsGamepad(SDL_JoystickID instance_id)
 {
@@ -3225,7 +3232,7 @@ bool SDL_IsGamepad(SDL_JoystickID instance_id)
 }
 
 /*
- * Return 1 if the gamepad should be ignored by SDL
+ * Return true if the gamepad should be ignored by SDL
  */
 bool SDL_ShouldIgnoreGamepad(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
 {
@@ -3256,10 +3263,10 @@ bool SDL_ShouldIgnoreGamepad(Uint16 vendor_id, Uint16 product_id, Uint16 version
 
 #ifdef SDL_PLATFORM_WIN32
     if (SDL_GetHintBoolean("SDL_GAMECONTROLLER_ALLOW_STEAM_VIRTUAL_GAMEPAD", false) &&
-        SDL_GetHintBoolean("STEAM_COMPAT_PROTON", false)) {
-        // We are launched by Steam and running under Proton
+        WIN_IsWine()) {
+        // We are launched by Steam and running under Proton or Wine
         // We can't tell whether this controller is a Steam Virtual Gamepad,
-        // so assume that Proton is doing the appropriate filtering of controllers
+        // so assume that is doing the appropriate filtering of controllers
         // and anything we see here is fine to use.
         return false;
     }
