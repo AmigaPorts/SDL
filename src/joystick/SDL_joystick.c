@@ -2721,7 +2721,7 @@ void SDL_UpdateJoysticks(void)
     Uint64 now;
     SDL_Joystick *joystick;
 
-    if (!SDL_WasInit(SDL_INIT_JOYSTICK)) {
+    if (!SDL_joysticks_initialized) {
         return;
     }
 
@@ -3279,13 +3279,29 @@ bool SDL_IsJoystickSInputController(Uint16 vendor_id, Uint16 product_id)
 
 bool SDL_IsJoystickFlydigiController(Uint16 vendor_id, Uint16 product_id)
 {
-    return vendor_id == USB_VENDOR_FLYDIGI && product_id == USB_PRODUCT_FLYDIGI_GAMEPAD;
+    if (vendor_id == USB_VENDOR_FLYDIGI_V1) {
+        if (product_id == USB_PRODUCT_FLYDIGI_V1_GAMEPAD) {
+            return true;
+        }
+    }
+    if (vendor_id == USB_VENDOR_FLYDIGI_V2) {
+        if (product_id == USB_PRODUCT_FLYDIGI_V2_APEX || product_id == USB_PRODUCT_FLYDIGI_V2_VADER) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool SDL_IsJoystickSteamDeck(Uint16 vendor_id, Uint16 product_id)
 {
     EControllerType eType = GuessControllerType(vendor_id, product_id);
     return eType == k_eControllerType_SteamControllerNeptune;
+}
+
+bool SDL_IsJoystickSteamTriton(Uint16 vendor_id, Uint16 product_id)
+{
+    EControllerType eType = GuessControllerType(vendor_id, product_id);
+    return eType == k_eControllerType_SteamControllerTriton;
 }
 
 bool SDL_IsJoystickXInput(SDL_GUID guid)
