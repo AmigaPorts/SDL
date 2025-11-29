@@ -666,7 +666,7 @@ static void WIN_HandleRawMouseInput(Uint64 timestamp, SDL_VideoData *data, HANDL
                 int screen_y = virtual_desktop ? GetSystemMetrics(SM_YVIRTUALSCREEN) : 0;
 
                 if (!data->raw_input_fake_pen_id) {
-                    data->raw_input_fake_pen_id = SDL_AddPenDevice(timestamp, "raw mouse input", window, NULL, (void *)(size_t)-1);
+                    data->raw_input_fake_pen_id = SDL_AddPenDevice(timestamp, "raw mouse input", window, NULL, (void *)(size_t)-1, true);
                 }
                 SDL_SendPenMotion(timestamp, data->raw_input_fake_pen_id, window, (float)(x + screen_x - window->x), (float)(y + screen_y - window->y));
             }
@@ -1264,41 +1264,53 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
     case WM_POINTERENTER:
     {
+        // NOTE: GET_POINTERID_WPARAM(wParam) is not a tool ID! It changes for each new WM_POINTERENTER, like a finger ID on a touch display. We can't identify a specific pen through these events.
+        const UINT32 pointerid = GET_POINTERID_WPARAM(wParam);
+        POINTER_INPUT_TYPE pointer_type = PT_POINTER;
         if (!data->videodata->GetPointerType) {
             break;  // Not on Windows8 or later? We shouldn't get this event, but just in case...
-        }
-
-        const UINT32 pointerid = GET_POINTERID_WPARAM(wParam);
-        void *hpointer = (void *) (size_t) pointerid;
-        POINTER_INPUT_TYPE pointer_type = PT_POINTER;
-        if (!data->videodata->GetPointerType(pointerid, &pointer_type)) {
+        } else if (!data->videodata->GetPointerType(pointerid, &pointer_type)) {
             break;  // oh well.
         } else if (pointer_type != PT_PEN) {
             break;  // we only care about pens here.
-        } else if (SDL_FindPenByHandle(hpointer)) {
-            break;  // we already have this one, don't readd it.
         }
 
-        // one can use GetPointerPenInfo() to get the current state of the pen, and check POINTER_PEN_INFO::penMask,
-        //  but the docs aren't clear if these masks are _always_ set for pens with specific features, or if they
-        //  could be unset at this moment because Windows is still deciding what capabilities the pen has, and/or
-        //  doesn't yet have valid data for them. As such, just say everything that the interface supports is
-        //  available...we don't expose this information through the public API at the moment anyhow.
-        SDL_PenInfo info;
-        SDL_zero(info);
-        info.capabilities = SDL_PEN_CAPABILITY_PRESSURE | SDL_PEN_CAPABILITY_XTILT | SDL_PEN_CAPABILITY_YTILT | SDL_PEN_CAPABILITY_DISTANCE | SDL_PEN_CAPABILITY_ROTATION | SDL_PEN_CAPABILITY_ERASER;
-        info.max_tilt = 90.0f;
-        info.num_buttons = 1;
-        info.subtype = SDL_PEN_TYPE_PENCIL;
-        SDL_AddPenDevice(0, NULL, data->window, &info, hpointer);
+        void *hpointer = (void *)(size_t)1; // just something > 0. We're using this one ID any possible pen.
+        const SDL_PenID pen = SDL_FindPenByHandle(hpointer);
+        if (pen) {
+            SDL_SendPenProximity(WIN_GetEventTimestamp(), pen, data->window, true);
+        } else {
+            // one can use GetPointerPenInfo() to get the current state of the pen, and check POINTER_PEN_INFO::penMask,
+            //  but the docs aren't clear if these masks are _always_ set for pens with specific features, or if they
+            //  could be unset at this moment because Windows is still deciding what capabilities the pen has, and/or
+            //  doesn't yet have valid data for them. As such, just say everything that the interface supports is
+            //  available...we don't expose this information through the public API at the moment anyhow.
+            SDL_PenInfo info;
+            SDL_zero(info);
+            info.capabilities = SDL_PEN_CAPABILITY_PRESSURE | SDL_PEN_CAPABILITY_XTILT | SDL_PEN_CAPABILITY_YTILT | SDL_PEN_CAPABILITY_DISTANCE | SDL_PEN_CAPABILITY_ROTATION | SDL_PEN_CAPABILITY_ERASER;
+            info.max_tilt = 90.0f;
+            info.num_buttons = 1;
+            info.subtype = SDL_PEN_TYPE_PENCIL;
+            SDL_AddPenDevice(WIN_GetEventTimestamp(), NULL, data->window, &info, hpointer, true);
+        }
         returnCode = 0;
     } break;
 
     case WM_POINTERCAPTURECHANGED:
     case WM_POINTERLEAVE:
     {
+        // NOTE: GET_POINTERID_WPARAM(wParam) is not a tool ID! It changes for each new WM_POINTERENTER, like a finger ID on a touch display. We can't identify a specific pen through these events.
         const UINT32 pointerid = GET_POINTERID_WPARAM(wParam);
-        void *hpointer = (void *) (size_t) pointerid;
+        POINTER_INPUT_TYPE pointer_type = PT_POINTER;
+        if (!data->videodata->GetPointerType) {
+            break;  // Not on Windows8 or later? We shouldn't get this event, but just in case...
+        } else if (!data->videodata->GetPointerType(pointerid, &pointer_type)) {
+            break;  // oh well.
+        } else if (pointer_type != PT_PEN) {
+            break;  // we only care about pens here.
+        }
+
+        void *hpointer = (void *)(size_t)1; // just something > 0. We're using this one ID any possible pen.
         const SDL_PenID pen = SDL_FindPenByHandle(hpointer);
         if (pen == 0) {
             break;  // not a pen, or not a pen we already knew about.
@@ -1306,31 +1318,31 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
         // if this just left the _window_, we don't care. If this is no longer visible to the tablet, time to remove it!
         if ((msg == WM_POINTERCAPTURECHANGED) || !IS_POINTER_INCONTACT_WPARAM(wParam)) {
-            SDL_RemovePenDevice(WIN_GetEventTimestamp(), data->window, pen);
+            // technically this isn't just _proximity_ but maybe just leaving the window. Good enough. WinTab apparently has real proximity info.
+            SDL_SendPenProximity(WIN_GetEventTimestamp(), pen, data->window, false);
         }
         returnCode = 0;
     } break;
 
+    case WM_POINTERDOWN:
+    case WM_POINTERUP:
     case WM_POINTERUPDATE: {
+        // NOTE: GET_POINTERID_WPARAM(wParam) is not a tool ID! It changes for each new WM_POINTERENTER, like a finger ID on a touch display. We can't identify a specific pen through these events.
+        const UINT32 pointerid = GET_POINTERID_WPARAM(wParam);
         POINTER_INPUT_TYPE pointer_type = PT_POINTER;
-        if (!data->videodata->GetPointerType || !data->videodata->GetPointerType(GET_POINTERID_WPARAM(wParam), &pointer_type)) {
+        if (!data->videodata->GetPointerType || !data->videodata->GetPointerType(pointerid, &pointer_type)) {
             break;  // oh well.
-        }
-
-        if (pointer_type == PT_MOUSE) {
+        } else if ((msg == WM_POINTERUPDATE) && (pointer_type == PT_MOUSE)) {
             data->last_pointer_update = lParam;
             returnCode = 0;
             break;
+        } else if (pointer_type != PT_PEN) {
+            break; // we only care about pens here.
         }
-    }
-    SDL_FALLTHROUGH;
 
-    case WM_POINTERDOWN:
-    case WM_POINTERUP: {
-        POINTER_PEN_INFO pen_info;
-        const UINT32 pointerid = GET_POINTERID_WPARAM(wParam);
-        void *hpointer = (void *) (size_t) pointerid;
+        void *hpointer = (void *)(size_t)1; // just something > 0. We're using this one ID any possible pen.
         const SDL_PenID pen = SDL_FindPenByHandle(hpointer);
+        POINTER_PEN_INFO pen_info;
         if (pen == 0) {
             break;  // not a pen, or not a pen we already knew about.
         } else if (!data->videodata->GetPointerPenInfo || !data->videodata->GetPointerPenInfo(pointerid, &pen_info)) {
@@ -2484,11 +2496,6 @@ LRESULT CALLBACK WIN_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     }
 }
 
-LRESULT CALLBACK WIN_DefWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    return CallWindowProc(DefWindowProc, hwnd, msg, wParam, lParam);
-}
-
 int WIN_WaitEventTimeout(SDL_VideoDevice *_this, Sint64 timeoutNS)
 {
     if (g_WindowsEnableMessageLoop) {
@@ -2542,6 +2549,26 @@ void WIN_SendWakeupEvent(SDL_VideoDevice *_this, SDL_Window *window)
 {
     SDL_WindowData *data = window->internal;
     PostMessage(data->hwnd, data->videodata->_SDL_WAKEUP, 0, 0);
+}
+
+// Simplified event pump for using when creating and destroying windows
+void WIN_PumpEventsForHWND(SDL_VideoDevice *_this, HWND hwnd)
+{
+    MSG msg;
+
+    if (g_WindowsEnableMessageLoop) {
+        SDL_processing_messages = true;
+
+        while (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
+            WIN_SetMessageTick(msg.time);
+
+            // Always translate the message in case it's a non-SDL window (e.g. with Qt integration)
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        SDL_processing_messages = false;
+    }
 }
 
 void WIN_PumpEvents(SDL_VideoDevice *_this)
@@ -2772,7 +2799,7 @@ bool SDL_RegisterApp(const char *name, Uint32 style, void *hInst)
     wcex.cbSize = sizeof(WNDCLASSEX);
     wcex.lpszClassName = SDL_Appname;
     wcex.style = SDL_Appstyle;
-    wcex.lpfnWndProc = WIN_DefWindowProc;
+    wcex.lpfnWndProc = WIN_WindowProc;
     wcex.hInstance = SDL_Instance;
 
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)

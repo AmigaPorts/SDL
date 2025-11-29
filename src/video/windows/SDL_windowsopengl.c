@@ -429,7 +429,7 @@ void WIN_GL_InitExtensions(SDL_VideoDevice *_this)
     if (!hwnd) {
         return;
     }
-    WIN_PumpEvents(_this);
+    WIN_PumpEventsForHWND(_this, hwnd);
 
     hdc = GetDC(hwnd);
 
@@ -527,7 +527,7 @@ void WIN_GL_InitExtensions(SDL_VideoDevice *_this)
     _this->gl_data->wglDeleteContext(hglrc);
     ReleaseDC(hwnd, hdc);
     DestroyWindow(hwnd);
-    WIN_PumpEvents(_this);
+    WIN_PumpEventsForHWND(_this, hwnd);
 }
 
 static int WIN_GL_ChoosePixelFormatARB(SDL_VideoDevice *_this, int *iAttribs, float *fAttribs)
@@ -542,7 +542,7 @@ static int WIN_GL_ChoosePixelFormatARB(SDL_VideoDevice *_this, int *iAttribs, fl
     hwnd =
         CreateWindow(SDL_Appname, SDL_Appname, (WS_POPUP | WS_DISABLED), 0, 0,
                      10, 10, NULL, NULL, SDL_Instance, NULL);
-    WIN_PumpEvents(_this);
+    WIN_PumpEventsForHWND(_this, hwnd);
 
     hdc = GetDC(hwnd);
 
@@ -573,7 +573,7 @@ static int WIN_GL_ChoosePixelFormatARB(SDL_VideoDevice *_this, int *iAttribs, fl
     }
     ReleaseDC(hwnd, hdc);
     DestroyWindow(hwnd);
-    WIN_PumpEvents(_this);
+    WIN_PumpEventsForHWND(_this, hwnd);
 
     return pixel_format;
 }
@@ -659,9 +659,9 @@ static bool WIN_GL_SetupWindowInternal(SDL_VideoDevice *_this, SDL_Window *windo
         *iAttr++ = WGL_TYPE_RGBA_FLOAT_ARB;
     }
 
-    if ((_this->gl_config.framebuffer_srgb_capable >= 0) && _this->gl_data->HAS_WGL_ARB_framebuffer_sRGB) {
+    if (_this->gl_data->HAS_WGL_ARB_framebuffer_sRGB) {
         *iAttr++ = WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB;
-        *iAttr++ = _this->gl_config.framebuffer_srgb_capable ? GL_TRUE : GL_FALSE;
+        *iAttr++ = (_this->gl_config.framebuffer_srgb_capable > 0) ? GL_TRUE : GL_FALSE;
     }
 
     /* We always choose either FULL or NO accel on Windows, because of flaky

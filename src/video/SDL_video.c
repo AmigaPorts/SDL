@@ -304,20 +304,6 @@ static Uint32 SDL_DefaultGraphicsBackends(SDL_VideoDevice *_this)
     return 0;
 }
 
-static void SDLCALL SDL_CleanupWindowTextureData(void *userdata, void *value)
-{
-    SDL_WindowTextureData *data = (SDL_WindowTextureData *)value;
-
-    if (data->texture) {
-        SDL_DestroyTexture(data->texture);
-    }
-    if (data->renderer) {
-        SDL_DestroyRenderer(data->renderer);
-    }
-    SDL_free(data->pixels);
-    SDL_free(data);
-}
-
 static bool SDL_CreateWindowTexture(SDL_VideoDevice *_this, SDL_Window *window, SDL_PixelFormat *format, void **pixels, int *pitch)
 {
     SDL_PropertiesID props = SDL_GetWindowProperties(window);
@@ -408,7 +394,7 @@ static bool SDL_CreateWindowTexture(SDL_VideoDevice *_this, SDL_Window *window, 
             SDL_DestroyRenderer(renderer);
             return false;
         }
-        if (!SDL_SetPointerPropertyWithCleanup(props, SDL_PROP_WINDOW_TEXTUREDATA_POINTER, data, SDL_CleanupWindowTextureData, NULL)) {
+        if (!SDL_SetPointerProperty(props, SDL_PROP_WINDOW_TEXTUREDATA_POINTER, data)) {
             SDL_DestroyRenderer(renderer);
             return false;
         }
@@ -537,7 +523,21 @@ static bool SDL_UpdateWindowTexture(SDL_VideoDevice *_this, SDL_Window *window, 
 
 static void SDL_DestroyWindowTexture(SDL_VideoDevice *_this, SDL_Window *window)
 {
-    SDL_ClearProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_TEXTUREDATA_POINTER);
+    SDL_PropertiesID props = SDL_GetWindowProperties(window);
+    if (SDL_HasProperty(props, SDL_PROP_WINDOW_TEXTUREDATA_POINTER)) {
+        SDL_WindowTextureData *data = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_TEXTUREDATA_POINTER, NULL);
+
+        if (data->texture) {
+            SDL_DestroyTexture(data->texture);
+        }
+        if (data->renderer) {
+            SDL_DestroyRenderer(data->renderer);
+        }
+        SDL_free(data->pixels);
+        SDL_free(data);
+
+        SDL_ClearProperty(props, SDL_PROP_WINDOW_TEXTUREDATA_POINTER);
+    }
 }
 
 static SDL_VideoDevice *_this = NULL;
@@ -828,11 +828,11 @@ static void SDL_FinalizeDisplayMode(SDL_DisplayMode *mode)
         if (mode->refresh_rate_denominator <= 0) {
             mode->refresh_rate_denominator = 1;
         }
-        mode->refresh_rate = ((100 * (Sint64)mode->refresh_rate_numerator) / mode->refresh_rate_denominator) / 100.0f;
+        mode->refresh_rate = (float)mode->refresh_rate_numerator / mode->refresh_rate_denominator;
     } else {
         SDL_CalculateFraction(mode->refresh_rate, &mode->refresh_rate_numerator, &mode->refresh_rate_denominator);
-        mode->refresh_rate = (int)(mode->refresh_rate * 100) / 100.0f;
     }
+    mode->refresh_rate = SDL_roundf(mode->refresh_rate * 100) / 100.0f;
 }
 
 SDL_DisplayID SDL_AddBasicVideoDisplay(const SDL_DisplayMode *desktop_mode)
@@ -1738,7 +1738,7 @@ SDL_VideoDisplay *SDL_GetVideoDisplayForFullscreenWindow(SDL_Window *window)
 {
     SDL_DisplayID displayID = 0;
 
-    CHECK_WINDOW_MAGIC(window, 0);
+    CHECK_WINDOW_MAGIC(window, NULL);
 
     // An explicit fullscreen display overrides all
     if (window->current_fullscreen_mode.displayID) {
@@ -4565,6 +4565,8 @@ void SDL_DestroyWindow(SDL_Window *window)
     }
 
     SDL_DestroyProperties(window->text_input_props);
+
+    SDL_DestroyWindowTexture(_this, window);
     SDL_DestroyProperties(window->props);
 
     /* Clear the modal status, but don't unset the parent just yet, as it

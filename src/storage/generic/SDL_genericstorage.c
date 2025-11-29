@@ -263,12 +263,7 @@ static SDL_Storage *GENERIC_Title_Create(const char *override, SDL_PropertiesID 
         }
     } else {
         const char *base = SDL_GetBasePath();
-        // On Android, SDL_GetBasePath() can be NULL: use empty base.
-#ifdef SDL_PLATFORM_ANDROID
-        basepath = base ? SDL_strdup(base) : SDL_strdup("");
-#else
         basepath = base ? SDL_strdup(base) : NULL;
-#endif
     }
 
     if (basepath != NULL) {
@@ -341,31 +336,70 @@ static const SDL_StorageInterface GENERIC_file_iface = {
 SDL_Storage *GENERIC_OpenFileStorage(const char *path)
 {
     SDL_Storage *result;
-    size_t len = 0;
     char *basepath = NULL;
+    char *prepend = NULL;
 
-    if (path) {
-        len += SDL_strlen(path);
+#ifdef SDL_PLATFORM_ANDROID
+    // Use a base path of "." so the filesystem operations fall back to internal storage and the asset system
+    if (!path || !*path) {
+        path = "./";
     }
-    if (len > 0) {
-        #ifdef SDL_PLATFORM_WINDOWS
-        const bool appended_separator = (path[len-1] == '/') || (path[len-1] == '\\');
-        #elif SDL_PLATFORM_AMIGAOS4
-        const bool appended_separator = (path[len-1] == '/') || (path[len-1] == ':');
-        #else
-        const bool appended_separator = (path[len-1] == '/');
-        #endif
-        if (appended_separator) {
-            basepath = SDL_strdup(path);
-            if (!basepath) {
-                return NULL;
-            }
-        } else {
-            if (SDL_asprintf(&basepath, "%s/", path) < 0) {
-                return NULL;
-            }
+#else
+    if (!path || !*path) {
+#ifdef SDL_PLATFORM_WINDOWS
+        path = "C:/";
+#elif SDL_PLATFORM_AMIGAOS4
+        path = "SYS:";
+#else
+        path = "/";
+#endif
+    }
+
+    bool is_absolute = false;
+#ifdef SDL_PLATFORM_WINDOWS
+    const char ch = (char) SDL_toupper(path[0]);
+    is_absolute = (ch == '/') ||   // some sort of absolute Unix-style path.
+                  (ch == '\\') ||  // some sort of absolute Windows-style path.
+                  (((ch >= 'A') && (ch <= 'Z')) && (path[1] == ':') && ((path[2] == '\\') || (path[2] == '/')));  // an absolute path with a drive letter.
+#elif SDL_PLATFORM_AMIGAOS4
+    for (int i = 0; i < SDL_strlen(path); i++) {
+        if (path[i] == ':') {
+            is_absolute = true;
+            break;
         }
     }
+#else
+    is_absolute = (path[0] == '/');   // some sort of absolute Unix-style path.
+#endif
+    if (!is_absolute) {
+        prepend = SDL_GetCurrentDirectory();
+        if (!prepend) {
+            return NULL;
+        }
+    }
+#endif // SDL_PLATFORM_ANDROID
+
+    const size_t len = SDL_strlen(path);
+    const char *appended_separator = "";
+#ifdef SDL_PLATFORM_WINDOWS
+    if ((path[len-1] != '/') && (path[len-1] != '\\')) {
+        appended_separator = "/";
+    }
+#elif SDL_PLATFORM_AMIGAOS4
+    if ((path[len-1] != '/') && path[len-1] != ':') {
+        appended_separator = "/";
+    }
+#else
+    if (path[len-1] != '/') {
+        appended_separator = "/";
+    }
+#endif
+    const int rc = SDL_asprintf(&basepath, "%s%s%s", prepend ? prepend : "", path, appended_separator);
+    SDL_free(prepend);
+    if (rc < 0) {
+        return NULL;
+    }
+
     result = SDL_OpenStorage(&GENERIC_file_iface, basepath);
     if (result == NULL) {
         SDL_free(basepath);

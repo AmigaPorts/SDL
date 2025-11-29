@@ -19,18 +19,25 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef SDL_main_callbacks_h_
-#define SDL_main_callbacks_h_
+#include "SDL_internal.h"
 
-bool SDL_HasMainCallbacks(void);
-SDL_AppResult SDL_InitMainCallbacks(int argc, char *argv[], SDL_AppInit_func appinit, SDL_AppIterate_func _appiter, SDL_AppEvent_func _appevent, SDL_AppQuit_func _appquit);
-SDL_AppResult SDL_IterateMainCallbacks(bool pump_events);
-void SDL_QuitMainCallbacks(SDL_AppResult result);
+#ifndef SDL_libthai_h_
+#define SDL_libthai_h_
 
-// (not a callback thing, but convenient to stick this in here.)
-// If *_argv is NULL, update *_argc and *_argv to point at a static array of { "SDL_app", NULL }.
-void SDL_CheckDefaultArgcArgv(int *_argc, char ***_argv);
+#ifdef HAVE_LIBTHAI_H
+#include <thai/thcell.h>
 
-#endif // SDL_main_callbacks_h_
+typedef size_t (*SDL_LibThaiMakeCells)(const thchar_t *s, size_t, struct thcell_t cells[], size_t *, int);
 
+typedef struct SDL_LibThai {
+    SDL_SharedObject *lib;
+ 
+    SDL_LibThaiMakeCells make_cells;
+} SDL_LibThai;
 
+extern SDL_LibThai *SDL_LibThai_Create(void);
+extern void SDL_LibThai_Destroy(SDL_LibThai *th);
+
+#endif // HAVE_LIBTHAI_H
+
+#endif // SDL_libthai_h_

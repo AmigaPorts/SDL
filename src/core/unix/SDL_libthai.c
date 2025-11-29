@@ -18,36 +18,59 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-
 #include "SDL_internal.h"
 
-#ifdef SDL_PLATFORM_3DS
+#ifdef HAVE_LIBTHAI_H
 
-#include "../SDL_main_callbacks.h"
+#include "SDL_libthai.h"
 
-#include <3ds.h>
+#ifdef SDL_LIBTHAI_DYNAMIC
+SDL_ELF_NOTE_DLOPEN(
+    "Thai",
+    "Thai language support",
+    SDL_ELF_NOTE_DLOPEN_PRIORITY_SUGGESTED,
+    SDL_LIBTHAI_DYNAMIC
+);
+#endif
 
-int SDL_RunApp(int argc, char *argv[], SDL_main_func mainFunction, void * reserved)
+
+SDL_LibThai *SDL_LibThai_Create(void)
 {
-    int result;
+    SDL_LibThai *th;
 
-    SDL_CheckDefaultArgcArgv(&argc, &argv);
+    th = (SDL_LibThai *)SDL_malloc(sizeof(SDL_LibThai));
+    if (!th) {
+        return NULL;
+    }
 
-    // init
-    osSetSpeedupEnable(true);
-    romfsInit();
+#ifdef SDL_LIBTHAI_DYNAMIC
+    #define SDL_LIBTHAI_LOAD_SYM(a, x, n, t) x = ((t)SDL_LoadFunction(a->lib, n)); if (!x) { SDL_UnloadObject(a->lib); SDL_free(a); return NULL; }
 
-    SDL_SetMainReady();
-    result = mainFunction(argc, argv);
+    th->lib = SDL_LoadObject(SDL_LIBTHAI_DYNAMIC);
+    if (!th->lib) {
+        SDL_free(th);
+        return NULL;
+    }
 
-    // quit
-    romfsExit();
+    SDL_LIBTHAI_LOAD_SYM(th, th->make_cells, "th_make_cells", SDL_LibThaiMakeCells);
+#else
+    th->make_cells = th_make_cells;
+#endif
 
-    return result;
+    return th;
 }
 
-#ifdef __cplusplus
-} // extern "C"
+void SDL_LibThai_Destroy(SDL_LibThai *th)
+{
+    if (!th) {
+        return;
+    }
+
+#ifdef SDL_LIBTHAI_DYNAMIC
+    SDL_UnloadObject(th->lib);
 #endif
+
+    SDL_free(th);
+}
 
 #endif

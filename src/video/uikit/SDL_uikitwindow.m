@@ -126,43 +126,6 @@ static bool SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, UIWindow
     return true;
 }
 
-API_AVAILABLE(ios(13.0))
-static UIWindowScene *GetActiveWindowScene(void)
-{
-    if (@available(iOS 13.0, tvOS 13.0, *)) {
-        NSSet<UIScene *> *connectedScenes = [UIApplication sharedApplication].connectedScenes;
-
-        // First, try to find an active foreground scene
-        for (UIScene *scene in connectedScenes) {
-            if ([scene isKindOfClass:[UIWindowScene class]]) {
-                UIWindowScene *windowScene = (UIWindowScene *)scene;
-                if (windowScene.activationState == UISceneActivationStateForegroundActive) {
-                    return windowScene;
-                }
-            }
-        }
-
-        // If no active scene, return any foreground scene
-        for (UIScene *scene in connectedScenes) {
-            if ([scene isKindOfClass:[UIWindowScene class]]) {
-                UIWindowScene *windowScene = (UIWindowScene *)scene;
-                if (windowScene.activationState == UISceneActivationStateForegroundInactive) {
-                    return windowScene;
-                }
-            }
-        }
-
-        // Last resort: return first window scene
-        for (UIScene *scene in connectedScenes) {
-            if ([scene isKindOfClass:[UIWindowScene class]]) {
-                return (UIWindowScene *)scene;
-            }
-        }
-    }
-
-    return nil;
-}
-
 bool UIKit_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props)
 {
     @autoreleasepool {
@@ -210,7 +173,10 @@ bool UIKit_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Properti
 
         UIWindow *uiwindow = nil;
         if (@available(iOS 13.0, tvOS 13.0, *)) {
-            UIWindowScene *scene = GetActiveWindowScene();
+            UIWindowScene *scene = (__bridge UIWindowScene *)SDL_GetPointerProperty(create_props, SDL_PROP_WINDOW_CREATE_WINDOWSCENE_POINTER, NULL);
+            if (!scene) {
+                scene = UIKit_GetActiveWindowScene();
+            }
             if (scene) {
                 uiwindow = [[UIWindow alloc] initWithWindowScene:scene];
             }
@@ -234,6 +200,10 @@ bool UIKit_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Properti
         if (!SetupWindowData(_this, window, uiwindow, true)) {
             return false;
         }
+
+#ifdef SDL_PLATFORM_VISIONOS
+        SDL_SetWindowSize(window, window->w, window->h);
+#endif
     }
 
     return true;
@@ -245,6 +215,21 @@ void UIKit_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window)
         SDL_UIKitWindowData *data = (__bridge SDL_UIKitWindowData *)window->internal;
         data.viewcontroller.title = @(window->title);
     }
+}
+
+void UIKit_SetWindowSize(SDL_VideoDevice *_this, SDL_Window *window)
+{
+#ifdef SDL_PLATFORM_VISIONOS
+    @autoreleasepool {
+        SDL_UIKitWindowData *data = (__bridge SDL_UIKitWindowData *)window->internal;
+        UIWindowScene *scene = data.uiwindow.windowScene;
+        CGSize size = { window->pending.w, window->pending.h };
+        UIWindowSceneGeometryPreferences *preferences = [[UIWindowSceneGeometryPreferencesVision alloc] initWithSize:size];
+        [scene requestGeometryUpdateWithPreferences:preferences errorHandler:^(NSError * _Nonnull error) {
+            // Request failed, no worries
+        }];
+    }
+#endif
 }
 
 void UIKit_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
