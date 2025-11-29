@@ -107,9 +107,10 @@ typedef struct SDL_WaylandPenTool  // a stylus, etc, on a tablet.
             WAYLAND_TABLET_TOOL_STATE_UP
         } tool_state;
 
+        bool in_proximity;
+
         bool have_motion;
-        bool have_proximity_in;
-        bool have_proximity_out;
+        bool have_proximity;
     } frame;
 
     SDL_WaylandCursorState cursor_state;
@@ -279,7 +280,7 @@ extern void Wayland_DisplayInitPrimarySelectionDeviceManager(SDL_VideoData *disp
 extern void Wayland_DisplayCreateTextInputManager(SDL_VideoData *d, uint32_t id);
 
 extern void Wayland_DisplayCreateSeat(SDL_VideoData *display, struct wl_seat *wl_seat, Uint32 id);
-extern void Wayland_SeatDestroy(SDL_WaylandSeat *seat, bool send_events);
+extern void Wayland_SeatDestroy(SDL_WaylandSeat *seat, bool shutting_down);
 
 extern void Wayland_SeatUpdatePointerGrab(SDL_WaylandSeat *seat);
 extern void Wayland_DisplayUpdatePointerGrabs(SDL_VideoData *display, SDL_WindowData *window);

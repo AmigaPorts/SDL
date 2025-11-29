@@ -763,7 +763,7 @@ static void Emscripten_UpdateTouchFromEvent(SDL_WindowData *window_data, const E
 static void Emscripten_UpdatePenFromEvent(SDL_WindowData *window_data, const Emscripten_PointerEvent *event)
 {
     SDL_assert(event->pointer_type == PTRTYPE_PEN);
-    const SDL_PenID pen = SDL_FindPenByHandle((void *) (size_t) event->pointerid);
+    const SDL_PenID pen = SDL_FindPenByHandle((void *) (size_t) 1);   // something > 0 for the single pen handle.
     if (pen) {
         // rescale (in case canvas is being scaled)
         double client_w, client_h;
@@ -848,14 +848,24 @@ static void Emscripten_HandleMouseFocus(SDL_WindowData *window_data, const Emscr
 static void Emscripten_HandlePenEnter(SDL_WindowData *window_data, const Emscripten_PointerEvent *event)
 {
     SDL_assert(event->pointer_type == PTRTYPE_PEN);
-    // Web browsers offer almost none of this information as specifics, but can without warning offer any of these specific things.
-    SDL_PenInfo peninfo;
-    SDL_zero(peninfo);
-    peninfo.capabilities = SDL_PEN_CAPABILITY_PRESSURE | SDL_PEN_CAPABILITY_ROTATION | SDL_PEN_CAPABILITY_XTILT | SDL_PEN_CAPABILITY_YTILT | SDL_PEN_CAPABILITY_TANGENTIAL_PRESSURE | SDL_PEN_CAPABILITY_ERASER;
-    peninfo.max_tilt = 90.0f;
-    peninfo.num_buttons = 2;
-    peninfo.subtype = SDL_PEN_TYPE_PEN;
-    SDL_AddPenDevice(0, NULL, window_data->window, &peninfo, (void *) (size_t) event->pointerid);
+
+    // event->pointerid is one continuous interaction; it doesn't necessarily track a specific tool over time, like the same finger's ID changed on each new touch event.
+    // as such, we only expose a single pen, and when the touch ends, we say it lost proximity instead of the calling SDL_RemovePenDevice().
+
+    SDL_PenID pen = SDL_FindPenByHandle((void *) (size_t) 1);  // something > 0 for the single pen handle.
+    if (pen) {
+        SDL_SendPenProximity(0, pen, window_data->window, true);
+    } else {
+        // Web browsers offer almost none of this information as specifics, but can without warning offer any of these specific things.
+        SDL_PenInfo peninfo;
+        SDL_zero(peninfo);
+        peninfo.capabilities = SDL_PEN_CAPABILITY_PRESSURE | SDL_PEN_CAPABILITY_ROTATION | SDL_PEN_CAPABILITY_XTILT | SDL_PEN_CAPABILITY_YTILT | SDL_PEN_CAPABILITY_TANGENTIAL_PRESSURE | SDL_PEN_CAPABILITY_ERASER;
+        peninfo.max_tilt = 90.0f;
+        peninfo.num_buttons = 2;
+        peninfo.subtype = SDL_PEN_TYPE_PEN;
+        SDL_AddPenDevice(0, NULL, window_data->window, &peninfo, (void *) (size_t) 1, true);
+    }
+
     Emscripten_UpdatePenFromEvent(window_data, event);
 }
 
@@ -875,10 +885,10 @@ EMSCRIPTEN_KEEPALIVE void Emscripten_HandlePointerEnter(SDL_WindowData *window_d
 
 static void Emscripten_HandlePenLeave(SDL_WindowData *window_data, const Emscripten_PointerEvent *event)
 {
-    const SDL_PenID pen = SDL_FindPenByHandle((void *) (size_t) event->pointerid);
+    const SDL_PenID pen = SDL_FindPenByHandle((void *) (size_t) 1);   // something > 0 for the single pen handle.
     if (pen) {
         Emscripten_UpdatePointerFromEvent(window_data, event);  // last data updates?
-        SDL_RemovePenDevice(0, window_data->window, pen);
+        SDL_SendPenProximity(0, pen, window_data->window, false);
     }
 }
 

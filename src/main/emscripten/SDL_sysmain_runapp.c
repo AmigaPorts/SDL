@@ -22,6 +22,8 @@
 
 #ifdef SDL_PLATFORM_EMSCRIPTEN
 
+#include "../SDL_main_callbacks.h"
+
 #include <emscripten/emscripten.h>
 
 EM_JS_DEPS(sdlrunapp, "$dynCall,$stringToNewUTF8");
@@ -29,11 +31,13 @@ EM_JS_DEPS(sdlrunapp, "$dynCall,$stringToNewUTF8");
 // even though we reference the C runtime's free() in other places, it appears
 // to be inlined more aggressively in Emscripten 4, so we need a reference to
 // it here, too, so the inlined Javascript doesn't fail to find it.
-EMSCRIPTEN_KEEPALIVE void force_free(void *ptr) { free(ptr); }
+EMSCRIPTEN_KEEPALIVE void force_free(void *ptr) { free(ptr); } // This should NOT be SDL_free()
 
 int SDL_RunApp(int argc, char *argv[], SDL_main_func mainFunction, void * reserved)
 {
     (void)reserved;
+
+    SDL_CheckDefaultArgcArgv(&argc, &argv);
 
     // Move any URL params that start with "SDL_" over to environment
     //  variables, so the hint system can pick them up, etc, much like a user
