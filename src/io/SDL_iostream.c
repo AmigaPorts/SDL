@@ -404,19 +404,30 @@ static BPTR SDLCALL amigaos4_file_open(const char *filename, const char *mode)
 
     // "r" = reading, file must exist
     // "w" = writing, truncate existing, file may not exist
+    // "wx"= writing, file must not exist
     // "r+"= reading or writing, file must exist
     // "a" = writing, append file may not exist
     // "a+"= append + read, file may not exist
     // "w+" = read, write, truncate. file may not exist
+    // "w+x"= read, write, file must not exist
 
     int32 accessMode = MODE_NEWFILE;
 
-    if ((SDL_strchr(mode, 'r') != NULL)) {
+    if (SDL_strchr(mode, 'r') != NULL) {
         accessMode = MODE_OLDFILE;
     }
 
-    if ((SDL_strchr(mode, 'a') != NULL)) {
+    if (SDL_strchr(mode, 'a') != NULL) {
         accessMode = MODE_READWRITE;
+    }
+
+    if (SDL_strchr(mode, 'x') != NULL) {
+        BPTR lock = IDOS->Lock(filename, SHARED_LOCK);
+        if (lock) {
+            IDOS->UnLock(lock);
+            dprintf("Cannot create file '%s' because it already exists\n", filename);
+            return ZERO;
+        }
     }
 
     const bool buffered = amigaos4_buffered();
