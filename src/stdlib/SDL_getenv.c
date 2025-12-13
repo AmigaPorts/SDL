@@ -165,7 +165,7 @@ SDL_Environment *SDL_CreateEnvironment(bool populated)
 #endif
 #ifdef SDL_PLATFORM_AMIGAOS4
         if (IDOS) {
-            const int32 found = IDOS->ScanVars(&OS4_ScanVarsHook, /*LV_VAR | GVF_LOCAL_ONLY*/ 0, env);
+            const int32 found = IDOS->ScanVars(&OS4_ScanVarsHook, GVF_SCAN_LEVEL, env);
             if (!found) {
                 dprintf("ScanVars failed, err %ld\n", IDOS->IoErr());
             }
