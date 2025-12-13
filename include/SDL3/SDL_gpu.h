@@ -2361,7 +2361,7 @@ extern SDL_DECLSPEC SDL_GPUDevice * SDLCALL SDL_CreateGPUDeviceWithProperties(
  * When no such structure is provided, SDL will use Vulkan API version 1.0 and
  * a minimal set of features. The requested API version influences how the
  * feature_list is processed by SDL. When requesting API version 1.0, the
- * feature_list is ignored. Only the vulkan_10_phyisical_device_features and
+ * feature_list is ignored. Only the vulkan_10_physical_device_features and
  * the extension lists are used. When requesting API version 1.1, the
  * feature_list is scanned for feature structures introduced in Vulkan 1.1.
  * When requesting Vulkan 1.2 or higher, the feature_list is additionally
@@ -2945,6 +2945,12 @@ extern SDL_DECLSPEC void SDLCALL SDL_SetGPUTextureName(
  *
  * Useful for debugging.
  *
+ * On Direct3D 12, using SDL_InsertGPUDebugLabel requires
+ * WinPixEventRuntime.dll to be in your PATH or in the same directory as your
+ * executable. See
+ * [here](https://devblogs.microsoft.com/pix/winpixeventruntime/)
+ * for instructions on how to obtain it.
+ *
  * \param command_buffer a command buffer.
  * \param text a UTF-8 string constant to insert as the label.
  *
@@ -2962,6 +2968,11 @@ extern SDL_DECLSPEC void SDLCALL SDL_InsertGPUDebugLabel(
  *
  * Each call to SDL_PushGPUDebugGroup must have a corresponding call to
  * SDL_PopGPUDebugGroup.
+ *
+ * On Direct3D 12, using SDL_PushGPUDebugGroup requires WinPixEventRuntime.dll
+ * to be in your PATH or in the same directory as your executable. See
+ * [here](https://devblogs.microsoft.com/pix/winpixeventruntime/)
+ * for instructions on how to obtain it.
  *
  * On some backends (e.g. Metal), pushing a debug group during a
  * render/blit/compute pass will create a group that is scoped to the native
@@ -2981,6 +2992,11 @@ extern SDL_DECLSPEC void SDLCALL SDL_PushGPUDebugGroup(
 
 /**
  * Ends the most-recently pushed debug group.
+ *
+ * On Direct3D 12, using SDL_PopGPUDebugGroup requires WinPixEventRuntime.dll
+ * to be in your PATH or in the same directory as your executable. See
+ * [here](https://devblogs.microsoft.com/pix/winpixeventruntime/)
+ * for instructions on how to obtain it.
  *
  * \param command_buffer a command buffer.
  *
@@ -3123,7 +3139,7 @@ extern SDL_DECLSPEC SDL_GPUCommandBuffer * SDLCALL SDL_AcquireGPUCommandBuffer(
 /**
  * Pushes data to a vertex uniform slot on the command buffer.
  *
- * Subsequent draw calls will use this uniform data.
+ * Subsequent draw calls in this command buffer will use this uniform data.
  *
  * The data being pushed must respect std140 layout conventions. In practical
  * terms this means you must ensure that vec3 and vec4 fields are 16-byte
@@ -3148,7 +3164,7 @@ extern SDL_DECLSPEC void SDLCALL SDL_PushGPUVertexUniformData(
 /**
  * Pushes data to a fragment uniform slot on the command buffer.
  *
- * Subsequent draw calls will use this uniform data.
+ * Subsequent draw calls in this command buffer will use this uniform data.
  *
  * The data being pushed must respect std140 layout conventions. In practical
  * terms this means you must ensure that vec3 and vec4 fields are 16-byte
@@ -3170,7 +3186,7 @@ extern SDL_DECLSPEC void SDLCALL SDL_PushGPUFragmentUniformData(
 /**
  * Pushes data to a uniform slot on the command buffer.
  *
- * Subsequent draw calls will use this uniform data.
+ * Subsequent draw calls in this command buffer will use this uniform data.
  *
  * The data being pushed must respect std140 layout conventions. In practical
  * terms this means you must ensure that vec3 and vec4 fields are 16-byte

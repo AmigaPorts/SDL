@@ -19,22 +19,22 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 #include "SDL_internal.h"
-#include "SDL_main_callbacks.h"
 
-// Add your platform here if you define a custom SDL_RunApp() implementation
-#if !defined(SDL_PLATFORM_WIN32) && \
-    !defined(SDL_PLATFORM_GDK) && \
-    !defined(SDL_PLATFORM_IOS) && \
-    !defined(SDL_PLATFORM_TVOS) && \
-    !defined(SDL_PLATFORM_EMSCRIPTEN) && \
-    !defined(SDL_PLATFORM_PSP) && \
-    !defined(SDL_PLATFORM_PS2) && \
-    !defined(SDL_PLATFORM_3DS)
-
-int SDL_RunApp(int argc, char *argv[], SDL_main_func mainFunction, void * reserved)
+typedef struct
 {
-    (void)reserved;
-    return SDL_CallMainFunction(argc, argv, mainFunction);
-}
+	Uint8 report_id;
+	Uint32 usage;
+	int bit_offset;
+	int bit_size;
+} DescriptorInputField;
 
-#endif
+typedef struct
+{
+	int field_count;
+	DescriptorInputField *fields;
+} SDL_ReportDescriptor;
+
+extern SDL_ReportDescriptor *SDL_ParseReportDescriptor(const Uint8 *descriptor, int descriptor_size);
+extern bool SDL_DescriptorHasUsage(SDL_ReportDescriptor *descriptor, Uint16 usage_page, Uint16 usage);
+extern void SDL_DestroyDescriptor(SDL_ReportDescriptor *descriptor);
+extern bool SDL_ReadReportData(const Uint8 *data, int size, int bit_offset, int bit_size, Uint32 *value);
