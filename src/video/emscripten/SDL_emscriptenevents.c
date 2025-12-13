@@ -480,6 +480,8 @@ static EM_BOOL Emscripten_HandleFullscreenChange(int eventType, const Emscripten
 {
     SDL_WindowData *window_data = userData;
 
+    window_data->fullscreen_change_in_progress = false;
+
     if (fullscreenChangeEvent->isFullscreen) {
         SDL_SendWindowEvent(window_data->window, SDL_EVENT_WINDOW_ENTER_FULLSCREEN, 0, 0);
         window_data->fullscreen_mode_flags = 0;
@@ -516,10 +518,10 @@ static EM_BOOL Emscripten_HandleResize(int eventType, const EmscriptenUiEvent *u
                 force = true;
             }
         }
-
-        if (window_data->fill_document || (window_data->window->flags & SDL_WINDOW_RESIZABLE)) {
+        const bool fill_document = (Emscripten_fill_document_window == window_data->window);
+        if (fill_document || (window_data->window->flags & SDL_WINDOW_RESIZABLE)) {
             double w, h;
-            if (window_data->fill_document) {
+            if (fill_document) {
                 w = (double) uiEvent->windowInnerWidth;
                 h = (double) uiEvent->windowInnerHeight;
             } else {

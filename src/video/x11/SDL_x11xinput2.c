@@ -130,27 +130,14 @@ static bool xinput2_version_atleast(const int version, const int wantmajor, cons
     return version >= ((wantmajor * 1000) + wantminor);
 }
 
-// !!! FIXME: isn't this just X11_FindWindow?
-static SDL_WindowData *xinput2_get_sdlwindowdata(SDL_VideoData *videodata, Window window)
-{
-    int i;
-    for (i = 0; i < videodata->numwindows; i++) {
-        SDL_WindowData *d = videodata->windowlist[i];
-        if (d->xwindow == window) {
-            return d;
-        }
-    }
-    return NULL;
-}
-
 static SDL_Window *xinput2_get_sdlwindow(SDL_VideoData *videodata, Window window)
 {
-    const SDL_WindowData *windowdata = xinput2_get_sdlwindowdata(videodata, window);
+    const SDL_WindowData *windowdata = X11_FindWindow(videodata, window);
     return windowdata ? windowdata->window : NULL;
 }
 
 #ifdef SDL_VIDEO_DRIVER_X11_XINPUT2_SUPPORTS_SCROLLINFO
-static void xinput2_reset_scrollable_valuators(SDL_VideoData *videodata)
+static void xinput2_reset_scrollable_valuators()
 {
     for (int i = 0; i < scrollable_device_count; ++i) {
         for (int j = 0; j < scrollable_devices[i].scroll_info_count; ++j) {
@@ -519,7 +506,7 @@ void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
         // Handle pen proximity enter/leave
         if (proev->what == XIPropertyModified && proev->property == videodata->atoms.pen_atom_wacom_serial_ids) {
             const XIDeviceEvent *xev = (const XIDeviceEvent *)cookie->data;
-            SDL_WindowData *windowdata = X11_FindWindow(_this, xev->event);
+            SDL_WindowData *windowdata = X11_FindWindow(videodata, xev->event);
             X11_NotifyPenProximityChange(_this, windowdata ? windowdata->window : NULL, proev->deviceid);
         }
     } break;
@@ -546,7 +533,7 @@ void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
     case XI_KeyRelease:
     {
         const XIDeviceEvent *xev = (const XIDeviceEvent *)cookie->data;
-        SDL_WindowData *windowdata = X11_FindWindow(_this, xev->event);
+        SDL_WindowData *windowdata = X11_FindWindow(videodata, xev->event);
         XEvent xevent;
 
         if (xev->deviceid != xev->sourceid) {
@@ -613,9 +600,9 @@ void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
             } else {
                 SDL_SendPenButton(0, pen->pen, window, button - 1, down);
             }
-        } else {
+        } else if (!pointer_emulated) {
             // Otherwise assume a regular mouse
-            SDL_WindowData *windowdata = xinput2_get_sdlwindowdata(videodata, xev->event);
+            SDL_WindowData *windowdata = X11_FindWindow(videodata, xev->event);
             int x_ticks = 0, y_ticks = 0;
 
             // Slave pointer devices don't have button remapping applied automatically, so do it manually.
@@ -627,12 +614,8 @@ void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
 
             /* Discard wheel events from "Master" devices to avoid duplicates,
              * as coarse wheel events are stateless and can't be deduplicated.
-             *
-             * If the pointer emulation flag is set on a wheel event, it is being
-             * emulated from a scroll valuator, which will be handled natively.
              */
-            if ((pointer_emulated || xev->deviceid != xev->sourceid) &&
-                X11_IsWheelEvent(button, &x_ticks, &y_ticks)) {
+            if (xev->deviceid != xev->sourceid && X11_IsWheelEvent(button, &x_ticks, &y_ticks)) {
                 break;
             }
 
@@ -647,7 +630,7 @@ void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
 
 #ifdef SDL_VIDEO_DRIVER_X11_XINPUT2_SUPPORTS_SCROLLINFO
     case XI_Enter:
-        xinput2_reset_scrollable_valuators(videodata);
+        xinput2_reset_scrollable_valuators();
         break;
 #endif
 

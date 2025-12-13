@@ -788,28 +788,6 @@ extern "C" {
 #define SDL_HINT_EMSCRIPTEN_KEYBOARD_ELEMENT "SDL_EMSCRIPTEN_KEYBOARD_ELEMENT"
 
 /**
- * Dictate that newly-created windows will fill the whole browser window.
- *
- * The canvas element fills the entire document. Resize events will be
- * generated as the browser window is resized, as that will adjust the canvas
- * size as well. The canvas will cover anything else on the page, including
- * any controls provided by Emscripten in its generated HTML file. Often times
- * this is desirable for a browser-based game, but it means several things
- * that we expect of an SDL window on other platforms might not work as
- * expected, such as minimum window sizes and aspect ratios.
- *
- * This hint overrides SDL_PROP_WINDOW_CREATE_EMSCRIPTEN_FILL_DOCUMENT_BOOLEAN
- * properties when creating an SDL window.
- *
- * This hint only applies to the emscripten platform.
- *
- * This hint should be set before creating a window.
- *
- * \since This hint is available since SDL 3.4.0.
- */
-#define SDL_HINT_EMSCRIPTEN_FILL_DOCUMENT "SDL_EMSCRIPTEN_FILL_DOCUMENT"
-
-/**
  * A variable that controls whether the on-screen keyboard should be shown
  * when text input is active.
  *
@@ -2621,6 +2599,21 @@ extern "C" {
 #define SDL_HINT_MAC_SCROLL_MOMENTUM "SDL_MAC_SCROLL_MOMENTUM"
 
 /**
+ * A variable controlling whether holding down a key will repeat the pressed
+ * key or open the accents menu on macOS.
+ *
+ * The variable can be set to the following values:
+ *
+ * - "0": Holding a key will open the accents menu for that key.
+ * - "1": Holding a key will repeat the pressed key. (default)
+ *
+ * This hint needs to be set before SDL_Init().
+ *
+ * \since This hint is available since SDL 3.4.0.
+ */
+#define SDL_HINT_MAC_PRESS_AND_HOLD "SDL_MAC_PRESS_AND_HOLD"
+
+/**
  * Request SDL_AppIterate() be called at a specific rate.
  *
  * If this is set to a number, it represents Hz, so "60" means try to iterate
@@ -2698,6 +2691,24 @@ extern "C" {
  * \since This hint is available since SDL 3.2.0.
  */
 #define SDL_HINT_MOUSE_DEFAULT_SYSTEM_CURSOR "SDL_MOUSE_DEFAULT_SYSTEM_CURSOR"
+
+/**
+ * A variable setting whether we should scale cursors by the current display
+ * scale.
+ *
+ * The variable can be set to the following values:
+ *
+ * - "0": Cursors will not change size based on the display content scale.
+ *   (default)
+ * - "1": Cursors will automatically match the display content scale (e.g. a
+ *   2x sized cursor will be used when the window is on a monitor with 200%
+ *   scale). This is currently implemented on Windows and Wayland.
+ *
+ * This hint needs to be set before creating cursors.
+ *
+ * \since This hint is available since SDL 3.4.0.
+ */
+#define SDL_HINT_MOUSE_DPI_SCALE_CURSORS "SDL_MOUSE_DPI_SCALE_CURSORS"
 
 /**
  * A variable controlling whether warping a hidden mouse cursor will activate
