@@ -48,6 +48,9 @@
  * SDL_INIT_GAMEPAD flag. This causes SDL to scan the system for gamepads, and
  * load appropriate drivers.
  *
+ * If you're using SDL gamepad support in a Steam game, you must call
+ * SteamAPI_InitEx() before calling SDL_Init().
+ *
  * If you would like to receive gamepad updates while the application is in
  * the background, you should set the following hint before calling
  * SDL_Init(): SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS
@@ -1492,7 +1495,7 @@ extern SDL_DECLSPEC float SDLCALL SDL_GetGamepadSensorDataRate(SDL_Gamepad *game
  * Get the current state of a gamepad sensor.
  *
  * The number of values and interpretation of the data is sensor dependent.
- * See SDL_sensor.h for the details for each type of sensor.
+ * See the remarks in SDL_SensorType for details for each type of sensor.
  *
  * \param gamepad the gamepad to query.
  * \param type the type of sensor to query.
