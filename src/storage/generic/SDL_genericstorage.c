@@ -348,6 +348,8 @@ SDL_Storage *GENERIC_OpenFileStorage(const char *path)
     if (!path || !*path) {
 #ifdef SDL_PLATFORM_WINDOWS
         path = "C:/";
+#elif SDL_PLATFORM_AMIGAOS4
+        path = "SYS:";
 #else
         path = "/";
 #endif
@@ -359,6 +361,13 @@ SDL_Storage *GENERIC_OpenFileStorage(const char *path)
     is_absolute = (ch == '/') ||   // some sort of absolute Unix-style path.
                   (ch == '\\') ||  // some sort of absolute Windows-style path.
                   (((ch >= 'A') && (ch <= 'Z')) && (path[1] == ':') && ((path[2] == '\\') || (path[2] == '/')));  // an absolute path with a drive letter.
+#elif SDL_PLATFORM_AMIGAOS4
+    for (int i = 0; i < SDL_strlen(path); i++) {
+        if (path[i] == ':') {
+            is_absolute = true;
+            break;
+        }
+    }
 #else
     is_absolute = (path[0] == '/');   // some sort of absolute Unix-style path.
 #endif
@@ -374,6 +383,10 @@ SDL_Storage *GENERIC_OpenFileStorage(const char *path)
     const char *appended_separator = "";
 #ifdef SDL_PLATFORM_WINDOWS
     if ((path[len-1] != '/') && (path[len-1] != '\\')) {
+        appended_separator = "/";
+    }
+#elif SDL_PLATFORM_AMIGAOS4
+    if ((path[len-1] != '/') && path[len-1] != ':') {
         appended_separator = "/";
     }
 #else

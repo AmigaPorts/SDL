@@ -144,7 +144,11 @@ void SDL_SYS_DelayNS(Uint64 ns)
 #ifdef HAVE_NANOSLEEP
     struct timespec tv, remaining;
 #else
+
+#ifndef SDL_PLATFORM_AMIGAOS4
     struct timeval tv;
+#endif
+
     Uint64 then, now, elapsed;
 #endif
 
@@ -179,10 +183,14 @@ void SDL_SYS_DelayNS(Uint64 ns)
             break;
         }
         ns -= elapsed;
+#ifdef SDL_PLATFORM_AMIGAOS4
+        was_error = usleep(ns / 1000);
+#else
         tv.tv_sec = (ns / SDL_NS_PER_SECOND);
         tv.tv_usec = SDL_NS_TO_US(ns % SDL_NS_PER_SECOND);
 
         was_error = select(0, NULL, NULL, NULL, &tv);
+#endif
 #endif // HAVE_NANOSLEEP
     } while (was_error && (errno == EINTR));
 }

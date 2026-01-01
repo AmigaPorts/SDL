@@ -26,6 +26,9 @@
 #else
 #include <unistd.h> // _exit(), etc.
 #endif
+#if defined(SDL_PLATFORM_AMIGAOS4)
+#include "video/amigaos4/SDL_os4library.h"
+#endif
 
 // this checks for HAVE_DBUS_DBUS_H internally.
 #include "core/linux/SDL_dbus.h"
@@ -321,6 +324,10 @@ static void SDL_QuitMainThread(void)
 bool SDL_InitSubSystem(SDL_InitFlags flags)
 {
     Uint32 flags_initialized = 0;
+
+#if defined(SDL_PLATFORM_AMIGAOS4)
+    AMIGAOS4_INIT();
+#endif
 
     if (!SDL_MainIsReady) {
         return SDL_SetError("Application didn't initialize properly, did you include SDL_main.h in the file containing your main() function?");
@@ -715,6 +722,12 @@ void SDL_Quit(void)
     SDL_QuitMainThread();
 
     SDL_bInMainQuit = false;
+
+#if defined(SDL_PLATFORM_AMIGAOS4)
+    /* AMIGAOS4_QUIT() destructor is not triggering when quitting RebelSDL applications.
+       Quit explicitly to avoid unfreed signals. */
+    AMIGAOS4_QUIT();
+#endif
 }
 
 // Get the library version number
@@ -790,6 +803,8 @@ const char *SDL_GetPlatform(void)
     return "PlayStation 2";
 #elif defined(SDL_PLATFORM_PSP)
     return "PlayStation Portable";
+#elif defined(SDL_PLATFORM_AMIGAOS4)
+    return "AmigaOS 4";
 #elif defined(SDL_PLATFORM_VITA)
     return "PlayStation Vita";
 #elif defined(SDL_PLATFORM_3DS)

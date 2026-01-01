@@ -108,6 +108,9 @@ this should probably be removed at some point in the future.  --ryan. */
 
 #ifndef SDL_RENDER_DISABLED
 static const SDL_RenderDriver *render_drivers[] = {
+#ifdef SDL_VIDEO_RENDER_AMIGAOS4
+    &AMIGAOS4_RenderDriver,
+#endif
 #ifdef SDL_VIDEO_RENDER_D3D11
     &D3D11_RenderDriver,
 #endif
@@ -4581,6 +4584,13 @@ bool SDL_RenderTextureTiled(SDL_Renderer *renderer, SDL_Texture *texture, const 
     }
 
     texture->last_command_generation = renderer->render_command_generation;
+
+#ifdef SDL_PLATFORM_AMIGAOS4
+    if (SDL_strcmp(renderer->name, "compositing") == 0) {
+        // We cannot repeat texture coordinates when using CompositeTags()
+        return SDL_RenderTextureTiled_Iterate(renderer, texture, &real_srcrect, scale, dstrect);
+    }
+#endif
 
     bool do_wrapping = !renderer->software &&
                         (!srcrect ||

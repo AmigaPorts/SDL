@@ -473,6 +473,10 @@
 #define SDL_PLATFORM_3DS 1
 #endif
 
+#if defined(__amigaos4__)
+#define SDL_PLATFORM_AMIGAOS4 1
+#endif
+
 #ifdef __NGAGE__
 
 /**

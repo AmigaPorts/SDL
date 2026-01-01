@@ -75,6 +75,10 @@
 #include <unistd.h>
 #endif
 
+#ifdef SDL_PLATFORM_AMIGAOS4
+#include "../main/amigaos4/SDL_os4debug.h"
+#endif
+
 #ifndef GL_RGBA_FLOAT_MODE_ARB
 #define GL_RGBA_FLOAT_MODE_ARB 0x8820
 #endif /* GL_RGBA_FLOAT_MODE_ARB */
@@ -137,6 +141,9 @@ static VideoBootStrap *bootstrap[] = {
 #endif
 #ifdef SDL_VIDEO_DRIVER_EMSCRIPTEN
     &Emscripten_bootstrap,
+#endif
+#ifdef SDL_VIDEO_DRIVER_AMIGAOS4
+    &AMIGAOS4_bootstrap,
 #endif
 #ifdef SDL_VIDEO_DRIVER_QNX
     &QNX_bootstrap,
@@ -1519,9 +1526,13 @@ bool SDL_SetDisplayModeForDisplay(SDL_VideoDisplay *display, SDL_DisplayMode *mo
         mode = &display->desktop_mode;
     }
 
+#if defined(SDL_PLATFORM_AMIGAOS4)
+    // Allow opening another screen with Workbench resolution
+#else
     if (mode == display->current_mode) {
         return true;
     }
+#endif
 
     // Actually change the display mode
     if (_this->SetDisplayMode) {
@@ -1938,6 +1949,44 @@ bool SDL_UpdateFullscreenMode(SDL_Window *window, SDL_FullscreenOp fullscreen, b
 
     if (fullscreen) {
         mode = (SDL_DisplayMode *)SDL_GetWindowFullscreenMode(window);
+
+#if defined(SDL_PLATFORM_AMIGAOS4)
+        /* HACK: in order to open an exclusive fullscreen before window,
+           copy necessary mode data into window struct */
+        if (mode == NULL) {
+            SDL_DisplayMode fullscreen_mode;
+            fullscreen_mode.displayID = 1;
+            fullscreen_mode.format = SDL_PIXELFORMAT_XRGB8888;
+            fullscreen_mode.w = window->w;
+            fullscreen_mode.h = window->h;
+            fullscreen_mode.pixel_density = 1.0f;
+            fullscreen_mode.refresh_rate = 60.0f;
+            fullscreen_mode.refresh_rate_numerator = 0;
+            fullscreen_mode.refresh_rate_denominator = 0;
+            fullscreen_mode.internal = NULL;
+
+            SDL_memcpy(&window->requested_fullscreen_mode, &fullscreen_mode, sizeof(window->requested_fullscreen_mode));
+            SDL_memcpy(&window->current_fullscreen_mode, &fullscreen_mode, sizeof(window->requested_fullscreen_mode));
+
+            mode = (SDL_DisplayMode *)SDL_GetWindowFullscreenMode(window);
+
+            if (mode == NULL) {
+                SDL_Rect bounds;
+                int result = SDL_GetDisplayBounds(SDL_GetPrimaryDisplay(), &bounds);
+                if (result == 0) {
+                    dprintf("Display bounds %d * %d\n", bounds.w, bounds.h);
+                    /* This makes testautomation video_setWindowCenteredOnDisplay case pass. Otherwise window
+                       opens on the Workbench screen */
+                    if (!SDL_GetClosestFullscreenDisplayMode(1, bounds.w, bounds.h, 0.0f, false, mode)) {
+                        dprintf("Failed to get closest fullscreen display mode: %s\n", SDL_GetError());
+                    }
+                } else {
+                    dprintf("Failed to get display bounds: %s\n", SDL_GetError());
+                }
+            }
+        }
+#endif
+
         if (mode) {
             window->fullscreen_exclusive = true;
         } else {
@@ -2068,12 +2117,20 @@ bool SDL_UpdateFullscreenMode(SDL_Window *window, SDL_FullscreenOp fullscreen, b
     } else {
         bool resized = false;
 
+#if defined(SDL_PLATFORM_AMIGAOS4)
+        if (window->is_destroying) {
+            // Avoid creation of another screen when exiting
+            dprintf("Window is destroying, ignore mode change\n");
+            goto done;
+        }
+#else
         // Restore the desktop mode
         if (display) {
             display->fullscreen_active = false;
 
             SDL_SetDisplayModeForDisplay(display, NULL);
         }
+#endif
         if (commit) {
             SDL_FullscreenResult ret = SDL_FULLSCREEN_SUCCEEDED;
             if (_this->SetWindowFullscreen) {
@@ -2198,8 +2255,15 @@ SDL_PixelFormat SDL_GetWindowPixelFormat(SDL_Window *window)
     }
 }
 
-#define CREATE_FLAGS \
-    (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_METAL | SDL_WINDOW_TRANSPARENT | SDL_WINDOW_NOT_FOCUSABLE | SDL_WINDOW_FILL_DOCUMENT)
+#if defined(SDL_PLATFORM_AMIGAOS4)
+    /* Without this hack, SDL would trigger us to open a window before screen which causes unnecessary
+    work, because then we would have to close the window first and re-open it on the custom screen */
+    #define CREATE_FLAGS \
+        (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_METAL | SDL_WINDOW_TRANSPARENT | SDL_WINDOW_NOT_FOCUSABLE | SDL_WINDOW_FILL_DOCUMENT | SDL_WINDOW_FULLSCREEN)
+#else
+    #define CREATE_FLAGS \
+        (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_METAL | SDL_WINDOW_TRANSPARENT | SDL_WINDOW_NOT_FOCUSABLE | SDL_WINDOW_FILL_DOCUMENT)
+#endif
 
 static SDL_INLINE bool IsAcceptingDragAndDrop(void)
 {
@@ -2751,6 +2815,15 @@ bool SDL_RecreateWindow(SDL_Window *window, SDL_WindowFlags flags)
 
     // Tear down the old native window
     SDL_DestroyWindowSurface(window);
+
+#ifdef SDL_PLATFORM_AMIGAOS4
+    if (window->flags & SDL_WINDOW_OPENGL) {
+        /* We have to unload the old library in case we have to switch
+        between MiniGL and OGLES2. Otherwise function pointers will be messed up. */
+        SDL_GL_UnloadLibrary();
+        window->flags &= ~SDL_WINDOW_OPENGL;
+    }
+#endif
 
     if ((window->flags & SDL_WINDOW_OPENGL) != (flags & SDL_WINDOW_OPENGL)) {
         if (flags & SDL_WINDOW_OPENGL) {
@@ -4965,8 +5038,13 @@ void SDL_GL_ResetAttributes(void)
     _this->gl_config.accelerated = -1; // accelerated or not, both are fine
 
 #ifdef SDL_VIDEO_OPENGL
+#ifdef SDL_PLATFORM_AMIGAOS4
+    _this->gl_config.major_version = 1; /* MiniGL */
+    _this->gl_config.minor_version = 3;
+#else
     _this->gl_config.major_version = 2;
     _this->gl_config.minor_version = 1;
+#endif
     _this->gl_config.profile_mask = 0;
 #elif defined(SDL_VIDEO_OPENGL_ES2)
     _this->gl_config.major_version = 2;

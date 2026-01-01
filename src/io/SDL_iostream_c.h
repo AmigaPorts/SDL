@@ -25,6 +25,9 @@
 
 #if defined(SDL_PLATFORM_WINDOWS)
 SDL_IOStream *SDL_IOFromHandle(HANDLE handle, const char *mode, bool autoclose);
+#elif defined(SDL_PLATFORM_AMIGAOS4)
+#include <dos/dos.h>
+extern SDL_IOStream *SDL_IOFromBPTR(BPTR file, const char *mode, bool autoclose);
 #else
 #if defined(HAVE_STDIO_H)
 extern SDL_IOStream *SDL_IOFromFP(FILE *fp, bool autoclose);

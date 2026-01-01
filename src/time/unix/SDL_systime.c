@@ -205,6 +205,10 @@ bool SDL_TimeToDateTime(SDL_Time ticks, SDL_DateTime *dt, bool localTime)
         }
 #endif
 
+#if defined (SDL_PLATFORM_AMIGAOS4) && defined(__NEWLIB__)
+        // Workaround: newlib 53.84 returns -minutes, convert to seconds
+        dt->utc_offset *= -60;
+#endif
         return true;
     }
 

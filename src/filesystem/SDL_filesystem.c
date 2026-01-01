@@ -425,7 +425,22 @@ char **SDL_InternalGlobDirectory(const char *path, const char *pattern, SDL_Glob
     data.enumerator = enumerator;
     data.getpathinfo = getpathinfo;
     data.fsuserdata = userdata;
-    data.basedirlen = *path ? (SDL_strlen(path) + 1) : 0;  // +1 for the '/' we'll be adding.
+
+    int extra = 1;
+
+    #ifdef SDL_PLATFORM_AMIGAOS4
+    {
+        const size_t len = SDL_strlen(path);
+        if (len > 0) {
+            if (path[len - 1] == ':') {
+                extra = 0;
+            }
+        }
+
+    }
+    #endif
+
+    data.basedirlen = *path ? (SDL_strlen(path) + extra) : 0;  // +1 for the '/' we'll be adding.
 
 
     char **result = NULL;

@@ -43,6 +43,11 @@ extern NativeWindowFactory WaylandWindowFactory;
 extern NativeWindowFactory X11WindowFactory;
 #endif
 
+#ifdef SDL_VIDEO_DRIVER_AMIGAOS4
+#define TEST_NATIVE_AMIGAOS4
+extern NativeWindowFactory AmigaOS4WindowFactory;
+#endif
+
 #ifdef SDL_VIDEO_DRIVER_COCOA
 #define TEST_NATIVE_COCOA
 extern NativeWindowFactory CocoaWindowFactory;

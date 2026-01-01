@@ -541,6 +541,7 @@ extern VideoBootStrap DUMMY_bootstrap;
 extern VideoBootStrap DUMMY_evdev_bootstrap;
 extern VideoBootStrap Wayland_preferred_bootstrap;
 extern VideoBootStrap Wayland_bootstrap;
+extern VideoBootStrap AMIGAOS4_bootstrap;
 extern VideoBootStrap VIVANTE_bootstrap;
 extern VideoBootStrap Emscripten_bootstrap;
 extern VideoBootStrap OFFSCREEN_bootstrap;

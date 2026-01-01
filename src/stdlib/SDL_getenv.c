@@ -47,6 +47,10 @@ static char **get_environ_rtld(void)
     return environ_rtld ? *environ_rtld : NULL;
 }
 #define environ (get_environ_rtld())
+#elif defined(SDL_PLATFORM_AMIGAOS4)
+#include <proto/dos.h>
+#include "../main/amigaos4/SDL_os4debug.h"
+static char **environ; // Workaround undefined reference
 #else
 extern char **environ;
 #endif
@@ -85,6 +89,37 @@ void SDL_QuitEnvironment(void)
         SDL_DestroyEnvironment(env);
     }
 }
+
+#ifdef SDL_PLATFORM_AMIGAOS4
+static ULONG OS4_ScanVars(const struct Hook *hook, CONST_APTR extradata, struct ScanVarsMsg* msg)
+{
+    if (extradata && msg) {
+        SDL_Environment *env = (SDL_Environment*)extradata;
+        if (msg->sv_Name && msg->sv_Var) {
+           for (uint32 i = 0; i < msg->sv_VarLen; i++) {
+                if (msg->sv_Var[i] < 32) {
+                    //dprintf("Skip binary variable '%s' (value %d)\n", msg->sv_Name, msg->sv_Var[i]);
+                    return 0;
+                }
+           }
+           //dprintf("sv_Name '%s', sv_Var '%s'\n", msg->sv_Name, msg->sv_Var);
+           SDL_InsertIntoHashTable(env->strings, SDL_strdup(msg->sv_Name), SDL_strdup(msg->sv_Var), true);
+        } else {
+           dprintf("sv_Name %p, sv_Var %p\n", msg->sv_Name, msg->sv_Var);
+        }
+    } else {
+        dprintf("extradata %p, msg %p\n", extradata, msg);
+    }
+    return 0;
+}
+
+static struct Hook OS4_ScanVarsHook = {
+    {0, 0},               // h_MinNode
+    (void *)OS4_ScanVars, // h_Entry
+    0,                    // h_SubEntry
+    0                     // h_Data
+};
+#endif
 
 SDL_Environment *SDL_CreateEnvironment(bool populated)
 {
@@ -127,6 +162,16 @@ SDL_Environment *SDL_CreateEnvironment(bool populated)
 #ifdef SDL_PLATFORM_ANDROID
         // Make sure variables from the application manifest are available
         Android_JNI_GetManifestEnvironmentVariables();
+#endif
+#ifdef SDL_PLATFORM_AMIGAOS4
+        if (IDOS) {
+            const int32 found = IDOS->ScanVars(&OS4_ScanVarsHook, GVF_SCAN_LEVEL, env);
+            if (!found) {
+                dprintf("ScanVars failed, err %ld\n", IDOS->IoErr());
+            }
+        } else {
+            dprintf("IDOS nullptr\n");
+        }
 #endif
         char **strings = environ;
         if (strings) {
@@ -490,7 +535,7 @@ int SDL_unsetenv_unsafe(const char *name)
     }
 
     // Hope this environment uses the non-standard extension of removing the environment variable if it has no '='
-    return putenv(name);
+    return putenv((char *)name);
 }
 #endif
 #elif defined(HAVE_WIN32_ENVIRONMENT)

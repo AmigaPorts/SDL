@@ -207,9 +207,12 @@ static bool PrepareThreadpool(void)
 {
     bool okay = true;
     if (SDL_ShouldInit(&threadpool_init)) {
+#if defined(SDL_PLATFORM_AMIGAOS4)
+        max_threadpool_threads = 1; // FIXME: more threads sometimes cause pauses.
+#else
         max_threadpool_threads = (SDL_GetNumLogicalCPUCores() * 2) + 1;  // !!! FIXME: this should probably have a hint to override.
         max_threadpool_threads = SDL_clamp(max_threadpool_threads, 1, 8);  // 8 is probably more than enough.
-
+#endif
         okay = (okay && ((threadpool_lock = SDL_CreateMutex()) != NULL));
         okay = (okay && ((threadpool_condition = SDL_CreateCondition()) != NULL));
         okay = (okay && MaybeSpinNewWorkerThread());  // make sure at least one thread is going, since we'll need it.
