@@ -5,7 +5,7 @@ if(NOT DEFINED CMAKE_BUILD_TYPE)
 endif()
 
 # See docs/release_checklist.md
-project(SDL3 LANGUAGES C VERSION "3.3.7")
+project(SDL3 LANGUAGES C VERSION "3.4.1")
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   set(SDL3_MAINPROJECT ON)
@@ -1161,6 +1161,8 @@ if(SDL_LIBC)
     check_symbol_exists(fdatasync "unistd.h" HAVE_FDATASYNC)
     check_symbol_exists(gethostname "unistd.h" HAVE_GETHOSTNAME)
     check_symbol_exists(getpagesize "unistd.h" HAVE_GETPAGESIZE)
+    check_symbol_exists(getresgid "unistd.h" HAVE_GETRESGID)
+    check_symbol_exists(getresuid "unistd.h" HAVE_GETRESUID)
     check_symbol_exists(sigaction "signal.h" HAVE_SIGACTION)
     check_symbol_exists(sigtimedwait "signal.h" HAVE_SIGTIMEDWAIT)
     check_symbol_exists(setjmp "setjmp.h" HAVE_SETJMP)
