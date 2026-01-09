@@ -877,7 +877,7 @@ main(int argc, char **argv)
 
     initContext(&ctx, argc, argv);
 
-    ctx.surface = SDL_LoadBMP("sample.bmp");
+    ctx.surface = SDL_LoadPNG("sample.png");
 
     if (ctx.surface) {
         SDL_Log("Image size %d*%d\n", ctx.surface->w, ctx.surface->h);
