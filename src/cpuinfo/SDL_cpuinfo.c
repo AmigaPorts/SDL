@@ -353,8 +353,7 @@ static int CPU_haveAltiVec(void)
         altivec = (hasVectorUnit != 0);
 #elif defined(SDL_PLATFORM_AMIGAOS4)
     {
-        uint32 vec_unit;
-
+        uint32 vec_unit = 0;
         IExec->GetCPUInfoTags(GCIT_VectorUnit, &vec_unit, TAG_DONE);
         altivec = (vec_unit == VECTORTYPE_ALTIVEC);
     }
@@ -882,8 +881,7 @@ int SDL_GetCPUCacheLineSize(void)
         cacheline_size = c & 0xff;
     } else {
 #ifdef SDL_PLATFORM_AMIGAOS4
-        uint32 size;
-
+        uint32 size = 0;
         IExec->GetCPUInfoTags(GCIT_CacheLineSize, &size, TAG_DONE);
         return size;
 #endif
@@ -1272,6 +1270,16 @@ int SDL_GetSystemPageSize(void)
             SYSTEM_INFO sysinfo;
             GetSystemInfo(&sysinfo);
             SDL_SystemPageSize = (int) sysinfo.dwPageSize;
+        }
+#endif
+#if defined(SDL_PLATFORM_AMIGAOS4)
+        if (SDL_SystemPageSize <= 0) {
+            uint32 execPageSize = 0;
+            IExec->GetCPUInfoTags(GCIT_ExecPageSize, &execPageSize,
+                                  TAG_DONE);
+            if (execPageSize) {
+                SDL_SystemPageSize = 1 << SDL_MostSignificantBitIndex32(execPageSize);
+            }
         }
 #endif
         if (SDL_SystemPageSize < 0) {  // in case we got a weird result somewhere, or no better information, force it to 0.
