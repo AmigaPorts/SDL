@@ -14,12 +14,16 @@ TARGETS = \
     simple-playback-callback \
     load-wav \
     multiple-streams \
+    planar-data \
     snake \
     woodeneye-008 \
     infinite-monkeys \
     bytepusher \
     joystick-polling \
     joystick-events \
+    gamepad-polling \
+    gamepad-events \
+    clipboard \
     clear \
     primitives \
     lines \
@@ -34,6 +38,7 @@ TARGETS = \
     cliprect \
     read-pixels \
     debug-text \
+    affine-textures \
 
 all: $(TARGETS)
 
@@ -54,6 +59,11 @@ load-wav: audio/03-load-wav/load-wav.o
 multiple-streams: audio/04-multiple-streams/multiple-streams.o
 	$(CC) -o $@ $^ $(LIBS)
 
+planar-data: audio/05-planar-data/planar-data.o
+	$(CC) -o $@ $^ $(LIBS)
+
+# camera (not supported)
+
 # demo
 snake: demo/01-snake/snake.o
 	$(CC) -o $@ $^ $(LIBS)
@@ -73,6 +83,19 @@ joystick-polling: input/01-joystick-polling/joystick-polling.o
 
 joystick-events: input/02-joystick-events/joystick-events.o
 	$(CC) -o $@ $^ $(LIBS)
+
+gamepad-polling: input/03-gamepad-polling/gamepad-polling.o
+	$(CC) -o $@ $^ $(LIBS)
+
+gamepad-events: input/04-gamepad-events/gamepad-events.o
+	$(CC) -o $@ $^ $(LIBS)
+
+# misc
+
+clipboard: misc/02-clipboard/clipboard.o
+	$(CC) -o $@ $^ $(LIBS)
+
+# pen (not supported)
 
 # renderer
 clear: renderer/01-clear/clear.o
@@ -118,6 +141,9 @@ read-pixels: renderer/17-read-pixels/read-pixels.o
 	$(CC) -o $@ $^ $(LIBS)
 
 debug-text: renderer/18-debug-text/debug-text.o
+	$(CC) -o $@ $^ $(LIBS)
+
+affine-textures: renderer/19-affine-textures/affine-textures.o
 	$(CC) -o $@ $^ $(LIBS)
 
 clean:
