@@ -887,6 +887,7 @@ static const char *s_GamepadMappings[] = {
     "03001fc247616d6520436f6e74726f00,Game Controller for Android,platform:AmigaOS 4,a:b3,b:b0,x:b4,y:b1,dpup:-a1,dpdown:+a1,dpleft:-a0,dpright:+a0,",
     "0300acfa32496e3120555342204a6f00,2In1 USB Joystick,platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,start:b9,leftstick:b10,rightstick:b11,leftshoulder:b4,rightshoulder:b5,dpup:-a1,dpdown:+a1,dpleft:-a0,dpright:+a0,-leftx:h0.8,+leftx:h0.2,-lefty:h0.1,+lefty:h0.4,lefttrigger:b6,righttrigger:b7,",
     "03006ce85553422047616d6570616400,USB Gamepad,platform:AmigaOS 4,a:b2,b:b1,x:b3,y:b0,back:b8,start:b9,rightstick:b11,leftshoulder:b4,rightshoulder:b5,leftx:a0,lefty:a1,lefttrigger:b6,righttrigger:b7,",
+    "030057564475616c53656e7365205700,DualSense Wireless Controller,crc:5657,platform:AmigaOS 4,a:b1,b:b2,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b13,leftshoulder:b4,leftstick:b10,lefttrigger:b6,leftx:a0,lefty:a1,misc1:b12,rightshoulder:b5,rightstick:b11,righttrigger:b7,rightx:a2,righty:a3,start:b9,x:b0,y:b3,",
 #endif
 #ifdef SDL_JOYSTICK_VITA
     "0000000050535669746120436f6e7400,PSVita Controller,crc:d598,a:b2,b:b1,back:b10,dpdown:b6,dpleft:b7,dpright:b9,dpup:b8,leftshoulder:b4,leftstick:b14,lefttrigger:a4,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b15,righttrigger:a5,rightx:a2,righty:a3,start:b11,x:b3,y:b0,",
