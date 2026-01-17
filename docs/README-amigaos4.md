@@ -37,8 +37,9 @@ Using SDL 3 in your projects
 
     gcc helloworld.c -use-dynld -lSDL3
 
+================================================================================
 Setting REGAPP_Description
-===============================================================================
+================================================================================
 
 Set SDL_HINT_APP_NAME before SDL_Init():
 
@@ -149,6 +150,7 @@ moment game controller database contains the following entries:
 - MAYFLASH Arcade Fightstick F300
 - Game Controller for Android
 - 2In1 USB Joystick
+- DualSense Wireless Controller
 
 Joysticks can be tested using testcontroller tool. New game controller mappings
 can be generated using the same tool. Mappings can be then added to the game
