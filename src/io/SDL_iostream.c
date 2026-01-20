@@ -504,14 +504,16 @@ static Sint64 SDLCALL amigaos4_file_seek(void *userdata, Sint64 offset, SDL_IOWh
     const int32 success = IDOS->ChangeFilePosition(iodata->bptr, offset, mode);
 
     if (!success) {
-        SDL_SetError("Couldn't change file position (error %ld)", IDOS->IoErr());
+        dprintf("ChangeFilePosition() failed (error %ld)\n", IDOS->IoErr());
+        SDL_SetError("Error seeking in datastream");
         return -1;
     }
 
     const int64 position = IDOS->GetFilePosition(iodata->bptr);
 
     if (position == -1LL) {
-        SDL_SetError("Couldn't get file position (error %ld)", IDOS->IoErr());
+        dprintf("GetFilePosition() failed (error %ld)\n", IDOS->IoErr());
+        SDL_SetError("Error seeking in datastream");
     }
 
     return position;
@@ -533,16 +535,40 @@ static size_t SDLCALL amigaos4_file_read(void *userdata, void *ptr, size_t size,
         return 0;
     }
 
-    const uint32 count = iodata->buffered ? IDOS->FRead(iodata->bptr, ptr, 1, size) :
-                                            IDOS->Read(iodata->bptr, ptr, size);
+    size_t readCount = 0;
 
-    if (count < size) {
-        SDL_SetError("Error reading from datastream, read %lu of %zu", count, size);
+    if (iodata->buffered) {
+        const uint32 count = IDOS->FRead(iodata->bptr, ptr, 1, size);
+
+        if (count < size) {
+            *status = SDL_IO_STATUS_NOT_READY;
+        }
+
+        readCount = count;
+    } else {
+        const int32 count = IDOS->Read(iodata->bptr, ptr, size);
+
+        if (count == -1) {
+            const int32 error = IDOS->IoErr();
+
+            dprintf("Read() failed (error %ld)\n", error);
+
+            if (error == ERROR_BROKEN_PIPE) {
+                *status = SDL_IO_STATUS_EOF;
+            } else if (error == ERROR_WOULD_BLOCK) {
+                *status = SDL_IO_STATUS_NOT_READY;
+            } else if (error > 0) {
+                *status = SDL_IO_STATUS_ERROR;
+                SDL_SetError("Error reading from datastream");
+            }
+        } else if (count >= 0) {
+            readCount = count;
+        }
     }
 
-    dprintf("Read %lu bytes\n", count);
+    dprintf("Read %zu of requested %zu bytes\n", readCount, size);
 
-    return (size_t)count;
+    return readCount;
 }
 
 static size_t SDLCALL amigaos4_file_write(void *userdata, const void *ptr, size_t size, SDL_IOStatus *status)
@@ -564,23 +590,42 @@ static size_t SDLCALL amigaos4_file_write(void *userdata, const void *ptr, size_
     if (iodata->append) {
         const int32 success = IDOS->ChangeFilePosition(iodata->bptr, 0, OFFSET_END);
         if (!success) {
-            SDL_SetError("Couldn't change file position (error %ld)", IDOS->IoErr());
+            *status = SDL_IO_STATUS_ERROR;
+            dprintf("ChangeFilePosition() failed (error %ld)\n", IDOS->IoErr());
+            SDL_SetError("Error seeking in datastream");
             return 0;
         }
     }
 
-    const uint32 count = iodata->buffered ? IDOS->FWrite(iodata->bptr, ptr, 1, size) :
-                                            IDOS->Write(iodata->bptr, ptr, size);
+    size_t writeCount = 0;
 
-    // TODO: status
-
-    if (count < size) {
-        SDL_SetError("Error writing to datastream, wrote %lu of %zu", count, size);
+    if (iodata->buffered) {
+        writeCount = IDOS->FWrite(iodata->bptr, ptr, 1, size);
+    } else {
+        const int32 count = IDOS->Write(iodata->bptr, ptr, size);
+        if (count > 0) {
+            writeCount = count;
+        }
     }
 
-    dprintf("Wrote %lu bytes\n", count);
+    if (writeCount < size) {
+        const int32 error = IDOS->IoErr();
 
-    return (size_t)count;
+        dprintf("Error writing to datastream (error %ld)\n", error);
+
+        if (error == ERROR_BROKEN_PIPE) {
+            *status = SDL_IO_STATUS_EOF;
+        } else if (error == ERROR_WOULD_BLOCK) {
+            *status = SDL_IO_STATUS_NOT_READY;
+        } else if (error > 0) {
+            *status = SDL_IO_STATUS_ERROR;
+            SDL_SetError("Error writing to datastream");
+        }
+    }
+
+    dprintf("Wrote %zu of requested %zu bytes\n", writeCount, size);
+
+    return writeCount;
 }
 
 static bool SDLCALL amigaos4_file_flush(void *userdata, SDL_IOStatus *status)
@@ -598,7 +643,8 @@ static bool SDLCALL amigaos4_file_flush(void *userdata, SDL_IOStatus *status)
         dprintf("BPTR %p\n", (void *)iodata->bptr);
 
         if (!IDOS->FFlush(iodata->bptr)) {
-            return SDL_SetError("Error flushing datastream (error %ld)", IDOS->IoErr());
+            dprintf("FFlush() failed (error %ld)\n", IDOS->IoErr());
+            return SDL_SetError("Error flushing datastream");
         }
     }
 
@@ -620,11 +666,13 @@ static bool SDLCALL amigaos4_file_close(void *userdata)
     if (iodata->autoclose) {
         if (iodata->buffered) {
             if (!IDOS->FClose(iodata->bptr)) {
-                status = SDL_SetError("Error closing datastream (error %ld)", IDOS->IoErr());
+                dprintf("FClose() failed (error %ld)\n", IDOS->IoErr());
+                status = SDL_SetError("Error closing datastream");
             }
         } else {
             if (!IDOS->Close(iodata->bptr)) {
-                status = SDL_SetError("Error closing datastream (error %ld)", IDOS->IoErr());
+                dprintf("Close() failed (error %ld)\n", IDOS->IoErr());
+                status = SDL_SetError("Error closing datastream");
             }
         }
         iodata->bptr = ZERO;
