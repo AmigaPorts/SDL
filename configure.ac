@@ -3530,7 +3530,7 @@ CheckUSBHID()
                 AC_MSG_CHECKING(for usbhid)
                 have_usbhid=no
                 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-                  #include <sys/types.h>
+                  #include <stdint.h>
                   #if defined(HAVE_USB_H)
                   #include <usb.h>
                   #endif
@@ -3559,7 +3559,7 @@ CheckUSBHID()
                     AC_MSG_CHECKING(for ucr_data member of usb_ctl_report)
                     have_usbhid_ucr_data=no
                     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-                      #include <sys/types.h>
+                      #include <stdint.h>
                       #if defined(HAVE_USB_H)
                       #include <usb.h>
                       #endif
@@ -3589,7 +3589,7 @@ CheckUSBHID()
                     AC_MSG_CHECKING(for new usbhid API)
                     have_usbhid_new=no
                     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-                      #include <sys/types.h>
+                      #include <stdint.h>
                       #if defined(HAVE_USB_H)
                       #include <usb.h>
                       #endif
