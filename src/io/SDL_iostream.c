@@ -1368,6 +1368,10 @@ SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
 
         fp = fopen(path, mode);
         SDL_free(path);
+
+        if (!fp) {
+            fp = fopen(file, mode);
+        }
     }
 
     if (!fp) {

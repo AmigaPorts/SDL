@@ -260,7 +260,7 @@ void CAudio::MaoscPlayComplete(TInt aError)
     // should never see the stream end -- we are continuously feeding it more
     // data!  Many underflow errors mean that the latency target is too low.
     if (aError == KErrUnderflow) {
-        // The number of samples played gets resetted to zero when we restart
+        // The number of samples played gets reset to zero when we restart
         // playback after underflow.
         iBaseSamplesPlayed = iSamplesWritten;
 
@@ -278,7 +278,7 @@ void CAudio::MaoscPlayComplete(TInt aError)
     }
 
     // We shouldn't get here.
-    SDL_Log("%s: %d", __FUNCTION__, aError);
+    SDL_Log("%s: %d", SDL_FUNCTION, aError);
 }
 
 static TBool gAudioRunning;

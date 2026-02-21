@@ -73,7 +73,10 @@ typedef struct SDL_WaylandCursorState
 
     Uint64 last_frame_callback_time_ms;
     Uint32 current_frame_time_ms;
+
+    // 0 or greater if a buffer is attached, -1 if in the reset state.
     int current_frame;
+
     SDL_HitTestResult hit_test_result;
 } SDL_WaylandCursorState;
 
@@ -186,7 +189,6 @@ typedef struct SDL_WaylandSeat
         struct zwp_pointer_gesture_pinch_v1 *gesture_pinch;
 
         SDL_WindowData *focus;
-        SDL_CursorData *current_cursor;
 
         // According to the spec, a seat can only have one active gesture of any type at a time.
         SDL_WindowData *gesture_focus;

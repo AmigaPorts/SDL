@@ -101,10 +101,6 @@ static void Emscripten_ListenSystemTheme(void)
 {
     MAIN_THREAD_EM_ASM({
         if (window.matchMedia) {
-            if (typeof(Module['SDL3']) === 'undefined') {
-                Module['SDL3'] = {};
-            }
-
             var SDL3 = Module['SDL3'];
 
             SDL3.eventHandlerThemeChanged = function(event) {
@@ -794,11 +790,9 @@ static bool Emscripten_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window,
 
     // Pass PNG data to JavaScript
     MAIN_THREAD_EM_ASM({
-        var pngData = HEAPU8.subarray($0, $0 + $1);
-        if (pngData.buffer instanceof SharedArrayBuffer) {
-            // explicitly create a copy
-            pngData = new Uint8Array(pngData);
-        }
+        // Use `.slice` to make a copy of the data if we are dealing with a SharedArrayBuffer, or `.subarray` to create a
+        // view into the existing buffer if its non-shared.
+        var pngData = HEAPU8.buffer instanceof ArrayBuffer ? HEAPU8.subarray($0, $0 + $1) : HEAPU8.slice($0, $0 + $1);
 
         var blob = new Blob([pngData], {type: 'image/png'});
         var url = URL.createObjectURL(blob);

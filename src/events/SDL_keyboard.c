@@ -179,7 +179,7 @@ SDL_KeyboardID *SDL_GetKeyboards(int *count)
     int i;
     SDL_KeyboardID *keyboards;
 
-    keyboards = (SDL_JoystickID *)SDL_malloc((SDL_keyboard_count + 1) * sizeof(*keyboards));
+    keyboards = (SDL_KeyboardID *)SDL_malloc((SDL_keyboard_count + 1) * sizeof(*keyboards));
     if (keyboards) {
         if (count) {
             *count = SDL_keyboard_count;
@@ -337,6 +337,11 @@ bool SDL_SetKeyboardFocus(SDL_Window *window)
         }
     }
 
+    if (keyboard->focus && !window) {
+        // We won't get anymore keyboard messages, so reset keyboard state
+        SDL_ResetKeyboard();
+    }
+
     // See if the current window has lost focus
     if (keyboard->focus && keyboard->focus != window) {
         SDL_SendWindowEvent(keyboard->focus, SDL_EVENT_WINDOW_FOCUS_LOST, 0, 0);
@@ -352,9 +357,6 @@ bool SDL_SetKeyboardFocus(SDL_Window *window)
     }
 
     if (keyboard->focus && !window) {
-        // We won't get anymore keyboard messages, so reset keyboard state
-        SDL_ResetKeyboard();
-
         // Also leave mouse relative mode
         if (mouse->relative_mode) {
             SDL_SetRelativeMouseMode(false);
