@@ -119,7 +119,7 @@ char *SDL_SYS_GetPrefPath(const char *org, const char *app)
     SDL_memset(buffer, 0, len);
     SDL_snprintf(buffer, len, envPath);
 
-    if (org) {
+    if (org && *org) {
         SDL_snprintf(buffer + SDL_strlen(buffer), len - SDL_strlen(buffer), "%s/", org);
     }
 
