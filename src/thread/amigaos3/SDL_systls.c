@@ -53,6 +53,13 @@ SDL_TLSData *SDL_SYS_GetTLSData(void)
     SDL_TLSData *data = NULL;
     OS3_TLSEntry *entry;
 
+    /* Lazy init: SDL_TLSGet can be called before SDL_InitTLSData
+       (e.g. from SDL_GetErrBuf -> SDL_SetError path).
+       ObtainSemaphore on an uninitialized SignalSemaphore deadlocks. */
+    if (!tls_initialized) {
+        SDL_SYS_InitTLSData();
+    }
+
     ObtainSemaphore(&tls_lock);
     entry = OS3_FindTLSEntry(me);
     if (entry != NULL) {
@@ -67,6 +74,10 @@ int SDL_SYS_SetTLSData(SDL_TLSData *data)
 {
     struct Task *me = FindTask(NULL);
     OS3_TLSEntry *entry;
+
+    if (!tls_initialized) {
+        SDL_SYS_InitTLSData();
+    }
 
     ObtainSemaphore(&tls_lock);
     entry = OS3_FindTLSEntry(me);

@@ -113,7 +113,10 @@ SRCS_VIDEO_CORE = \
 	src/video/yuv2rgb/yuv_rgb_std.c
 
 SRCS_VIDEO_OS3 = \
-	src/video/amigaos3/SDL_os3video.c
+	src/video/amigaos3/SDL_os3video.c \
+	src/video/amigaos3/SDL_os3window.c \
+	src/video/amigaos3/SDL_os3framebuffer.c \
+	src/video/amigaos3/SDL_os3events.c
 
 SRCS_VIDEO_DUMMY = \
 	src/video/dummy/SDL_nullevents.c \
@@ -254,8 +257,14 @@ examples: docker-build
 		make -f Makefile native-examples
 
 native-examples: $(TARGET)
+	$(CC) $(CFLAGS) -o examples/test_bare examples/test_bare.c
+	@echo "Built examples/test_bare (no SDL)"
+	$(CC) $(CFLAGS) -o examples/test_spinlock examples/test_spinlock.c -L. -lSDL2 -lm
+	@echo "Built examples/test_spinlock"
 	$(CC) $(CFLAGS) -o examples/test_init examples/test_init.c -L. -lSDL2 -lm
 	@echo "Built examples/test_init"
+	$(CC) $(CFLAGS) -o examples/test_video examples/test_video.c -L. -lSDL2 -lm
+	@echo "Built examples/test_video"
 
 test:
 	@echo "Run: vamos -C 68020 -s 32 -m 8192 examples/test_init"

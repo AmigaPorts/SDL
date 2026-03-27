@@ -10,6 +10,8 @@
 
 #include "SDL_timer.h"
 
+#include <proto/dos.h>  /* Delay() -- dos.library, always available */
+
 void SDL_TicksInit(void)
 {
     /* Phase 0: nothing to init */
@@ -43,9 +45,27 @@ Uint64 SDL_GetPerformanceFrequency(void)
 
 void SDL_Delay(Uint32 ms)
 {
-    /* Phase 0: busy-wait (no timer.device yet) */
-    /* Phase 1+: timer.device TR_ADDREQUEST */
-    (void)ms;
+    /* Phase 1+: timer.device TR_ADDREQUEST for sub-tick precision.
+       Phase 0: use dos.library Delay() as a coarse yield mechanism.
+       Delay(n) waits n * 1/50 s (one 50Hz tick ~= 20ms per tick).
+       Delay(0) yields the current timeslice immediately -- this is
+       CRITICAL for AmigaOS cooperative multitasking: SDL_AtomicLock
+       calls SDL_Delay(0) inside its spin loop, and without a real
+       yield the waiting task monopolizes the CPU and starves the task
+       that holds the lock.  Delay(0) is the correct AmigaOS primitive
+       for "yield this timeslice". */
+    ULONG ticks;
+    if (ms == 0) {
+        /* Yield immediately -- Delay(0) does one task switch on AmigaOS */
+        Delay(0UL);
+    } else {
+        /* Round up: 1 tick = 20ms at 50Hz.  Use (ms + 19) / 20 to
+           ensure we wait at least ms milliseconds.
+           Maximum practical delay via Delay() is ~24 days (ULONG ticks). */
+        ticks = (ULONG)((ms + 19UL) / 20UL);
+        if (ticks == 0) ticks = 1;
+        Delay(ticks);
+    }
 }
 
 #endif /* SDL_TIMER_AMIGAOS3 */

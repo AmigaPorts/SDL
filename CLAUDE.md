@@ -134,6 +134,21 @@ These are third-party APIs not in the ADCD. Reference docs must be created befor
 | **5: Polish** | Timer, filesystem, joystick | Remaining backends |
 | **6: Optimization** | AGA c2p, AMMX, asm hotpaths | `src/video/amigaos3/` extensions |
 
+## Phase Gate Rules
+
+Before starting Phase N, confirm Phase N-1 is stable:
+
+| Starting Phase | Prerequisite |
+|---------------|-------------|
+| **1: First Pixels** | Phase 0 tests pass: `SDL_Init(0)` returns 0, `SDL_Quit()` clean exit |
+| **2: Input** | Phase 1 tests pass: window opens on FS-UAE with RTG, `testsprite2` draws pixels |
+| **3: Audio** | Phase 2 tests pass: keyboard/mouse events received, `testkeys` reports scancodes |
+| **4: Threading** | Phase 3 tests pass: `loopwave` plays audio via AHI |
+| **5: Polish** | Phase 4 tests pass: threaded programs work (mutex, semaphore, TLS) |
+| **6: Optimization** | Phase 5 tests pass: timer, filesystem, joystick backends functional |
+
+Do not skip phases. If a phase's prerequisite test fails, fix it before moving forward.
+
 ## Testing
 
 - **Phase 0-1:** vamos smoke test (`SDL_Init()` / `SDL_Quit()` without crashing).

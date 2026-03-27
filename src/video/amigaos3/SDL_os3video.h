@@ -1,7 +1,6 @@
 /*
   SDL2 Video Driver -- AmigaOS 3.x (CyberGraphX)
-  Phase 0: Stub that registers with SDL2's bootstrap but does nothing.
-  Phase 1: CyberGraphX RTG backend with software renderer.
+  Internal header: structs and library base declarations.
 */
 
 #ifndef SDL_os3video_h_
@@ -10,7 +9,41 @@
 #include "../../SDL_internal.h"
 #include "../SDL_sysvideo.h"
 
-/* Phase 0: stub declarations */
+/* AmigaOS headers */
+#include <proto/exec.h>
+#include <proto/intuition.h>
+#include <proto/graphics.h>
+#include <proto/cybergraphics.h>
+#include <cybergraphx/cybergraphics.h>
+#include <graphics/displayinfo.h>
+#include <intuition/screens.h>
+#include <intuition/intuition.h>
+#include <exec/types.h>
+
+/*
+ * Library bases.
+ * IntuitionBase and GfxBase are declared by <proto/intuition.h> and
+ * <proto/graphics.h> as their specific struct types (struct IntuitionBase *,
+ * struct GfxBase *). Do not redeclare them here.
+ * CyberGfxBase is declared by <proto/cybergraphics.h> as struct Library *.
+ */
+
+/* Per-display driver data */
+typedef struct OS3_DisplayData {
+    ULONG modeID;    /* CyberGraphX display mode ID for this display */
+    int   width;     /* display width in pixels */
+    int   height;    /* display height in pixels */
+    int   depth;     /* display depth in bits */
+} OS3_DisplayData;
+
+/* Per-window driver data */
+typedef struct OS3_WindowData {
+    struct Window *window;    /* Intuition window */
+    struct Screen *screen;    /* Intuition screen (NULL if using WB screen) */
+    int            is_fullscreen; /* non-zero if we own the screen */
+} OS3_WindowData;
+
+/* Bootstrap entry -- wired into SDL_VideoBootStrap array */
 extern VideoBootStrap OS3_bootstrap;
 
 #endif /* SDL_os3video_h_ */
