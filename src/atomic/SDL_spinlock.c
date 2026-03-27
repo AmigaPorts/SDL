@@ -163,6 +163,17 @@ SDL_bool SDL_AtomicTryLock(SDL_SpinLock *lock)
         EIntr();
     }
     return res;
+#elif defined(__AMIGAOS3__)
+    /* 68020+ CAS (compare-and-swap) instruction.
+       Single-core 68k, no SMP, so this is safe and efficient. */
+    int result;
+    __asm__ __volatile__(
+        "cas.l %0,%2,%1"
+        : "+d" (result), "+m" (*lock)
+        : "d" (1)
+        : "cc", "memory");
+    return (result == 0) ? SDL_TRUE : SDL_FALSE;
+
 #else
 #error Please implement for your platform.
     return SDL_FALSE;
