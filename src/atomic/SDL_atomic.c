@@ -36,10 +36,12 @@
 #endif
 
 /* The __atomic intrinsics showed up in different times for different compilers. */
-#if (defined(__GNUC__) && (__GNUC__ >= 5)) || (defined(__clang__) && defined(HAVE_GCC_ATOMICS))
+#if defined(__AMIGAOS3__)
+/* 68k: GCC builtins generate external __sync_* calls that don't exist.
+   Use EMULATE_CAS path with our CAS-based spinlocks instead. */
+#elif (defined(__GNUC__) && (__GNUC__ >= 5)) || (defined(__clang__) && defined(HAVE_GCC_ATOMICS))
 #define HAVE_ATOMIC_LOAD_N 1
 #define HAVE_ATOMIC_EXCHANGE_N 1
-#else
 #if _SDL_HAS_BUILTIN(__atomic_load_n)
 #define HAVE_ATOMIC_LOAD_N 1
 #endif

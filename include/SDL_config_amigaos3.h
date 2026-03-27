@@ -40,9 +40,11 @@
 #define HAVE_STDDEF_H   1
 #define HAVE_STDINT_H   1
 
-/* libnix provides these (C89 runtime) */
-#define HAVE_ALLOCA_H   0
-#define HAVE_ALLOCA     0
+/* libnix provides these (C89 runtime).
+   IMPORTANT: SDL2 checks most HAVE_* with #ifdef / #if defined(),
+   so "not available" means NOT DEFINED AT ALL, not defined to 0. */
+/* HAVE_ALLOCA_H -- NOT defined (no alloca on AmigaOS) */
+/* HAVE_ALLOCA -- NOT defined */
 #define HAVE_MALLOC     1
 #define HAVE_CALLOC     1
 #define HAVE_REALLOC    1
@@ -52,16 +54,16 @@
 #define HAVE_MEMMOVE    1
 #define HAVE_MEMCMP     1
 #define HAVE_STRLEN     1
-#define HAVE_STRLCPY    0
-#define HAVE_STRLCAT    0
+/* HAVE_STRLCPY -- NOT defined (not in libnix) */
+/* HAVE_STRLCAT -- NOT defined (not in libnix) */
 #define HAVE_STRDUP     1
 #define HAVE_STRCHR     1
 #define HAVE_STRRCHR    1
 #define HAVE_STRSTR     1
 #define HAVE_STRTOL     1
 #define HAVE_STRTOUL    1
-#define HAVE_STRTOLL    0
-#define HAVE_STRTOULL   0
+/* HAVE_STRTOLL -- NOT defined (not in libnix) */
+/* HAVE_STRTOULL -- NOT defined (not in libnix) */
 #define HAVE_STRTOD     1
 #define HAVE_ATOI       1
 #define HAVE_ATOF       1
@@ -70,83 +72,86 @@
 #define HAVE_STRCASECMP 1
 #define HAVE_STRNCASECMP 1
 #define HAVE_SSCANF     1
-#define HAVE_VSSCANF    0
+/* HAVE_VSSCANF -- NOT defined */
 #define HAVE_SNPRINTF   1
 #define HAVE_VSNPRINTF  1
 
-/* Math functions */
+/* Math functions -- libnix has double versions but NOT float versions.
+   SDL2 uses #if defined(HAVE_*) so unavailable = NOT DEFINED. */
 #define HAVE_ACOS       1
-#define HAVE_ACOSF      0
+/* HAVE_ACOSF -- NOT defined (no float math in libnix) */
 #define HAVE_ASIN       1
-#define HAVE_ASINF      0
+/* HAVE_ASINF -- NOT defined */
 #define HAVE_ATAN       1
-#define HAVE_ATANF      0
+/* HAVE_ATANF -- NOT defined */
 #define HAVE_ATAN2      1
-#define HAVE_ATAN2F     0
+/* HAVE_ATAN2F -- NOT defined */
 #define HAVE_CEIL       1
-#define HAVE_CEILF      0
-#define HAVE_COPYSIGN   0
-#define HAVE_COPYSIGNF  0
+/* HAVE_CEILF -- NOT defined */
+/* HAVE_COPYSIGN -- NOT defined */
+/* HAVE_COPYSIGNF -- NOT defined */
 #define HAVE_COS        1
-#define HAVE_COSF       0
+/* HAVE_COSF -- NOT defined */
 #define HAVE_EXP        1
-#define HAVE_EXPF       0
+/* HAVE_EXPF -- NOT defined */
 #define HAVE_FABS       1
-#define HAVE_FABSF      0
+/* HAVE_FABSF -- NOT defined */
 #define HAVE_FLOOR      1
-#define HAVE_FLOORF     0
+/* HAVE_FLOORF -- NOT defined */
 #define HAVE_FMOD       1
-#define HAVE_FMODF      0
+/* HAVE_FMODF -- NOT defined */
 #define HAVE_LOG        1
-#define HAVE_LOGF       0
+/* HAVE_LOGF -- NOT defined */
 #define HAVE_LOG10      1
-#define HAVE_LOG10F     0
-#define HAVE_LROUND     0
-#define HAVE_LROUNDF    0
+/* HAVE_LOG10F -- NOT defined */
+/* HAVE_LROUND -- NOT defined */
+/* HAVE_LROUNDF -- NOT defined */
 #define HAVE_POW        1
-#define HAVE_POWF       0
-#define HAVE_ROUND      0
-#define HAVE_ROUNDF     0
-#define HAVE_SCALBN     0
-#define HAVE_SCALBNF    0
+/* HAVE_POWF -- NOT defined */
+/* HAVE_ROUND -- NOT defined */
+/* HAVE_ROUNDF -- NOT defined */
+/* HAVE_SCALBN -- NOT defined */
+/* HAVE_SCALBNF -- NOT defined */
 #define HAVE_SIN        1
-#define HAVE_SINF       0
+/* HAVE_SINF -- NOT defined */
 #define HAVE_SQRT       1
-#define HAVE_SQRTF      0
+/* HAVE_SQRTF -- NOT defined */
 #define HAVE_TAN        1
-#define HAVE_TANF       0
-#define HAVE_TRUNC      0
-#define HAVE_TRUNCF     0
+/* HAVE_TANF -- NOT defined */
+/* HAVE_TRUNC -- NOT defined */
+/* HAVE_TRUNCF -- NOT defined */
 
 /* POSIX features NOT available in libnix / AmigaOS 3.x */
-#define HAVE_GETENV     0
-#define HAVE_SETENV     0
-#define HAVE_PUTENV     0
-#define HAVE_UNSETENV   0
+/* HAVE_GETENV -- NOT defined (no POSIX getenv) */
+/* HAVE_SETENV -- NOT defined */
+/* HAVE_PUTENV -- NOT defined */
+/* HAVE_UNSETENV -- NOT defined */
 #define HAVE_QSORT      1
 #define HAVE_ABS        1
 #define HAVE_CTYPE_H    1
 #define HAVE_MATH_H     1
 #define HAVE_FLOAT_H    1
 #define HAVE_LIMITS_H   1
-#define HAVE_SIGNAL_H   0
-#define HAVE_ICONV_H    0
-#define HAVE_ICONV      0
-#define HAVE_SYS_TYPES_H 0
+/* HAVE_SIGNAL_H -- intentionally NOT defined (no POSIX signals on AmigaOS) */
+/* HAVE_ICONV_H -- intentionally NOT defined */
+/* HAVE_ICONV -- intentionally NOT defined */
+/* HAVE_SYS_TYPES_H -- intentionally NOT defined */
 #define HAVE_STDIO_H    1
 #define HAVE_STRING_H   1
-#define HAVE_WCHAR_H    0
-#define HAVE_INTTYPES_H 0
-#define HAVE_STRINGS_H  0
-#define HAVE_MPROTECT   0
-#define HAVE_SIGACTION   0
+/* HAVE_WCHAR_H -- intentionally NOT defined */
+/* HAVE_INTTYPES_H -- intentionally NOT defined */
+/* HAVE_STRINGS_H -- intentionally NOT defined */
+/* HAVE_MPROTECT -- intentionally NOT defined */
+/* HAVE_SIGACTION -- intentionally NOT defined */
 
 /* Byte order -- 68k is big-endian */
 #define SDL_BYTEORDER   SDL_BIG_ENDIAN
 
-/* Atomics -- 68020+ has CAS instruction. No GCC builtins. */
-#define HAVE_GCC_ATOMICS 0
-#define HAVE_GCC_SYNC_LOCK_TEST_AND_SET 0
+/* Atomics -- 68020+ has CAS instruction via our SDL_spinlock.c path.
+   GCC builtins (__sync_*) generate external function calls on 68k that
+   don't exist in any library. Must NOT be defined at all. */
+/* HAVE_GCC_ATOMICS -- intentionally NOT defined */
+/* HAVE_GCC_SYNC_LOCK_TEST_AND_SET -- intentionally NOT defined */
 
 /* Dynamic API -- disabled in src/dynapi/SDL_dynapi.h via __AMIGAOS3__ check */
 

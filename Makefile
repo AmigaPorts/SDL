@@ -109,7 +109,8 @@ SRCS_VIDEO_CORE = \
 	src/video/SDL_stretch.c \
 	src/video/SDL_surface.c \
 	src/video/SDL_video.c \
-	src/video/SDL_yuv.c
+	src/video/SDL_yuv.c \
+	src/video/yuv2rgb/yuv_rgb_std.c
 
 SRCS_VIDEO_OS3 = \
 	src/video/amigaos3/SDL_os3video.c
@@ -164,7 +165,8 @@ SRCS_TIMER = $(SRCS_TIMER_CORE) $(SRCS_TIMER_OS3)
 SRCS_JOYSTICK_CORE = \
 	src/joystick/SDL_gamecontroller.c \
 	src/joystick/SDL_joystick.c \
-	src/joystick/SDL_steam_virtual_gamepad.c
+	src/joystick/SDL_steam_virtual_gamepad.c \
+	src/joystick/controller_type.c
 
 SRCS_JOYSTICK_OS3 = \
 	src/joystick/amigaos3/SDL_sysjoystick.c
