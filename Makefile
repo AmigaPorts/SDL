@@ -258,7 +258,8 @@ native-examples: $(TARGET)
 	@echo "Built examples/test_init"
 
 test:
-	@echo "Run: vamos -C 68020 -s 65536 examples/test_init"
+	@echo "Run: vamos -C 68020 -s 32 -m 8192 examples/test_init"
+	@echo "(vamos -C 68020 is correct: 68030 integer ISA == 68020, vamos has no -C 68030)"
 
 setup-toolchain:
 	@echo "Pulling bebbo-gcc Docker image..."
