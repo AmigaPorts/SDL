@@ -1,0 +1,39 @@
+# intuition.library/SetEditHook
+
+
+
+NAME
+
+```c
+    SetEditHook -- Set global processing for string gadgets. (V36)
+```
+SYNOPSIS
+
+```c
+    OldHook = SetEditHook( [Hook](../Includes_and_Autodocs_2._guide/node012D.html#line23) )
+    D0                     A0
+
+    struct [Hook](../Includes_and_Autodocs_2._guide/node012D.html#line23) *SetEditHook( struct [Hook](../Includes_and_Autodocs_2._guide/node012D.html#line23) * );
+```
+FUNCTION
+
+    Sets new global editing hook for string gadgets.
+
+    WARNING: This function is wholly untested.  Do *NOT* use
+    this in a commercial product until further notice.
+INPUTS
+
+```c
+    [Hook](../Includes_and_Autodocs_2._guide/node012D.html#line23) -- A pointer to a struct [Hook](../Includes_and_Autodocs_2._guide/node012D.html#line23) which determines a function
+      in your code to be called every time the user types a key.
+      This is done before control is passed to the gadget custom
+      editing hook, so effects ALL string gadgets.
+```
+RESULT
+
+    Returns previous global edit hook structure.
+BUGS
+
+    Unknown, risky.
+SEE ALSO
+

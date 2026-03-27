@@ -1,0 +1,16 @@
+# FD/disk_lib.fd
+
+
+* "disk.resource"
+##base _DiskBase
+##bias 6
+##public
+AllocUnit(unitNum)(d0)
+FreeUnit(unitNum)(d0)
+GetUnit(unitPointer)(a1)
+GiveUnit()()
+GetUnitID(unitNum)(d0)
+*------ new for V37 ------
+ReadUnitID(unitNum)(d0)
+##end
+

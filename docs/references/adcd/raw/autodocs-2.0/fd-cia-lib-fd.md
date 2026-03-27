@@ -1,0 +1,12 @@
+# FD/cia_lib.fd
+
+
+* "CiaA.Resource" and "CiaB.Resource"
+##bias 6
+##public
+AddICRVector(resource,iCRBit,interrupt)(a6,d0/a1)
+RemICRVector(resource,iCRBit,interrupt)(a6,d0/a1)
+AbleICR(resource,mask)(a6,d0)
+SetICR(resource,mask)(a6,d0)
+##end
+

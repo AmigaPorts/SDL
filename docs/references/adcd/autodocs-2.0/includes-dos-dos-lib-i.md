@@ -1,0 +1,73 @@
+---
+title: Includes/dos/dos_lib.i
+manual: autodocs-2.0
+chapter: autodocs-2.0
+section: includes-dos-dos-lib-i
+functions: []
+libraries: []
+---
+
+# Includes/dos/dos_lib.i
+
+> *Source: Amiga Developer CD v2.1. (C) Commodore-Amiga / Amiga Inc.*
+
+	IFND	DOS_DOS_LIB_I
+DOS_DOS_LIB_I	SET	1
+**
+**	$Filename: dos/dos_lib.i $
+**	$Release: 2.04 Includes, V37.4 $
+**	$Revision: 36.1 $
+**	$Date: 90/11/04 $
+**
+**	Library interface offsets for DOS library
+**
+**	(C) Copyright 1985-1999 Amiga, Inc.
+**	    All Rights Reserved
+**
+
+reserve EQU	4
+vsize	EQU	6
+count	SET	-vsize*(reserve+1)
+LIBENT	MACRO
+_LVO\1	EQU	count
+count	SET	count-vsize
+	ENDM
+*
+*
+*
+   LIBENT   Open
+   LIBENT   Close
+   LIBENT   Read
+   LIBENT   Write
+   LIBENT   Input
+   LIBENT   Output
+   LIBENT   Seek
+   LIBENT   DeleteFile
+   LIBENT   Rename
+   LIBENT   Lock
+   LIBENT   UnLock
+   LIBENT   DupLock
+   LIBENT   Examine
+   LIBENT   ExNext
+   LIBENT   Info
+   LIBENT   CreateDir
+   LIBENT   CurrentDir
+   LIBENT   IoErr
+   LIBENT   CreateProc
+   LIBENT   Exit
+   LIBENT   LoadSeg
+   LIBENT   UnLoadSeg
+   LIBENT   GetPacket
+   LIBENT   QueuePacket
+   LIBENT   DeviceProc
+   LIBENT   SetComment
+   LIBENT   SetProtection
+   LIBENT   DateStamp
+   LIBENT   Delay
+   LIBENT   WaitForChar
+   LIBENT   ParentDir
+   LIBENT   IsInteractive
+   LIBENT   Execute
+
+	ENDC	; DOS_DOS_LIB_I
+

@@ -1,0 +1,214 @@
+/* Source: ADCD 2.1
+ * Section: sound-datatype-sound-datatype
+ * Library: autodocs-3.5
+ * ADCD reference: autodocs-3.5/sound-datatype-sound-datatype.md
+ */
+
+    NAME
+        sound.datatype -- root data type for sounds.
+
+    FUNCTION
+        The sound.datatype is the super-class for any sound related
+        classes.
+
+    METHODS
+        OM_NEW -- Create a new sound object.
+
+        OM_GET -- Obtain the value of an attribute.
+
+        OM_SET -- Set the values of multiple attributes.
+
+        OM_UPDATE -- Update the values of multiple attributes.
+
+        OM_DISPOSE -- Dispose of a sound object.
+
+        GM_LAYOUT -- Layout the object and notify the application of the
+            title and size.
+
+        GM_HITTEST -- Determine if the object has been hit with the
+            mouse.
+
+        GM_GOACTIVE -- Tell the object to go active.  On SELECTDOWN, the
+            sound will start playing.
+
+        GM_HANDLEINPUT -- Handle input.  Currently input (other than
+            SELECTDOWN) doesn't affect the sound.
+
+        GM_RENDER -- [Cause](../Includes_and_Autodocs_3._guide/node01F4.html) the graphic to render.  Currently the graphic
+            for the sound is just a static icon.
+
+        DTM_TRIGGER -- [Cause](../Includes_and_Autodocs_3._guide/node01F4.html) an event to occur.  Currently the only
+            trigger event is STM_PLAY, which will cause the sound to start
+            playing.
+
+            NOTE: Subclasses which support streaming data access may
+                  support more than just the STM_PLAY event.
+
+        DTM_COPY -- Copy the entire sound to the clipboard as 8SVX.
+
+            NOTE: Up to and including V40 sound.datatype never stored
+                  a valid [VoiceHeader](../Includes_and_Autodocs_3._guide/node064F.html#line111) with the file. This was fixed in V44.
+
+                  Subclasses which support streaming data access may not
+                  support this method.
+
+        DTM_WRITE -- [Write](../Includes_and_Autodocs_3._guide/node01D1.html) the entire sound to a file as 8SVX.
+
+            NOTE: Up to and including V40 sound.datatype never stored
+                  a valid [VoiceHeader](../Includes_and_Autodocs_3._guide/node064F.html#line111) with the file. This was fixed in V44.
+
+                  Subclasses which support streaming data access may not
+                  support this method.
+
+    TAGS
+        SDTA_VoiceHeader (struct [VoiceHeader](../Includes_and_Autodocs_3._guide/node064F.html#line111) *) -- Set and get the base
+            information for the sound.  [VoiceHeader](../Includes_and_Autodocs_3._guide/node064F.html#line111) is defined in
+            [<datatypes/soundclass.h>](../Includes_and_Autodocs_3._guide/node064F.html).
+
+            NOTE: Up to and including V40 sound.datatype never returned
+                  a valid [VoiceHeader](../Includes_and_Autodocs_3._guide/node064F.html#line111) for OM_GET and the [VoiceHeader](../Includes_and_Autodocs_3._guide/node064F.html#line111) data
+                  was ignored in the OM_NEW/OM_SET cases. This was fixed
+                  in V44.
+
+            Applicability is (ISG).
+
+        SDTA_Sample (BYTE *) -- Set and get the sound data.  Starting
+            with V40 the sample data does not need to be in CHIP memory.
+            Starting with V44 the sample data does not need to start
+            on a WORD-aligned address. Setting SDTA_Sample to NULL
+            will stop sound replay if sound.datatype was started
+            playing with a non-NULL SDTA_Sample parameter.
+
+            The SDTA_Sample parameter selects mono playback on any
+            sound channel that is currently available.
+
+            NOTE: For streaming sound playback, SDTA_LeftSample,
+                  SDTA_RightSample, and SDTA_Sample will all be
+                  NULL (V44).
+
+            Applicability is (ISG).
+
+        SDTA_SampleLength (ULONG) -- Length of the sound data in bytes.
+            Starting with V44 the sample data does not need to be
+            an even number of bytes. Setting SDTA_SampleLength to 0
+            will stop sound replay.
+
+            Applicability is (ISG).
+
+        SDTA_Period (UWORD) -- Set and get the period of the sound
+            (in timing intervals per sample). This attribute can be
+            used to affect a playing sound. Please note that the
+            Amiga audio hardware does not reliably support playback
+            periods shorter than 124; sound.datatype will limit the
+            period to valid intervals (V44).
+
+            Default for this tag is 394.  Applicability is (ISG).
+
+        SDTA_Volume (UWORD) -- Set and get the volume of the sound. This
+            attribute can be used to affect a playing sound.
+
+            Valid range is from 0 to 64.  Default for this tag is 64.
+            Applicability is (ISG).
+
+        SDTA_Cycles (UWORD) -- Set and get the number of cycles the
+            sound will be played.
+
+            Default for this tag is 1.  Applicability is (ISG).
+
+        The following tags are new for V40.
+
+        SDTA_SignalTask (struct [Task](../Includes_and_Autodocs_3._guide/node064B.html#line23) *) -- [Task](../Includes_and_Autodocs_3._guide/node064B.html#line23) to signal when the
+            is complete, or if SDTA_Continuous is TRUE, when
+            the next buffer is needed.
+
+            Default for this tag is NULL. Applicability is (IS).
+
+        SDTA_SignalBit (ULONG) -- [Signal](../Includes_and_Autodocs_3._guide/node023D.html) mask to use with SDTA_SignalTask
+            or 0 to disable.
+
+            NOTE: Due to a bug in sound.datatype V40 SDTA_SignalBit was
+                  actually implemented as a signal mask as opposed to a
+                  bit number. The documentation now reflects this. If you
+                  intend to use a signal bit number instead of the mask,
+                  use the new V44 tag SDTA_SignalBitNumber below.
+
+            Default for this tag is 0. Applicability is (IS).
+
+        SDTA_Continuous (BOOL) -- Used to indicate that the sound
+            datatype will be fed a continuous stream of data.
+
+            Default for this tag is FALSE. Applicability is (I).
+
+        The following tags are new for V44.
+
+        SDTA_SignalBitMask (ULONG) -- [Signal](../Includes_and_Autodocs_3._guide/node023D.html) mask to use with SDTA_SignalTask
+            or 0 to disable. This tag is an alias for SDTA_SignalBit.
+
+            Default for this tag is 0. Applicability is (IS).
+
+        SDTA_SignalBitNumber (BYTE) -- [Signal](../Includes_and_Autodocs_3._guide/node023D.html) bit to use with SDTA_SignalTask
+            or -1 to disable.
+
+            Default for this tag is -1. Applicability is (IS).
+
+        SDTA_SamplesPerSec (UWORD) -- Set and get the replay frequency of
+            a sound (in Hz). This attribute can be used to affect a playing
+            sound. Unlike the SDTA_Period tag, which serves the same purpose,
+            this tag automatically takes the system clock value into account.
+            Please note that the Amiga audio hardware does not reliably
+            support playback rates beyond 28,000 samples per second;
+            sound.datatype will limit the replay frequency to valid
+            intervals.
+
+            Applicability is (ISG).
+
+        SDTA_ReplayPeriod (struct [timeval](../Includes_and_Autodocs_3._guide/node0607.html#line29) *) -- Get the replay period,
+            i.e. the time it takes for the complete sound to be played.
+            If the sample size has not been set yet, the [timeval](../Includes_and_Autodocs_3._guide/node0607.html#line29) tv_sec
+            and tv_micro members will be set to 0. If the sample is to
+            be played continuously, both [timeval](../Includes_and_Autodocs_3._guide/node0607.html#line29) members will be set
+            to 0xFFFFFFFF.
+
+            Applicability is (G).
+
+        SDTA_Pan (BYTE) -- Set the stereo panning; this must be set to
+            a number in the range of -64..64. A value of -64 will
+            pan the sound to the left channel, silencing the right
+            channel; a value of 64 will pan the sound to the right
+            channel and silence the left channel. To center playback,
+            use a panning value of 0. The panning value only takes
+            effect if a stereo sound is being played.
+
+            Default for this tag is 0. Applicability is (IS).
+
+        SDTA_FreeSampleData (BOOL) -- This tag controls whether
+            sound.datatype will call [FreeVec()](../Includes_and_Autodocs_3._guide/node0212.html) on the sample data
+            attached to an object. If the SDTA_Continuous attribute was
+            set to TRUE, sound.datatype will never free any data attached
+            to an object. It is safe to attach the same sample to
+            more than one channel as sound.datatype will make sure that
+            no sample data is freed twice.
+
+            Default for this tag is FALSE. Applicability is (IS).
+
+        SDTA_LeftSample (BYTE *) -- Set and get the left channel sound data.
+            The sample data does not need to be in CHIP memory and does
+            not need to start on a WORD-aligned address. Setting
+            SDTA_LeftSample to NULL will stop sound replay if sound.datatype
+            was started playing with a non-NULL SDTA_LeftSample parameter.
+
+            The SDTA_LeftSample parameter alone selects mono playback on
+            any left sound channel that is currently available. Used together
+            with the SDTA_RightSample parameter, stereo playback on any
+            available stereo channels is selected.
+
+            The SDTA_LeftSample parameter takes precedence over the
+            the SDTA_Sample parameter.
+
+            NOTE: For streaming sound playback, SDTA_LeftSample,
+                  SDTA_RightSample, and SDTA_Sample will all be
+                  NULL (V44).
+
+            Applicability is (ISG).
+
+        SDTA_RightSample (BYTE *) -- Set and get the right channel sound data

@@ -1,0 +1,91 @@
+---
+title: amiga.lib/CreateTask
+manual: autodocs-3.5
+chapter: autodocs-3.5
+section: amiga-lib-createtask-2
+functions: [CreateNewProc, FindTask]
+libraries: [dos.library, exec.library]
+---
+
+# amiga.lib/CreateTask
+
+> *Source: Amiga Developer CD v2.1. (C) Commodore-Amiga / Amiga Inc.*
+
+   NAME
+	CreateTask -- Create task with given name, priority, stacksize
+
+   SYNOPSIS
+	task = CreateTask(name,pri,initPC,stackSize)
+
+	struct [Task](autodocs-3.5/include-exec-tasks-h.md) *CreateTask(STRPTR,[LONG](autodocs-3.5/include-exec-types-h.md),funcEntry,ULONG);
+
+   FUNCTION
+	This function simplifies program creation of sub-tasks by
+	dynamically allocating and initializing required structures
+	and stack space, and adding the task to Exec's task list
+	with the given name and priority. A tc_MemEntry list is provided
+	so that all stack and structure memory allocated by CreateTask()
+	is automatically deallocated when the task is removed.
+
+	An Exec task may not call dos.library functions or any function
+	which might cause the loading of a disk-resident library, device,
+	or file (since such functions are indirectly calls to dos.library).
+	Only AmigaDOS Processes may call AmigaDOS; see the
+	[dos.library/CreateProc()](autodocs-3.5/dos-library-createproc-2.md) or the [dos.library/CreateNewProc()](autodocs-3.5/dos-library-createnewproc-2.md)
+	functions for more information.
+
+	If other tasks or processes will need to find this task by name,
+	provide a complex and unique name to avoid conflicts.
+
+	If your compiler provides automatic insertion of stack-checking
+	code, you may need to disable this feature when compiling sub-task
+	code since the stack for the subtask is at a dynamically allocated
+	location.  If your compiler requires 68000 registers to contain
+	particular values for base relative addressing, you may need to
+	save these registers from your main process, and restore them
+	in your initial subtask code.
+
+	The function entry initPC is generally provided as follows:
+
+	In C:
+	extern void functionName();
+	char *tname = "unique name";
+	task = CreateTask(tname, 0L, functionName, 4000L);
+
+	In assembler:
+		PEA	startLabel
+
+   INPUTS
+	name - a null-terminated name string
+	pri - an Exec task priority between -128 and 127, normally 0
+	funcEntry - the address of the first executable instruction
+		    of the subtask code
+	stackSize - size in bytes of stack for the subtask. Don't cut it
+		    too close - system function stack usage may change.
+
+   RESULT
+	task - a pointer to the newly created task, or NULL if there was not
+	       enough memory.
+
+   BUGS
+	Under exec.library V37 or beyond, the [AddTask()](autodocs-3.5/exec-library-addtask-2.md) function used
+	internally by CreateTask() can fail whereas it couldn't fail in
+	previous versions of Exec. Prior to amiga.lib V37.14, this function
+	did not check for failure of [AddTask()](autodocs-3.5/exec-library-addtask-2.md) and thus might return a
+	pointer to a task structure even though the task was not actually
+	added to the system.
+
+	Prior to amiga.lib V40.20 low memory conditions could cause
+	CreateTask() to malfunction. The implementation checked whether the
+	initial [AllocEntry()](autodocs-3.5/exec-library-allocentry-2.md) call would fail, but would use an inappropriate
+	test condition.
+
+   SEE ALSO
+	[DeleteTask()](autodocs-3.5/amiga-lib-deletetask-2.md), [exec/FindTask()](autodocs-3.5/exec-library-findtask-2.md)
+
+---
+
+## See Also
+
+- [CreateNewProc — dos.library](../autodocs/dos.library.md#createnewproc)
+- [FindTask — exec.library](../autodocs/exec.library.md#findtask)

@@ -1,0 +1,115 @@
+---
+title: Text Index
+manual: libraries
+chapter: libraries
+section: text-index
+functions: [AskSoftStyle, AvailFonts, ClearEOL, ClearScreen, FontExtent, Move, OpenDiskFont, OpenFont, SetAPen, SetBPen, SetFont, SetSoftStyle, Text, TextExtent, TextFit, TextLength]
+libraries: [diskfont.library, graphics.library]
+---
+
+# Text Index
+
+> *Source: Amiga Developer CD v2.1. (C) Commodore-Amiga / Amiga Inc.*
+
+Text
+  about Amiga fonts, [669](libraries/29-graphics-library-and-text-about-amiga-fonts.md)
+  and Intuition graphics, [239](libraries/8-intuition-images-line-drawing-and-text-creating-text.md)
+  AskSoftStyle(), [675](libraries/29-the-text-function-setting-the-font-style.md)
+  aspect ratio, [681](libraries/29-graphics-library-and-text-font-scaling-and-aspect-ratio.md), [682](libraries/29-graphics-library-and-text-font-scaling-and-aspect-ratio.md)
+  AvailFonts(), [688](libraries/29-graphics-library-and-text-what-fonts-are-available.md)
+  AvailFonts flags, [689](libraries/29-graphics-library-and-text-what-fonts-are-available.md)
+  Caveats - don't assume Topaz-8, [672](libraries/29-the-text-function-choosing-the-font.md)
+  ClearEOL(), [675](libraries/29-the-text-function-rendering-the-text.md)
+  ClearScreen(), [675](libraries/29-the-text-function-rendering-the-text.md)
+  cloning a RastPort, [673](libraries/29-the-text-function-setting-the-text-drawing-attributes.md)
+  color fonts, [697](libraries/29-graphics-library-and-text-but-what-about-color-fonts.md)
+  ColorTextFont flags, [697](libraries/29-graphics-library-and-text-but-what-about-color-fonts.md)
+  COMPLEMENT, [673](libraries/29-the-text-function-setting-the-text-drawing-attributes.md)
+  Compugraphic fonts, [670](libraries/29-about-amiga-fonts-system-fonts-in-release-2.md), [681](libraries/29-graphics-library-and-text-font-scaling-and-aspect-ratio.md), [682](libraries/29-graphics-library-and-text-font-scaling-and-aspect-ratio.md), [683](libraries/29-graphics-library-and-text-some-things-to-look-out-for.md)
+  dots per inch, [682](libraries/29-graphics-library-and-text-font-scaling-and-aspect-ratio.md)
+  drawing modes, [672](libraries/29-the-text-function-setting-the-text-drawing-attributes.md)
+  Examples
+```c
+    list available fonts, [690](libraries/lib-examples-availfonts-c.md)
+    measuring and fitting text, [678](libraries/lib-examples-measuretext-c.md)
+    render a text file to a window, [684](libraries/lib-examples-cliptext-c.md)
+    sample font source, [699](libraries/lib-examples-suits8-asm.md)
+    skeleton for opening a font, [671](libraries/lib-examples-pseudotext-c.md)
+    skeleton for selecting aspect ratio, [683](libraries/29-graphics-library-and-text-font-scaling-and-aspect-ratio.md)
+    skeleton for soft styling a font, [675](libraries/29-the-text-function-setting-the-font-style.md)
+    skeleton using AvailFonts(), [689](libraries/29-graphics-library-and-text-what-fonts-are-available.md)
+```
+  ExternFont(), [682](libraries/29-graphics-library-and-text-font-scaling-and-aspect-ratio.md)
+  font bitmaps, [695](libraries/29-graphics-library-and-text-how-an-amiga-font-structured.md)
+  font flags, [671](libraries/29-the-text-function-choosing-the-font.md)
+  font preferences, [671](libraries/29-the-text-function-choosing-the-font.md)
+  font scaling, [670](libraries/29-about-amiga-fonts-system-fonts-in-release-2.md), [681](libraries/29-graphics-library-and-text-font-scaling-and-aspect-ratio.md)
+  font style flags, [671](libraries/29-the-text-function-choosing-the-font.md)
+  FontContentsHeader file IDs, [698](libraries/29-graphics-library-and-text-composition-of-a-bitmap-font.md)
+  FontExtent(), [676](libraries/29-graphics-library-and-text-does-the-text-fit.md)
+  format of a font file, [698](libraries/29-graphics-library-and-text-composition-of-a-bitmap-font.md)
+  in easy requester, [215](libraries/7-intuition-requesters-and-alerts-easy-requesters.md)
+  in requester gadgets, [206](libraries/7-true-requesters-gadgets-in-requesters.md)
+  Intellifont engine, [670](libraries/29-about-amiga-fonts-system-fonts-in-release-2.md)
+  INVERSEVID, [673](libraries/29-the-text-function-setting-the-text-drawing-attributes.md)
+  JAM1, [672](libraries/29-the-text-function-setting-the-text-drawing-attributes.md)
+  JAM2, [673](libraries/29-the-text-function-setting-the-text-drawing-attributes.md)
+  kerning, [696](libraries/29-graphics-library-and-text-how-an-amiga-font-structured.md)
+  length, [241](libraries/8-creating-text-determining-text-length.md)
+  making the text fit, [676](libraries/29-graphics-library-and-text-does-the-text-fit.md)
+  menu item, [169](libraries/6-the-menu-system-menu-item-imagery.md), [190](libraries/6-menu-data-structures-menuitem-structure.md)
+  Move(), [674](libraries/29-the-text-function-rendering-the-text.md)
+  OpenDiskFont(), [670](libraries/29-the-text-function-choosing-the-font.md), [675](libraries/29-the-text-function-setting-the-font-style.md)
+  OpenFont(), [670](libraries/29-the-text-function-choosing-the-font.md), [675](libraries/29-the-text-function-setting-the-font-style.md)
+  outline fonts, [670](libraries/29-about-amiga-fonts-system-fonts-in-release-2.md), [682](libraries/29-graphics-library-and-text-font-scaling-and-aspect-ratio.md), [683](libraries/29-graphics-library-and-text-some-things-to-look-out-for.md)
+  rendering the text, [673](libraries/29-the-text-function-rendering-the-text.md)
+  selecting a font, [670](libraries/29-the-text-function-choosing-the-font.md)
+  SetAPen(), [672](libraries/29-the-text-function-setting-the-text-drawing-attributes.md)
+  SetBPen(), [672](libraries/29-the-text-function-setting-the-text-drawing-attributes.md)
+  SetDrMode(), [672](libraries/29-the-text-function-setting-the-text-drawing-attributes.md)
+  SetFont(), [670](libraries/29-the-text-function-choosing-the-font.md)
+  SetSoftStyle(), [675](libraries/29-the-text-function-setting-the-font-style.md)
+  setting the font style, [675](libraries/29-the-text-function-setting-the-font-style.md)
+  struct AvailFonts, [688](libraries/29-graphics-library-and-text-what-fonts-are-available.md)
+  struct AvailFontsHeader, [688](libraries/29-graphics-library-and-text-what-fonts-are-available.md)
+  struct ColorFontColors, [698](libraries/29-graphics-library-and-text-but-what-about-color-fonts.md)
+  struct ColorTextFont, [697](libraries/29-graphics-library-and-text-but-what-about-color-fonts.md)
+  struct DiskFontHeader, [699](libraries/29-graphics-library-and-text-composition-of-a-bitmap-font.md)
+  struct FontContents, [698](libraries/29-graphics-library-and-text-composition-of-a-bitmap-font.md)
+  struct FontContentsHeader, [698](libraries/29-graphics-library-and-text-composition-of-a-bitmap-font.md)
+  struct Message, [694](libraries/29-graphics-library-and-text-how-an-amiga-font-structured.md)
+  struct RastPort, [669](libraries/29-graphics-library-and-text.md), [670](libraries/29-graphics-library-and-text-the-text-function.md)
+  struct Rectangle, [676](libraries/29-graphics-library-and-text-does-the-text-fit.md)
+  struct TAvailFonts, [689](libraries/29-graphics-library-and-text-what-fonts-are-available.md)
+  struct TextAttr, [671](libraries/29-the-text-function-choosing-the-font.md), [682](libraries/29-graphics-library-and-text-font-scaling-and-aspect-ratio.md)
+  struct TextExtent, [676](libraries/29-graphics-library-and-text-does-the-text-fit.md)
+  struct TextFont, [674](libraries/29-the-text-function-rendering-the-text.md), [681](libraries/29-graphics-library-and-text-font-scaling-and-aspect-ratio.md), [694](libraries/29-graphics-library-and-text-how-an-amiga-font-structured.md)
+  struct TextFontExtension, [681](libraries/29-graphics-library-and-text-font-scaling-and-aspect-ratio.md), [683](libraries/29-graphics-library-and-text-some-things-to-look-out-for.md), [696](libraries/29-graphics-library-and-text-how-an-amiga-font-structured.md)
+  struct TFontContents, [699](libraries/29-graphics-library-and-text-composition-of-a-bitmap-font.md)
+  struct TTextAttr, [682](libraries/29-graphics-library-and-text-font-scaling-and-aspect-ratio.md)
+  Text(), [670](libraries/29-graphics-library-and-text-the-text-function.md)
+  TextExtent(), [676](libraries/29-graphics-library-and-text-does-the-text-fit.md)
+  TextFit(), [676](libraries/29-graphics-library-and-text-does-the-text-fit.md)
+  TextLength(), [676](libraries/29-graphics-library-and-text-does-the-text-fit.md)
+  with Intuition graphics, [223](libraries/8-intuition-images-line-drawing-and-text-intuition-graphic.md)
+
+---
+
+## See Also
+
+- [AskSoftStyle — graphics.library](../autodocs/graphics.library.md#asksoftstyle)
+- [AvailFonts — diskfont.library](../autodocs/diskfont.library.md#availfonts)
+- [ClearEOL — graphics.library](../autodocs/graphics.library.md#cleareol)
+- [ClearScreen — graphics.library](../autodocs/graphics.library.md#clearscreen)
+- [FontExtent — graphics.library](../autodocs/graphics.library.md#fontextent)
+- [Move — graphics.library](../autodocs/graphics.library.md#move)
+- [OpenDiskFont — diskfont.library](../autodocs/diskfont.library.md#opendiskfont)
+- [OpenFont — graphics.library](../autodocs/graphics.library.md#openfont)
+- [SetAPen — graphics.library](../autodocs/graphics.library.md#setapen)
+- [SetBPen — graphics.library](../autodocs/graphics.library.md#setbpen)
+- [SetFont — graphics.library](../autodocs/graphics.library.md#setfont)
+- [SetSoftStyle — graphics.library](../autodocs/graphics.library.md#setsoftstyle)
+- [Text — graphics.library](../autodocs/graphics.library.md#text)
+- [TextExtent — graphics.library](../autodocs/graphics.library.md#textextent)
+- [TextFit — graphics.library](../autodocs/graphics.library.md#textfit)
+- [TextLength — graphics.library](../autodocs/graphics.library.md#textlength)

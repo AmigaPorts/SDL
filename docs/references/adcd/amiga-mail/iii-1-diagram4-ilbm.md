@@ -1,0 +1,13 @@
+---
+title: III-1/Diagram4.ilbm
+manual: amiga-mail
+chapter: amiga-mail
+section: iii-1-diagram4-ilbm
+functions: []
+libraries: []
+---
+
+# III-1/Diagram4.ilbm
+
+> *Source: Amiga Developer CD v2.1. (C) Commodore-Amiga / Amiga Inc.*
+

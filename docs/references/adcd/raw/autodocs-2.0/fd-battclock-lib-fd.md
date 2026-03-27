@@ -1,0 +1,15 @@
+# FD/battclock_lib.fd
+
+
+* "battclock.resource"
+##base _BattClockBase
+##bias 6
+##public
+ResetBattClock()()
+ReadBattClock()()
+WriteBattClock(time)(d0)
+##private
+battclockPrivate1()()
+battclockPrivate2()()
+##end
+

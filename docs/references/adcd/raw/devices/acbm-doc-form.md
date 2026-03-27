@@ -1,0 +1,15 @@
+# ACBM.doc / FORM
+
+
+FORM ID:  ACBM  (Amiga Contiguous BitMap)
+
+FORM Description:
+
+FORM ACBM has the same format as FORM ILBM except the normal BODY chunk
+(InterLeaved BitMap) is replaced by an ABIT chunk (Amiga BITplanes).
+
+FORM Purpose:
+
+To enable faster loading/saving of screens, especially from Basic, while
+retaining the flexibility and portability of IFF format files.
+

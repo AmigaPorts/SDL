@@ -1,0 +1,56 @@
+---
+title: graphics.library/ModeNotAvailable
+manual: autodocs-2.0
+chapter: autodocs-2.0
+section: graphics-library-modenotavailable
+functions: [GetVPModeID]
+libraries: [graphics.library]
+---
+
+# graphics.library/ModeNotAvailable
+
+> *Source: Amiga Developer CD v2.1. (C) Commodore-Amiga / Amiga Inc.*
+
+NAME
+
+```c
+    ModeNotAvailable -- check to see if a DisplayID isn't available. (V36)
+```
+SYNOPSIS
+
+```c
+    error =  ModeNotAvailable( modeID )
+    d0                         d0
+
+    ULONG   ModeNotAvailable( ULONG);
+```
+FUNCTION
+
+    returns an error code, indicating why this modeID is not available,
+    or NULL if there is no reason known why this mode should not be there.
+INPUTS
+
+    modeID -- a 32 bit DisplayInfoRecord identifier.
+RESULT
+
+    error -- a general indication of why this modeID is not available,
+             or NULL if there is no reason why it shouldn't be available.
+NOTE
+
+```c
+    ULONG return values from this function are a proper superset of the
+    DisplayInfo.NotAvailable field (defined in [graphics/displayinfo.h)](autodocs-2.0/includes-graphics-displayinfo-h.md).
+```
+BUGS
+
+SEE ALSO
+
+```c
+    [graphics/displayinfo.h](autodocs-2.0/includes-graphics-displayinfo-h.md), [GetVPModeID()](autodocs-2.0/graphics-library-getvpmodeid.md)
+```
+
+---
+
+## See Also
+
+- [GetVPModeID — graphics.library](../autodocs/graphics.library.md#getvpmodeid)

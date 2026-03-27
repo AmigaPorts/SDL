@@ -1,0 +1,115 @@
+---
+title: Commodities Index
+manual: libraries
+chapter: libraries
+section: commodities-index
+functions: [ActivateCxObj, AddIEvents, AttachCxObj, ClearCxObjError, CxBroker, CxMsgData, CxMsgID, CxMsgType, CxObjError, DeleteCxObj, DeleteCxObjAll, DisposeCxMsg, DivertCxMsg, EnqueueCxObj, InsertCxObj, ParseIX, RemoveCxObj, RouteCxMsg, SetCxObjPri, SetFilter, SetFilterIX, SetTranslate]
+libraries: [commodities.library]
+---
+
+# Commodities Index
+
+> *Source: Amiga Developer CD v2.1. (C) Commodore-Amiga / Amiga Inc.*
+
+Commodities
+  ActivateCxObj(), [731](libraries/31-commodities-exchange-library-installing-a-broker-object.md)
+  AddIEvents(), [749](libraries/31-commodities-exchange-library-new-input-events.md)
+  ArgArrayDone(), [735](libraries/31-commodities-exchange-library-commodity-tool-types.md)
+  ArgArrayInit(), [735](libraries/31-commodities-exchange-library-commodity-tool-types.md)
+  ArgInt(), [735](libraries/31-commodities-exchange-library-commodity-tool-types.md)
+  ArgString(), [735](libraries/31-commodities-exchange-library-commodity-tool-types.md)
+  AttachCxObj(), [737](libraries/31-commodities-exchange-library-connecting-cxobjects.md)
+  ClearCxObjError(), [742](libraries/31-commodities-exchange-library-cxobject-errors.md)
+  connecting CxObjects, [737](libraries/31-commodities-exchange-library-connecting-cxobjects.md)
+  controller commands, [734](libraries/31-cxmessages-controller-commands.md)
+  controlling CxMessages, [746](libraries/31-commodities-exchange-library-controlling-cxmessages.md)
+  custom CxObject function arguments, [744](libraries/31-commodities-exchange-library-custom-cxobjects.md)
+  custom CxObjects, [744](libraries/31-commodities-exchange-library-custom-cxobjects.md)
+  custom input handlers, [727](libraries/31-commodities-exchange-library-custom-input-handlers.md)
+  CxBroker(), [730](libraries/31-commodities-exchange-library-installing-a-broker-object.md)
+  CxCustom(), [744](libraries/31-commodities-exchange-library-custom-cxobjects.md)
+  CxDebug(), [745](libraries/31-commodities-exchange-library-debug-cxobjects.md)
+  CxFilter(), [736](libraries/31-commodities-exchange-filter-objects-and-input.md)
+  CxMessage, [729](libraries/31-commodities-exchange-library-custom-input-handlers.md), [731](libraries/31-commodities-exchange-library-cxmessages.md)
+  CxMessage types, [731](libraries/31-commodities-exchange-library-cxmessages.md)
+  CxMsgData(), [731](libraries/31-commodities-exchange-library-cxmessages.md)
+  CxMsgID(), [731](libraries/31-commodities-exchange-library-cxmessages.md)
+  CxMsgType(), [731](libraries/31-commodities-exchange-library-cxmessages.md)
+  CxObject, [729](libraries/31-commodities-exchange-library-custom-input-handlers.md), [729-730](libraries/31-commodities-exchange-library-cxobjects.md) - broker, [730](libraries/31-commodities-exchange-library-installing-a-broker-object.md)
+  CxObject error values, [742](libraries/31-commodities-exchange-library-cxobject-errors.md)
+  CxObject errors, [742](libraries/31-commodities-exchange-library-cxobject-errors.md)
+  CxObjError(), [742](libraries/31-commodities-exchange-library-cxobject-errors.md)
+  CxSender(), [741](libraries/31-commodities-exchange-library-sender-cxobjects.md)
+  CxSignal(), [743](libraries/31-commodities-exchange-library-signal-cxobjects.md)
+  CxTranslate(), [741](libraries/31-commodities-exchange-library-translate-cxobjects.md)
+  debug CxObjects, [745](libraries/31-commodities-exchange-library-debug-cxobjects.md)
+  DeleteCxObj(), [734](libraries/31-cxmessages-shutting-down-the-commodity.md)
+  DeleteCxObjAll(), [734](libraries/31-cxmessages-shutting-down-the-commodity.md)
+  DisposeCxMsg(), [746](libraries/31-commodities-exchange-library-controlling-cxmessages.md)
+  DivertCxMsg(), [746](libraries/31-commodities-exchange-library-controlling-cxmessages.md)
+  EnqueueCxObj(), [737](libraries/31-commodities-exchange-library-connecting-cxobjects.md)
+  error codes, [731](libraries/31-commodities-exchange-library-installing-a-broker-object.md)
+  event classes, [736](libraries/31-commodities-exchange-filter-objects-and-input.md)
+  Examples
+```c
+    custom CxObject for swapping mouse buttons, [744](libraries/31-commodities-exchange-library-custom-cxobjects.md)
+    hotkey pop-up shell commodity, [750](libraries/lib-examples-popshell-c.md)
+    input description strings, [737](libraries/31-commodities-exchange-filter-objects-and-input.md)
+    monitoring user inactivity, [747](libraries/lib-examples-divert-c.md)
+    opening a broker commodity, [731](libraries/lib-examples-broker-c.md)
+    simple hot key commodity, [738](libraries/lib-examples-hotkey-c.md)
+```
+  filtering events, [736](libraries/31-commodities-exchange-filter-objects-and-input.md)
+  FreeIEvents(), [749](libraries/31-commodities-exchange-library-new-input-events.md)
+  function reference, [753](libraries/31-commodities-exchange-library-function-reference.md)
+  generating new input events, [749](libraries/31-commodities-exchange-library-new-input-events.md)
+  input description strings, [736](libraries/31-commodities-exchange-filter-objects-and-input.md)
+  InputXpression.ix_QualSame bits, [745](libraries/31-commodities-exchange-library-the-ix-structure.md)
+  InsertCxObj(), [737](libraries/31-commodities-exchange-library-connecting-cxobjects.md)
+  InvertString(), [749](libraries/31-commodities-exchange-library-new-input-events.md)
+  IX structure, [745](libraries/31-commodities-exchange-library-the-ix-structure.md)
+  IX.ix_QualSame bits, [745](libraries/31-commodities-exchange-library-the-ix-structure.md)
+  ParseIX(), [746](libraries/31-commodities-exchange-library-the-ix-structure.md)
+  RemoveCxObj(), [737](libraries/31-commodities-exchange-library-connecting-cxobjects.md)
+  requiring uniqueness, [743](libraries/31-commodities-exchange-library-uniqueness.md)
+  RouteCxMsg(), [746](libraries/31-commodities-exchange-library-controlling-cxmessages.md)
+  sender CxObjects, [741](libraries/31-commodities-exchange-library-sender-cxobjects.md)
+  SetCxObjPri(), [737](libraries/31-commodities-exchange-library-connecting-cxobjects.md)
+  SetFilter(), [746](libraries/31-commodities-exchange-library-the-ix-structure.md)
+  SetFilterIX(), [746](libraries/31-commodities-exchange-library-the-ix-structure.md)
+  SetTranslate(), [742](libraries/31-commodities-exchange-library-translate-cxobjects.md)
+  shutting down a commodity, [734](libraries/31-cxmessages-shutting-down-the-commodity.md)
+  signal CxObjects, [743](libraries/31-commodities-exchange-library-signal-cxobjects.md)
+  struct InputXpression, [745](libraries/31-commodities-exchange-library-the-ix-structure.md)
+  struct NewBroker, [730](libraries/31-commodities-exchange-library-installing-a-broker-object.md)
+  tool types, [734](libraries/31-commodities-exchange-library-commodity-tool-types.md)
+  translate CxObjects, [741](libraries/31-commodities-exchange-library-translate-cxobjects.md)
+  uniqueness, [743](libraries/31-commodities-exchange-library-uniqueness.md)
+  using the IX structure, [746](libraries/31-commodities-exchange-library-the-ix-structure.md)
+
+---
+
+## See Also
+
+- [ActivateCxObj — commodities.library](../autodocs/commodities.library.md#activatecxobj)
+- [AddIEvents — commodities.library](../autodocs/commodities.library.md#addievents)
+- [AttachCxObj — commodities.library](../autodocs/commodities.library.md#attachcxobj)
+- [ClearCxObjError — commodities.library](../autodocs/commodities.library.md#clearcxobjerror)
+- [CxBroker — commodities.library](../autodocs/commodities.library.md#cxbroker)
+- [CxMsgData — commodities.library](../autodocs/commodities.library.md#cxmsgdata)
+- [CxMsgID — commodities.library](../autodocs/commodities.library.md#cxmsgid)
+- [CxMsgType — commodities.library](../autodocs/commodities.library.md#cxmsgtype)
+- [CxObjError — commodities.library](../autodocs/commodities.library.md#cxobjerror)
+- [DeleteCxObj — commodities.library](../autodocs/commodities.library.md#deletecxobj)
+- [DeleteCxObjAll — commodities.library](../autodocs/commodities.library.md#deletecxobjall)
+- [DisposeCxMsg — commodities.library](../autodocs/commodities.library.md#disposecxmsg)
+- [DivertCxMsg — commodities.library](../autodocs/commodities.library.md#divertcxmsg)
+- [EnqueueCxObj — commodities.library](../autodocs/commodities.library.md#enqueuecxobj)
+- [InsertCxObj — commodities.library](../autodocs/commodities.library.md#insertcxobj)
+- [ParseIX — commodities.library](../autodocs/commodities.library.md#parseix)
+- [RemoveCxObj — commodities.library](../autodocs/commodities.library.md#removecxobj)
+- [RouteCxMsg — commodities.library](../autodocs/commodities.library.md#routecxmsg)
+- [SetCxObjPri — commodities.library](../autodocs/commodities.library.md#setcxobjpri)
+- [SetFilter — commodities.library](../autodocs/commodities.library.md#setfilter)
+- [SetFilterIX — commodities.library](../autodocs/commodities.library.md#setfilterix)
+- [SetTranslate — commodities.library](../autodocs/commodities.library.md#settranslate)

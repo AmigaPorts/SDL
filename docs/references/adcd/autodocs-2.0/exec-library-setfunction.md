@@ -1,0 +1,57 @@
+---
+title: exec.library/SetFunction
+manual: autodocs-2.0
+chapter: autodocs-2.0
+section: exec-library-setfunction
+functions: [Forbid, Permit, SumLibrary]
+libraries: [exec.library]
+---
+
+# exec.library/SetFunction
+
+> *Source: Amiga Developer CD v2.1. (C) Commodore-Amiga / Amiga Inc.*
+
+NAME
+
+    SetFunction -- change a function vector in a library
+SYNOPSIS
+
+```c
+    oldFunc = SetFunction(library, funcOffset, funcEntry)
+    D0                    A1       A0.W        D0
+
+    APTR SetFunction(struct [Library](autodocs-2.0/includes-exec-libraries-h.md) *,LONG,APTR);
+```
+FUNCTION
+
+    SetFunction is a functional way of changing where vectors in a
+    library point.  They are changed in such a way that the
+    checksumming process will never falsely declare a library to be
+    invalid.
+WARNING
+
+    If you use SetFunction on a function that can be called from
+    interrupts, you are obligated to provide your own arbitration.
+NOTE
+
+```c
+    SetFunction cannot be used on non-standard libraries like pre-V36
+    dos.library.  Here you must manually [Forbid()](autodocs-2.0/exec-library-forbid.md), preserve all 6
+    original bytes, set the new vector, [SumLibrary()](autodocs-2.0/exec-library-sumlibrary.md), then [Permit()](autodocs-2.0/exec-library-permit.md).
+```
+INPUTS
+
+    library    - a pointer to the library to be changed
+    funcOffset - the offset of the function to be replaced
+    funcEntry  - pointer to new function
+RESULTS
+
+    oldFunc    - pointer to the old function that was just replaced
+
+---
+
+## See Also
+
+- [Forbid — exec.library](../autodocs/exec.library.md#forbid)
+- [Permit — exec.library](../autodocs/exec.library.md#permit)
+- [SumLibrary — exec.library](../autodocs/exec.library.md#sumlibrary)

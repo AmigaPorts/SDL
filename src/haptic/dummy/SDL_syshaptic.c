@@ -20,6 +20,15 @@
 */
 #include "../../SDL_internal.h"
 
+int OS3_HapticInit(void)
+{
+    return 0;  /* 0 haptic devices */
+}
+
+void OS3_HapticQuit(void)
+{
+}
+
 #if defined(SDL_HAPTIC_DUMMY) || defined(SDL_HAPTIC_DISABLED)
 
 #include "SDL_haptic.h"

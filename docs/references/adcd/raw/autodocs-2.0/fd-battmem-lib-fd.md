@@ -1,0 +1,13 @@
+# FD/battmem_lib.fd
+
+
+* "battmem.resource"
+##base _BattMemBase
+##bias 6
+##public
+ObtainBattSemaphore()()
+ReleaseBattSemaphore()()
+ReadBattMem(buffer,offset,length)(a0,d0/d1)
+WriteBattMem(buffer,offset,length)(a0,d0/d1)
+##end
+

@@ -1,0 +1,47 @@
+---
+title: FD/expansion_lib.fd
+manual: autodocs-2.0
+chapter: autodocs-2.0
+section: fd-expansion-lib-fd
+functions: []
+libraries: []
+---
+
+# FD/expansion_lib.fd
+
+> *Source: Amiga Developer CD v2.1. (C) Commodore-Amiga / Amiga Inc.*
+
+* "expansion.library"
+##base _ExpansionBase
+##bias 30
+##public
+*--- functions in V33 or higher (distributed as Release 1.2) ---
+AddConfigDev(configDev)(a0)
+*--- functions in V36 or higher (distributed as Release 2.0) ---
+AddBootNode(bootPri,flags,deviceNode,configDev)(d0/d1/a0/a1)
+*--- functions in V33 or higher (distributed as Release 1.2) ---
+AllocBoardMem(slotSpec)(d0)
+AllocConfigDev()()
+AllocExpansionMem(numSlots,slotAlign)(d0/d1)
+ConfigBoard(board,configDev)(a0/a1)
+ConfigChain(baseAddr)(a0)
+FindConfigDev(oldConfigDev,manufacturer,product)(a0,d0/d1)
+FreeBoardMem(startSlot,slotSpec)(d0/d1)
+FreeConfigDev(configDev)(a0)
+FreeExpansionMem(startSlot,numSlots)(d0/d1)
+ReadExpansionByte(board,offset)(a0,d0)
+ReadExpansionRom(board,configDev)(a0/a1)
+RemConfigDev(configDev)(a0)
+WriteExpansionByte(board,offset,byte)(a0,d0/d1)
+ObtainConfigBinding()()
+ReleaseConfigBinding()()
+SetCurrentBinding(currentBinding,bindingSize)(a0,d0)
+GetCurrentBinding(currentBinding,bindingSize)(a0,d0)
+MakeDosNode(parmPacket)(a0)
+AddDosNode(bootPri,flags,deviceNode)(d0/d1/a0)
+##private
+*--- functions in V36 or higher (distributed as Release 2.0) ---
+expansionPrivate1()()
+expansionPrivate2()()
+##end
+

@@ -1,0 +1,47 @@
+---
+title: FD/icon_lib.fd
+manual: autodocs-2.0
+chapter: autodocs-2.0
+section: fd-icon-lib-fd
+functions: []
+libraries: []
+---
+
+# FD/icon_lib.fd
+
+> *Source: Amiga Developer CD v2.1. (C) Commodore-Amiga / Amiga Inc.*
+
+* "icon.library"
+##base _IconBase
+##bias 30
+*--- functions in V36 or higher (distributed as Release 2.0) ---
+*	Use DiskObjects instead of obsolete WBObjects
+##private
+iconPrivate1()()
+iconPrivate2()()
+##public
+GetIcon(name,icon,freelist)(a0/a1/a2)
+PutIcon(name,icon)(a0/a1)
+FreeFreeList(freelist)(a0)
+##private
+iconPrivate3()()
+iconPrivate4()()
+##public
+AddFreeList(freelist,mem,size)(a0/a1/a2)
+GetDiskObject(name)(a0)
+PutDiskObject(name,diskobj)(a0/a1)
+FreeDiskObject(diskobj)(a0)
+FindToolType(toolTypeArray,typeName)(a0/a1)
+MatchToolValue(typeString,value)(a0/a1)
+BumpRevision(newname,oldname)(a0/a1)
+##private
+iconPrivate5()()
+##public
+GetDefDiskObject(type)(d0)
+PutDefDiskObject(diskObject)(a0)
+GetDiskObjectNew(name)(a0)
+DeleteDiskObject(name)(a0)
+*--- (4 function slots reserved here) ---
+##bias 168
+##end
+

@@ -1,0 +1,26 @@
+---
+title: FD/diskfont_lib.fd
+manual: autodocs-2.0
+chapter: autodocs-2.0
+section: fd-diskfont-lib-fd
+functions: []
+libraries: []
+---
+
+# FD/diskfont_lib.fd
+
+> *Source: Amiga Developer CD v2.1. (C) Commodore-Amiga / Amiga Inc.*
+
+* "diskfont.library"
+##base _DiskfontBase
+##bias 30
+##public
+OpenDiskFont(textAttr)(a0)
+AvailFonts(buffer,bufBytes,flags)(a0,d0/d1)
+*--- functions in V34 or higher (distributed as Release 1.3) ---
+NewFontContents(fontsLock,fontName)(a0/a1)
+DisposeFontContents(fontContentsHeader)(a1)
+*--- functions in V36 or higher (distributed as Release 2.0) ---
+NewScaledDiskFont(sourceFont,destTextAttr)(a0/a1)
+##end
+

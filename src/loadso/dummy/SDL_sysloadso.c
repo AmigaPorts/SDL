@@ -20,6 +20,24 @@
 */
 #include "../../SDL_internal.h"
 
+void *OS3_LoadObject(const char *sofile)
+{
+    (void)sofile;
+    return 0;  /* not supported */
+}
+
+void *OS3_LoadFunction(void *handle, const char *name)
+{
+    (void)handle;
+    (void)name;
+    return 0;  /* not supported */
+}
+
+void OS3_UnloadObject(void *handle)
+{
+    (void)handle;
+}
+
 #if defined(SDL_LOADSO_DUMMY) || defined(SDL_LOADSO_DISABLED)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */

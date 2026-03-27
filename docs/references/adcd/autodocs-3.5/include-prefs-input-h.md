@@ -1,0 +1,65 @@
+---
+title: include/prefs/input.h
+manual: autodocs-3.5
+chapter: autodocs-3.5
+section: include-prefs-input-h
+functions: []
+libraries: []
+---
+
+# include/prefs/input.h
+
+> *Source: Amiga Developer CD v2.1. (C) Commodore-Amiga / Amiga Inc.*
+
+#ifndef PREFS_INPUT_H
+#define PREFS_INPUT_H
+/*
+**	$VER: input.h 38.2 (28.6.1991)
+**	Includes Release 44.1
+**
+**	File format for input preferences
+**
+**	(C) Copyright 1991-1999 Amiga, Inc.
+**	All Rights Reserved
+*/
+
+/*****************************************************************************/
+
+
+#ifndef EXEC_TYPES_H
+#include <exec/types.h>
+#endif
+
+#ifndef LIBRARIES_IFFPARSE_H
+#include <libraries/iffparse.h>
+#endif
+
+#ifndef DEVICES_TIMER_H
+#include <devices/timer.h>
+#endif
+
+
+/*****************************************************************************/
+
+
+#define ID_INPT MAKE_ID('I','N','P','T')
+
+
+struct InputPrefs
+{
+```c
+    char	   ip_Keymap[16];
+    UWORD	   ip_PointerTicks;
+    struct timeval ip_DoubleClick;
+    struct timeval ip_KeyRptDelay;
+    struct timeval ip_KeyRptSpeed;
+    WORD	   ip_MouseAccel;
+```
+};
+
+
+/*****************************************************************************/
+
+
+#endif /* PREFS_INPUT_H */
+

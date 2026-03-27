@@ -1,0 +1,10 @@
+# FD/misc_lib.fd
+
+
+##base _MiscBase
+##bias 6
+##public
+AllocMiscResource(unitNum,name)(d0/a1)
+FreeMiscResource(unitNum)(d0)
+##end
+

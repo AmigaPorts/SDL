@@ -1,0 +1,11 @@
+# FD/input_lib.fd
+
+
+* "input.device"
+##base _InputBase
+##bias 42
+##public
+*--- functions in V36 or higher (distributed as Release 2.0) ---
+PeekQualifier()()
+##end
+
