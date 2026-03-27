@@ -1,0 +1,50 @@
+# Dockerfile for VBCC cross-compiler (Amiga target)
+#
+# Provides vc (VBCC compiler) with vasm and vlink for AmigaOS targets.
+# Based on http://sun.hasenbraten.de/vbcc/
+#
+# Usage:
+#   docker build -t amiport/vbcc -f Dockerfile.vbcc .
+#   docker run -v $(pwd):/work amiport/vbcc vc +kick13 -o prog prog.c
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    wget \
+    lhasa \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and install VBCC, vasm, and vlink
+# Note: VBCC requires accepting a license agreement.
+# This Dockerfile assumes you've agreed to the VBCC license terms.
+WORKDIR /opt/vbcc-src
+
+# Install vasm (portable assembler)
+RUN wget -q http://phoenix.owl.de/tags/vasm1_9g.tar.gz && \
+    tar xzf vasm1_9g.tar.gz && \
+    cd vasm && \
+    make CPU=m68k SYNTAX=mot && \
+    cp vasmm68k_mot /usr/local/bin/ && \
+    cd ..
+
+# Install vlink (portable linker)
+RUN wget -q http://phoenix.owl.de/tags/vlink0_17a.tar.gz && \
+    tar xzf vlink0_17a.tar.gz && \
+    cd vlink && \
+    make && \
+    cp vlink /usr/local/bin/ && \
+    cd ..
+
+# Note: VBCC itself must be downloaded manually due to license.
+# After obtaining vbcc and the AmigaOS target, install to /opt/vbcc/
+# For automated builds, consider using bebbo-gcc instead.
+
+ENV VBCC=/opt/vbcc
+ENV PATH="/opt/vbcc/bin:/usr/local/bin:${PATH}"
+
+WORKDIR /work
+
+CMD ["echo", "VBCC toolchain ready. Use: vc +kick13 -o prog prog.c"]

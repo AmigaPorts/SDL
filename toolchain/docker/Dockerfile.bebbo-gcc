@@ -1,0 +1,50 @@
+# Dockerfile for bebbo's amiga-gcc cross-compiler
+#
+# Provides m68k-amigaos-gcc for cross-compiling C code to AmigaOS.
+# Based on https://github.com/bebbo/amiga-gcc
+#
+# Usage:
+#   docker build -t amiport/bebbo-gcc -f Dockerfile.bebbo-gcc .
+#   docker run -v $(pwd):/work amiport/bebbo-gcc m68k-amigaos-gcc -o prog prog.c
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    autoconf \
+    bison \
+    flex \
+    g++ \
+    gcc \
+    git \
+    lhasa \
+    libgmp-dev \
+    libmpc-dev \
+    libmpfr-dev \
+    make \
+    patch \
+    texinfo \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone and build bebbo's amiga-gcc
+RUN git clone --depth 1 https://github.com/bebbo/amiga-gcc.git /opt/amiga-gcc-src
+
+WORKDIR /opt/amiga-gcc-src
+
+# Build the cross-compiler (this takes a while)
+RUN make update && make all PREFIX=/opt/amiga
+
+# Add cross-compiler to PATH
+ENV PATH="/opt/amiga/bin:${PATH}"
+
+# Verify installation
+RUN m68k-amigaos-gcc --version
+
+# Set working directory for builds
+WORKDIR /work
+
+# Default command: show compiler version
+CMD ["m68k-amigaos-gcc", "--version"]

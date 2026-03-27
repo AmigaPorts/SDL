@@ -1,0 +1,53 @@
+# FS-UAE configuration for testing SDL2 programs with RTG
+#
+# Usage:
+#   make test-fsemu          # run SDL2 test suite
+#   fs-uae toolchain/configs/sdl2-test.fs-uae   # launch directly
+#
+# Prerequisites:
+#   brew install fs-uae (or use forked FS-UAE at ~/Developer/fs-uae/)
+#   Place Kickstart 3.1 ROM at ~/Documents/FS-UAE/Kickstarts/kick31.rom
+#   (Purchase from amigaforever.com or extract from real hardware)
+
+amiga_model = A1200
+
+# Kickstart 3.1 ROM
+kickstart_file = $BASE/Kickstarts/kick3.1.rom
+
+# System hard drive -- bootable Workbench 3.1 installation
+hard_drive_0 = $CONFIG/../../build/system
+hard_drive_0_label = System
+hard_drive_0_priority = 1
+
+# Mount build output as WORK: -- SDL2 test programs appear here
+hard_drive_1 = $CONFIG/../../build/amiga
+hard_drive_1_label = WORK
+
+# --- RTG Graphics Card (CRITICAL for SDL2) ---
+# SDL2 video backend requires CyberGraphX or Picasso96 via RTG.
+# uaegfx provides a virtual RTG card in FS-UAE.
+graphics_card = uaegfx
+graphics_card_memory = 16384
+
+# --- Memory ---
+# 16 MB Fast RAM -- SDL2 programs need more than CLI tools.
+# Surface buffers, audio buffers, and SDL internal state add up.
+fast_memory = 16384
+
+# --- Input ---
+# Disable joystick port 1 keyboard mapping.
+# FS-UAE defaults to mapping arrow keys to joystick port 1,
+# which steals them from the keyboard entirely.
+joystick_port_1_mode = nothing
+
+# Keyboard -- symbolic mapping so host keys match Amiga keys
+keyboard_input_grab = 1
+raw_input = 0
+
+# --- Display ---
+# Larger window for RTG modes (SDL2 programs may open 640x480+)
+window_width = 800
+window_height = 600
+
+# Screenshots
+# Set via FSEMU_SCREENSHOTS_DIR env var at runtime
