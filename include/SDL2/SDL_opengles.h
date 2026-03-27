@@ -18,34 +18,21 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
 
-#if defined(SDL_LOADSO_DUMMY) || defined(SDL_LOADSO_DISABLED)
+/*
+ * This is a simple file to encapsulate the OpenGL ES 1.X API headers.
+ */
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/* System dependent library loading routines                           */
+#include "SDL_config.h"
 
-#include "SDL_loadso.h"
+#ifdef __IPHONEOS__
+#include <OpenGLES/ES1/gl.h>
+#include <OpenGLES/ES1/glext.h>
+#else
+#include <GLES/gl.h>
+#include <GLES/glext.h>
+#endif
 
-void *SDL_LoadObject(const char *sofile)
-{
-    const char *loaderror = "SDL_LoadObject() not implemented";
-    SDL_SetError("Failed loading %s: %s", sofile, loaderror);
-    return NULL;
-}
-
-void *SDL_LoadFunction(void *handle, const char *name)
-{
-    const char *loaderror = "SDL_LoadFunction() not implemented";
-    SDL_SetError("Failed loading %s: %s", name, loaderror);
-    return NULL;
-}
-
-void SDL_UnloadObject(void *handle)
-{
-    /* no-op. */
-}
-
-#endif /* SDL_LOADSO_DUMMY || SDL_LOADSO_DISABLED */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#ifndef APIENTRY
+#define APIENTRY
+#endif

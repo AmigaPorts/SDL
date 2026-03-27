@@ -18,34 +18,50 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
 
-#if defined(SDL_LOADSO_DUMMY) || defined(SDL_LOADSO_DISABLED)
+/*
+ *  \file SDL_test_log.h
+ *
+ *  Include file for SDL test framework.
+ *
+ *  This code is a part of the SDL2_test library, not the main SDL library.
+ */
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/* System dependent library loading routines                           */
+/*
+ *
+ *  Wrapper to log in the TEST category
+ *
+ */
 
-#include "SDL_loadso.h"
+#ifndef SDL_test_log_h_
+#define SDL_test_log_h_
 
-void *SDL_LoadObject(const char *sofile)
-{
-    const char *loaderror = "SDL_LoadObject() not implemented";
-    SDL_SetError("Failed loading %s: %s", sofile, loaderror);
-    return NULL;
+#include "begin_code.h"
+/* Set up for C function definitions, even when using C++ */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/*
+ * \brief Prints given message with a timestamp in the TEST category and INFO priority.
+ *
+ * \param fmt Message to be logged
+ */
+void SDLTest_Log(SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(1);
+
+/*
+ * \brief Prints given message with a timestamp in the TEST category and the ERROR priority.
+ *
+ * \param fmt Message to be logged
+ */
+void SDLTest_LogError(SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(1);
+
+/* Ends C function definitions when using C++ */
+#ifdef __cplusplus
 }
+#endif
+#include "close_code.h"
 
-void *SDL_LoadFunction(void *handle, const char *name)
-{
-    const char *loaderror = "SDL_LoadFunction() not implemented";
-    SDL_SetError("Failed loading %s: %s", name, loaderror);
-    return NULL;
-}
-
-void SDL_UnloadObject(void *handle)
-{
-    /* no-op. */
-}
-
-#endif /* SDL_LOADSO_DUMMY || SDL_LOADSO_DISABLED */
+#endif /* SDL_test_log_h_ */
 
 /* vi: set ts=4 sw=4 expandtab: */

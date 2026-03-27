@@ -18,34 +18,23 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
 
-#if defined(SDL_LOADSO_DUMMY) || defined(SDL_LOADSO_DISABLED)
+/**
+ *  \file close_code.h
+ *
+ *  This file reverses the effects of begin_code.h and should be included
+ *  after you finish any function and structure declarations in your headers
+ */
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/* System dependent library loading routines                           */
+#ifndef SDL_begin_code_h
+#error close_code.h included without matching begin_code.h
+#endif
+#undef SDL_begin_code_h
 
-#include "SDL_loadso.h"
-
-void *SDL_LoadObject(const char *sofile)
-{
-    const char *loaderror = "SDL_LoadObject() not implemented";
-    SDL_SetError("Failed loading %s: %s", sofile, loaderror);
-    return NULL;
-}
-
-void *SDL_LoadFunction(void *handle, const char *name)
-{
-    const char *loaderror = "SDL_LoadFunction() not implemented";
-    SDL_SetError("Failed loading %s: %s", name, loaderror);
-    return NULL;
-}
-
-void SDL_UnloadObject(void *handle)
-{
-    /* no-op. */
-}
-
-#endif /* SDL_LOADSO_DUMMY || SDL_LOADSO_DISABLED */
-
-/* vi: set ts=4 sw=4 expandtab: */
+/* Reset structure packing at previous byte alignment */
+#if defined(_MSC_VER) || defined(__MWERKS__) || defined(__BORLANDC__)
+#ifdef __BORLANDC__
+#pragma nopackwarning
+#endif
+#pragma pack(pop)
+#endif /* Compiler needs structure packing set */

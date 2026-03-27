@@ -18,34 +18,34 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
 
-#if defined(SDL_LOADSO_DUMMY) || defined(SDL_LOADSO_DISABLED)
+/*
+ * This is a simple file to encapsulate the OpenGL ES 2.0 API headers.
+ */
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/* System dependent library loading routines                           */
+#include "SDL_config.h"
 
-#include "SDL_loadso.h"
+#if !defined(_MSC_VER) && !defined(SDL_USE_BUILTIN_OPENGL_DEFINITIONS)
 
-void *SDL_LoadObject(const char *sofile)
-{
-    const char *loaderror = "SDL_LoadObject() not implemented";
-    SDL_SetError("Failed loading %s: %s", sofile, loaderror);
-    return NULL;
-}
+#ifdef __IPHONEOS__
+#include <OpenGLES/ES2/gl.h>
+#include <OpenGLES/ES2/glext.h>
+#else
+#include <GLES2/gl2platform.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#endif
 
-void *SDL_LoadFunction(void *handle, const char *name)
-{
-    const char *loaderror = "SDL_LoadFunction() not implemented";
-    SDL_SetError("Failed loading %s: %s", name, loaderror);
-    return NULL;
-}
+#else /* _MSC_VER */
 
-void SDL_UnloadObject(void *handle)
-{
-    /* no-op. */
-}
+/* OpenGL ES2 headers for Visual Studio */
+#include "SDL_opengles2_khrplatform.h"
+#include "SDL_opengles2_gl2platform.h"
+#include "SDL_opengles2_gl2.h"
+#include "SDL_opengles2_gl2ext.h"
 
-#endif /* SDL_LOADSO_DUMMY || SDL_LOADSO_DISABLED */
+#endif /* _MSC_VER */
 
-/* vi: set ts=4 sw=4 expandtab: */
+#ifndef APIENTRY
+#define APIENTRY GL_APIENTRY
+#endif
