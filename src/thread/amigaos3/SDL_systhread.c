@@ -56,13 +56,25 @@ static void OS3_ThreadEntry(void)
     /* Signal the parent that we are done. The parent may be in
      * SDL_SYS_WaitThread() doing Wait(). This must happen BEFORE
      * the process exits, while parent_task is still valid.
-     * (ADCD III-17: child signals parent before exiting.) */
+     *
+     * We Forbid() before signaling so that after Signal() wakes the
+     * parent, the parent cannot actually run until WE return from
+     * OS3_ThreadEntry() and DOS begins process cleanup. This prevents
+     * a race where the parent exits (freeing memory) while our process
+     * cleanup code is still accessing that memory.
+     *
+     * The Forbid() is implicitly broken by the process exit path in
+     * DOS, which calls RemTask() -> Switch(). This is safe per ADCD:
+     * "Forbid/Permit nest, and RemTask handles the unnesting." */
     if (thread && thread->handle) {
         OS3_ThreadData *td = (OS3_ThreadData *)thread->handle;
-        DLOG("ThreadEntry: signaling parent=%p mask=0x%lx before exit",
+        DLOG("ThreadEntry: Forbid + signal parent=%p mask=0x%lx",
              (void *)td->parent_task, td->parent_sigmask);
+        Forbid();
         Signal(td->parent_task, td->parent_sigmask);
-        DLOG("ThreadEntry: signal sent, returning");
+        /* Do NOT Permit() -- let DOS process exit break the Forbid.
+         * This ensures no other task runs between our Signal and our
+         * process teardown completing. */
     }
 }
 
@@ -186,11 +198,13 @@ void SDL_SYS_WaitThread(SDL_Thread *thread)
 
     DLOG("WaitThread: signal received, child signaled exit");
 
-    /* Child has signaled but may not have fully exited yet -- it still
-     * needs to return from OS3_ThreadEntry() and go through DOS process
-     * cleanup (stack deallocation, tc_MemEntry freeing, etc.).
-     * Give it time to finish before we free resources that might share
-     * the same memory pool. Delay(1) = ~20ms = one tick. */
+    /* The child called Forbid() before Signal(), so by the time we
+     * wake up from Wait(), the child has already returned from
+     * OS3_ThreadEntry() and DOS process cleanup is complete (the
+     * Forbid is broken by the process exit path in RemTask/Switch).
+     *
+     * A small delay ensures the scheduler has fully processed the
+     * child's removal. Delay(1) = one tick (~20ms). */
     Delay(1);
 
     DLOG("WaitThread: cleanup delay done, freeing sigbit=%d",
