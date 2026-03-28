@@ -324,35 +324,10 @@ static void OS3AHI_CloseDevice(_THIS)
  * ------------------------------------------------------------------ */
 static SDL_bool OS3AHI_Init(SDL_AudioDriverImpl *impl)
 {
-    struct MsgPort *probe_port = NULL;
-    struct AHIRequest *probe_req = NULL;
-
-    /* Probe: can we open ahi.device? */
-    probe_port = CreateMsgPort();
-    if (!probe_port) {
-        return SDL_FALSE;
-    }
-
-    probe_req = (struct AHIRequest *)
-        CreateIORequest(probe_port, sizeof(struct AHIRequest));
-    if (!probe_req) {
-        DeleteMsgPort(probe_port);
-        return SDL_FALSE;
-    }
-
-    probe_req->ahir_Version = 4;
-
-    if (OpenDevice((CONST_STRPTR)AHINAME, AHI_DEFAULT_UNIT,
-                   (struct IORequest *)probe_req, 0L) != 0) {
-        DeleteIORequest((struct IORequest *)probe_req);
-        DeleteMsgPort(probe_port);
-        return SDL_FALSE;
-    }
-
-    /* AHI is available -- close the probe and register callbacks */
-    CloseDevice((struct IORequest *)probe_req);
-    DeleteIORequest((struct IORequest *)probe_req);
-    DeleteMsgPort(probe_port);
+    /* Skip the OpenDevice probe entirely -- it can hang if AHI prefs
+       are misconfigured. Instead, just register the callbacks. If
+       ahi.device is not installed, OS3AHI_OpenDevice will fail
+       gracefully and SDL2 will fall through to the dummy driver. */
 
     impl->DetectDevices = OS3AHI_DetectDevices;
     impl->OpenDevice    = OS3AHI_OpenDevice;

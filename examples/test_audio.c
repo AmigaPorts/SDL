@@ -62,7 +62,11 @@ int main(int argc, char *argv[])
 
     printf("test_audio: AHI audio backend verification\n\n");
 
+    printf("Calling SDL_Init(SDL_INIT_AUDIO)...\n");
+    fflush(stdout);
     rc = SDL_Init(SDL_INIT_AUDIO);
+    printf("SDL_Init returned %d\n", rc);
+    fflush(stdout);
     if (rc != 0) {
         printf("SKIP: SDL_Init(AUDIO) failed: %s\n", SDL_GetError());
         printf("      (AHI not installed? See docs/references/ahi-reference.md)\n");
@@ -72,6 +76,9 @@ int main(int argc, char *argv[])
 
     driver_name = SDL_GetCurrentAudioDriver();
     printf("Audio driver: %s\n", driver_name ? driver_name : "(none)");
+    fflush(stdout);
+    printf("Opening audio device...\n");
+    fflush(stdout);
 
     /* Request: mono, S16, 22050 Hz, 1024 sample buffer */
     SDL_memset(&want, 0, sizeof(want));

@@ -37,6 +37,7 @@ FS_UAE_CONFIG="$PROJECT_DIR/toolchain/configs/sdl2-test.fs-uae"
 KICKSTART="$HOME/Documents/FS-UAE/Kickstarts/kick3.1-a4000.rom"
 TIMEOUT_SECONDS=120
 BUILD_EXAMPLES=true
+SINGLE_TARGET=""
 FSUAE_PID_FILE="$STATE_DIR/fs-uae.pid"
 
 # Prefer a locally built FS-UAE fork, fall back to system install
@@ -64,10 +65,12 @@ fi
 while [ $# -gt 0 ]; do
     case "$1" in
         --no-build)   BUILD_EXAMPLES=false ;;
+        --target)     shift; SINGLE_TARGET="$1" ;;
+        --target=*)   SINGLE_TARGET="${1#*=}" ;;
         --timeout)    shift; TIMEOUT_SECONDS="$1" ;;
         --timeout=*)  TIMEOUT_SECONDS="${1#*=}" ;;
         -h|--help)
-            echo "Usage: $0 [--no-build] [--timeout N]"
+            echo "Usage: $0 [--no-build] [--target NAME] [--timeout N]"
             exit 0
             ;;
         *)
@@ -160,10 +163,13 @@ main:
 
 REXX_HEADER
 
-    # Add one CALL per test from tests.txt
+    # Add one CALL per test from tests.txt (or single target)
     while IFS=' ' read -r name category tier; do
         case "$name" in '#'*|'') continue ;; esac
-        # All tests in tests.txt run on FS-UAE (tier 2 or 12)
+        # If single target mode, skip non-matching tests
+        if [ -n "$SINGLE_TARGET" ] && [ "$name" != "$SINGLE_TARGET" ]; then
+            continue
+        fi
         echo "    CALL run_one_test '$name', '$category'" >> "$rexx"
     done < "$PROJECT_DIR/tests.txt"
 
