@@ -575,15 +575,19 @@ This causes all system requesters (volume insert, disk write-protected, etc.) to
 - **Port:** python3 3.11.12
 - **Date:** 2026-03-26
 
-## 24. bebbo-gcc Uint64 Return Value Corruption (UNDER INVESTIGATION)
+## 24. SDL_GetTicks64 Returns 0 -- Missing Lazy Init (RESOLVED)
 
-- **Symptom:** Function returning `Uint64` computes correct result internally (verified via file-based diagnostic writing to WORK:), but the caller receives 0. Affects `SDL_GetTicks64()`, `SDL_GetPerformanceCounter()`, `SDL_GetPerformanceFrequency()`.
-- **Root Cause:** UNKNOWN. Not the same as #16 (struct returns > 8 bytes) since `Uint64` is a scalar. Disassembly shows correct D0:D1 return convention. Both 64-bit math (`___udivdi3`) and 32-bit math workaround produce correct internal results, but caller still gets 0.
-- **Possible causes under investigation:**
-  1. FS-UAE 68040 emulation bug with `movem.l` register restore + `unlk` + `rts` corrupting D0:D1
-  2. bebbo-gcc 64-bit return ABI mismatch between compilation units (library .o vs test .o)
-  3. Interaction with `-noixemul` libnix startup code
-- **Diagnostic approach:** Added `timer_diag()` function that writes to `WORK:timer_diag.txt` from inside `SDL_GetTicks64()`. Confirmed `result=42` ms computed correctly inside function. Confirmed `timer_initialized=1`. Confirmed `eclock_freq=709379` (PAL). Caller's printf with `(unsigned long)t1` prints 0.
-- **Fix:** NONE YET. 32-bit arithmetic workaround does not help (same symptom). May need to return via global variable or struct pointer instead of D0:D1.
+- **Symptom:** `SDL_GetTicks64()` returns 0 on FS-UAE despite timer.device being available and `ReadEClock()` working correctly. Misdiagnosed as Uint64 return ABI corruption.
+- **Root Cause:** `SDL_TicksInit()` is called from `SDL_InitMainThread()` which is ONLY triggered by `SDL_CreateThread()` -- NOT by `SDL_Init()`. Programs calling `SDL_Init(0)` or even `SDL_Init(SDL_INIT_VIDEO)` without creating threads never initialized the timer. The `timer_initialized` flag stayed 0.
+- **Diagnostic red herring:** File-based diagnostics written from inside `SDL_GetTicks64()` showed correct results because those were from test_video (which inits VIDEO, and `SDL_video.c:475` calls `SDL_TicksInit()` directly). Test_timer called `SDL_Init(0)` which does NOT init timers.
+- **Fix:** Add lazy init to all timer getters, matching the Unix/Windows SDL2 pattern:
+  ```c
+  Uint64 SDL_GetTicks64(void) {
+      if (!timer_initialized) { SDL_TicksInit(); }
+      if (!timer_initialized) { return 0; } /* device not available */
+      ...
+  }
+  ```
+- **Lesson:** When a function "returns wrong values", check whether initialization actually ran. File diagnostics from inside the function are misleading if they come from a different caller than the failing test. The correct diagnostic was the minimal `test_uint64.c` which tested local vs cross-unit returns and revealed `GetPerfFreq()=1000` (the fallback value), proving timer_initialized was 0.
 - **Project:** libSDL2-amigaos3
 - **Date:** 2026-03-28

@@ -115,6 +115,9 @@ Uint64 SDL_GetTicks64(void)
     Uint64 start, current, delta_ticks;
 
     if (!timer_initialized) {
+        SDL_TicksInit();
+    }
+    if (!timer_initialized) {
         return 0;
     }
 
@@ -127,9 +130,7 @@ Uint64 SDL_GetTicks64(void)
     /* Convert to milliseconds.
        Use 32-bit arithmetic when possible (delta fits in 32 bits for
        the first ~6000 seconds at 709 KHz, which covers all practical
-       test durations). Fall back to 64-bit for longer intervals.
-       NOTE: bebbo-gcc Uint64 return values may be corrupted (see
-       crash-patterns #24). This is under investigation. */
+       test durations). Fall back to 64-bit for longer intervals. */
     if (delta_ticks <= 0xFFFFFFFFULL) {
         ULONG d32 = (ULONG)delta_ticks;
         ULONG ms32 = (d32 / eclock_freq) * 1000UL
@@ -147,6 +148,9 @@ Uint64 SDL_GetPerformanceCounter(void)
     struct EClockVal now;
 
     if (!timer_initialized) {
+        SDL_TicksInit();
+    }
+    if (!timer_initialized) {
         return 0;
     }
 
@@ -156,6 +160,9 @@ Uint64 SDL_GetPerformanceCounter(void)
 
 Uint64 SDL_GetPerformanceFrequency(void)
 {
+    if (!timer_initialized) {
+        SDL_TicksInit();
+    }
     if (!timer_initialized) {
         return 1000;  /* fallback: pretend milliseconds */
     }
