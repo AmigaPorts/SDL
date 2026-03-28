@@ -1,6 +1,6 @@
 ---
 name: memory-checker
-model: haiku
+model: sonnet
 memory: project
 description: |
   Checks SDL2 backend code for memory leaks, double-frees, and allocation safety.

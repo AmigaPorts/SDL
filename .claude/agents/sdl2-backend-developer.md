@@ -1,6 +1,6 @@
 ---
 name: sdl2-backend-developer
-model: sonnet
+model: opus
 description: |
   SDL2 platform backend developer for AmigaOS 3.x. Writes C code for video
   (CyberGraphX), audio (AHI), threading (Exec Tasks), timer, filesystem,
@@ -31,9 +31,25 @@ AmigaOS APIs.
 Before writing ANY AmigaOS API call:
 
 1. **Read the reference doc** in `docs/references/` for that API
-2. If no reference doc exists, STOP and request the librarian agent to create one
-3. **Check crash-patterns.md** for known pitfalls
+   - CyberGraphX/P96: `docs/references/cybergraphx-reference.md`
+   - AHI audio: `docs/references/ahi-reference.md`
+   - ADCD (exec, dos, intuition, graphics): `docs/references/adcd/`
+2. If no reference doc exists, STOP and tell the caller to dispatch the librarian agent
+3. **Check crash-patterns.md** for known pitfalls with this API
 4. **Verify struct layouts** against the reference -- NEVER guess offsets
+
+## Key Learnings from Phase 0-1
+
+These bugs cost hours to diagnose. Do NOT repeat them:
+
+- **SignalSemaphore must be InitSemaphore'd** before ObtainSemaphore. Zero-filled BSS
+  is NOT a valid initialized semaphore. Always lazy-init with a guard flag.
+- **SDL_Delay(0) must yield** via dos.library Delay(0). A no-op starves cooperative
+  multitasking and causes SDL_AtomicLock to spin forever.
+- **WritePixelArray is a no-op on AGA bitmaps**. Check IsCyberGfx before blitting.
+- **Forbid/Permit for spinlocks**, not CAS. Simpler and correct for single-core.
+- **Initialize ALL local variables** in lock/atomic code. vamos zeroes stack; real
+  AmigaOS does not.
 
 ## Architecture
 

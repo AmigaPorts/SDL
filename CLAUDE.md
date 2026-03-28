@@ -122,6 +122,78 @@ These are third-party APIs not in the ADCD. Reference docs must be created befor
 | Picasso96 | Video (alt) | Critical (Phase 1) |
 | AHI | Audio | Critical (Phase 3) |
 
+## Agents and Skills -- When to Use What
+
+### Decision Tree
+
+```
+"I need to implement a backend"
+  -> Dispatch sdl2-backend-developer (opus)
+  -> FIRST: ensure reference doc exists (/amiga-api-lookup, /rtg-api-lookup)
+  -> FIRST: check SDL2 contract (/sdl2-api-lookup)
+
+"Build failed"
+  -> Dispatch build-manager (sonnet)
+
+"Something crashes or hangs on FS-UAE but works on vamos"
+  -> Dispatch hardware-expert (opus)
+
+"I need API documentation for a new subsystem"
+  -> Dispatch librarian (sonnet)
+
+"Check for memory leaks or resource lifecycle issues"
+  -> Dispatch memory-checker (sonnet) AFTER implementation is done
+
+"Optimize for 68k performance"
+  -> Dispatch perf-optimizer (sonnet) -- Phase 6 only
+
+"Build the automated test pipeline"
+  -> Dispatch test-designer (sonnet)
+
+"Build the project"           -> /sdl2-build
+"Run tests"                   -> /sdl2-test
+"Look up AmigaOS API"         -> /amiga-api-lookup
+"Look up CyberGraphX/P96 API" -> /rtg-api-lookup
+"Look up SDL2 backend contract"-> /sdl2-api-lookup
+"FS-UAE not working"           -> /fsemu-setup
+"Bug or process failure"       -> /capture-learning
+```
+
+### Agent Summary
+
+| Agent | Model | When to dispatch |
+|-------|-------|-----------------|
+| sdl2-backend-developer | opus | Writing C backend code against SDL2 + AmigaOS APIs |
+| hardware-expert | opus | Crash diagnosis, platform differences, hardware validation |
+| build-manager | sonnet | Compiler/linker errors, build configuration |
+| librarian | sonnet | Building reference docs from headers, web, toolchain |
+| memory-checker | sonnet | Auditing OpenLibrary/CloseLibrary, malloc/free, resource lifecycle |
+| perf-optimizer | sonnet | 68k performance optimization (Phase 6) |
+| test-designer | sonnet | Automated test infrastructure, ARexx, FS-UAE automation |
+
+### Skill Summary
+
+| Skill | Purpose |
+|-------|---------|
+| /amiga-api-lookup | Load ADCD reference before writing AmigaOS API code |
+| /rtg-api-lookup | Load CyberGraphX/P96 reference |
+| /sdl2-api-lookup | Load SDL2 backend interface contracts |
+| /sdl2-build | Cross-compile via Docker |
+| /sdl2-test | Run vamos or FS-UAE tests |
+| /fsemu-setup | FS-UAE + P96 RTG troubleshooting |
+| /capture-learning | Route bugs/pitfalls to the right enforcement mechanism |
+
+### Mandatory Workflow
+
+Before implementing ANY new backend subsystem:
+1. `/amiga-api-lookup` or dispatch librarian to build reference doc
+2. `/sdl2-api-lookup` to understand the SDL2 contract
+3. Dispatch `sdl2-backend-developer` with both references
+4. After implementation: dispatch `memory-checker`
+5. After tests pass on vamos: test on FS-UAE
+6. If FS-UAE fails: dispatch `hardware-expert`
+7. After everything works: `/capture-learning` for any surprises
+
 ## Phased Delivery
 
 | Phase | Focus | Key Files |
