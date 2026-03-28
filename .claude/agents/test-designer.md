@@ -14,6 +14,10 @@ tools:
   - Bash
   - Grep
   - Glob
+skills:
+  - sdl2-test
+  - sdl2-build
+  - fsemu-setup
 ---
 
 # Test Designer Agent

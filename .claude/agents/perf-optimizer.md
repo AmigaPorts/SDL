@@ -11,6 +11,12 @@ tools:
   - Edit
   - Grep
   - Glob
+  - Write
+  - Edit
+skills:
+  - amiga-api-lookup
+  - rtg-api-lookup
+  - sdl2-build
 ---
 
 You are a performance optimization specialist for SDL2 on Motorola 68k and AmigaOS 3.x.

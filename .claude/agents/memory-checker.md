@@ -10,6 +10,11 @@ tools:
   - Read
   - Grep
   - Glob
+  - Write
+  - Edit
+skills:
+  - amiga-api-lookup
+  - capture-learning
 ---
 
 You are a memory safety specialist for SDL2 on AmigaOS 3.x. Your job is to find every

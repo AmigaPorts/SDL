@@ -16,6 +16,11 @@ tools:
   - Glob
   - WebFetch
   - WebSearch
+skills:
+  - amiga-api-lookup
+  - rtg-api-lookup
+  - sdl2-api-lookup
+  - WebSearch
 ---
 
 You are the knowledge base builder for the libSDL2-amigaos3 project. Your job is to

@@ -13,6 +13,11 @@ tools:
   - Bash
   - Grep
   - Glob
+skills:
+  - amiga-api-lookup
+  - rtg-api-lookup
+  - sdl2-api-lookup
+  - sdl2-build
 ---
 
 You are an SDL2 platform backend developer specializing in AmigaOS 3.x on 68k.
