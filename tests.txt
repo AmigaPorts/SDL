@@ -1,11 +1,14 @@
 # SDL2 AmigaOS3 Test Registry -- single source of truth
-# Format: NAME CATEGORY TIER
+# Format: NAME CATEGORY TIER [DEPS]
 #   NAME:     binary name (without path)
 #   CATEGORY: SMOKE, UNIT, VIDEO, INPUT, AUDIO
-#   TIER:     1 = vamos only, 2 = FS-UAE only, 12 = both
+#   TIER:     1 = vamos only, 2 = FS-UAE only, 12 = both, M = manual (build only)
+#   DEPS:     (empty)=SDL only, TEST=+libSDL2_test, UTILS=+testutils.o
 #
-# Parsed by: Makefile (test-vamos), test-fsemu.sh (deploy+ARexx gen)
+# Source lookup: examples/upstream/NAME.c first, then examples/NAME.c
+# Parsed by: Makefile (native-examples, test-vamos), test-fsemu.sh
 
+# --- Custom AmigaOS 3.x tests ---
 test_bare      SMOKE  12
 test_init      SMOKE  12
 test_spinlock  UNIT   12
@@ -17,3 +20,31 @@ test_uint64    UNIT   12
 test_audio     AUDIO  12
 test_loopwave  AUDIO  2
 test_threads   UNIT   2
+
+# --- Upstream SDL2 tests (from libsdl-org/SDL test/, SDL2 branch) ---
+# Auto tests: self-terminating, safe for automated harness
+testsem               UNIT   2
+testfile              UNIT   2
+# testatomic: crashes in epic countdown test (WaitThread reads freed task memory)
+# TODO: fix SDL_SYS_WaitThread to use signal-based notification
+testatomic            UNIT   M    TEST
+testerror             UNIT   2    TEST
+testplatform          UNIT   12   TEST
+testqsort             UNIT   12   TEST
+testver               UNIT   12   TEST
+testthread            UNIT   2    TEST
+testtimer             UNIT   2    TEST
+testfilesystem        UNIT   12   TEST
+
+# Interactive tests: open a window/event loop, or run indefinitely.
+# Built by `make examples` but skipped by automated test harness.
+# Run individually: make test-fsemu TEST=checkkeys
+testlock              UNIT   M
+torturethread         UNIT   M
+testdrawchessboard    VIDEO  M
+testspriteminimal     VIDEO  M    UTILS
+testmultiaudio        AUDIO  M    UTILS
+checkkeys             INPUT  M    TEST
+testdraw2             VIDEO  M    TEST
+testsprite2           VIDEO  M    TEST,UTILS
+testwm2               VIDEO  M    TEST

@@ -229,6 +229,28 @@ OBJS = $(SRCS:.c=.o)
 
 TARGET = libSDL2.a
 
+# --- SDL2_test library (test framework for upstream tests) ---
+SRCS_TEST_LIB = \
+	src/test/SDL_test_assert.c \
+	src/test/SDL_test_common.c \
+	src/test/SDL_test_compare.c \
+	src/test/SDL_test_crc32.c \
+	src/test/SDL_test_font.c \
+	src/test/SDL_test_fuzzer.c \
+	src/test/SDL_test_harness.c \
+	src/test/SDL_test_imageBlit.c \
+	src/test/SDL_test_imageBlitBlend.c \
+	src/test/SDL_test_imageFace.c \
+	src/test/SDL_test_imagePrimitives.c \
+	src/test/SDL_test_imagePrimitivesBlend.c \
+	src/test/SDL_test_log.c \
+	src/test/SDL_test_md5.c \
+	src/test/SDL_test_memory.c \
+	src/test/SDL_test_random.c
+
+OBJS_TEST_LIB = $(SRCS_TEST_LIB:.c=.o)
+TEST_LIB = libSDL2_test.a
+
 # --- Targets ---
 
 .PHONY: all clean examples test test-fsemu test-vamos setup-toolchain docker-build
@@ -241,11 +263,16 @@ docker-build:
 		make -f Makefile native-build
 
 # Build natively (called from inside Docker)
-native-build: $(TARGET)
+native-build: $(TARGET) $(TEST_LIB)
 	@echo "Built $(TARGET) ($$(wc -c < $(TARGET)) bytes)"
+	@echo "Built $(TEST_LIB) ($$(wc -c < $(TEST_LIB)) bytes)"
 	@echo "Sources: $$(echo $(SRCS) | wc -w) files"
 
 $(TARGET): $(OBJS)
+	$(AR) rcs $@ $^
+	$(RANLIB) $@
+
+$(TEST_LIB): $(OBJS_TEST_LIB)
 	$(AR) rcs $@ $^
 	$(RANLIB) $@
 
@@ -257,14 +284,36 @@ examples: docker-build
 	docker run --rm -v "$(PWD):/work" -w /work $(DOCKER_IMAGE) \
 		make -f Makefile native-examples
 
-# test_bare links without SDL; all others link with -lSDL2 -lm
-native-examples: $(TARGET)
+# Build example/test programs.
+# tests.txt format: NAME CATEGORY TIER [DEPS]
+# DEPS: (empty)=SDL only, TEST=+libSDL2_test, UTILS=+testutils.o
+# Source lookup: examples/upstream/NAME.c first, then examples/NAME.c
+CFLAGS_UPSTREAM = $(CFLAGS) -include examples/upstream/amiga_test_preamble.h
+
+native-examples: $(TARGET) $(TEST_LIB)
 	$(CC) $(CFLAGS) -o examples/test_bare examples/test_bare.c
 	@echo "Built examples/test_bare (no SDL)"
 	$(CC) $(CFLAGS) -o examples/test_beep examples/test_beep.c -lamiga
 	@echo "Built examples/test_beep (no SDL, audio.device test)"
-	@for t in $$(grep -v '^#' tests.txt | grep -v test_bare | awk '{print $$1}'); do \
-		$(CC) $(CFLAGS) -o examples/$$t examples/$$t.c -L. -lSDL2 -ldebug -lamiga -lm && \
+	@grep -v '^#' tests.txt | grep -v '^\s*$$' | grep -v test_bare | while read t cat tier deps rest; do \
+		if [ -f "examples/upstream/$$t.c" ]; then \
+			src="examples/upstream/$$t.c"; \
+			cf="$(CFLAGS_UPSTREAM)"; \
+		else \
+			src="examples/$$t.c"; \
+			cf="$(CFLAGS)"; \
+		fi; \
+		libs="-L. -lSDL2 -ldebug -lamiga -lm"; \
+		case "$$deps" in *TEST*) libs="-L. -lSDL2_test -lSDL2 -ldebug -lamiga -lm" ;; esac; \
+		utils=""; \
+		case "$$deps" in \
+			*UTILS*) \
+				if [ ! -f examples/upstream/testutils.o ]; then \
+					$(CC) $(CFLAGS) -I./examples/upstream -c examples/upstream/testutils.c -o examples/upstream/testutils.o; \
+				fi; \
+				utils="examples/upstream/testutils.o" ;; \
+		esac; \
+		$(CC) $$cf -o examples/$$t $$src $$utils $$libs && \
 		echo "Built examples/$$t" ; \
 	done
 
@@ -302,7 +351,7 @@ setup-toolchain:
 
 clean:
 	find src -name '*.o' -delete
-	rm -f $(TARGET) examples/test_init
+	rm -f $(TARGET) $(TEST_LIB) examples/test_init examples/upstream/testutils.o
 
 # --- Dependencies ---
 # TODO: Auto-generate with -MMD -MP

@@ -164,10 +164,15 @@ main:
 REXX_HEADER
 
     # Add one CALL per test from tests.txt (or single target)
-    while IFS=' ' read -r name category tier; do
+    # Skip tier M (manual/interactive) tests unless explicitly targeted
+    while IFS=' ' read -r name category tier rest; do
         case "$name" in '#'*|'') continue ;; esac
         # If single target mode, skip non-matching tests
         if [ -n "$SINGLE_TARGET" ] && [ "$name" != "$SINGLE_TARGET" ]; then
+            continue
+        fi
+        # Skip manual (M) tier tests in automated runs
+        if [ -z "$SINGLE_TARGET" ] && [ "$tier" = "M" ]; then
             continue
         fi
         echo "    CALL run_one_test '$name', '$category'" >> "$rexx"

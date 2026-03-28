@@ -1,6 +1,15 @@
 /*
   SDL2 Threading -- AmigaOS 3.x via Exec Tasks / DOS Processes
-  Thread creation via CreateNewProc(), data passing via tc_UserData.
+
+  Thread creation via CreateNewProc(), synchronization via signals.
+
+  WaitThread design (based on ADCD III-17 SIGF_SINGLE pattern and
+  SDL2 OS4 port's signal-based approach):
+
+  - Parent allocates a signal bit and stores it + its task pointer
+    in the SDL_Thread struct (accessible to child via tc_UserData).
+  - Child calls SDL_RunThread(), then signals the parent before exiting.
+  - Parent Wait()s on that signal bit -- no polling, no reading freed memory.
 */
 
 #include "../../SDL_internal.h"
@@ -17,24 +26,71 @@
 #include <dos/dostags.h>
 #include <dos/dosextens.h>
 
+#include "../../audio/amigaos3/SDL_os3debug.h"
+
+/* Per-thread context stored in SDL_Thread->handle area.
+ * The child reads parent_task and parent_signal to notify on exit. */
+typedef struct {
+    struct Task *parent_task;   /* task to signal on thread exit */
+    ULONG parent_sigmask;       /* signal mask (1 << allocated bit) */
+    BYTE parent_sigbit;         /* the allocated signal bit */
+} OS3_ThreadData;
+
 /* Entry point wrapper for new processes.
    CreateNewProc NP_Entry calls this. We retrieve the SDL_Thread*
-   from the parent-stored tc_UserData, then call the user function. */
+   from the parent-stored tc_UserData, then call the user function,
+   then signal the parent before exiting. */
 static void OS3_ThreadEntry(void)
 {
     struct Task *me = FindTask(NULL);
     SDL_Thread *thread = (SDL_Thread *)me->tc_UserData;
 
+    DLOG("ThreadEntry: task=%p thread=%p name=%s",
+         (void *)me, (void *)thread,
+         thread && thread->name ? thread->name : "(null)");
+
     if (thread && thread->userfunc) {
-        /* Call SDL's internal thread runner which calls the user function */
         SDL_RunThread(thread);
+    }
+
+    /* Signal the parent that we are done. The parent may be in
+     * SDL_SYS_WaitThread() doing Wait(). This must happen BEFORE
+     * the process exits, while parent_task is still valid.
+     * (ADCD III-17: child signals parent before exiting.) */
+    if (thread && thread->handle) {
+        OS3_ThreadData *td = (OS3_ThreadData *)thread->handle;
+        DLOG("ThreadEntry: signaling parent=%p mask=0x%lx before exit",
+             (void *)td->parent_task, td->parent_sigmask);
+        Signal(td->parent_task, td->parent_sigmask);
+        DLOG("ThreadEntry: signal sent, returning");
     }
 }
 
 int SDL_SYS_CreateThread(SDL_Thread *thread)
 {
     struct Process *proc;
+    OS3_ThreadData *td;
     char name[64];
+    BYTE sigbit;
+
+    /* Allocate a signal bit in the PARENT task for the child to signal us.
+     * Per ADCD ch.22: signals are task-relative, allocated in calling task. */
+    sigbit = AllocSignal(-1);
+    if (sigbit == -1) {
+        return SDL_SetError("No signal bits available for thread sync");
+    }
+
+    td = (OS3_ThreadData *)SDL_malloc(sizeof(*td));
+    if (!td) {
+        FreeSignal(sigbit);
+        return SDL_OutOfMemory();
+    }
+    td->parent_task = FindTask(NULL);
+    td->parent_sigbit = sigbit;
+    td->parent_sigmask = 1UL << sigbit;
+
+    /* Store in thread->handle so both parent and child can access it */
+    thread->handle = (SYS_ThreadHandle)td;
 
     SDL_snprintf(name, sizeof(name), "SDL_%s", thread->name ? thread->name : "thread");
 
@@ -59,6 +115,9 @@ int SDL_SYS_CreateThread(SDL_Thread *thread)
 
     if (proc == NULL) {
         Permit();
+        FreeSignal(sigbit);
+        SDL_free(td);
+        thread->handle = NULL;
         return SDL_SetError("CreateNewProc failed");
     }
 
@@ -66,8 +125,8 @@ int SDL_SYS_CreateThread(SDL_Thread *thread)
        so OS3_ThreadEntry can retrieve it. */
     proc->pr_Task.tc_UserData = (APTR)thread;
 
-    /* Store the task handle for WaitThread */
-    thread->handle = (SYS_ThreadHandle)&proc->pr_Task;
+    DLOG("CreateThread: proc=%p name=%s sigbit=%d parent=%p",
+         (void *)proc, name, (int)sigbit, (void *)td->parent_task);
 
     Permit(); /* now the child can run and find tc_UserData set */
 
@@ -110,40 +169,50 @@ int SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 
 void SDL_SYS_WaitThread(SDL_Thread *thread)
 {
-    /* Wait for the child process to finish.
-       On AmigaOS, there's no direct "wait for task exit."
-       We use a signal-based approach: the child signals the parent on exit.
+    OS3_ThreadData *td = (OS3_ThreadData *)thread->handle;
 
-       For Phase 0, use a simple polling approach.
-       Phase 4+ should implement proper signal-based notification. */
-    struct Task *child = (struct Task *)thread->handle;
-
-    if (child == NULL) {
+    if (td == NULL) {
         return;
     }
 
-    /* Poll until the task is no longer in the system.
-       This is not ideal but works for Phase 0. A proper implementation
-       would use a reply port or signal. */
-    while (1) {
-        struct Task *found;
-        Forbid();
-        /* Check if the task still exists by looking it up */
-        found = FindTask(child->tc_Node.ln_Name);
-        Permit();
-        if (found != child) {
-            break; /* Task is gone */
-        }
-        /* Yield to let the child run */
-        Delay(1); /* 1 tick = ~20ms */
-    }
+    DLOG("WaitThread: waiting on mask=0x%lx for thread=%p name=%s",
+         td->parent_sigmask, (void *)thread,
+         thread->name ? thread->name : "(null)");
+
+    /* Wait for the child to signal us before it exits.
+     * Per ADCD III-17: Wait() on the signal the child will send.
+     * No polling, no reading freed task memory. */
+    Wait(td->parent_sigmask);
+
+    DLOG("WaitThread: signal received, child signaled exit");
+
+    /* Child has signaled but may not have fully exited yet -- it still
+     * needs to return from OS3_ThreadEntry() and go through DOS process
+     * cleanup (stack deallocation, tc_MemEntry freeing, etc.).
+     * Give it time to finish before we free resources that might share
+     * the same memory pool. Delay(1) = ~20ms = one tick. */
+    Delay(1);
+
+    DLOG("WaitThread: cleanup delay done, freeing sigbit=%d",
+         (int)td->parent_sigbit);
+
+    /* Now safe to free the signal bit and the thread data. */
+    FreeSignal(td->parent_sigbit);
+    SDL_free(td);
+    thread->handle = NULL;
 }
 
 void SDL_SYS_DetachThread(SDL_Thread *thread)
 {
-    /* Detached threads run independently. On AmigaOS, processes
-       already clean up after themselves when they exit. Just clear
-       the handle so WaitThread won't try to wait. */
+    OS3_ThreadData *td = (OS3_ThreadData *)thread->handle;
+
+    /* Detached threads run independently. Free the signal bit
+     * since nobody will Wait on it. The child will Signal() into
+     * the void (harmless -- the bit is freed, signal is ignored). */
+    if (td != NULL) {
+        FreeSignal(td->parent_sigbit);
+        SDL_free(td);
+    }
     thread->handle = NULL;
 }
 
