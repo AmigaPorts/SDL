@@ -303,6 +303,12 @@ deploy() {
         fi
     done < "$PROJECT_DIR/tests.txt"
 
+    # Copy test resources (BMP files etc.)
+    if [ -f "$PROJECT_DIR/examples/upstream/icon.bmp" ]; then
+        cp "$PROJECT_DIR/examples/upstream/icon.bmp" "$AMIGA_DIR/icon.bmp"
+        echo "    Copied icon.bmp (test resource)"
+    fi
+
     # Generate ARexx harness from tests.txt
     generate_rexx_harness
 

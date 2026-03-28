@@ -20,6 +20,11 @@ test_uint64    UNIT   12
 test_audio     AUDIO  12
 test_loopwave  AUDIO  2
 test_threads   UNIT   2
+test_bmpview   VIDEO  2
+test_gameloop  VIDEO  2
+# test_render: SDL_RenderCopyEx rotation crashes (bus error in SW renderer)
+# TODO: investigate -- may be 68k alignment issue in SDL_rotate.c
+test_render    VIDEO  M
 
 # --- Upstream SDL2 tests (from libsdl-org/SDL test/, SDL2 branch) ---
 # Auto tests: self-terminating, safe for automated harness
