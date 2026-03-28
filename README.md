@@ -6,7 +6,7 @@ The first open-source SDL2 implementation for classic Amiga hardware.
 
 ## Status
 
-**Phase 3: Audio COMPLETE** -- Video, input, timer, and audio all working on FS-UAE with RTG. 9/9 tests pass.
+**Phase 4: Threading COMPLETE** -- Video, input, timer, audio, and threading all working on FS-UAE with RTG. 17/17 automated tests pass (10 vamos + 17 FS-UAE), including 6 upstream SDL2 test programs.
 
 ### Subsystem Status
 
@@ -17,8 +17,8 @@ The first open-source SDL2 implementation for classic Amiga hardware.
 | **Input** | Working | Intuition IDCMP (keyboard, mouse, window events) | 2 |
 | **Audio** | Working | Paula audio.device (8-bit mono, CHIP RAM DMA) | 3 |
 | **Audio** | Blocked | AHI (correct code, FS-UAE has dead stub) | 3 |
-| **Threading** | Working | Exec Tasks (CreateNewProc, SignalSemaphore) | 0 |
-| **Atomics** | Working | 68020+ CAS instruction (inline asm) | 0 |
+| **Threading** | Working | Exec Tasks (CreateNewProc, Signal/Wait join) | 4 |
+| **Atomics** | Working | Forbid/Permit emulated CAS (single-core safe) | 0 |
 | **Timer** | Working | timer.device/ReadEClock (709 KHz monotonic) | 1 |
 | **Joystick** | Stub | gameport.device (reports 0 joysticks) | 5 |
 | **Filesystem** | Stub | dos.library (returns NULL) | 5 |
@@ -35,7 +35,7 @@ The first open-source SDL2 implementation for classic Amiga hardware.
 | **1: First Pixels** | CyberGraphX video + software render | test_sprite draws on FS-UAE | **DONE** |
 | **2: Input** | IDCMP -> SDL events | test_events responds to input | **DONE** |
 | **3: Audio** | Paula audio backend | test_audio plays 440 Hz tone | **DONE** |
-| **4: Threading** | Full thread testing on FS-UAE | Threaded programs work | Next |
+| **4: Threading** | Full thread testing on FS-UAE | 17/17 tests pass (incl. upstream) | **DONE** |
 | **5: Polish** | Timer, filesystem, joystick | Simple SDL2 game runs | -- |
 | **6: Optimization** | AGA c2p, AMMX blitters | Performance targets | -- |
 
@@ -77,7 +77,7 @@ make clean             # Remove build artifacts
 
 **Single test:**
 ```bash
-make test-fsemu TARGET=test_audio
+make test-fsemu TEST=test_audio
 ```
 
 ## Architecture
@@ -89,8 +89,8 @@ SDL2 backends map to AmigaOS subsystems:
 | Video | CyberGraphX | WritePixelArray, screen modes |
 | Audio (Paula) | audio.device | CMD_WRITE, BeginIO/WaitIO, CHIP RAM DMA |
 | Audio (AHI) | ahi.device | CMD_WRITE, SendIO, double-buffered |
-| Threading | Exec Tasks | CreateNewProc, SignalSemaphore, Signal/Wait |
-| Atomics | 68020+ CAS | Hardware compare-and-swap (inline asm) |
+| Threading | Exec Tasks | CreateNewProc, SignalSemaphore, Signal/Wait join |
+| Atomics | Forbid/Permit | Emulated CAS (single-core cooperative) |
 | Timer | timer.device | ReadEClock |
 | Input | Intuition IDCMP | IDCMP_RAWKEY, IDCMP_MOUSEMOVE |
 | Joystick | gameport.device | GPD_ASKCTYPE |
@@ -103,8 +103,8 @@ SDL2 backends map to AmigaOS subsystems:
 - **C99 required** (`-std=gnu99`), SDL2 needs C99; bebbo-gcc supports it
 - **`SDL_DYNAMIC_API=0`** -- no dlopen on AmigaOS 3.x
 - **`-O0` default** -- bebbo-gcc has codegen bugs at -O1/-O2 (struct return corruption)
-- **CAS atomics** -- 68020+ hardware compare-and-swap, no Forbid/Permit
-- **Exec Tasks threading** -- CreateNewProc with Forbid/Permit for tc_UserData safety
+- **Forbid/Permit atomics** -- emulated CAS via task-switch inhibition (single-core safe)
+- **Signal-based thread join** -- child signals parent before exit per ADCD III-17 pattern; Forbid() prevents race during DOS process cleanup
 - **Lazy device open** -- MsgPort created in audio thread context (AmigaOS signals are task-relative)
 - **Paula first, AHI second** -- Paula works on all emulators; AHI for real hardware sound cards
 
