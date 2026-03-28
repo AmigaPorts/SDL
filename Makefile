@@ -287,13 +287,13 @@ test-vamos: examples
 
 # Run full FS-UAE test suite (RTG, all tests)
 # Requires FS-UAE, Kickstart 3.1 ROM, and build/system/ WB 3.1
-# Use TARGET=test_foo to run a single test: make test-fsemu TARGET=test_audio
+# Use TEST=test_foo to run a single test: make test-fsemu TEST=test_audio
 test-fsemu:
-	scripts/test-fsemu.sh $(if $(TARGET),--target $(TARGET))
+	scripts/test-fsemu.sh $(if $(TEST),--target $(TEST))
 
 # Run FS-UAE tests without rebuilding examples first
 test-fsemu-no-build:
-	scripts/test-fsemu.sh --no-build $(if $(TARGET),--target $(TARGET))
+	scripts/test-fsemu.sh --no-build $(if $(TEST),--target $(TEST))
 
 setup-toolchain:
 	@echo "Pulling bebbo-gcc Docker image..."
