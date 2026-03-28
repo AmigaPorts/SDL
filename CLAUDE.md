@@ -61,7 +61,7 @@ make clean             # Remove build artifacts
 
 - **Language:** C99 (`-std=gnu99`). SDL2 requires C99.
 - **CPU target:** `-m68020` for the library (RTG cards require 68020+).
-- **Optimization:** `-O0` initially until backends are proven stable. Upgrade to `-O2` per-file after testing. bebbo-gcc has codegen bugs at `-O1`/`-O2` (see `docs/references/crash-patterns.md` #16).
+- **Optimization:** `-O0` initially until backends are proven stable. Upgrade to `-O2` per-file after testing. bebbo-gcc has codegen bugs at `-O1`/`-O2` (see crash pattern #16 via `amiga_crash_diagnosis`).
 - **`SDL_DYNAMIC_API`:** Disabled (`#define SDL_DYNAMIC_API 0`). AmigaOS 3.x has no `dlopen()`.
 
 ## Coding Standards
@@ -69,7 +69,7 @@ make clean             # Remove build artifacts
 ### C99 with AmigaOS Constraints
 
 - Use C99 features (for-init, `//` comments, mixed declarations, `inline`).
-- Do NOT assume C99 library functions exist -- libnix is a C89 runtime. Check `docs/references/libnix-reference.md`.
+- Do NOT assume C99 library functions exist -- libnix is a C89 runtime. Check via `amiga_search "libnix [function]"` or `amiga_pitfalls_for "libnix"`.
 - Use `<proto/*.h>` for Amiga system calls (never `<clib/*.h>`).
 - Use Amiga types (`LONG`, `ULONG`, `STRPTR`, `BPTR`, `APTR`) for OS interfaces.
 - Format specifiers: `%ld`/`%lu` for `LONG`/`ULONG` (32-bit `long`).
@@ -92,15 +92,29 @@ Exec Tasks are cooperative on the same address space. No memory protection betwe
 
 ## Key References
 
-### Critical (consult during every backend implementation)
+### Shared Knowledge Base (amiga-kb via MCP)
 
-- `docs/references/crash-patterns.md` -- Crash patterns from real 68k development. #7 (stack overflow), #10 (large buffers), #15 (alignment), #16 (struct returns at -O2) all apply.
-- `docs/references/68k-hardware.md` -- Memory map, addressing modes, crash signatures.
-- `docs/references/libnix-reference.md` -- What C library functions are actually available.
+General Amiga reference docs are in the shared amiga-kb knowledge base. Use MCP tools
+instead of reading local files:
+
+- `amiga_search` -- semantic search across all Amiga docs (crash patterns, pitfalls, ADCD, hardware)
+- `amiga_api_lookup` -- function/struct lookup with graph traversal and pitfall warnings
+- `amiga_pitfalls_for` -- known pitfalls for an API or concept
+- `amiga_crash_diagnosis` -- crash diagnosis from Guru codes (replaces manual crash-patterns.md lookup)
+- `amiga_report_gap` -- report missing knowledge (feeds the learning compiler)
+
+The amiga-kb MCP server must be running (`docker compose up -d` in the amiga-kb repo).
+All queries from this project are tagged with `source_project: "libSDL2"`.
+
+### Critical (project-specific, consult during every backend implementation)
+
+- Crash patterns #7 (stack overflow), #10 (large buffers), #15 (alignment), #16 (struct returns at -O2) all apply. Use `amiga_crash_diagnosis` for lookup.
+- 68k hardware reference available via `amiga_search "68k memory map"` etc.
+- libnix function availability via `amiga_search "libnix ..."` or `amiga_pitfalls_for "libnix"`.
 
 ### AmigaOS API Documentation
 
-- `docs/references/adcd/` -- ADCD 2.1 reference in markdown. exec.library, dos.library, intuition.library, graphics.library, timer.device.
+- `docs/references/adcd/` -- ADCD 2.1 reference in markdown (also indexed in amiga-kb vectors).
 - `docs/references/amiga-intern/` -- "Amiga Intern" (1992). Custom chip architecture, memory map, DMA timing.
 - `docs/references/m68000-prm/` -- Motorola M68000 Family Programmer's Reference Manual.
 
