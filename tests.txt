@@ -14,3 +14,4 @@ test_video     VIDEO  2
 test_events    INPUT  2
 test_sprite    VIDEO  2
 test_uint64    UNIT   12
+test_audio     AUDIO  12
