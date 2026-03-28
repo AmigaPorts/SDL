@@ -654,6 +654,16 @@ FS-UAE emulates the Toccata hardware (AD1848 codec registers on Zorro bus) via `
 
 Discovered in SDL2 audio testing (2026-03-28) -- AHI Prefs showed "Cannot open toccata.library v12" until the library was downloaded from Aminet.
 
+## AHI CMD_WRITE WaitIO Hangs on FS-UAE
+
+AHI's device interface (CMD_WRITE via SendIO + WaitIO) never completes on FS-UAE with the Paula audio driver. The WaitIO call blocks forever because ahi.device's paula.audio driver relies on Paula DMA completion interrupts that FS-UAE does not properly generate when AHI takes over the audio channels.
+
+This affects both the SDL 1.2 pattern (proven on real hardware) and our SDL2 implementation. The AHI library interface (AHI_AllocAudio + PlayerFunc) has a different issue: AHI_ControlAudio(AHIC_Play) crashes with Guru 8000 0004 (AG_NoSignal) due to signal allocation issues in the audio thread context.
+
+**Status:** UNRESOLVED as of 2026-03-28. Needs research into FS-UAE AHI compatibility, newer AHI versions, or a direct audio.device (Paula DMA) backend as fallback.
+
+**Reference implementation:** SDL 1.2 AmigaPorts source saved at `docs/references/sdl12-ahiaudio.c` (333 lines, device interface pattern).
+
 ## vamos -s Stack Size Is in KiB, Not Bytes
 
 The vamos `-s` / `--stack-size` flag specifies stack size in **kibibytes** (KiB), not bytes. `-s 65536` allocates 64 MB of stack, which exceeds vamos's memory allocation limit and crashes with `VamosInternalError: [alloc: NO MEMORY]`.
