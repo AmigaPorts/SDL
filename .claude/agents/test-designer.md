@@ -1,6 +1,7 @@
 ---
 name: test-designer
 model: sonnet
+memory: project
 description: |
   Automated test infrastructure for SDL2 on AmigaOS 3.x. Writes ARexx test harness
   scripts, host-side bash test runners, FS-UAE automation, result parsing, and

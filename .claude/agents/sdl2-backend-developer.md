@@ -1,6 +1,7 @@
 ---
 name: sdl2-backend-developer
 model: opus
+memory: project
 description: |
   SDL2 platform backend developer for AmigaOS 3.x. Writes C code for video
   (CyberGraphX), audio (AHI), threading (Exec Tasks), timer, filesystem,

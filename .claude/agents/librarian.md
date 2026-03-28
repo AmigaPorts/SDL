@@ -1,6 +1,7 @@
 ---
 name: librarian
 model: sonnet
+memory: project
 description: |
   Knowledge base builder. Fetches, transforms, and organizes API docs, hardware references,
   and development guides into docs/references/. Sources: bebbo-gcc toolchain, amiport KB,
