@@ -33,6 +33,12 @@ graphics_memory = 32768
 chip_memory = 8192
 zorro_iii_memory = 131072
 
+# --- Sound Card ---
+# Toccata Zorro II sound card emulation for AHI audio.
+# Requires: toccata.library in LIBS:, toccata.audio in DEVS:AHI/,
+# TOCCATA mode in DEVS:AudioModes/, AHI prefs set to Toccata mode.
+sound_card = toccata
+
 # --- Input ---
 joystick_port_1_mode = nothing
 keyboard_input_grab = 1

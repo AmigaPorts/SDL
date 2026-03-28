@@ -18,7 +18,9 @@
 #include "../SDL_sysaudio.h"
 #include "SDL_os3audio.h"
 
+#include <stdio.h>
 #include <proto/exec.h>
+#include <proto/dos.h>
 #include <exec/memory.h>
 
 #define OS3AHI_DRIVER_NAME "ahi"
@@ -113,10 +115,12 @@ static int OS3AHI_OpenDevice(_THIS, const char *devname)
     hidden->playing  = SDL_FALSE;
 
     /* Create the message port for I/O completion signals */
+    printf("[AHI] Creating MsgPort...\n"); fflush(stdout);
     hidden->port = CreateMsgPort();
     if (!hidden->port) {
         return SDL_SetError("AHI: Failed to create MsgPort");
     }
+    printf("[AHI] MsgPort OK\n"); fflush(stdout);
 
     /* Create primary AHIRequest via CreateIORequest */
     hidden->req[0] = (struct AHIRequest *)
@@ -124,19 +128,34 @@ static int OS3AHI_OpenDevice(_THIS, const char *devname)
     if (!hidden->req[0]) {
         return SDL_SetError("AHI: Failed to create IORequest");
     }
+    printf("[AHI] IORequest OK\n"); fflush(stdout);
 
     /* Set minimum AHI version before OpenDevice */
     hidden->req[0]->ahir_Version = 4;
 
-    if (OpenDevice((CONST_STRPTR)AHINAME, AHI_DEFAULT_UNIT,
-                   (struct IORequest *)hidden->req[0], 0L) != 0) {
-        /* OpenDevice failed -- delete the request and let CloseDevice handle
-         * the rest. Mark req[0] as NULL so CloseDevice knows not to call
-         * CloseDevice on it. */
-        DeleteIORequest((struct IORequest *)hidden->req[0]);
-        hidden->req[0] = NULL;
-        return SDL_SetError("AHI: Failed to open ahi.device");
+    /* Suppress system requesters during OpenDevice.
+       AHI may pop up "Please insert volume" or mode selection dialogs
+       that block the process when running non-interactively. */
+    {
+        struct Process *me = (struct Process *)FindTask(NULL);
+        APTR oldwin = me->pr_WindowPtr;
+        LONG open_err;
+        me->pr_WindowPtr = (APTR)-1L;
+
+        printf("[AHI] Calling OpenDevice...\n"); fflush(stdout);
+        open_err = OpenDevice((CONST_STRPTR)AHINAME, AHI_DEFAULT_UNIT,
+                              (struct IORequest *)hidden->req[0], 0L);
+        me->pr_WindowPtr = oldwin;
+
+        if (open_err != 0) {
+            printf("[AHI] OpenDevice failed (error=%ld)\n", (long)open_err);
+            fflush(stdout);
+            DeleteIORequest((struct IORequest *)hidden->req[0]);
+            hidden->req[0] = NULL;
+            return SDL_SetError("AHI: Failed to open ahi.device");
+        }
     }
+    printf("[AHI] OpenDevice OK\n"); fflush(stdout);
 
     /* Create second AHIRequest by copying the first.
      * Both share the same MsgPort and device. req[1] is NOT created
@@ -160,6 +179,8 @@ static int OS3AHI_OpenDevice(_THIS, const char *devname)
                             "(%lu bytes each)", (unsigned long)hidden->bufsize);
     }
 
+    printf("[AHI] OpenDevice complete: bufsize=%lu\n", (unsigned long)hidden->bufsize);
+    fflush(stdout);
     return 0; /* success */
 }
 
@@ -182,8 +203,10 @@ static int OS3AHI_OpenDevice(_THIS, const char *devname)
 static void OS3AHI_WaitDevice(_THIS)
 {
     struct SDL_PrivateAudioData *hidden = _this->hidden;
+    static int wait_debug = 0;
 
     if (!hidden->playing) {
+        if (wait_debug < 2) { printf("[AHI] WaitDevice: not playing yet\n"); fflush(stdout); wait_debug++; }
         return;
     }
 
@@ -232,6 +255,7 @@ static void OS3AHI_PlayDevice(_THIS)
 {
     struct SDL_PrivateAudioData *hidden = _this->hidden;
     struct AHIRequest *req = hidden->req[hidden->current];
+    static int play_debug = 0;
     int other = hidden->current ^ 1;
 
     /* Configure the I/O request for CMD_WRITE */
@@ -248,6 +272,15 @@ static void OS3AHI_PlayDevice(_THIS)
     /* Link to previous request for gapless playback.
      * On the first buffer, there is no previous request. */
     req->ahir_Link = hidden->playing ? hidden->req[other] : NULL;
+
+    if (play_debug < 2) {
+        printf("[AHI] PlayDevice: SendIO buf=%d type=%lu freq=%lu len=%lu\n",
+               hidden->current, (unsigned long)req->ahir_Type,
+               (unsigned long)req->ahir_Frequency,
+               (unsigned long)req->ahir_Std.io_Length);
+        fflush(stdout);
+        play_debug++;
+    }
 
     SendIO((struct IORequest *)req);
 
