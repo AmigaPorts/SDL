@@ -614,6 +614,46 @@ ADDRESS COMMAND 'Execute T:script'
 
 This is the proven pattern from amiport's test-runner.rexx. Discovered in SDL2 test harness (2026-03-28) -- all 4 tests returned RC=20 because Execute scripts contained garbled commands.
 
+## AHI OpenDevice Hangs Without pr_WindowPtr Suppression
+
+`OpenDevice(AHINAME, AHI_DEFAULT_UNIT, ...)` on ahi.device pops system requesters during initialization (mode selection dialogs, "Please insert volume" requesters for audio driver files). When running non-interactively (ARexx test harness, Execute scripts, background processes), these requesters block the process forever because there is no user to dismiss them.
+
+This is the same class of bug as "AmigaDOS Volume Requester on Path Probing" (see above) but specifically for ahi.device. The `AHIDF_NOMODESCAN` flag does NOT prevent this -- it only skips mode file enumeration, not driver initialization. The driver init itself may trigger requesters.
+
+**Fix:** Suppress requesters before OpenDevice, restore after:
+```c
+struct Process *me = (struct Process *)FindTask(NULL);
+APTR oldwin = me->pr_WindowPtr;
+me->pr_WindowPtr = (APTR)-1L;
+
+OpenDevice(AHINAME, AHI_DEFAULT_UNIT,
+           (struct IORequest *)req, 0L);
+
+me->pr_WindowPtr = oldwin;
+```
+
+**Rule:** ANY `OpenDevice()` or `OpenLibrary()` call that might trigger a system requester MUST be wrapped with `pr_WindowPtr = -1` when running in automated/non-interactive contexts. This applies to: ahi.device, timer.device (already done), cybergraphics.library (already done), and any future device/library opens.
+
+Discovered in SDL2 AHI audio backend (2026-03-28) -- test_audio hung at OpenDevice in the ARexx test harness. Interactive runs from the shell also hung because AHI popped requesters that competed with the shell window.
+
+## devices/ahi.h Exists in bebbo-gcc -- Do Not Hand-Roll AHI Structs
+
+The bebbo-gcc Docker image (`amigadev/crosstools:m68k-amigaos`) includes `devices/ahi.h` at `/opt/m68k-amigaos/m68k-amigaos/include/devices/ahi.h`. It defines `struct AHIRequest`, all `AHIST_*` sample format constants, `AHINAME`, `AHI_DEFAULT_UNIT`, `AHIDF_NOMODESCAN`, and `Fixed` type.
+
+**Do NOT hand-roll these definitions.** Use `#include <devices/ahi.h>` directly. Hand-rolled structs risk field offset mismatches that cause silent corruption or hangs.
+
+Also available: `<proto/ahi.h>` (inlines), `<inline/ahi.h>`. Use `<proto/ahi.h>` for library-interface calls (AHI_AllocAudio etc.) and `<devices/ahi.h>` for device-interface calls (CMD_WRITE etc.).
+
+Discovered in SDL2 AHI backend (2026-03-28) -- initially assumed bebbo-gcc lacked AHI headers and wrote custom struct definitions that happened to be correct but were unnecessary.
+
+## toccata.library Is on Aminet
+
+`toccata.library` v12 (required by AHI's `toccata.audio` driver for Toccata/FS-UAE sound card emulation) is available on Aminet at `util/libs/toclib12.lha`. Install to `LIBS:toccata.library`.
+
+FS-UAE emulates the Toccata hardware (AD1848 codec registers on Zorro bus) via `sound_card = toccata` config option, but does NOT provide the Amiga-side library. The library must be installed separately.
+
+Discovered in SDL2 audio testing (2026-03-28) -- AHI Prefs showed "Cannot open toccata.library v12" until the library was downloaded from Aminet.
+
 ## vamos -s Stack Size Is in KiB, Not Bytes
 
 The vamos `-s` / `--stack-size` flag specifies stack size in **kibibytes** (KiB), not bytes. `-s 65536` allocates 64 MB of stack, which exceeds vamos's memory allocation limit and crashes with `VamosInternalError: [alloc: NO MEMORY]`.
