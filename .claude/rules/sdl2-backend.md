@@ -5,8 +5,10 @@ Paths: src/**/*.c, src/**/*.h
 ## Before Implementing Any Backend Function
 
 1. Read the relevant SDL2 contract doc (`/sdl2-api-lookup`) to understand what SDL2 core expects
-2. Read the AmigaOS API doc (ADCD, CyberGraphX, AHI) for the native call you will use
-3. Check `docs/references/crash-patterns.md` for known 68k issues
+2. **Search for SDL 1.2 reference:** `amiga_search("SDL 1.2 [subsystem]")` — proven working AmigaOS implementations are indexed in the KB
+3. **Look up the AmigaOS API:** `amiga_api_lookup("[function]")` — includes pitfall warnings and graph data
+4. **Check for pitfalls:** `amiga_pitfalls_for("[API or device]")` — 70+ documented gotchas from real development
+5. **Check crash patterns:** `amiga_crash_diagnosis("[Guru code or symptoms]")` — 25+ documented crash signatures
 
 ## Function Pointer Safety
 

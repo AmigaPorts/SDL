@@ -8,9 +8,12 @@ These rules apply to ALL C code targeting AmigaOS in this project.
 
 **HARD RULE: Before writing ANY code that includes `<proto/*.h>`, `<devices/*.h>`, `<exec/*.h>`, or references AmigaOS structs (ConUnit, MsgPort, IOStdReq, FileHandle, etc.):**
 
-1. **Invoke `/amiga-api-lookup`** to load the ADCD reference documentation
-2. **Dispatch `hardware-expert` agent** for any hardware assumptions (memory layout, CPU features, struct sizes, field offsets)
-3. **Verify struct offsets** against the ADCD header — NEVER compute offsets from memory or guess them
+1. **Use `amiga_api_lookup` MCP tool** for function/struct lookup (fastest — includes graph data and pitfall warnings)
+2. **Use `amiga_pitfalls_for` MCP tool** to check for known gotchas before using any API
+3. **Use `amiga_search` MCP tool** to search across all ADCD docs, crash patterns, and reference implementations (including SDL 1.2 AmigaOS backends)
+4. **Invoke `/amiga-api-lookup` skill** for deep ADCD reference loading when MCP results need more context
+5. **Dispatch `hardware-expert` agent** for any hardware assumptions (memory layout, CPU features, struct sizes, field offsets)
+6. **Verify struct offsets** against the ADCD header — NEVER compute offsets from memory or guess them
 
 A PreToolUse hook (`enforce-adcd-lookup.sh`) fires on every Edit/Write to C files containing AmigaOS API includes. It warns if ADCD docs weren't loaded. This is not optional.
 
