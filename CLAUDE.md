@@ -1,5 +1,23 @@
 # libSDL2-amigaos3 -- Claude Code Project Instructions
 
+## RULE 0: NEVER GUESS -- ALWAYS LOOK IT UP
+
+**This is 30-year-old hardware and libraries. Your training data is NOT sufficient.**
+
+Before writing or fixing ANY code that touches AmigaOS APIs, Exec, devices, or 68k hardware:
+
+1. **Read the documentation first.** Use `amiga_api_lookup`, `amiga_search`, `amiga_pitfalls_for`, or read the ADCD docs in `docs/references/`. Every function, every struct field, every flag has documented behavior that may differ from what you expect.
+
+2. **Search the internet.** Use `WebSearch` for forum posts, existing implementations, and known issues. Check EAB (eab.abime.net), Aminet, and GitHub for reference code.
+
+3. **Never assume how an API works.** CheckIO, WaitIO, BeginIO, SendIO, CreateMsgPort, Signal -- these all have specific documented semantics. A wrong assumption about `ln_Type`, signal delivery, or task context wastes hours.
+
+4. **When debugging, instrument and observe before hypothesizing.** Add debug output (DLOG via `SDL_os3debug.h`), read the actual values, THEN form a theory. Don't guess at the fix -- verify the root cause first.
+
+5. **When stuck after 2 attempts, STOP coding and research.** Read ADCD docs, search forums, check reference implementations (SDL 1.2, OS4 port). The answer is almost always documented somewhere.
+
+**Why this rule exists:** Multiple debugging sessions wasted hours because the agent guessed at AmigaOS behavior instead of reading the documentation. Examples: MsgPort signal delivery (ADCD ch.22), CheckIO return semantics, audio.device CMD_WRITE completion, CreateNewProcTags tc_UserData race. Every one of these is documented in the ADCD.
+
 ## What This Project Is
 
 A port of SDL2 (Simple DirectMedia Layer 2) to AmigaOS 3.x on Motorola 68k. This is a **platform library** -- it provides `libSDL2.a` that other programs link against. It is NOT a POSIX port; it implements SDL2's platform abstraction layer using native AmigaOS APIs.

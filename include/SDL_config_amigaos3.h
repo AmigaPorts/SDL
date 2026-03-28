@@ -161,6 +161,7 @@
 
 /* --- AUDIO DRIVERS --- */
 #define SDL_AUDIO_DRIVER_AHI        1
+#define SDL_AUDIO_DRIVER_PAULA      1
 #define SDL_AUDIO_DRIVER_DUMMY      1   /* fallback */
 
 /* --- RENDER DRIVERS --- */

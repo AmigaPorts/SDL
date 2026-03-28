@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     (void)argv;
     (void)verstag;
 
-    printf("test_audio: AHI audio backend verification\n\n");
+    printf("test_audio: audio backend verification\n\n");
 
     printf("Calling SDL_Init(SDL_INIT_AUDIO)...\n");
     fflush(stdout);

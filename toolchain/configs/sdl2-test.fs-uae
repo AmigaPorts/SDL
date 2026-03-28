@@ -33,6 +33,12 @@ graphics_memory = 32768
 chip_memory = 8192
 zorro_iii_memory = 131072
 
+# --- Audio ---
+# Paula audio emulation must be enabled for audio.device CMD_WRITE
+# to signal completion (DMA interrupt driven).
+sound_output = enabled
+audio_frequency = 44100
+
 # --- Input ---
 joystick_port_1_mode = nothing
 keyboard_input_grab = 1
@@ -41,6 +47,12 @@ raw_input = 0
 # --- Display ---
 window_width = 1280
 window_height = 960
+
+# --- Debugging ---
+# To capture kprintf: install socat, uncomment serial_port, run socat first:
+#   socat TCP-LISTEN:1234,reuseaddr,fork - &
+#   serial_port = tcp://127.0.0.1:1234
+# File-based debug: DLOG() writes to WORK:sdl_debug.log
 
 # --- Isolation ---
 logs_dir = $CONFIG/../../build/fs-uae-state/Logs

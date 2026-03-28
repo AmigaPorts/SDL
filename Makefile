@@ -12,7 +12,7 @@ RANLIB = $(CC_PREFIX)-ranlib
 CFLAGS = -std=gnu99 -O0 -m68030 -noixemul \
          -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare \
          -I./include -I./src \
-         -D__AMIGAOS3__
+         -D__AMIGAOS3__ -DSDL_OS3_DEBUG
 
 # --- SDL2 Core Source Files (platform-independent) ---
 # Enumerated from SDL2 CMakeLists.txt (SDL2 branch, commit f9e8203)
@@ -135,7 +135,8 @@ SRCS_AUDIO_CORE = \
 	src/audio/SDL_wave.c
 
 SRCS_AUDIO_OS3 = \
-	src/audio/amigaos3/SDL_os3audio.c
+	src/audio/amigaos3/SDL_os3audio.c \
+	src/audio/amigaos3/SDL_os3paula.c
 
 SRCS_AUDIO_DUMMY = \
 	src/audio/dummy/SDL_dummyaudio.c
@@ -260,8 +261,10 @@ examples: docker-build
 native-examples: $(TARGET)
 	$(CC) $(CFLAGS) -o examples/test_bare examples/test_bare.c
 	@echo "Built examples/test_bare (no SDL)"
+	$(CC) $(CFLAGS) -o examples/test_beep examples/test_beep.c -lamiga
+	@echo "Built examples/test_beep (no SDL, audio.device test)"
 	@for t in $$(grep -v '^#' tests.txt | grep -v test_bare | awk '{print $$1}'); do \
-		$(CC) $(CFLAGS) -o examples/$$t examples/$$t.c -L. -lSDL2 -lm && \
+		$(CC) $(CFLAGS) -o examples/$$t examples/$$t.c -L. -lSDL2 -ldebug -lamiga -lm && \
 		echo "Built examples/$$t" ; \
 	done
 

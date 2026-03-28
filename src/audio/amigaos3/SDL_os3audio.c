@@ -213,8 +213,49 @@ static void OS3AHI_CloseDevice(_THIS)
     _this->hidden = NULL;
 }
 
+/* Probe whether ahi.device can be opened.
+   If not, return SDL_FALSE so SDL2 falls through to Paula. */
+static int OS3AHI_Available(void)
+{
+    struct MsgPort *p;
+    struct AHIRequest *req;
+    int ok = 0;
+    struct Process *me;
+    APTR oldwin;
+
+    p = CreateMsgPort();
+    if (!p) return 0;
+
+    req = (struct AHIRequest *)CreateIORequest(p, sizeof(struct AHIRequest));
+    if (!req) {
+        DeleteMsgPort(p);
+        return 0;
+    }
+
+    req->ahir_Version = 4;
+
+    me = (struct Process *)FindTask(NULL);
+    oldwin = me->pr_WindowPtr;
+    me->pr_WindowPtr = (APTR)-1L;
+
+    if (OpenDevice((CONST_STRPTR)AHINAME, 0,
+                   (struct IORequest *)req, NULL) == 0) {
+        ok = 1;
+        CloseDevice((struct IORequest *)req);
+    }
+
+    me->pr_WindowPtr = oldwin;
+
+    DeleteIORequest((struct IORequest *)req);
+    DeleteMsgPort(p);
+    return ok;
+}
+
 static SDL_bool OS3AHI_Init(SDL_AudioDriverImpl *impl)
 {
+    if (!OS3AHI_Available())
+        return SDL_FALSE;
+
     impl->DetectDevices = OS3AHI_DetectDevices;
     impl->OpenDevice    = OS3AHI_OpenDevice;
     impl->PlayDevice    = OS3AHI_PlayDevice;

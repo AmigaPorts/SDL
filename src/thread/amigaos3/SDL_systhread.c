@@ -38,6 +38,13 @@ int SDL_SYS_CreateThread(SDL_Thread *thread)
 
     SDL_snprintf(name, sizeof(name), "SDL_%s", thread->name ? thread->name : "thread");
 
+    /* Forbid() prevents task switching so the new process cannot run
+       OS3_ThreadEntry before we set tc_UserData. Without this, the new
+       process may read tc_UserData as NULL and exit immediately, causing
+       SDL2's startup semaphore wait to deadlock.
+       See ADCD ch.22: signals are task-relative. */
+    Forbid();
+
     proc = CreateNewProcTags(
         NP_Entry, (ULONG)OS3_ThreadEntry,
         NP_Name, (ULONG)name,
@@ -51,6 +58,7 @@ int SDL_SYS_CreateThread(SDL_Thread *thread)
     );
 
     if (proc == NULL) {
+        Permit();
         return SDL_SetError("CreateNewProc failed");
     }
 
@@ -60,6 +68,8 @@ int SDL_SYS_CreateThread(SDL_Thread *thread)
 
     /* Store the task handle for WaitThread */
     thread->handle = (SYS_ThreadHandle)&proc->pr_Task;
+
+    Permit(); /* now the child can run and find tc_UserData set */
 
     return 0;
 }
