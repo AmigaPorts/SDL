@@ -575,3 +575,52 @@ This means **the fd namespace conflict (crash-patterns #12) only applies when mi
 - **Legacy ports already using `amiport_open()`:** Keep using `amiport_read()`/`amiport_write()`/`amiport_close()` consistently. Don't mix with libnix `fdopen()`.
 
 Discovered during CPython 3.11 feasibility analysis (2026-03-26) — empirical vamos test confirmed `open()` + `fdopen()` interop works on bebbo-gcc libc.a.
+
+## ARexx OPEN('A') Does Not Create Files
+
+ARexx's `OPEN(handle, filename, 'A')` (append mode) fails silently if the file does not exist. Unlike C's `fopen("file", "a")`, ARexx append mode requires the file to already exist. If OPEN returns 0 (failure), subsequent WRITELN calls are silently dropped.
+
+**Fix:** Always create the file with `OPEN(handle, filename, 'W')` first (write mode creates), then CLOSE it. Subsequent OPEN with 'A' will succeed:
+```rexx
+/* Create the file first */
+IF OPEN('sf', 'WORK:summary.txt', 'W') THEN
+    CALL CLOSE('sf')
+
+/* Now append works */
+IF OPEN('sf', 'WORK:summary.txt', 'A') THEN DO
+    CALL WRITELN('sf', 'new line')
+    CALL CLOSE('sf')
+END
+```
+
+Discovered in SDL2 test harness (2026-03-28) -- test_summary.txt was never created because all OPEN('A') calls failed silently.
+
+## ARexx Echo with Embedded Redirect Characters Is Unreliable
+
+`ADDRESS COMMAND 'Echo "cmd >outfile" >scriptfile'` does not reliably preserve the `>` inside the quoted string on AmigaDOS. The shell may interpret the inner `>` as a redirect before Echo sees it, depending on the AmigaDOS shell version and quoting context.
+
+**Fix:** Use ARexx `OPEN/WRITELN` to write Execute scripts instead of Echo:
+```rexx
+/* BAD -- embedded > may be misinterpreted */
+ADDRESS COMMAND 'Echo "WORK:test >WORK:result.txt" >T:script'
+
+/* GOOD -- ARexx file I/O, no shell parsing */
+IF OPEN('scr', 'T:script', 'W') THEN DO
+    CALL WRITELN('scr', 'WORK:test >WORK:result.txt')
+    CALL CLOSE('scr')
+END
+ADDRESS COMMAND 'Execute T:script'
+```
+
+This is the proven pattern from amiport's test-runner.rexx. Discovered in SDL2 test harness (2026-03-28) -- all 4 tests returned RC=20 because Execute scripts contained garbled commands.
+
+## vamos -s Stack Size Is in KiB, Not Bytes
+
+The vamos `-s` / `--stack-size` flag specifies stack size in **kibibytes** (KiB), not bytes. `-s 65536` allocates 64 MB of stack, which exceeds vamos's memory allocation limit and crashes with `VamosInternalError: [alloc: NO MEMORY]`.
+
+**Fix:** Use `-s 32` for 32 KiB stack (matching typical `__stack = 32768` in programs):
+```makefile
+VAMOS = vamos -C 68020 -s 32 -m 8192
+```
+
+Discovered in SDL2 Makefile (2026-03-28) -- `make test` crashed immediately with OOM.

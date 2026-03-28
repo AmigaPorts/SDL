@@ -1,0 +1,15 @@
+# SDL2 AmigaOS3 Test Registry -- single source of truth
+# Format: NAME CATEGORY TIER
+#   NAME:     binary name (without path)
+#   CATEGORY: SMOKE, UNIT, VIDEO, INPUT, AUDIO
+#   TIER:     1 = vamos only, 2 = FS-UAE only, 12 = both
+#
+# Parsed by: Makefile (test-vamos), test-fsemu.sh (deploy+ARexx gen)
+
+test_bare      SMOKE  12
+test_init      SMOKE  12
+test_spinlock  UNIT   12
+test_timer     UNIT   12
+test_video     VIDEO  2
+test_events    INPUT  2
+test_sprite    VIDEO  2

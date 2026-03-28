@@ -12,7 +12,6 @@
 
 #if SDL_VIDEO_DRIVER_AMIGAOS3
 
-#include <stdio.h>
 #include <proto/dos.h>
 #include "SDL_os3video.h"
 #include "SDL_os3window.h"
@@ -114,18 +113,12 @@ static int OS3_VideoInit(_THIS)
     oldwin = me->pr_WindowPtr;
     me->pr_WindowPtr = (APTR)-1L;
 
-    printf("[OS3_VideoInit] opening graphics.library...\n");
-    fflush(stdout);
-
     GfxBase = (struct GfxBase *)
               OpenLibrary((CONST_STRPTR)"graphics.library", 39UL);
     if (!GfxBase) {
         me->pr_WindowPtr = oldwin;
         return SDL_SetError("Cannot open graphics.library V39+");
     }
-
-    printf("[OS3_VideoInit] opening intuition.library...\n");
-    fflush(stdout);
 
     IntuitionBase = (struct IntuitionBase *)
                     OpenLibrary((CONST_STRPTR)"intuition.library", 39UL);
@@ -135,9 +128,6 @@ static int OS3_VideoInit(_THIS)
         me->pr_WindowPtr = oldwin;
         return SDL_SetError("Cannot open intuition.library V39+");
     }
-
-    printf("[OS3_VideoInit] opening cybergraphics.library...\n");
-    fflush(stdout);
 
     /* Try CyberGraphX name first (native CGX or P96 with monitor driver).
        Fall back to Picasso96API.library (P96 without monitor driver,
@@ -151,10 +141,6 @@ static int OS3_VideoInit(_THIS)
 
     /* Restore requesters now that library opens are done */
     me->pr_WindowPtr = oldwin;
-
-    printf("[OS3_VideoInit] cybergraphics.library: %s\n",
-           CyberGfxBase ? "OK" : "FAILED");
-    fflush(stdout);
 
     if (!CyberGfxBase) {
         CloseLibrary((struct Library *)IntuitionBase);

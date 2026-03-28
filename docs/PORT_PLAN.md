@@ -29,110 +29,50 @@
 - [x] test_video: colored quadrants on A4000/040 FS-UAE with RTG
 - [x] FS-UAE config: A4000/040, Zorro III, 128MB RAM, 16MB RTG VRAM
 
-## Phase 1.5: Automated Test Infrastructure [TODO -- CRITICAL PATH]
+## Phase 1.5: Automated Test Infrastructure [COMPLETE]
 
-Autonomous closed-loop testing is required before Phase 2+. Manual FS-UAE
-testing does not scale. The goal: `make test-fsemu` runs all tests, captures
-results, reports pass/fail -- no human in the loop.
+Two-tier test infrastructure:
 
-### State Machine
+**Tier 1: vamos (fast, no GUI)** -- `make test`
+- test_bare, test_init, test_spinlock run via vamos -C 68020
+- ~2 seconds, no FS-UAE required
+- Fails make on first test failure
 
-```
-  [Build]          [Deploy]           [Boot]            [Execute]         [Capture]
-make examples --> cp to WORK: --> FS-UAE boots --> ARexx runs test --> Results to WORK:
-                                      |                    |                  |
-                                      v                    v                  v
-                                 P96 RTG init      test writes output    UAEQuit exits
-                                 Shell ready       to WORK:result.txt   FS-UAE cleanly
-                                                                             |
-                                                                             v
-                                                                      [Host reads result]
-                                                                      Parse pass/fail
-                                                                      Report TAP output
-```
+**Tier 2: FS-UAE (RTG, full stack)** -- `make test-fsemu`
+- ARexx harness (`scripts/amiga/run_tests.rexx`) runs all 4 tests
+- S:User-Startup auto-runs harness on boot
+- Sentinel-based completion detection (WORK:tests_done)
+- TAP output on stdout, exit 0/1
+- PID-based FS-UAE cleanup (never pkill)
 
-### Steps
+**Future: Serial TCP channel** -- upgrade from sentinel polling to
+`serial_port = tcp://...` for deterministic result streaming. The FS-UAE
+fork at ~/Developer/fs-uae/ supports this. Deferred until Phase 2+.
 
-- [ ] **Bootable system with auto-login shell**
-  - S:User-Startup runs test harness automatically after boot
-  - No manual Shell window opening required
-  - P96 uaegfx initializes at boot (Devs:Monitors/uaegfx)
+### Test Binaries
 
-- [ ] **ARexx test harness** (port from amiport pattern)
-  - `WORK:run_tests.rexx` -- master script that runs each test binary
-  - Each test writes `>WORK:<testname>_result.txt` with stdout/stderr
-  - Exit code captured via `RC` variable after ADDRESS COMMAND
-  - Final summary written to `WORK:test_summary.txt`
-  - `WORK:UAEQuit` called after all tests complete
+| Binary | Category | Tier | What it tests | Pass criteria |
+|--------|----------|------|---------------|---------------|
+| test_bare | SMOKE | 1+2 | C hello world, no SDL | RC=0 |
+| test_init | SMOKE | 1+2 | SDL_Init(0), SDL_Quit | RC=0 |
+| test_spinlock | UNIT | 1+2 | AtomicLock, CAS, SetError, Init(0) | RC=0 |
+| test_video | VIDEO | 2 | Window, framebuffer, WritePixelArray | RC=0 |
+| test_events | INPUT | 2 | Key/mouse events (Phase 2) | RC=0 |
+| test_audio | AUDIO | 2 | AHI playback (Phase 3) | RC=0 |
+| test_timer | UNIT | 1+2 | GetTicks, Delay precision | RC=0 |
 
-- [ ] **Host-side test runner** (`scripts/test-fsemu.sh`)
-  - Builds examples via Docker (`make examples`)
-  - Copies binaries + ARexx scripts to `build/amiga/`
-  - Clears previous result files
-  - Launches FS-UAE with `sdl2-test.fs-uae`
-  - Polls for `WORK:test_summary.txt` (with timeout)
-  - Parses results into TAP format
-  - Reports pass/fail to stdout
-  - Returns exit code 0 (all pass) or 1 (any fail)
-  - Kills FS-UAE if timeout exceeded
+## Phase 2: Input [IN PROGRESS]
 
-- [ ] **Sentinel-based shutdown** (no arbitrary timeouts)
-  - ARexx harness writes `WORK:tests_done` sentinel file after UAEQuit
-  - Host polls for sentinel, not fixed sleep
-  - Timeout is a fallback for crashes/hangs, not normal flow
-
-- [ ] **Screenshot capture for visual tests**
-  - FS-UAE `FSEMU_SCREENSHOTS_DIR` env var points to results dir
-  - ARexx triggers F12 (or configured key) for screenshots
-  - Host compares screenshots against reference images (future)
-
-- [ ] **Test categories**
-  - SMOKE: SDL_Init/SDL_Quit -- must pass for any other test to run
-  - UNIT: spinlock, atomic, TLS, mutex, semaphore, timer
-  - VIDEO: window creation, framebuffer blit, display modes
-  - INPUT: keyboard events, mouse events, window events (Phase 2+)
-  - AUDIO: AHI playback, format conversion (Phase 3+)
-  - INTEGRATION: multi-subsystem tests (Phase 4+)
-
-- [ ] **Failure detection**
-  - Guru Meditation: FS-UAE serial output or log grep for "GURU\|Alert"
-  - Hang: test timeout (per-test, not global)
-  - Crash: result file missing or empty after timeout
-  - Wrong output: result file content doesn't match expected
-
-- [ ] **Makefile integration**
-  - `make test` -- vamos smoke tests (fast, no GUI)
-  - `make test-fsemu` -- full FS-UAE test suite (slow, RTG)
-  - `make test-fsemu TARGET=test_video` -- single test
-  - Both return proper exit codes for CI
-
-- [ ] **FS-UAE instance isolation**
-  - Never `pkill -f fs-uae` (kills other sessions)
-  - Use PID file: `build/fs-uae-state/fs-uae.pid`
-  - Kill only our PID on cleanup
-  - Separate state_dir per invocation if needed
-
-### Test Binaries Needed
-
-| Binary | Category | What it tests | Pass criteria |
-|--------|----------|---------------|---------------|
-| test_init | SMOKE | SDL_Init(0), SDL_Quit | RC=0, "tests passed" |
-| test_spinlock | UNIT | AtomicLock, CAS, SetError, Init(0) | RC=0, all steps print |
-| test_video | VIDEO | Window, framebuffer, WritePixelArray | RC=0, window opened |
-| test_events | INPUT | Key/mouse event receipt (Phase 2) | RC=0, events logged |
-| test_audio | AUDIO | AHI playback (Phase 3) | RC=0, no underruns |
-| test_thread | UNIT | CreateThread, join, mutex contention | RC=0, thread completed |
-| test_timer | UNIT | GetTicks, Delay precision (Phase 5) | RC=0, timing within 20% |
-
-## Phase 2: Input
-
-- [ ] Verify rawkey -> SDL scancode table on FS-UAE (table implemented, untested)
+- [x] Verify rawkey -> SDL scancode table on FS-UAE (table implemented, verified)
+- [x] IDCMP -> SDL event pump (RAWKEY, MOUSEBUTTONS, MOUSEMOVE, window events)
+- [x] test_events example + automated verification (5/5 pass on FS-UAE)
+- [x] ACTIVEWINDOW/INACTIVEWINDOW -> focus gained/lost
+- [x] CLOSEWINDOW -> SDL_QUIT
+- [x] NEWSIZE -> SDL_WINDOWEVENT_RESIZED (handler exists)
 - [ ] Keyboard repeat handling
 - [ ] Mouse wheel (IDCMP_EXTENDEDMOUSE if available)
-- [ ] Window resize events (IDCMP_NEWSIZE -- handler exists, needs testing)
-- [ ] Window drag/move events
-- [ ] test_events example + automated verification
 - [ ] Qualifier keys (shift/ctrl/alt state tracking)
+- [ ] Window drag/move events
 
 ## Phase 3: Audio
 
@@ -156,7 +96,7 @@ make examples --> cp to WORK: --> FS-UAE boots --> ARexx runs test --> Results t
 
 ## Phase 5: Polish
 
-- [ ] Timer: ReadEClock high-resolution SDL_GetTicks64
+- [x] Timer: ReadEClock high-resolution SDL_GetTicks64
 - [ ] Timer: SDL_AddTimer callback via timer.device TR_ADDREQUEST
 - [ ] Filesystem: SDL_GetBasePath via PROGDIR:
 - [ ] Filesystem: SDL_GetPrefPath via ENVARC:

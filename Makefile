@@ -230,7 +230,7 @@ TARGET = libSDL2.a
 
 # --- Targets ---
 
-.PHONY: all clean examples test setup-toolchain docker-build
+.PHONY: all clean examples test test-fsemu test-vamos setup-toolchain docker-build
 
 all: docker-build
 
@@ -256,19 +256,40 @@ examples: docker-build
 	docker run --rm -v "$(PWD):/work" -w /work $(DOCKER_IMAGE) \
 		make -f Makefile native-examples
 
+# test_bare links without SDL; all others link with -lSDL2 -lm
 native-examples: $(TARGET)
 	$(CC) $(CFLAGS) -o examples/test_bare examples/test_bare.c
 	@echo "Built examples/test_bare (no SDL)"
-	$(CC) $(CFLAGS) -o examples/test_spinlock examples/test_spinlock.c -L. -lSDL2 -lm
-	@echo "Built examples/test_spinlock"
-	$(CC) $(CFLAGS) -o examples/test_init examples/test_init.c -L. -lSDL2 -lm
-	@echo "Built examples/test_init"
-	$(CC) $(CFLAGS) -o examples/test_video examples/test_video.c -L. -lSDL2 -lm
-	@echo "Built examples/test_video"
+	@for t in $$(grep -v '^#' tests.txt | grep -v test_bare | awk '{print $$1}'); do \
+		$(CC) $(CFLAGS) -o examples/$$t examples/$$t.c -L. -lSDL2 -lm && \
+		echo "Built examples/$$t" ; \
+	done
 
-test:
-	@echo "Run: vamos -C 68020 -s 32 -m 8192 examples/test_init"
-	@echo "(vamos -C 68020 is correct: 68030 integer ISA == 68020, vamos has no -C 68030)"
+test: test-vamos
+
+# Run vamos smoke tests (fast, no GUI, no RTG)
+# Tier 1 and 12 tests from tests.txt are run on vamos.
+# vamos -C 68020: 68030 integer ISA == 68020, vamos has no -C 68030
+VAMOS = vamos -C 68020 -s 32 -m 8192
+
+test-vamos: examples
+	@echo "=== vamos smoke tests ==="
+	@PASS=0; TOTAL=0; \
+	for line in $$(grep -v '^#' tests.txt | awk '$$3 ~ /1/ {print $$1}'); do \
+		TOTAL=$$((TOTAL + 1)); \
+		echo "--- $$line ---"; \
+		$(VAMOS) examples/$$line && { echo "PASS $$line"; PASS=$$((PASS + 1)); } || { echo "FAIL $$line"; exit 1; }; \
+	done; \
+	echo "=== vamos: $$PASS/$$TOTAL passed ==="
+
+# Run full FS-UAE test suite (RTG, all tests)
+# Requires FS-UAE, Kickstart 3.1 ROM, and build/system/ WB 3.1
+test-fsemu:
+	scripts/test-fsemu.sh
+
+# Run FS-UAE tests without rebuilding examples first
+test-fsemu-no-build:
+	scripts/test-fsemu.sh --no-build
 
 setup-toolchain:
 	@echo "Pulling bebbo-gcc Docker image..."

@@ -13,7 +13,6 @@
 
 #if SDL_VIDEO_DRIVER_AMIGAOS3
 
-#include <stdio.h>
 #include "SDL_os3video.h"
 #include "SDL_os3framebuffer.h"
 
@@ -87,19 +86,6 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
      *   sizeY    -- rect.h
      *   srcFormat-- RECTFMT_ARGB (matches SDL_PIXELFORMAT_ARGB8888)
      */
-    /* Debug: dump info and check if RastPort bitmap is CGX-capable */
-    {
-        Uint32 *pix = (Uint32 *)surface->pixels;
-        struct BitMap *bm = data->window->RPort->BitMap;
-        ULONG iscyber = GetCyberMapAttr(bm, CYBRMATTR_ISCYBERGFX);
-        ULONG depth = GetCyberMapAttr(bm, CYBRMATTR_DEPTH);
-        printf("[FB] numrects=%d firstpixel=0x%08lx\n",
-               numrects, (unsigned long)pix[0]);
-        printf("[FB] RPort BitMap: IsCyberGfx=%ld depth=%ld\n",
-               (long)iscyber, (long)depth);
-        fflush(stdout);
-    }
-
     for (i = 0; i < numrects; i++) {
         const SDL_Rect *r   = &rects[i];
         UBYTE          *src;
