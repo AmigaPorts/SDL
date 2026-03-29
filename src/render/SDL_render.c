@@ -3388,6 +3388,8 @@ int SDL_RenderFillRect(SDL_Renderer *renderer, const SDL_Rect *rect)
     } else {
         RenderGetViewportSize(renderer, &frect);
     }
+    SDL_Log("SDL_RenderFillRect: frect=(%ld,%ld,%ld,%ld) calling FillRectsF",
+            (long)frect.x, (long)frect.y, (long)frect.w, (long)frect.h);
     return SDL_RenderFillRectsF(renderer, &frect, 1);
 }
 
@@ -3471,20 +3473,31 @@ int SDL_RenderFillRectsF(SDL_Renderer *renderer,
     }
 #endif
 
-    frects = SDL_small_alloc(SDL_FRect, count, &isstack);
+    SDL_Log("FillRectsF: count=%d", count);
+
+    frects = (SDL_FRect *)SDL_malloc(count * sizeof(SDL_FRect));
+    isstack = SDL_FALSE;
     if (!frects) {
         return SDL_OutOfMemory();
     }
+    SDL_Log("FillRectsF: malloc ok frects=%p, scaling", (void*)frects);
     for (i = 0; i < count; ++i) {
+        SDL_Log("FillRectsF: rect[%d] in=(%ld,%ld,%ld,%ld)", i,
+                (long)rects[i].x, (long)rects[i].y,
+                (long)rects[i].w, (long)rects[i].h);
         frects[i].x = rects[i].x * renderer->scale.x;
+        SDL_Log("FillRectsF: .x done");
         frects[i].y = rects[i].y * renderer->scale.y;
         frects[i].w = rects[i].w * renderer->scale.x;
         frects[i].h = rects[i].h * renderer->scale.y;
+        SDL_Log("FillRectsF: rect[%d] scaled ok", i);
     }
 
+    SDL_Log("FillRectsF: queuing");
     retval = QueueCmdFillRects(renderer, frects, count);
+    SDL_Log("FillRectsF: queue rc=%d, flushing", retval);
 
-    SDL_small_free(frects, isstack);
+    SDL_free(frects);
 
     return retval < 0 ? retval : FlushRenderCommandsIfNotBatching(renderer);
 }
