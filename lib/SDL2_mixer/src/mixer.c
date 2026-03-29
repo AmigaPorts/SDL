@@ -500,7 +500,8 @@ int Mix_OpenAudioDevice(int frequency, Uint16 format, int nchannels, int chunksi
     /* Accept nearly any audio format */
     /* AmigaOS 3.x: Paula is fixed at AUDIO_S8 mono. Force the mixer to
        accept whatever the device offers rather than building an internal
-       conversion stream. The mixer math runs in the device's native format. */
+       conversion stream. The mixer math runs in the device's native format.
+       OPL music callers must handle the actual format from Mix_QuerySpec. */
 #ifdef __AMIGAOS3__
     allowed_changes = SDL_AUDIO_ALLOW_ANY_CHANGE;
 #endif
