@@ -3,10 +3,13 @@
   Framebuffer: SDL_Surface <-> Intuition RastPort via WritePixelArray.
 
   Pixel format: SDL_PIXELFORMAT_ARGB8888 <-> RECTFMT_ARGB.
-  This avoids any color conversion on ARGB32 RTG boards (the most common).
+  WritePixelArray handles ARGB->screen format conversion correctly.
+
+  Scaling strategy: WritePixelArray to a temp CGX BitMap (handles format
+  conversion), then BltBitMapRastPort to stretch to the window.
+  ScalePixelArray is avoided -- P96/uaegfx has color/banding bugs with it.
 
   Reference: cybergraphx-reference.md -- WritePixelArray section
-             Pitfall #7: alignment must be LONG (4-byte) aligned.
 */
 
 #include "../../SDL_internal.h"
@@ -15,9 +18,14 @@
 
 #include "SDL_os3video.h"
 #include "SDL_os3framebuffer.h"
+#include <graphics/scale.h>
 
 /* Key used to store the framebuffer SDL_Surface in SDL's window data map */
 #define OS3_SURFACE_KEY "_SDL_OS3Surface"
+
+/* Keys for scaling resources */
+#define OS3_SCALEBM_KEY  "_SDL_OS3ScaleBM"
+#define OS3_SCALERP_KEY  "_SDL_OS3ScaleRP"
 
 /* Bytes per pixel for ARGB8888 */
 #define OS3_BPP 4
@@ -38,15 +46,41 @@ int OS3_CreateWindowFramebuffer(_THIS, SDL_Window *window,
 
     SDL_GetWindowSizeInPixels(window, &w, &h);
 
-    /* ARGB8888 matches RECTFMT_ARGB -- no conversion needed on ARGB32 boards */
     surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32,
                                             SDL_PIXELFORMAT_ARGB8888);
     if (!surface) {
         return -1;
     }
 
-    /* Store it in the window data map */
     SDL_SetWindowData(window, OS3_SURFACE_KEY, surface);
+
+    /* Pre-allocate scaling resources if window > surface */
+    {
+        int win_w = data->window->Width;
+        int win_h = data->window->Height;
+        if (win_w > w || win_h > h) {
+            /* Allocate a friend BitMap at the surface size.
+             * This is a CGX bitmap matching the screen's pixel format,
+             * so WritePixelArray can convert ARGB -> native format,
+             * and BltBitMapRastPort can then scale it. */
+            struct BitMap *friend_bm = data->window->RPort->BitMap;
+            struct BitMap *scale_bm = AllocBitMap(w, h,
+                GetCyberMapAttr(friend_bm, CYBRMATTR_DEPTH),
+                BMF_MINPLANES, friend_bm);
+
+            if (scale_bm) {
+                struct RastPort *scale_rp;
+                SDL_SetWindowData(window, OS3_SCALEBM_KEY, scale_bm);
+
+                scale_rp = (struct RastPort *)SDL_calloc(1, sizeof(struct RastPort));
+                if (scale_rp) {
+                    InitRastPort(scale_rp);
+                    scale_rp->BitMap = scale_bm;
+                    SDL_SetWindowData(window, OS3_SCALERP_KEY, scale_rp);
+                }
+            }
+        }
+    }
 
     *format = SDL_PIXELFORMAT_ARGB8888;
     *pixels = surface->pixels;
@@ -71,46 +105,66 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
         return SDL_SetError("OS3_UpdateWindowFramebuffer: no framebuffer surface");
     }
 
-    /*
-     * Blit each dirty rectangle to the RastPort.
-     *
-     * WritePixelArray parameters:
-     *   srcRect  -- pointer into SDL surface pixel buffer at (rect.x, rect.y)
-     *   srcX     -- 0 (we already offset the pointer)
-     *   srcY     -- 0
-     *   srcMod   -- surface->pitch (bytes per row of the full surface)
-     *   rastPort -- window->RPort  (WA_GimmeZeroZero makes (0,0) = inner area)
-     *   destX    -- rect.x
-     *   destY    -- rect.y
-     *   sizeX    -- rect.w
-     *   sizeY    -- rect.h
-     *   srcFormat-- RECTFMT_ARGB (matches SDL_PIXELFORMAT_ARGB8888)
-     */
-    /* Check if we need to scale: window (Intuition) is larger than
-     * framebuffer (SDL surface). This happens when a game opens a
-     * 320x200 window on a 640x480 custom screen. */
     {
         int win_w = data->window->Width;
         int win_h = data->window->Height;
         int need_scale = (win_w > surface->w || win_h > surface->h);
 
         if (need_scale) {
-            /* Scale the entire framebuffer to fill the window.
-             * ScalePixelArray (CGX V41) does hardware-assisted scaling. */
-            ScalePixelArray(
-                (APTR)surface->pixels,
-                (UWORD)surface->w,
-                (UWORD)surface->h,
-                (UWORD)surface->pitch,
-                data->window->RPort,
-                0,
-                0,
-                (UWORD)win_w,
-                (UWORD)win_h,
-                RECTFMT_ARGB
-            );
+            struct RastPort *scale_rp =
+                (struct RastPort *)SDL_GetWindowData(window, OS3_SCALERP_KEY);
+            struct BitMap *scale_bm =
+                (struct BitMap *)SDL_GetWindowData(window, OS3_SCALEBM_KEY);
+
+            if (scale_rp && scale_bm) {
+                struct BitScaleArgs bsa;
+
+                /* Step 1: WritePixelArray converts ARGB surface -> native
+                 * format in the temp bitmap. This conversion is correct. */
+                WritePixelArray(
+                    (APTR)surface->pixels,
+                    0, 0,
+                    (UWORD)surface->pitch,
+                    scale_rp,
+                    0, 0,
+                    (UWORD)surface->w,
+                    (UWORD)surface->h,
+                    RECTFMT_ARGB
+                );
+
+                /* Step 2: BitMapScale stretches the temp bitmap to the
+                 * window's RastPort. Works on native CGX bitmaps. */
+                SDL_memset(&bsa, 0, sizeof(bsa));
+                bsa.bsa_SrcBitMap  = scale_bm;
+                bsa.bsa_SrcX       = 0;
+                bsa.bsa_SrcY       = 0;
+                bsa.bsa_SrcWidth   = surface->w;
+                bsa.bsa_SrcHeight  = surface->h;
+                bsa.bsa_XSrcFactor = surface->w;
+                bsa.bsa_YSrcFactor = surface->h;
+                bsa.bsa_XDestFactor = win_w;
+                bsa.bsa_YDestFactor = win_h;
+                bsa.bsa_DestBitMap = data->window->RPort->BitMap;
+                bsa.bsa_DestX      = 0;
+                bsa.bsa_DestY      = 0;
+
+                BitMapScale(&bsa);
+            } else {
+                /* Fallback: blit without scaling */
+                WritePixelArray(
+                    (APTR)surface->pixels,
+                    0, 0,
+                    (UWORD)surface->pitch,
+                    data->window->RPort,
+                    0, 0,
+                    (UWORD)surface->w,
+                    (UWORD)surface->h,
+                    RECTFMT_ARGB
+                );
+            }
         } else {
-            /* No scaling needed -- blit dirty rects directly */
+            /* No scaling needed -- blit dirty rects directly.
+             * WritePixelArray handles ARGB->screen conversion correctly. */
             for (i = 0; i < numrects; i++) {
                 const SDL_Rect *r = &rects[i];
                 UBYTE *src;
@@ -125,8 +179,7 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
 
                 WritePixelArray(
                     (APTR)src,
-                    0,
-                    0,
+                    0, 0,
                     (UWORD)surface->pitch,
                     data->window->RPort,
                     (UWORD)r->x,
@@ -145,9 +198,19 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
 void OS3_DestroyWindowFramebuffer(_THIS, SDL_Window *window)
 {
     SDL_Surface *surface;
+    struct RastPort *scale_rp;
+    struct BitMap *scale_bm;
 
     surface = (SDL_Surface *)SDL_SetWindowData(window, OS3_SURFACE_KEY, NULL);
     SDL_FreeSurface(surface);
+
+    scale_rp = (struct RastPort *)SDL_SetWindowData(window, OS3_SCALERP_KEY, NULL);
+    SDL_free(scale_rp);
+
+    scale_bm = (struct BitMap *)SDL_SetWindowData(window, OS3_SCALEBM_KEY, NULL);
+    if (scale_bm) {
+        FreeBitMap(scale_bm);
+    }
 }
 
 #endif /* SDL_VIDEO_DRIVER_AMIGAOS3 */

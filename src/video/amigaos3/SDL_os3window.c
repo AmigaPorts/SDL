@@ -365,9 +365,11 @@ void OS3_SetWindowFullscreen(_THIS, SDL_Window *window,
                 screen->UserData = (APTR)empty_ptr;
             }
 
-            /* Tell SDL2 the actual window size */
-            SDL_SendWindowEvent(window, SDL_WINDOWEVENT_RESIZED,
-                                (int)screen->Width, (int)screen->Height);
+            /* Do NOT send SDL_WINDOWEVENT_RESIZED to screen size.
+             * Keep SDL window at the game's logical size (e.g. 320x200).
+             * The framebuffer stays small and ScalePixelArray in
+             * UpdateWindowFramebuffer handles upscaling to the
+             * actual Intuition window/screen size. */
         } else {
             /* Fallback to windowed */
             OS3_OpenWindowed(data, window);
