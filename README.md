@@ -6,7 +6,9 @@
 
 ## What Works
 
-Two simple games run (game_2048, game_snake). The SDL_Texture streaming pipeline that [Chocolate Doom](https://github.com/bdgscotland/chocolate-doom) needs is validated. Lots still to do.
+**[Chocolate Doom 3.1.0](https://github.com/bdgscotland/chocolate-doom) runs on this.** Zero patches to id's code. Playable at native 320x200 resolution on an emulated A4000/040 with CyberGraphX RTG. Two smaller games also working (2048, Snake).
+
+Fullscreen upscaling is the next challenge -- currently fast only at native resolution. No Doom audio yet (SDL2_mixer not ported).
 
 ### API Coverage
 
@@ -43,12 +45,6 @@ Loadso           N/A        No dlopen on AmigaOS 3.x
 
 20 automated tests pass. 2 games playable on FS-UAE.
 
-### What's Needed for Chocolate Doom
-
-- SDL_GetBasePath / SDL_GetPrefPath (currently return NULL)
-- SDL_SetRelativeMouseMode (FPS mouse look)
-- POSIX shims: opendir/readdir, stat (available in [amiport](https://github.com/bdgscotland/amiport))
-
 ### Test Suite
 
 | Category | Count | Platform |
@@ -56,8 +52,8 @@ Loadso           N/A        No dlopen on AmigaOS 3.x
 | Automated (pass) | 20 | FS-UAE (all), vamos (11) |
 | Manual/Interactive | 15 | FS-UAE only, run individually |
 | Upstream SDL2 tests | 19 | From libsdl-org/SDL SDL2 branch |
-| Custom tests | 16 | Including test_texture (Doom path) |
-| Games | 2 | game_2048 (tiles), game_snake (arcade) |
+| Custom tests | 16 | Including test_texture (Doom rendering path) |
+| Games | 3 | Chocolate Doom, game_2048, game_snake |
 
 ## Hardware Requirements
 
