@@ -40,6 +40,11 @@
             "type": "command",
             "command": "bash scripts/hooks/check-ascii-source.sh",
             "statusMessage": "Checking for non-ASCII in C source..."
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/enforce-plan-before-code.sh",
+            "statusMessage": "Checking KB plan..."
           }
         ]
       }
@@ -52,6 +57,12 @@
             "command": "bash scripts/hooks/verify-before-stop.sh",
             "timeout": 10,
             "statusMessage": "Checking completion..."
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/enforce-kb-tracking.sh",
+            "timeout": 10,
+            "statusMessage": "Checking KB tracking..."
           }
         ]
       }

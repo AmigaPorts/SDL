@@ -218,6 +218,9 @@ examples/upstream/testutils.o
 !examples/*.h
 !examples/upstream/
 
+# Session sentinels
+.kb_plan_checked
+
 # Test artifacts
 *.log
 gmon.out

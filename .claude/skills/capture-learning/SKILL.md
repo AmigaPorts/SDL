@@ -14,15 +14,15 @@ or process failures.
 
 When invoked, analyze what happened and route to ONE of these destinations:
 
-### 1. Crash Pattern (docs/references/crash-patterns.md)
+### 1. Crash Pattern
 **When:** Guru Meditation, ALERT code, silent hang, memory corruption.
-**Action:** Add a numbered entry with: symptom, root cause, fix, affected code.
-**Also:** Call `mcp__amiga-kb__amiga_add_crash_pattern` if the KB MCP is available.
+**Action (MCP FIRST):** Call `mcp__amiga-kb__amiga_add_crash_pattern` to add to the shared KB. This is the primary store -- both amiport and libSDL2 benefit.
+**Also:** Add a numbered entry to `docs/references/crash-patterns.md` for local reference.
 
-### 2. Known Pitfall (.claude/rules/known-pitfalls.md or project known-pitfalls)
+### 2. Known Pitfall
 **When:** API misuse, behavioral difference between platforms, toolchain quirk.
-**Action:** Add entry with: title, description, fix, code example.
-**Also:** Call `mcp__amiga-kb__amiga_add_pitfall` if the KB MCP is available.
+**Action (MCP FIRST):** Call `mcp__amiga-kb__amiga_add_pitfall` to add to the shared KB. This is the primary store -- both amiport and libSDL2 benefit.
+**Also:** If critical-path (affects every build/test), add to `.claude/rules/known-pitfalls.md`.
 
 ### 3. Memory (auto-memory system)
 **When:** User preference, process correction, project context that helps future sessions.
