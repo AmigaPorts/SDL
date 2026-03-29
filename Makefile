@@ -215,6 +215,20 @@ SRCS_SENSOR = \
 	src/sensor/SDL_sensor.c \
 	src/sensor/dummy/SDL_dummysensor.c
 
+# --- Power: disabled (no battery on Amiga) ---
+SRCS_POWER = \
+	src/power/SDL_power.c
+
+# --- Locale: dummy stub ---
+SRCS_LOCALE = \
+	src/locale/SDL_locale.c \
+	src/locale/dummy/SDL_syslocale.c
+
+# --- Misc/URL: dummy stub ---
+SRCS_MISC = \
+	src/misc/SDL_url.c \
+	src/misc/dummy/SDL_sysurl.c
+
 # --- Main entry point ---
 SRCS_MAIN = \
 	src/main/amigaos3/SDL_os3_main.c
@@ -224,7 +238,8 @@ SRCS = $(SRCS_CORE) $(SRCS_ATOMIC) $(SRCS_CPUINFO) $(SRCS_DYNAPI) \
        $(SRCS_STDLIB) $(SRCS_LIBM) $(SRCS_FILE) $(SRCS_EVENTS) \
        $(SRCS_VIDEO) $(SRCS_AUDIO) $(SRCS_THREAD) $(SRCS_TIMER) \
        $(SRCS_JOYSTICK) $(SRCS_HAPTIC) $(SRCS_RENDER) \
-       $(SRCS_FILESYS) $(SRCS_LOADSO) $(SRCS_SENSOR) $(SRCS_MAIN)
+       $(SRCS_FILESYS) $(SRCS_LOADSO) $(SRCS_SENSOR) \
+       $(SRCS_POWER) $(SRCS_LOCALE) $(SRCS_MISC) $(SRCS_MAIN)
 
 OBJS = $(SRCS:.c=.o)
 
