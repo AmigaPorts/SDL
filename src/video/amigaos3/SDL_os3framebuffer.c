@@ -86,30 +86,57 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
      *   sizeY    -- rect.h
      *   srcFormat-- RECTFMT_ARGB (matches SDL_PIXELFORMAT_ARGB8888)
      */
-    for (i = 0; i < numrects; i++) {
-        const SDL_Rect *r   = &rects[i];
-        UBYTE          *src;
+    /* Check if we need to scale: window (Intuition) is larger than
+     * framebuffer (SDL surface). This happens when a game opens a
+     * 320x200 window on a 640x480 custom screen. */
+    {
+        int win_w = data->window->Width;
+        int win_h = data->window->Height;
+        int need_scale = (win_w > surface->w || win_h > surface->h);
 
-        if (r->w <= 0 || r->h <= 0) {
-            continue;
+        if (need_scale) {
+            /* Scale the entire framebuffer to fill the window.
+             * ScalePixelArray (CGX V41) does hardware-assisted scaling. */
+            ScalePixelArray(
+                (APTR)surface->pixels,
+                (UWORD)surface->w,
+                (UWORD)surface->h,
+                (UWORD)surface->pitch,
+                data->window->RPort,
+                0,
+                0,
+                (UWORD)win_w,
+                (UWORD)win_h,
+                RECTFMT_ARGB
+            );
+        } else {
+            /* No scaling needed -- blit dirty rects directly */
+            for (i = 0; i < numrects; i++) {
+                const SDL_Rect *r = &rects[i];
+                UBYTE *src;
+
+                if (r->w <= 0 || r->h <= 0) {
+                    continue;
+                }
+
+                src = (UBYTE *)surface->pixels
+                      + (r->y * surface->pitch)
+                      + (r->x * OS3_BPP);
+
+                WritePixelArray(
+                    (APTR)src,
+                    0,
+                    0,
+                    (UWORD)surface->pitch,
+                    data->window->RPort,
+                    (UWORD)r->x,
+                    (UWORD)r->y,
+                    (UWORD)r->w,
+                    (UWORD)r->h,
+                    RECTFMT_ARGB
+                );
+            }
         }
-
-        src = (UBYTE *)surface->pixels
-              + (r->y * surface->pitch)
-              + (r->x * OS3_BPP);
-
-        WritePixelArray(
-            (APTR)src,
-            0,
-            0,
-            (UWORD)surface->pitch,
-            data->window->RPort,
-            (UWORD)r->x,
-            (UWORD)r->y,
-            (UWORD)r->w,
-            (UWORD)r->h,
-            RECTFMT_ARGB
-        );
     }
 
     return 0;

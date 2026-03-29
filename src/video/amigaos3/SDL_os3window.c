@@ -260,11 +260,10 @@ static int OS3_OpenWindowed(OS3_WindowData *data, SDL_Window *window)
             WA_CustomScreen,  (ULONG)screen,
             TAG_DONE
         );
-        /* Update SDL window size to match screen */
-        if (iwin) {
-            window->w = (int)screen->Width;
-            window->h = (int)screen->Height;
-        }
+        /* Do NOT update window->w/h to screen size. Keep the SDL window
+         * at the game's requested size (e.g. 320x200). The renderer and
+         * framebuffer stay small, WritePixelArray only blits that area.
+         * The Intuition window fills the screen but the blit is fast. */
         if (!iwin) {
             CloseScreen(screen);
             return SDL_SetError("OS3: OpenWindowTags (windowed on custom) failed");
