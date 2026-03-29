@@ -52,6 +52,7 @@ test_render_debug     VIDEO  M
 
 # Games: interactive, manual play
 game_2048             VIDEO  M    TEST
+game_snake            VIDEO  M
 
 # Interactive tests: open a window/event loop, or run indefinitely.
 # Built by `make examples` but skipped by automated test harness.

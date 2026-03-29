@@ -77,6 +77,7 @@ static SDL_VideoDevice *OS3_CreateDevice(void)
     device->CreateSDLWindow  = OS3_CreateWindow;
     device->DestroyWindow    = OS3_DestroyWindow;
     device->SetWindowTitle   = OS3_SetWindowTitle;
+    device->SetWindowFullscreen = OS3_SetWindowFullscreen;
     device->ShowWindow       = OS3_ShowWindow;
     device->HideWindow       = OS3_HideWindow;
     device->RaiseWindow      = OS3_RaiseWindow;

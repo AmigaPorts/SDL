@@ -11,6 +11,8 @@
 extern int  OS3_CreateWindow(_THIS, SDL_Window *window);
 extern void OS3_DestroyWindow(_THIS, SDL_Window *window);
 extern void OS3_SetWindowTitle(_THIS, SDL_Window *window);
+extern void OS3_SetWindowFullscreen(_THIS, SDL_Window *window,
+                                    SDL_VideoDisplay *display, SDL_bool fullscreen);
 extern void OS3_ShowWindow(_THIS, SDL_Window *window);
 extern void OS3_HideWindow(_THIS, SDL_Window *window);
 extern void OS3_RaiseWindow(_THIS, SDL_Window *window);
