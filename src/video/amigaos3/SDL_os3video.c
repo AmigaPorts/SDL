@@ -86,6 +86,15 @@ static SDL_VideoDevice *OS3_CreateDevice(void)
     device->UpdateWindowFramebuffer  = OS3_UpdateWindowFramebuffer;
     device->DestroyWindowFramebuffer = OS3_DestroyWindowFramebuffer;
 
+    /* Disable the texture framebuffer optimization. SDL2 normally tries to
+     * create an accelerated texture via SDL_CreateRenderer when
+     * SDL_GetWindowSurface is first called (ShouldAttemptTextureFramebuffer).
+     * On AmigaOS with only a software renderer, this causes infinite
+     * recursion: SDL_CreateRenderer -> SDL_GetWindowSurface ->
+     * SDL_CreateWindowTexture -> SDL_CreateRenderer -> crash.
+     * Mark as already checked to skip the attempt entirely. */
+    device->checked_texture_framebuffer = SDL_TRUE;
+
     /* Events */
     device->PumpEvents = OS3_PumpEvents;
 

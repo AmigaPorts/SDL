@@ -46,6 +46,12 @@ testthread            UNIT   M    TEST
 testtimer             UNIT   2    TEST
 testfilesystem        UNIT   12   TEST
 
+# Debug / investigation tests
+test_render_debug     VIDEO  M
+
+# Games: interactive, manual play
+game_2048             VIDEO  M    TEST
+
 # Interactive tests: open a window/event loop, or run indefinitely.
 # Built by `make examples` but skipped by automated test harness.
 # Run individually: make test-fsemu TEST=checkkeys
