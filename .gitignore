@@ -188,3 +188,36 @@ debian/.debhelper/
 debian/files
 debian/libsdl*/
 debian/tmp/
+
+# Compiled example/test binaries (rebuilt by `make examples`)
+# Source files (.c, .h, .bmp) are tracked; binaries are not.
+examples/test_*
+examples/game_*
+examples/testatomic
+examples/testerror
+examples/testplatform
+examples/testqsort
+examples/testver
+examples/testthread
+examples/testtimer
+examples/testfilesystem
+examples/testlock
+examples/testsem
+examples/torturethread
+examples/testfile
+examples/testdrawchessboard
+examples/testspriteminimal
+examples/testmultiaudio
+examples/checkkeys
+examples/testdraw2
+examples/testsprite2
+examples/testwm2
+examples/sizecheck
+examples/upstream/testutils.o
+!examples/*.c
+!examples/*.h
+!examples/upstream/
+
+# Test artifacts
+*.log
+gmon.out
