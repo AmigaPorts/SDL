@@ -179,6 +179,11 @@ static int OS3_VideoInit(_THIS)
     best_mode.refresh_rate = 60;
     best_mode.driverdata = NULL;
 
+    /* Find the best 640x480 mode as the "desktop mode".
+     * On real Amigas this is the standard RTG resolution.
+     * Games that need larger can request specific modes.
+     * Using the largest mode (e.g. 2056x1329 on FS-UAE) causes
+     * fullscreen apps to blit enormous framebuffers. */
     found_any = 0;
     nextid = NextDisplayInfo(INVALID_ID);
     while (nextid != INVALID_ID) {
@@ -188,13 +193,23 @@ static int OS3_VideoInit(_THIS)
             ULONG bpp = GetCyberIDAttr(CYBRIDATTR_DEPTH,  nextid);
             Uint32 fmt = OS3_DepthToFormat((int)bpp);
 
-            if (fmt != SDL_PIXELFORMAT_UNKNOWN) {
-                if (!found_any || (int)w > best_mode.w ||
-                    ((int)w == best_mode.w && (int)h > best_mode.h)) {
+            if (fmt != SDL_PIXELFORMAT_UNKNOWN && (int)bpp >= 16) {
+                /* Prefer 640x480 as desktop mode. Accept larger only
+                 * if we haven't found a 640x480 yet. */
+                if (!found_any) {
                     best_mode.w      = (int)w;
                     best_mode.h      = (int)h;
                     best_mode.format = fmt;
                     found_any = 1;
+                } else if ((int)w == 640 && (int)h == 480) {
+                    best_mode.w      = 640;
+                    best_mode.h      = 480;
+                    best_mode.format = fmt;
+                } else if (best_mode.w != 640 && (int)w < best_mode.w) {
+                    /* Haven't found 640x480 yet; pick smallest available */
+                    best_mode.w      = (int)w;
+                    best_mode.h      = (int)h;
+                    best_mode.format = fmt;
                 }
             }
         }
@@ -262,10 +277,60 @@ static void OS3_GetDisplayModes(_THIS, SDL_VideoDisplay *display)
 static int OS3_SetDisplayMode(_THIS, SDL_VideoDisplay *display,
                               SDL_DisplayMode *mode)
 {
-    /* Phase 1: stub -- windowed mode does not switch display modes.
-       Full display switching deferred to Phase 5. */
-    (void)display;
-    (void)mode;
+    OS3_DisplayData *data = (OS3_DisplayData *)display->driverdata;
+    ULONG modeid;
+    struct Screen *screen;
+    int depth;
+
+    if (!mode) {
+        /* NULL mode = restore desktop mode. Close fullscreen screen if any. */
+        if (data && data->fullscreen_screen) {
+            CloseScreen(data->fullscreen_screen);
+            data->fullscreen_screen = NULL;
+        }
+        return 0;
+    }
+
+    /* Close any previous fullscreen screen */
+    if (data && data->fullscreen_screen) {
+        CloseScreen(data->fullscreen_screen);
+        data->fullscreen_screen = NULL;
+    }
+
+    depth = SDL_BYTESPERPIXEL(mode->format) * 8;
+    if (depth < 16) depth = 16;
+
+    modeid = BestCModeIDTags(
+        CYBRBIDTG_NominalWidth,  mode->w,
+        CYBRBIDTG_NominalHeight, mode->h,
+        CYBRBIDTG_Depth,         depth,
+        TAG_DONE
+    );
+    if (modeid == INVALID_ID) {
+        return SDL_SetError("OS3_SetDisplayMode: no matching CGX mode for %dx%dx%d",
+                            mode->w, mode->h, depth);
+    }
+
+    screen = OpenScreenTags(NULL,
+        SA_Title,      (ULONG)"SDL",
+        SA_Quiet,      TRUE,
+        SA_ShowTitle,  FALSE,
+        SA_Depth,      (ULONG)depth,
+        SA_DisplayID,  modeid,
+        SA_Type,       CUSTOMSCREEN,
+        SA_Exclusive,  TRUE,
+        SA_Draggable,  FALSE,
+        SA_AutoScroll, FALSE,
+        TAG_DONE
+    );
+    if (!screen) {
+        return SDL_SetError("OS3_SetDisplayMode: OpenScreenTags failed");
+    }
+
+    if (data) {
+        data->fullscreen_screen = screen;
+    }
+
     return 0;
 }
 

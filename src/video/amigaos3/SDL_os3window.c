@@ -80,6 +80,10 @@ static int OS3_OpenFullscreen(OS3_WindowData *data, int w, int h)
     struct Screen *screen;
     struct Window *iwin;
 
+    /* Ensure minimum 640x480 for fullscreen (smallest standard RTG mode) */
+    if (w < 640) w = 640;
+    if (h < 480) h = 480;
+
     modeid = BestCModeIDTags(
         CYBRBIDTG_NominalWidth,  w,
         CYBRBIDTG_NominalHeight, h,
@@ -157,18 +161,24 @@ static int OS3_OpenWindowed(OS3_WindowData *data, SDL_Window *window)
     int use_wb = 0;
     int xpos, ypos;
 
-    /* Lock the default public screen (Workbench) and check if it's RTG */
+    /* Lock the default public screen (Workbench) and check if it's RTG.
+     * Only use WB if the window is large enough to benefit (>= 640x480).
+     * Small windows (games at 320x200 etc.) get their own custom screen
+     * to avoid the tiny-window-on-huge-desktop problem. */
     wbscreen = LockPubScreen(NULL);
     if (wbscreen) {
         struct BitMap *bm = wbscreen->RastPort.BitMap;
         if (GetCyberMapAttr(bm, CYBRMATTR_ISCYBERGFX)) {
-            use_wb = 1;
+            /* Only use WB screen if window fills most of it */
+            if (window->w >= 640 && window->h >= 400) {
+                use_wb = 1;
+            }
         }
         UnlockPubScreen(NULL, wbscreen);
     }
 
     if (use_wb) {
-        /* WB is an RTG screen -- open a window on it */
+        /* WB is an RTG screen and window is large enough -- open on it */
         xpos = (window->x == SDL_WINDOWPOS_CENTERED ||
                 window->x == SDL_WINDOWPOS_UNDEFINED) ? 32 : window->x;
         ypos = (window->y == SDL_WINDOWPOS_CENTERED ||
@@ -221,13 +231,18 @@ static int OS3_OpenWindowed(OS3_WindowData *data, SDL_Window *window)
             return SDL_SetError("OS3: no RTG mode found for windowed");
         }
 
+        /* Open a borderless fullscreen window on a custom screen.
+         * The window fills the entire screen; SDL2's logical size
+         * scaling handles mapping the game's coordinates. */
         screen = OpenScreenTags(NULL,
-            SA_Title,      (ULONG)(window->title ? window->title : "SDL"),
-            SA_ShowTitle,  TRUE,
+            SA_Title,      (ULONG)"SDL",
+            SA_Quiet,      TRUE,
+            SA_ShowTitle,  FALSE,
             SA_Depth,      32UL,
             SA_DisplayID,  modeid,
             SA_Type,       CUSTOMSCREEN,
-            SA_Draggable,  TRUE,
+            SA_Exclusive,  TRUE,
+            SA_Draggable,  FALSE,
             SA_AutoScroll, FALSE,
             TAG_DONE
         );
@@ -237,16 +252,19 @@ static int OS3_OpenWindowed(OS3_WindowData *data, SDL_Window *window)
 
         iwin = OpenWindowTags(NULL,
             WA_Left,          0,
-            WA_Top,           (ULONG)screen->BarHeight + 1,
-            WA_InnerWidth,    (ULONG)window->w,
-            WA_InnerHeight,   (ULONG)window->h,
-            WA_Flags,         (ULONG)OS3_WFLG_WINDOWED,
-            WA_IDCMP,         (ULONG)OS3_IDCMP_WINDOWED,
+            WA_Top,           0,
+            WA_Width,         (ULONG)screen->Width,
+            WA_Height,        (ULONG)screen->Height,
+            WA_Flags,         (ULONG)OS3_WFLG_FULLSCREEN,
+            WA_IDCMP,         (ULONG)OS3_IDCMP_FULLSCREEN,
             WA_CustomScreen,  (ULONG)screen,
-            WA_GimmeZeroZero, TRUE,
-            WA_Title,         (ULONG)(window->title ? window->title : "SDL"),
             TAG_DONE
         );
+        /* Update SDL window size to match screen */
+        if (iwin) {
+            window->w = (int)screen->Width;
+            window->h = (int)screen->Height;
+        }
         if (!iwin) {
             CloseScreen(screen);
             return SDL_SetError("OS3: OpenWindowTags (windowed on custom) failed");
@@ -291,66 +309,76 @@ void OS3_SetWindowFullscreen(_THIS, SDL_Window *window,
                              SDL_VideoDisplay *display, SDL_bool fullscreen)
 {
     OS3_WindowData *data = (OS3_WindowData *)window->driverdata;
-    int old_w, old_h, new_w, new_h;
+    OS3_DisplayData *disp_data = display ? (OS3_DisplayData *)display->driverdata : NULL;
+    struct Window *iwin;
 
-    (void)display; /* single display on OS3 */
-
-    if (!data) {
+    if (!data || window->is_destroying) {
         return;
-    }
-
-    if (window->is_destroying) {
-        return;
-    }
-
-    /* Already in the right mode? */
-    if (fullscreen && data->is_fullscreen) {
-        return;
-    }
-    if (!fullscreen && !data->is_fullscreen) {
-        return;
-    }
-
-    /* Remember old size for resize event */
-    if (data->window) {
-        old_w = data->window->GZZWidth ? data->window->GZZWidth
-                                       : data->window->Width;
-        old_h = data->window->GZZHeight ? data->window->GZZHeight
-                                        : data->window->Height;
-    } else {
-        old_w = window->w;
-        old_h = window->h;
     }
 
     /* Destroy framebuffer -- it will be recreated on next
      * UpdateWindowFramebuffer with the new window's RastPort */
     OS3_DestroyWindowFramebuffer(_this, window);
 
-    /* Close existing window and screen */
-    OS3_CloseWindowAndScreen(data);
+    /* Close existing window (but NOT the display's fullscreen screen --
+     * that's managed by SetDisplayMode) */
+    if (data->window) {
+        ClearPointer(data->window);
+        CloseWindow(data->window);
+        data->window = NULL;
+    }
+    /* Close any screen WE own (from windowed custom screen path) */
+    if (data->screen && (!disp_data || data->screen != disp_data->fullscreen_screen)) {
+        if (data->screen->UserData) {
+            FreeMem(data->screen->UserData, 6 * sizeof(UWORD));
+            data->screen->UserData = NULL;
+        }
+        CloseScreen(data->screen);
+    }
+    data->screen = NULL;
+    data->is_fullscreen = 0;
 
-    /* Reopen in the requested mode */
-    if (fullscreen) {
-        if (OS3_OpenFullscreen(data, window->w, window->h) < 0) {
-            /* Fallback: try to reopen windowed */
+    if (fullscreen && disp_data && disp_data->fullscreen_screen) {
+        /* SetDisplayMode already opened a screen at the right resolution.
+         * Open a borderless window filling that screen. */
+        struct Screen *screen = disp_data->fullscreen_screen;
+
+        iwin = OpenWindowTags(NULL,
+            WA_Left,          0,
+            WA_Top,           0,
+            WA_Width,         (ULONG)screen->Width,
+            WA_Height,        (ULONG)screen->Height,
+            WA_Flags,         (ULONG)OS3_WFLG_FULLSCREEN,
+            WA_IDCMP,         (ULONG)OS3_IDCMP_FULLSCREEN,
+            WA_CustomScreen,  (ULONG)screen,
+            TAG_DONE
+        );
+        if (iwin) {
+            UWORD *empty_ptr;
+            data->window = iwin;
+            data->screen = screen;
+            data->is_fullscreen = 1;
+
+            /* Hide pointer */
+            empty_ptr = (UWORD *)AllocMem(6 * sizeof(UWORD), MEMF_CHIP | MEMF_CLEAR);
+            if (empty_ptr) {
+                SetPointer(iwin, empty_ptr, 1, 1, 0, 0);
+                screen->UserData = (APTR)empty_ptr;
+            }
+
+            /* Tell SDL2 the actual window size */
+            SDL_SendWindowEvent(window, SDL_WINDOWEVENT_RESIZED,
+                                (int)screen->Width, (int)screen->Height);
+        } else {
+            /* Fallback to windowed */
             OS3_OpenWindowed(data, window);
         }
+    } else if (fullscreen) {
+        /* No display screen available -- use our own fullscreen */
+        OS3_OpenFullscreen(data, window->w, window->h);
     } else {
-        if (OS3_OpenWindowed(data, window) < 0) {
-            /* Last resort: leave window closed (will crash, but we're out of options) */
-            return;
-        }
-    }
-
-    /* Send resize event if dimensions changed */
-    if (data->window) {
-        new_w = data->window->GZZWidth ? data->window->GZZWidth
-                                       : data->window->Width;
-        new_h = data->window->GZZHeight ? data->window->GZZHeight
-                                        : data->window->Height;
-        if (old_w != new_w || old_h != new_h) {
-            SDL_SendWindowEvent(window, SDL_WINDOWEVENT_RESIZED, new_w, new_h);
-        }
+        /* Leaving fullscreen -- reopen windowed */
+        OS3_OpenWindowed(data, window);
     }
 }
 

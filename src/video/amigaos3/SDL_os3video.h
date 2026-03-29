@@ -34,6 +34,7 @@ typedef struct OS3_DisplayData {
     int   width;     /* display width in pixels */
     int   height;    /* display height in pixels */
     int   depth;     /* display depth in bits */
+    struct Screen *fullscreen_screen; /* custom screen for fullscreen mode (NULL = WB) */
 } OS3_DisplayData;
 
 /* Per-window driver data */
