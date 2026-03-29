@@ -4,11 +4,13 @@
 
 **SDL2 for AmigaOS 3.x on Motorola 68k** -- the first open-source SDL2 for classic Amiga hardware.
 
+<p align="center">
+  <img src="docs/doom_screenshot.png" alt="Chocolate Doom running on AmigaOS 3 via libSDL2-amigaos3" width="640">
+</p>
+
 ## What Works
 
-**[Chocolate Doom 3.1.0](https://github.com/bdgscotland/chocolate-doom) runs on this.** Zero patches to id's code. Playable at native 320x200 resolution on an emulated A4000/040 with CyberGraphX RTG. Two smaller games also working (2048, Snake).
-
-Fullscreen upscaling is the next challenge -- currently fast only at native resolution. No Doom audio yet (SDL2_mixer not ported).
+**[Chocolate Doom 3.1.0](https://github.com/bdgscotland/chocolate-doom) runs on this.** Zero patches to id's code. Playable at native 320x200 resolution on an emulated A4000/040 with CyberGraphX RTG. Sound effects working via Paula DMA. Two smaller games also working (2048, Snake).
 
 ### API Coverage
 
@@ -23,7 +25,7 @@ Threading        WORKING    Mutex, semaphore, condvar, TLS     Thread naming
 Timer            WORKING    GetTicks, Delay, PerfCounter       --
 Input            WORKING    Keyboard, mouse, window events     Relative mouse mode
 Joystick         STUB       --                                 Everything
-Filesystem       STUB       --                                 GetBasePath, GetPrefPath
+Filesystem       WORKING    GetBasePath, GetPrefPath            --
 Haptic/Sensor    N/A        No hardware on classic Amiga
 Loadso           N/A        No dlopen on AmigaOS 3.x
 ```
