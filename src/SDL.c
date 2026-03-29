@@ -27,6 +27,11 @@
 #elif !defined(__WINRT__)
 #include <unistd.h> /* _exit(), etc. */
 #endif
+
+/* On AmigaOS 3.x, IEEE math library bases (MathIeeeSingBasBase etc.)
+ * are defined in libstubs.a and auto-opened by libnix's __initlibraries().
+ * Programs MUST link with -lstubs -lm for float operations to work.
+ * See ADCD ch.35 and crash-pattern: float division on 68030 without FPU. */
 #if defined(__OS2__)
 #include "core/os2/SDL_os2.h"
 #endif

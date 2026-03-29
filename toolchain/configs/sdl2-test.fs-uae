@@ -1,18 +1,25 @@
 # FS-UAE configuration for testing SDL2 programs with RTG
 #
-# Model: A4000/040 -- maxed out for SDL2 development.
-# 68040 CPU (backwards compatible with our -m68030 code).
-# Zorro III bus -- no Z2 address space limits.
+# Model: A1200 with 68030 accelerator -- matches our -m68030 target.
+# No FPU -- float ops use mathieeesingbas.library (software).
+#
+# NOTE: A4000/040 config requires the correct A4000 Kickstart ROM.
+# Using the A1200 ROM on A4000/040 causes math library crashes because
+# the A1200 ROM's mathieeesingbas.library can't handle the 68040 FPU.
 #
 # Prerequisites:
 #   FS-UAE (brew install fs-uae or ~/Developer/fs-uae/)
-#   Kickstart 3.1 A4000 ROM at ~/Documents/FS-UAE/Kickstarts/kick3.1-a4000.rom
+#   Kickstart 3.1 ROM at ~/Documents/FS-UAE/Kickstarts/kick3.1.rom
 #   Bootable WB 3.1 system at build/system/
 
 amiga_model = A4000/040
 
 # Kickstart 3.1 rev 40.70 -- A4000
 kickstart_file = $BASE/Kickstarts/kick3.1-a4000.rom
+
+# Override CPU to 68030 (no FPU) to match our compile target.
+# The A4000 bus/Zorro III is still used for RTG graphics.
+cpu = 68030
 
 # --- Storage ---
 hard_drive_0 = $CONFIG/../../build/system

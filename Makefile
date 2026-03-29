@@ -47,7 +47,8 @@ SRCS_STDLIB = \
 	src/stdlib/SDL_qsort.c \
 	src/stdlib/SDL_stdlib.c \
 	src/stdlib/SDL_string.c \
-	src/stdlib/SDL_strtokr.c
+	src/stdlib/SDL_strtokr.c \
+	src/stdlib/SDL_os3float.c
 
 SRCS_LIBM = \
 	src/libm/e_atan2.c \
@@ -303,8 +304,8 @@ native-examples: $(TARGET) $(TEST_LIB)
 			src="examples/$$t.c"; \
 			cf="$(CFLAGS)"; \
 		fi; \
-		libs="-L. -lSDL2 -ldebug -lamiga -lm"; \
-		case "$$deps" in *TEST*) libs="-L. -lSDL2_test -lSDL2 -ldebug -lamiga -lm" ;; esac; \
+		libs="-L. -lSDL2 -ldebug -lamiga -lm -lstubs"; \
+		case "$$deps" in *TEST*) libs="-L. -lSDL2_test -lSDL2 -ldebug -lamiga -lm -lstubs" ;; esac; \
 		utils=""; \
 		case "$$deps" in \
 			*UTILS*) \

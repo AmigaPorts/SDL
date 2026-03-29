@@ -768,7 +768,18 @@ static int SW_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, vo
                 const int count = (int) cmd->data.draw.count;
                 SDL_Rect *verts = (SDL_Rect *) (((Uint8 *) vertices) + cmd->data.draw.first);
                 const SDL_BlendMode blend = cmd->data.draw.blend;
+
+                SDL_Log("FILL_RECTS: count=%d first=%lu verts=%p blend=%d surface=%p",
+                        count, (unsigned long)cmd->data.draw.first,
+                        (void*)verts, (int)blend, (void*)surface);
+                if (count > 0) {
+                    SDL_Log("FILL_RECTS: verts[0]=(%d,%d,%d,%d)",
+                            verts[0].x, verts[0].y, verts[0].w, verts[0].h);
+                }
+
                 SetDrawState(surface, &drawstate);
+
+                SDL_Log("FILL_RECTS: drawstate set, viewport=%p", (void*)drawstate.viewport);
 
                 /* Apply viewport */
                 if (drawstate.viewport && (drawstate.viewport->x || drawstate.viewport->y)) {
@@ -779,11 +790,13 @@ static int SW_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, vo
                     }
                 }
 
+                SDL_Log("FILL_RECTS: calling SDL_FillRects");
                 if (blend == SDL_BLENDMODE_NONE) {
                     SDL_FillRects(surface, verts, count, SDL_MapRGBA(surface->format, r, g, b, a));
                 } else {
                     SDL_BlendFillRects(surface, verts, count, blend, r, g, b, a);
                 }
+                SDL_Log("FILL_RECTS: done");
                 break;
             }
 

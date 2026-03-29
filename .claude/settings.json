@@ -29,21 +29,17 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash scripts/hooks/block-direct-gcc.sh"
-          }
-        ]
-      },
-      {
         "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
             "command": "bash scripts/hooks/enforce-adcd-lookup.sh",
             "statusMessage": "Checking ADCD requirements..."
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/check-ascii-source.sh",
+            "statusMessage": "Checking for non-ASCII in C source..."
           }
         ]
       }

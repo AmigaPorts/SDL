@@ -47,6 +47,7 @@ testtimer             UNIT   2    TEST
 testfilesystem        UNIT   12   TEST
 
 # Debug / investigation tests
+test_float            UNIT   12
 test_render_debug     VIDEO  M
 
 # Games: interactive, manual play

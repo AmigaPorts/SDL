@@ -1160,16 +1160,8 @@ SDL_Renderer *SDL_CreateRenderer(SDL_Window *window, int index, Uint32 flags)
             SDL_GetWindowSize(renderer->window, &window_w, &window_h);
             SDL_Log("SDL_CreateRenderer: window=%dx%d output=%dx%d",
                     window_w, window_h, output_w, output_h);
-            /* On AmigaOS 3.x (68030 no FPU), float division can crash
-             * if the software float library is not properly linked.
-             * For DPI scale, window == output on non-HiDPI platforms,
-             * so use 1.0f as a safe default and only compute if different. */
-            if (output_w > 0 && window_w != output_w) {
-                renderer->dpi_scale.x = (float)window_w / (float)output_w;
-            }
-            if (output_h > 0 && window_h != output_h) {
-                renderer->dpi_scale.y = (float)window_h / (float)output_h;
-            }
+            renderer->dpi_scale.x = (float)window_w / output_w;
+            renderer->dpi_scale.y = (float)window_h / output_h;
             SDL_Log("SDL_CreateRenderer: dpi_scale done");
         }
     }
