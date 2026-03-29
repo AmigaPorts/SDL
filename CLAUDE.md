@@ -115,14 +115,34 @@ Exec Tasks are cooperative on the same address space. No memory protection betwe
 General Amiga reference docs are in the shared amiga-kb knowledge base. Use MCP tools
 instead of reading local files:
 
+**Knowledge Query:**
 - `amiga_search` -- semantic search across all Amiga docs (crash patterns, pitfalls, ADCD, hardware)
 - `amiga_api_lookup` -- function/struct lookup with graph traversal and pitfall warnings
 - `amiga_pitfalls_for` -- known pitfalls for an API or concept
-- `amiga_crash_diagnosis` -- crash diagnosis from Guru codes (replaces manual crash-patterns.md lookup)
+- `amiga_crash_diagnosis` -- crash diagnosis from Guru codes
+
+**Project Intelligence (plans, work, todos):**
+- `amiga_get_work` -- **Start every session with this.** Returns current plans, work packages, todos with related pitfalls inline. Call: `amiga_get_work({project: "libSDL2"})`
+- `amiga_add_plan` -- Create a plan with work packages and todos. Supports templates: `amiga_add_plan({title: "Audio Backend", source_project: "libSDL2", template: "sdl2-subsystem"})`
+- `amiga_add_todo` -- Add a todo linked to a work package and related APIs: `amiga_add_todo({title: "Fix blitter DMA", source_project: "libSDL2", work_package: "Video", related_apis: ["WaitBlit"]})`
+- `amiga_update_status` -- Mark work done: `amiga_update_status({type: "todo", title: "Fix blitter DMA", source_project: "libSDL2", status: "done"})`
+- `amiga_get_blockers` -- Find blocked work across all projects
+- `amiga_add_dependency` -- Link work packages across projects (e.g., SDL2 video depends on amiport mmap shim)
+
+**Learning & Gaps:**
 - `amiga_report_gap` -- report missing knowledge (feeds the learning compiler)
+- `amiga_add_pitfall` / `amiga_add_crash_pattern` -- route universal learnings to shared KB
 
 The amiga-kb MCP server must be running (`docker compose up -d` in the amiga-kb repo).
 All queries from this project are tagged with `source_project: "libSDL2"`.
+
+### Session Workflow
+
+1. **Start:** Call `amiga_get_work({project: "libSDL2"})` to see current plans and outstanding work
+2. **Work:** Implement, debug, test
+3. **Track:** Use `amiga_update_status` when completing todos, `amiga_add_todo` for new work discovered
+4. **Learn:** Use `amiga_add_pitfall` for new gotchas, `amiga_report_gap` for missing docs
+5. **End:** Ensure all completed work is marked done
 
 ### Critical (project-specific, consult during every backend implementation)
 

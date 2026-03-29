@@ -1,6 +1,19 @@
-# Capture Learning — Continuous Improvement Rule
+# Capture Learning & Track Progress — Continuous Improvement Rule
 
-## When to Capture
+## Session Start
+
+At the beginning of every session, call `amiga_get_work({project: "libSDL2"})` to see current plans and outstanding work. This gives you context for what to work on.
+
+## During Work
+
+### Track progress as you go
+
+- When you start working on a todo: `amiga_update_status({type: "todo", title: "...", source_project: "libSDL2", status: "in_progress"})`
+- When you complete a todo: `amiga_update_status({type: "todo", title: "...", source_project: "libSDL2", status: "done"})`
+- When you discover new work needed: `amiga_add_todo({title: "...", source_project: "libSDL2", work_package: "...", related_apis: [...]})`
+- When work is blocked by another project: `amiga_add_dependency({from_title: "...", from_project: "libSDL2", to_title: "...", to_project: "amiport", blocking: true})`
+
+### Capture knowledge
 
 After completing any significant task (build, test, debug, review), check:
 
@@ -31,6 +44,7 @@ Format:
 ```
 ## Learnings
 - [PITFALL] vsnprintf(NULL, 0) crashes on libnix — needs probe buffer
-- [PROCESS] Had to rebuild twice because X was missing
-- [BUG] Function Y returns wrong value when Z
+- [TODO] Need to implement X before Y works
+- [DONE] Completed Z, marked in amiga-kb
+- [BLOCKED] Can't do W until amiport adds mmap shim
 ```
