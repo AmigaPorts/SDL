@@ -1,12 +1,12 @@
 # libSDL2-amigaos3
 
-**SDL2 for AmigaOS 3.x on Motorola 68k** -- CyberGraphX video, Paula/AHI audio, Exec Task threading.
+**SDL2 for AmigaOS 3.x on Motorola 68k** -- CyberGraphX video, Paula audio, SDL_Renderer, Exec Task threading.
 
 The first open-source SDL2 implementation for classic Amiga hardware.
 
 ## Status
 
-**Phase 4: Threading COMPLETE** -- Video, input, timer, audio, and threading all working on FS-UAE with RTG. 17/17 automated tests pass (10 vamos + 17 FS-UAE), including 6 upstream SDL2 test programs.
+**Phase 4: Threading COMPLETE** -- All major subsystems working on FS-UAE with RTG. 20/20 automated tests pass. **game_2048 is playable** (first real SDL2 game on our port).
 
 ### Subsystem Status
 
@@ -14,18 +14,29 @@ The first open-source SDL2 implementation for classic Amiga hardware.
 |-----------|--------|---------|-------|
 | **Core** | Working | SDL_Init/SDL_Quit/SDL_GetError | 0 |
 | **Video** | Working | CyberGraphX (WritePixelArray framebuffer) | 1 |
+| **Renderer** | Working | Software renderer (SDL_RenderFillRect, RenderCopy, etc.) | 4 |
 | **Input** | Working | Intuition IDCMP (keyboard, mouse, window events) | 2 |
 | **Audio** | Working | Paula audio.device (8-bit mono, CHIP RAM DMA) | 3 |
 | **Audio** | Blocked | AHI (correct code, FS-UAE has dead stub) | 3 |
 | **Threading** | Working | Exec Tasks (CreateNewProc, Signal/Wait join) | 4 |
 | **Atomics** | Working | Forbid/Permit emulated CAS (single-core safe) | 0 |
 | **Timer** | Working | timer.device/ReadEClock (709 KHz monotonic) | 1 |
+| **Float** | Working | Software IEEE 754 (bypasses broken ROM math libs) | 4 |
 | **Joystick** | Stub | gameport.device (reports 0 joysticks) | 5 |
-| **Filesystem** | Stub | dos.library (returns NULL) | 5 |
+| **Filesystem** | Stub | dos.library (SDL_GetBasePath returns NULL) | 5 |
 | **Haptic** | Disabled | No hardware | -- |
 | **Sensor** | Disabled | No hardware | -- |
 | **Loadso** | Disabled | No dlopen on AmigaOS 3.x | -- |
-| **Render** | Working | Software renderer (SDL2 built-in) | 1 |
+
+### Test Suite
+
+| Category | Count | Platform |
+|----------|-------|----------|
+| **Automated (pass)** | 20 | FS-UAE (all), vamos (10) |
+| **Manual/Interactive** | 15 | FS-UAE only, run individually |
+| **Upstream SDL2 tests** | 19 | From libsdl-org/SDL SDL2 branch |
+| **Custom tests** | 14 | test_sprite, test_gameloop, test_threads, etc. |
+| **Games** | 1 | game_2048 (SDL_Renderer, playable) |
 
 ### Phase Roadmap
 
@@ -35,18 +46,9 @@ The first open-source SDL2 implementation for classic Amiga hardware.
 | **1: First Pixels** | CyberGraphX video + software render | test_sprite draws on FS-UAE | **DONE** |
 | **2: Input** | IDCMP -> SDL events | test_events responds to input | **DONE** |
 | **3: Audio** | Paula audio backend | test_audio plays 440 Hz tone | **DONE** |
-| **4: Threading** | Full thread testing on FS-UAE | 17/17 tests pass (incl. upstream) | **DONE** |
-| **5: Polish** | Timer, filesystem, joystick | Simple SDL2 game runs | -- |
-| **6: Optimization** | AGA c2p, AMMX blitters | Performance targets | -- |
-
-### Audio Driver Details
-
-Two audio backends are implemented:
-
-- **Paula (audio.device)** -- Primary driver. Uses native Paula DMA with CHIP RAM double-buffering. Works on all Amigas including FS-UAE. 8-bit signed mono, up to 22050 Hz.
-- **AHI** -- Secondary driver. Uses the AHI retargetable audio system for 16-bit stereo on sound cards. Code is complete and correct but FS-UAE's AHI emulation is a non-functional stub from 1999. Works on real hardware with AHI installed.
-
-Bootstrap order: Paula -> AHI -> Dummy. SDL2's audio conversion layer handles format conversion (e.g., S16 -> S8) transparently.
+| **4: Threading** | Full thread + renderer testing | 20/20 tests, game_2048 playable | **DONE** |
+| **5: Polish** | Filesystem, joystick, SDL_GetBasePath | Chocolate Doom boots | Next |
+| **6: Optimization** | AGA c2p, AMMX, FPU build variant | Performance targets | -- |
 
 ## Hardware Requirements
 
@@ -66,8 +68,8 @@ Bootstrap order: Paula -> AHI -> Dummy. SDL2's audio conversion layer handles fo
 
 ```bash
 make setup-toolchain   # Pull bebbo-gcc Docker image
-make                   # Build libSDL2.a (cross-compile via Docker)
-make examples          # Build test programs
+make                   # Build libSDL2.a + libSDL2_test.a (cross-compile via Docker)
+make examples          # Build test programs + upstream SDL2 tests + games
 make test              # Run vamos smoke tests (no GUI)
 make test-fsemu        # Run full FS-UAE test suite (RTG + audio)
 make clean             # Remove build artifacts
@@ -77,7 +79,8 @@ make clean             # Remove build artifacts
 
 **Single test:**
 ```bash
-make test-fsemu TEST=test_audio
+make test-fsemu TEST=test_audio     # Run one automated test
+make test-fsemu TEST=game_2048      # Run interactive game
 ```
 
 ## Architecture
@@ -87,26 +90,47 @@ SDL2 backends map to AmigaOS subsystems:
 | SDL2 Subsystem | AmigaOS Backend | API |
 |----------------|----------------|-----|
 | Video | CyberGraphX | WritePixelArray, screen modes |
+| Renderer | Software (SDL2 built-in) | SDL_RenderFillRect, SDL_RenderCopy, SDL_RenderPresent |
 | Audio (Paula) | audio.device | CMD_WRITE, BeginIO/WaitIO, CHIP RAM DMA |
 | Audio (AHI) | ahi.device | CMD_WRITE, SendIO, double-buffered |
 | Threading | Exec Tasks | CreateNewProc, SignalSemaphore, Signal/Wait join |
 | Atomics | Forbid/Permit | Emulated CAS (single-core cooperative) |
-| Timer | timer.device | ReadEClock |
+| Timer | timer.device | ReadEClock (709 KHz on PAL) |
 | Input | Intuition IDCMP | IDCMP_RAWKEY, IDCMP_MOUSEMOVE |
+| Float | Software IEEE 754 | Pure integer __divsf3/__mulsf3/__addsf3 |
 | Joystick | gameport.device | GPD_ASKCTYPE |
 | Filesystem | dos.library | Lock, Examine, PROGDIR: |
-| Render | Software | SDL2 built-in software renderer |
 
 ### Key Design Decisions
 
-- **Target: 68030 minimum** -- all RTG setups have 68030+
-- **C99 required** (`-std=gnu99`), SDL2 needs C99; bebbo-gcc supports it
-- **`SDL_DYNAMIC_API=0`** -- no dlopen on AmigaOS 3.x
-- **`-O0` default** -- bebbo-gcc has codegen bugs at -O1/-O2 (struct return corruption)
-- **Forbid/Permit atomics** -- emulated CAS via task-switch inhibition (single-core safe)
-- **Signal-based thread join** -- child signals parent before exit per ADCD III-17 pattern; Forbid() prevents race during DOS process cleanup
-- **Lazy device open** -- MsgPort created in audio thread context (AmigaOS signals are task-relative)
-- **Paula first, AHI second** -- Paula works on all emulators; AHI for real hardware sound cards
+See `docs/adr/` for full Architecture Decision Records. Key decisions:
+
+- **ADR-001: Target 68030 minimum** -- all RTG setups have 68030+
+- **ADR-002: SDL_DYNAMIC_API=0** -- no dlopen on AmigaOS 3.x
+- **ADR-003: Compile at -O0** -- bebbo-gcc codegen bugs at -O1/-O2
+- **ADR-004: Forbid/Permit atomics** -- single-core makes this safe
+- **ADR-005: Signal-based thread join** -- ADCD III-17 pattern, child signals parent before exit
+- **ADR-006: Paula first, AHI second** -- Paula works on all emulators
+- **ADR-007: Lazy device open** -- MsgPort in worker thread context (signals are task-relative)
+- **ADR-008: Test tier system** -- 1=vamos, 2=FS-UAE, 12=both, M=manual
+- **ADR-009: Upstream test integration** -- -include preamble header, libSDL2_test.a
+- **ADR-010: Software float library** -- bypasses broken ROM mathieeesingbas.library on FS-UAE
+
+### Audio Driver Details
+
+Two audio backends are implemented:
+
+- **Paula (audio.device)** -- Primary driver. Uses native Paula DMA with CHIP RAM double-buffering. Works on all Amigas including FS-UAE. 8-bit signed mono, up to 22050 Hz.
+- **AHI** -- Secondary driver. Uses the AHI retargetable audio system for 16-bit stereo on sound cards. Code is complete and correct but FS-UAE's AHI emulation is a non-functional stub from 1999. Works on real hardware with AHI installed.
+
+Bootstrap order: Paula -> AHI -> Dummy. SDL2's audio conversion layer handles format conversion (e.g., S16 -> S8) transparently.
+
+### Debug Infrastructure
+
+- **SDL_Log** writes to `WORK:sdl_log.txt` (survives crashes, read from host after FS-UAE exit)
+- **DLOG()** macro writes to `WORK:sdl_debug.log` (for backend code, uses Forbid/Permit)
+- **test_render_debug** -- step-by-step renderer debugging test
+- All debug output persists across Guru crashes -- no screenshot dependency
 
 ## Reference Code
 
