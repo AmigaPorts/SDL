@@ -1,0 +1,43 @@
+# ccleste (Celeste Classic) -- AmigaOS 3.x cross-compile via Docker
+#
+# Usage:
+#   make -f Makefile.amiga           # build ccleste binary
+#   make -f Makefile.amiga clean     # clean
+#
+# Requires: bebbo/amiga-gcc Docker image, libSDL2.a built in ../../
+
+SDL2_ROOT = ../..
+CC = m68k-amigaos-gcc
+## Redirect C math to SDL's software implementations.
+## libnix -lm calls AmigaOS ROM IEEE math libs which crash on FS-UAE.
+MATH_REDIRECTS = \
+    -Dsinf=SDL_sinf -Dcosf=SDL_cosf -Dfloorf=SDL_floorf \
+    -Dfabsf=SDL_fabsf -Dsqrtf=SDL_sqrtf -Dfmodf=SDL_fmodf \
+    -Dsin=SDL_sin -Dcos=SDL_cos -Dfloor=SDL_floor \
+    -Dfabs=SDL_fabs -Dsqrt=SDL_sqrt
+
+CFLAGS = -std=gnu99 -O2 -m68030 -noixemul -Wall -Wno-unused-parameter \
+         -I$(SDL2_ROOT)/include -I$(SDL2_ROOT)/src \
+         -D__AMIGAOS3__ -DCCLESTE_NO_MIXER -DCCLESTE_AMIGA \
+         $(MATH_REDIRECTS)
+LDFLAGS = -noixemul -L$(SDL2_ROOT) -lSDL2 -lm
+
+OUT = ccleste
+
+OBJS = celeste.o sdl12main.o
+
+all: $(OUT)
+
+$(OUT): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
+
+celeste.o: celeste.c celeste.h
+	$(CC) $(CFLAGS) -c -o $@ celeste.c
+
+sdl12main.o: sdl12main.c celeste.h sdl20compat.inc.c tilemap.h
+	$(CC) $(CFLAGS) -c -o $@ sdl12main.c
+
+clean:
+	rm -f $(OUT) $(OBJS)
+
+.PHONY: all clean
