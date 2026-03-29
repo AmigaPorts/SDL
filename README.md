@@ -1,4 +1,6 @@
-# libSDL2-amigaos3
+<p align="center">
+  <img src="docs/header.svg" alt="libSDL2-amigaos3" width="800">
+</p>
 
 **SDL2 for AmigaOS 3.x on Motorola 68k** -- the first open-source SDL2 for classic Amiga hardware.
 
