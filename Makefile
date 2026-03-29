@@ -296,6 +296,12 @@ native-examples: $(TARGET) $(TEST_LIB)
 	@echo "Built examples/test_bare (no SDL)"
 	$(CC) $(CFLAGS) -o examples/test_beep examples/test_beep.c -lamiga
 	@echo "Built examples/test_beep (no SDL, audio.device test)"
+	@if [ -f lib/SDL2_mixer/libSDL2_mixer.a ]; then \
+		$(CC) $(CFLAGS) -Ilib/SDL2_mixer/include \
+			-o examples/test_mixer examples/test_mixer.c \
+			-Llib/SDL2_mixer -L. -lSDL2_mixer -lSDL2 -ldebug -lamiga -lm -lstubs && \
+		echo "Built examples/test_mixer (SDL2_mixer)"; \
+	fi
 	@grep -v '^#' tests.txt | grep -v '^\s*$$' | grep -v test_bare | while read t cat tier deps rest; do \
 		if [ -f "examples/upstream/$$t.c" ]; then \
 			src="examples/upstream/$$t.c"; \

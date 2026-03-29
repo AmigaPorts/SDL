@@ -32,3 +32,20 @@
 - **Depends on:** Nothing (documentation task)
 - **Target:** Phase 3 (audio)
 - **Added:** 2026-03-27 via /plan-ceo-review (deferred expansion)
+
+### Fix AHI audio backend for 16-bit stereo
+- **What:** Debug and fix the AHI audio backend (SDL_os3audio.c) so SDL2_mixer gets proper 16-bit stereo output
+- **Why:** Paula caps at 8-bit mono 22kHz. AHI unlocks 16-bit stereo with panning -- critical for SDL2_mixer quality and future ports (OpenTTD, Stratagus). AHI code exists in SDL_os3audio.c but is non-functional on FS-UAE.
+- **How:** Install AHI device in FS-UAE system partition. Debug OpenDevice/CMD_WRITE flow. Reference SDL 1.2 AHI backend (indexed in amiga-kb). Test with examples/loopwave and examples/test_mixer.
+- **Depends on:** Phase A SDL2_mixer complete (so we have a test harness), AHI installed in FS-UAE
+- **Target:** Post Phase A
+- **Added:** 2026-03-29 via /plan-eng-review
+
+### Phase B: MIDI music via SDL2_mixer timidity
+- **What:** Enable MUSIC_MID_TIMIDITY in SDL2_mixer build to add MIDI playback
+- **Why:** Chocolate Doom converts MUS to MIDI. With timidity, SDL2_mixer plays MIDI natively instead of relying on OPL emulation. Also needed for any future port that expects MIDI music support.
+- **How:** Add -DMUSIC_MID_TIMIDITY to SDL2_mixer CFLAGS. Compile ~4850 LOC timidity source (bundled, no external deps). Ship GUS patch set (~4MB) to Amiga filesystem. Verify SDL_sin/cos from SDL2 libm work on 68k (timidity tables.h uses them).
+- **Risk:** Float math on 68k -- our custom __divsf3 and SDL2 libm handle this but needs verification.
+- **Depends on:** Phase A SDL2_mixer complete, AHI working (timidity on Paula would be very low quality)
+- **Target:** After AHI is fixed
+- **Added:** 2026-03-29 via /plan-eng-review

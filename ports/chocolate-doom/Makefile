@@ -23,12 +23,13 @@ CFLAGS = -std=gnu99 -O0 -m68030 -noixemul \
          -I$(DOOM_SRC)/textscreen \
          -Iconfig \
          -I$(SDL2_DIR)/include \
+         -I$(SDL2_DIR)/lib/SDL2_mixer/include \
          -I$(AMIPORT)/lib/posix-shim/include \
-         -DDISABLE_SDL2MIXER=1 \
          -DDISABLE_SDL2NET=1 \
          -D__AMIGAOS3__
 
 LDFLAGS = -noixemul -m68030 \
+          -L$(SDL2_DIR)/lib/SDL2_mixer -lSDL2_mixer \
           -L$(SDL2_DIR) -lSDL2 \
           -L$(AMIPORT)/lib/posix-shim -lamiport \
           -ldebug -lamiga -lm -lstubs
