@@ -1,16 +1,24 @@
 <p align="center">
-  <img src="docs/header.svg" alt="libSDL2-amigaos3" width="800">
+  <img src="docs/logo.png" alt="libSDL2 for AmigaOS 3.x" width="700">
 </p>
 
-**SDL2 for AmigaOS 3.x on Motorola 68k** -- the first open-source SDL2 for classic Amiga hardware.
+<p align="center">
+  <strong>SDL2 for AmigaOS 3.x on Motorola 68k</strong> -- the first open-source SDL2 for classic Amiga hardware.
+</p>
 
 <p align="center">
-  <img src="docs/doom_screenshot.png" alt="Chocolate Doom running on AmigaOS 3 via libSDL2-amigaos3" width="640">
+  <img src="docs/moo1_screenshot.png" alt="Master of Orion running on AmigaOS 3 via libSDL2-amigaos3" width="640">
+  <br>
+  <em>Master of Orion 1 running at ~43 FPS on emulated A4000 with CyberGraphX RTG</em>
 </p>
 
 ## What Works
 
-**[Chocolate Doom 3.1.0](https://github.com/bdgscotland/chocolate-doom) runs on this.** Zero patches to id's code. Playable at native 320x200 resolution on an emulated A4000/040 with CyberGraphX RTG. Sound effects working via Paula DMA. Two smaller games also working (2048, Snake).
+**Four games ported and running** via [amiga-game-ports](https://github.com/bdgscotland/amiga-game-ports):
+- **[1oom](https://github.com/bdgscotland/amiga-game-ports/releases/tag/1oom-v0.1.0-alpha)** (Master of Orion 1) -- ~43 FPS, zero source modifications
+- **[Chocolate Doom](https://github.com/bdgscotland/amiga-game-ports/releases/tag/chocolate-doom-v0.1.0-alpha)** -- zero patches to id's code, sound effects via Paula DMA
+- **[Julius](https://github.com/bdgscotland/amiga-game-ports)** (Caesar III) -- 360 files, 1 source fix, never on classic Amiga before
+- **[Celeste Classic](https://github.com/bdgscotland/amiga-game-ports/releases/tag/ccleste-v0.1.0-alpha)** -- first new game on classic 68k Amiga
 
 ### API Coverage
 
