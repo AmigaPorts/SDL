@@ -139,7 +139,8 @@ fi
 
 # --- Extract release notes from CHANGELOG ---
 NOTES_FILE="/tmp/release-notes-${VERSION}.md"
-sed -n "/^## \[${VERSION}\]/,/^## \[/p" CHANGELOG.md | head -n -1 | tail -n +2 > "$NOTES_FILE"
+# Extract notes between version header and next version header (macOS-safe)
+awk "/^## \[${VERSION}\]/{found=1; next} /^## \[/{if(found) exit} found" CHANGELOG.md > "$NOTES_FILE"
 
 echo "Release notes:"
 cat "$NOTES_FILE"
