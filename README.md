@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.png" alt="libSDL2 for AmigaOS 3.x" width="700">
+  <img src="docs/logo.png?v=2" alt="libSDL2 for AmigaOS 3.x" width="700">
 </p>
 
 <p align="center">
