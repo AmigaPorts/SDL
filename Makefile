@@ -117,7 +117,8 @@ SRCS_VIDEO_OS3 = \
 	src/video/amigaos3/SDL_os3video.c \
 	src/video/amigaos3/SDL_os3window.c \
 	src/video/amigaos3/SDL_os3framebuffer.c \
-	src/video/amigaos3/SDL_os3events.c
+	src/video/amigaos3/SDL_os3events.c \
+	src/video/amigaos3/SDL_os3mouse.c
 
 SRCS_VIDEO_DUMMY = \
 	src/video/dummy/SDL_nullevents.c \

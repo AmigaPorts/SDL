@@ -17,6 +17,7 @@
 #include "SDL_os3window.h"
 #include "SDL_os3framebuffer.h"
 #include "SDL_os3events.h"
+#include "SDL_os3mouse.h"
 #include "../SDL_sysvideo.h"
 #include "../../events/SDL_events_c.h"
 
@@ -226,11 +227,15 @@ static int OS3_VideoInit(_THIS)
         return -1;
     }
 
+    OS3_InitMouse();
+
     return 0;
 }
 
 static void OS3_VideoQuit(_THIS)
 {
+    OS3_QuitMouse();
+
     /* Libraries -- close in reverse order. Windows and screens must be
        closed already (DestroyWindow is called before VideoQuit). */
     if (CyberGfxBase) {

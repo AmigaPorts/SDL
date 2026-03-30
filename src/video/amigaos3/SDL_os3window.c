@@ -137,11 +137,11 @@ static int OS3_OpenFullscreen(OS3_WindowData *data, int w, int h)
     data->screen        = screen;
     data->is_fullscreen = 1;
 
-    /* Hide the mouse pointer in fullscreen -- prevents cursor flicker
-     * from WritePixelArray overwriting the sprite plane.
-     * Sprite data must be in CHIP RAM (ADCD ch.10). Allocate a minimal
-     * empty pointer: 2 control words + 2 data words (1 line) + 2 terminator = 6 words.
-     * We store the CHIP pointer in the screen's UserData for cleanup. */
+    /* Hide the Intuition pointer in fullscreen to prevent flicker.
+     * Full-screen WritePixelArray blits conflict with hardware sprite
+     * overlay on RTG cards. Fullscreen games should use software cursor
+     * (PLATFORM_USE_SOFTWARE_CURSOR) for flicker-free rendering.
+     * The mouse backend (SDL_os3mouse.c) handles windowed mode cursors. */
     {
         UWORD *empty_ptr = (UWORD *)AllocMem(6 * sizeof(UWORD), MEMF_CHIP | MEMF_CLEAR);
         if (empty_ptr) {
@@ -358,7 +358,7 @@ void OS3_SetWindowFullscreen(_THIS, SDL_Window *window,
             data->screen = screen;
             data->is_fullscreen = 1;
 
-            /* Hide pointer */
+            /* Hide pointer in fullscreen (same reason as OS3_OpenFullscreen) */
             empty_ptr = (UWORD *)AllocMem(6 * sizeof(UWORD), MEMF_CHIP | MEMF_CLEAR);
             if (empty_ptr) {
                 SetPointer(iwin, empty_ptr, 1, 1, 0, 0);
