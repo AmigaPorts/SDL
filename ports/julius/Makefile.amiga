@@ -1,0 +1,489 @@
+# Julius (Caesar III) -- AmigaOS 3.x cross-compile via Docker
+#
+# Usage:
+#   make -f Makefile.amiga           # build julius binary
+#   make -f Makefile.amiga clean     # clean
+#
+# Requires: bebbo/amiga-gcc Docker image, libSDL2.a built in ../../
+
+SDL2_ROOT = ../..
+CC = m68k-amigaos-gcc
+
+# C math -> SDL software implementations (avoids ROM IEEE library crashes)
+MATH_REDIRECTS = \
+    -Dsinf=SDL_sinf -Dcosf=SDL_cosf -Dfloorf=SDL_floorf \
+    -Dfabsf=SDL_fabsf -Dsqrtf=SDL_sqrtf -Dfmodf=SDL_fmodf \
+    -Datan2f=SDL_atan2f -Dpowf=SDL_powf -Dceilf=SDL_ceilf \
+    -Dsin=SDL_sin -Dcos=SDL_cos -Dfloor=SDL_floor \
+    -Dfabs=SDL_fabs -Dsqrt=SDL_sqrt -Datan2=SDL_atan2 \
+    -Dpow=SDL_pow -Dceil=SDL_ceil -Dlog=SDL_log
+
+CFLAGS = -std=gnu99 -O0 -m68030 -noixemul \
+         -Wall -Wno-unused-parameter -Wno-missing-field-initializers \
+         -Wno-sign-compare \
+         -I$(SDL2_ROOT)/include -I$(SDL2_ROOT)/src \
+         -Isrc -Iext \
+         -D__AMIGAOS3__ -D__AMIGA__ \
+         -DPLATFORM_USE_SOFTWARE_CURSOR \
+         $(MATH_REDIRECTS)
+
+LDFLAGS = -noixemul -L$(SDL2_ROOT) -lSDL2 -lm
+
+OUT = julius
+
+# --- Source Files ---
+# Generated from CMakeLists.txt, excluding:
+#   - ext/tinyfiledialogs/ (replaced by amiga/tinyfd_stub.c)
+#   - ext/png/ + src/graphics/screenshot.c (replaced by amiga/screenshot_stub.c)
+#   - src/platform/sound_device.c (replaced by amiga/sound_stub.c -- no SDL_mixer)
+#   - platform-specific: vita, switch, android, ios, emscripten
+
+SRCS_AMIGA_STUBS = \
+	amiga/tinyfd_stub.c \
+	amiga/screenshot_stub.c \
+	amiga/sound_stub.c
+
+SRCS_ZLIB = \
+	ext/zlib/adler32.c \
+	ext/zlib/crc32.c \
+	ext/zlib/deflate.c \
+	ext/zlib/trees.c \
+	ext/zlib/zutil.c
+
+SRCS_PLATFORM = \
+	src/platform/arguments.c \
+	src/platform/cursor.c \
+	src/platform/file_manager.c \
+	src/platform/file_manager_cache.c \
+	src/platform/joystick.c \
+	src/platform/julius.c \
+	src/platform/keyboard_input.c \
+	src/platform/log.c \
+	src/platform/mouse.c \
+	src/platform/platform.c \
+	src/platform/prefs.c \
+	src/platform/screen.c \
+	src/platform/touch.c \
+	src/platform/version.c \
+	src/platform/virtual_keyboard.c
+
+SRCS_CORE = \
+	src/core/backtrace.c \
+	src/core/buffer.c \
+	src/core/calc.c \
+	src/core/config.c \
+	src/core/dir.c \
+	src/core/encoding.c \
+	src/core/encoding_japanese.c \
+	src/core/encoding_korean.c \
+	src/core/encoding_simp_chinese.c \
+	src/core/encoding_trad_chinese.c \
+	src/core/file.c \
+	src/core/hotkey_config.c \
+	src/core/image.c \
+	src/core/io.c \
+	src/core/lang.c \
+	src/core/locale.c \
+	src/core/random.c \
+	src/core/smacker.c \
+	src/core/speed.c \
+	src/core/string.c \
+	src/core/time.c \
+	src/core/zip.c
+
+SRCS_BUILDING = \
+	src/building/animation.c \
+	src/building/barracks.c \
+	src/building/building.c \
+	src/building/building_state.c \
+	src/building/clone.c \
+	src/building/construction.c \
+	src/building/construction_building.c \
+	src/building/construction_clear.c \
+	src/building/construction_routed.c \
+	src/building/construction_warning.c \
+	src/building/count.c \
+	src/building/destruction.c \
+	src/building/dock.c \
+	src/building/figure.c \
+	src/building/government.c \
+	src/building/granary.c \
+	src/building/house.c \
+	src/building/house_evolution.c \
+	src/building/house_population.c \
+	src/building/house_service.c \
+	src/building/industry.c \
+	src/building/list.c \
+	src/building/maintenance.c \
+	src/building/market.c \
+	src/building/menu.c \
+	src/building/model.c \
+	src/building/properties.c \
+	src/building/storage.c \
+	src/building/warehouse.c
+
+SRCS_CITY = \
+	src/city/buildings.c \
+	src/city/culture.c \
+	src/city/data.c \
+	src/city/data_private.c \
+	src/city/emperor.c \
+	src/city/entertainment.c \
+	src/city/festival.c \
+	src/city/figures.c \
+	src/city/finance.c \
+	src/city/gods.c \
+	src/city/health.c \
+	src/city/houses.c \
+	src/city/labor.c \
+	src/city/map.c \
+	src/city/message.c \
+	src/city/migration.c \
+	src/city/military.c \
+	src/city/mission.c \
+	src/city/population.c \
+	src/city/ratings.c \
+	src/city/resource.c \
+	src/city/sentiment.c \
+	src/city/sound.c \
+	src/city/trade.c \
+	src/city/victory.c \
+	src/city/view.c \
+	src/city/warning.c
+
+SRCS_EMPIRE = \
+	src/empire/city.c \
+	src/empire/empire.c \
+	src/empire/object.c \
+	src/empire/trade_prices.c \
+	src/empire/trade_route.c
+
+SRCS_FIGURE = \
+	src/figure/action.c \
+	src/figure/combat.c \
+	src/figure/enemy_army.c \
+	src/figure/figure.c \
+	src/figure/formation.c \
+	src/figure/formation_enemy.c \
+	src/figure/formation_herd.c \
+	src/figure/formation_layout.c \
+	src/figure/formation_legion.c \
+	src/figure/image.c \
+	src/figure/movement.c \
+	src/figure/name.c \
+	src/figure/phrase.c \
+	src/figure/properties.c \
+	src/figure/route.c \
+	src/figure/service.c \
+	src/figure/sound.c \
+	src/figure/trader.c
+
+SRCS_FIGURETYPE = \
+	src/figuretype/animal.c \
+	src/figuretype/cartpusher.c \
+	src/figuretype/crime.c \
+	src/figuretype/docker.c \
+	src/figuretype/editor.c \
+	src/figuretype/enemy.c \
+	src/figuretype/entertainer.c \
+	src/figuretype/maintenance.c \
+	src/figuretype/market.c \
+	src/figuretype/migrant.c \
+	src/figuretype/missile.c \
+	src/figuretype/native.c \
+	src/figuretype/service.c \
+	src/figuretype/soldier.c \
+	src/figuretype/trader.c \
+	src/figuretype/wall.c \
+	src/figuretype/water.c
+
+SRCS_GAME = \
+	src/game/animation.c \
+	src/game/cheats.c \
+	src/game/difficulty.c \
+	src/game/file.c \
+	src/game/file_editor.c \
+	src/game/file_io.c \
+	src/game/game.c \
+	src/game/mission.c \
+	src/game/orientation.c \
+	src/game/resource.c \
+	src/game/settings.c \
+	src/game/speed.c \
+	src/game/state.c \
+	src/game/tick.c \
+	src/game/time.c \
+	src/game/tutorial.c \
+	src/game/undo.c
+
+SRCS_INPUT = \
+	src/input/cursor.c \
+	src/input/hotkey.c \
+	src/input/input.c \
+	src/input/joystick.c \
+	src/input/keyboard.c \
+	src/input/keys.c \
+	src/input/mouse.c \
+	src/input/scroll.c \
+	src/input/touch.c
+
+SRCS_MAP = \
+	src/map/aqueduct.c \
+	src/map/bookmark.c \
+	src/map/bridge.c \
+	src/map/building.c \
+	src/map/building_tiles.c \
+	src/map/desirability.c \
+	src/map/elevation.c \
+	src/map/figure.c \
+	src/map/grid.c \
+	src/map/image.c \
+	src/map/image_context.c \
+	src/map/natives.c \
+	src/map/orientation.c \
+	src/map/point.c \
+	src/map/property.c \
+	src/map/random.c \
+	src/map/ring.c \
+	src/map/road_access.c \
+	src/map/road_aqueduct.c \
+	src/map/road_network.c \
+	src/map/routing.c \
+	src/map/routing_data.c \
+	src/map/routing_path.c \
+	src/map/routing_terrain.c \
+	src/map/soldier_strength.c \
+	src/map/sprite.c \
+	src/map/terrain.c \
+	src/map/tiles.c \
+	src/map/water.c \
+	src/map/water_supply.c
+
+SRCS_SCENARIO = \
+	src/scenario/building.c \
+	src/scenario/criteria.c \
+	src/scenario/demand_change.c \
+	src/scenario/distant_battle.c \
+	src/scenario/earthquake.c \
+	src/scenario/editor.c \
+	src/scenario/editor_events.c \
+	src/scenario/editor_map.c \
+	src/scenario/emperor_change.c \
+	src/scenario/empire.c \
+	src/scenario/gladiator_revolt.c \
+	src/scenario/invasion.c \
+	src/scenario/map.c \
+	src/scenario/price_change.c \
+	src/scenario/property.c \
+	src/scenario/random_event.c \
+	src/scenario/request.c \
+	src/scenario/scenario.c
+
+SRCS_GRAPHICS = \
+	src/graphics/arrow_button.c \
+	src/graphics/button.c \
+	src/graphics/font.c \
+	src/graphics/generic_button.c \
+	src/graphics/graphics.c \
+	src/graphics/image.c \
+	src/graphics/image_button.c \
+	src/graphics/lang_text.c \
+	src/graphics/menu.c \
+	src/graphics/panel.c \
+	src/graphics/rich_text.c \
+	src/graphics/screen.c \
+	src/graphics/scrollbar.c \
+	src/graphics/text.c \
+	src/graphics/tooltip.c \
+	src/graphics/video.c \
+	src/graphics/warning.c \
+	src/graphics/window.c
+
+SRCS_SOUND = \
+	src/sound/city.c \
+	src/sound/effect.c \
+	src/sound/music.c \
+	src/sound/speech.c \
+	src/sound/system.c
+
+SRCS_WIDGET = \
+	src/widget/city.c \
+	src/widget/city_bridge.c \
+	src/widget/city_building_ghost.c \
+	src/widget/city_figure.c \
+	src/widget/city_overlay_education.c \
+	src/widget/city_overlay_entertainment.c \
+	src/widget/city_overlay_health.c \
+	src/widget/city_overlay_other.c \
+	src/widget/city_overlay_risks.c \
+	src/widget/city_with_overlay.c \
+	src/widget/city_without_overlay.c \
+	src/widget/input_box.c \
+	src/widget/map_editor.c \
+	src/widget/map_editor_tool.c \
+	src/widget/minimap.c \
+	src/widget/scenario_minimap.c \
+	src/widget/sidebar/city.c \
+	src/widget/sidebar/common.c \
+	src/widget/sidebar/editor.c \
+	src/widget/sidebar/extra.c \
+	src/widget/sidebar/military.c \
+	src/widget/sidebar/slide.c \
+	src/widget/top_menu.c \
+	src/widget/top_menu_editor.c
+
+SRCS_WINDOW = \
+	src/window/advisor/chief.c \
+	src/window/advisor/education.c \
+	src/window/advisor/entertainment.c \
+	src/window/advisor/financial.c \
+	src/window/advisor/health.c \
+	src/window/advisor/imperial.c \
+	src/window/advisor/labor.c \
+	src/window/advisor/military.c \
+	src/window/advisor/population.c \
+	src/window/advisor/ratings.c \
+	src/window/advisor/religion.c \
+	src/window/advisor/trade.c \
+	src/window/advisors.c \
+	src/window/build_menu.c \
+	src/window/building/common.c \
+	src/window/building/culture.c \
+	src/window/building/distribution.c \
+	src/window/building/figures.c \
+	src/window/building/government.c \
+	src/window/building/house.c \
+	src/window/building/industry.c \
+	src/window/building/military.c \
+	src/window/building/terrain.c \
+	src/window/building/utility.c \
+	src/window/building_info.c \
+	src/window/cck_selection.c \
+	src/window/city.c \
+	src/window/config.c \
+	src/window/difficulty_options.c \
+	src/window/display_options.c \
+	src/window/donate_to_city.c \
+	src/window/editor/allowed_buildings.c \
+	src/window/editor/attributes.c \
+	src/window/editor/build_menu.c \
+	src/window/editor/demand_changes.c \
+	src/window/editor/edit_demand_change.c \
+	src/window/editor/edit_invasion.c \
+	src/window/editor/edit_price_change.c \
+	src/window/editor/edit_request.c \
+	src/window/editor/empire.c \
+	src/window/editor/invasions.c \
+	src/window/editor/map.c \
+	src/window/editor/price_changes.c \
+	src/window/editor/requests.c \
+	src/window/editor/special_events.c \
+	src/window/editor/start_year.c \
+	src/window/editor/starting_conditions.c \
+	src/window/editor/win_criteria.c \
+	src/window/empire.c \
+	src/window/file_dialog.c \
+	src/window/gift_to_emperor.c \
+	src/window/hold_festival.c \
+	src/window/hotkey_config.c \
+	src/window/hotkey_editor.c \
+	src/window/intermezzo.c \
+	src/window/intro_video.c \
+	src/window/labor_priority.c \
+	src/window/logo.c \
+	src/window/main_menu.c \
+	src/window/message_dialog.c \
+	src/window/message_list.c \
+	src/window/military_menu.c \
+	src/window/mission_briefing.c \
+	src/window/mission_end.c \
+	src/window/mission_selection.c \
+	src/window/new_career.c \
+	src/window/numeric_input.c \
+	src/window/overlay_menu.c \
+	src/window/plain_message_dialog.c \
+	src/window/popup_dialog.c \
+	src/window/resource_settings.c \
+	src/window/select_list.c \
+	src/window/set_salary.c \
+	src/window/sound_options.c \
+	src/window/speed_options.c \
+	src/window/trade_opened.c \
+	src/window/trade_prices.c \
+	src/window/victory_dialog.c \
+	src/window/victory_video.c
+
+SRCS_EDITOR = \
+	src/editor/editor.c \
+	src/editor/tool.c \
+	src/editor/tool_restriction.c
+
+SRCS_TRANSLATION = \
+	src/translation/czech.c \
+	src/translation/english.c \
+	src/translation/french.c \
+	src/translation/german.c \
+	src/translation/greek.c \
+	src/translation/italian.c \
+	src/translation/japanese.c \
+	src/translation/korean.c \
+	src/translation/polish.c \
+	src/translation/portuguese.c \
+	src/translation/russian.c \
+	src/translation/simplified_chinese.c \
+	src/translation/spanish.c \
+	src/translation/swedish.c \
+	src/translation/traditional_chinese.c \
+	src/translation/translation.c
+
+SRCS_ALL = \
+	$(SRCS_AMIGA_STUBS) \
+	$(SRCS_ZLIB) \
+	$(SRCS_PLATFORM) \
+	$(SRCS_CORE) \
+	$(SRCS_BUILDING) \
+	$(SRCS_CITY) \
+	$(SRCS_EMPIRE) \
+	$(SRCS_FIGURE) \
+	$(SRCS_FIGURETYPE) \
+	$(SRCS_GAME) \
+	$(SRCS_INPUT) \
+	$(SRCS_MAP) \
+	$(SRCS_SCENARIO) \
+	$(SRCS_GRAPHICS) \
+	$(SRCS_SOUND) \
+	$(SRCS_WIDGET) \
+	$(SRCS_WINDOW) \
+	$(SRCS_EDITOR) \
+	$(SRCS_TRANSLATION)
+
+# Build object files into flat obj/ directory to avoid name collisions
+# (e.g. src/building/figure.c vs src/map/figure.c)
+OBJS = $(patsubst %.c,obj/%.o,$(subst /,_,$(SRCS_ALL)))
+
+all: $(OUT)
+
+$(OUT): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
+
+obj:
+	mkdir -p obj
+
+# Pattern: flatten source path to obj/path_to_file.o
+# We generate explicit rules via a template
+
+define COMPILE_RULE
+obj/$(subst /,_,$(1:.c=.o)): $(1) | obj
+	$$(CC) $$(CFLAGS) -c -o $$@ $$<
+endef
+
+$(foreach src,$(SRCS_ALL),$(eval $(call COMPILE_RULE,$(src))))
+
+clean:
+	rm -rf obj $(OUT)
+
+# Count sources for verification
+count:
+	@echo "Source files: $(words $(SRCS_ALL))"
+
+.PHONY: all clean count
