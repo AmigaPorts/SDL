@@ -50,8 +50,9 @@ if ! grep -q "\[${VERSION}\]" CHANGELOG.md 2>/dev/null; then
 fi
 
 if [ "$PACKAGE_ONLY" = false ] && [ "$DRY_RUN" = false ]; then
-    if [ -n "$(git status --porcelain)" ]; then
-        echo "ERROR: Working tree not clean. Commit or stash changes first." >&2
+    if [ -n "$(git diff --name-only HEAD)" ]; then
+        echo "ERROR: Tracked files have uncommitted changes. Commit or stash first." >&2
+        git diff --name-only HEAD >&2
         exit 1
     fi
     BRANCH=$(git branch --show-current)
