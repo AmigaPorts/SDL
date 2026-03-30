@@ -376,5 +376,12 @@ clean:
 	find src -name '*.o' -delete
 	rm -f $(TARGET) $(TEST_LIB) examples/test_init examples/upstream/testutils.o
 
+# --- Release ---
+release:
+	scripts/release.sh
+
+release-dry-run:
+	scripts/release.sh --dry-run
+
 # --- Dependencies ---
 # TODO: Auto-generate with -MMD -MP
