@@ -163,31 +163,100 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
                 );
             }
         } else {
-            /* No scaling needed -- blit dirty rects directly.
-             * WritePixelArray handles ARGB->screen conversion correctly. */
-            for (i = 0; i < numrects; i++) {
-                const SDL_Rect *r = &rects[i];
-                UBYTE *src;
+            /* No scaling needed.
+             * Try LockBitMapTags for direct VRAM write (fast path),
+             * fall back to WritePixelArray if lock fails. */
+            struct BitMap *win_bm = data->window->RPort->BitMap;
+            int used_lock = 0;
 
-                if (r->w <= 0 || r->h <= 0) {
-                    continue;
+            if (GetCyberMapAttr(win_bm, CYBRMATTR_ISCYBERGFX)) {
+                ULONG bm_base = 0, bm_pitch = 0;
+                ULONG bm_pixfmt = 0, bm_bppix = 0;
+                APTR lock;
+
+                lock = LockBitMapTags(win_bm,
+                    LBMI_BASEADDRESS, (ULONG)&bm_base,
+                    LBMI_BYTESPERROW, (ULONG)&bm_pitch,
+                    LBMI_PIXFMT,      (ULONG)&bm_pixfmt,
+                    LBMI_BYTESPERPIX, (ULONG)&bm_bppix,
+                    TAG_DONE);
+
+                if (lock && bm_base && bm_bppix == OS3_BPP) {
+                    UBYTE *fb = (UBYTE *)bm_base;
+
+                    /* Direct memcpy -- no format conversion needed
+                     * when both source (ARGB8888) and dest are 32-bit.
+                     * No library calls allowed while locked! */
+                    for (i = 0; i < numrects; i++) {
+                        const SDL_Rect *r = &rects[i];
+                        UBYTE *src_row;
+                        UBYTE *dst_row;
+                        int row;
+
+                        if (r->w <= 0 || r->h <= 0) {
+                            continue;
+                        }
+
+                        src_row = (UBYTE *)surface->pixels
+                                  + (r->y * surface->pitch)
+                                  + (r->x * OS3_BPP);
+                        dst_row = fb
+                                  + (r->y * bm_pitch)
+                                  + (r->x * bm_bppix);
+
+                        for (row = 0; row < r->h; row++) {
+                            SDL_memcpy(dst_row, src_row,
+                                       r->w * OS3_BPP);
+                            src_row += surface->pitch;
+                            dst_row += bm_pitch;
+                        }
+                    }
+                    used_lock = 1;
                 }
 
-                src = (UBYTE *)surface->pixels
-                      + (r->y * surface->pitch)
-                      + (r->x * OS3_BPP);
+                if (lock) {
+                    UnLockBitMap(lock);
+                }
+            }
 
-                WritePixelArray(
-                    (APTR)src,
-                    0, 0,
-                    (UWORD)surface->pitch,
-                    data->window->RPort,
-                    (UWORD)r->x,
-                    (UWORD)r->y,
-                    (UWORD)r->w,
-                    (UWORD)r->h,
-                    RECTFMT_ARGB
-                );
+            {
+                static int path_logged = 0;
+                if (!path_logged) {
+                    if (used_lock) {
+                        SDL_Log("OS3_FB: LockBitMap FAST path active (direct VRAM)");
+                    } else {
+                        SDL_Log("OS3_FB: WritePixelArray SLOW path (lock failed or not CGX)");
+                    }
+                    path_logged = 1;
+                }
+            }
+
+            if (!used_lock) {
+                /* Fallback: WritePixelArray with format conversion */
+                for (i = 0; i < numrects; i++) {
+                    const SDL_Rect *r = &rects[i];
+                    UBYTE *src;
+
+                    if (r->w <= 0 || r->h <= 0) {
+                        continue;
+                    }
+
+                    src = (UBYTE *)surface->pixels
+                          + (r->y * surface->pitch)
+                          + (r->x * OS3_BPP);
+
+                    WritePixelArray(
+                        (APTR)src,
+                        0, 0,
+                        (UWORD)surface->pitch,
+                        data->window->RPort,
+                        (UWORD)r->x,
+                        (UWORD)r->y,
+                        (UWORD)r->w,
+                        (UWORD)r->h,
+                        RECTFMT_ARGB
+                    );
+                }
             }
         }
     }
