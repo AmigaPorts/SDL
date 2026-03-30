@@ -48,7 +48,8 @@ SRCS_STDLIB = \
 	src/stdlib/SDL_stdlib.c \
 	src/stdlib/SDL_string.c \
 	src/stdlib/SDL_strtokr.c \
-	src/stdlib/SDL_os3float.c
+	src/stdlib/SDL_os3float.c \
+	src/stdlib/SDL_os3double.c
 
 SRCS_LIBM = \
 	src/libm/e_atan2.c \

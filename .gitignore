@@ -218,6 +218,18 @@ examples/upstream/testutils.o
 !examples/*.h
 !examples/upstream/
 
+# Release artifacts
+*.tar.gz
+
+# Claude local settings
+.claude/settings.local.json
+.claude/agent-memory/
+
+# Vendored upstream sources in ports/ (too large to track)
+ports/julius/
+ports/fheroes2/
+ports/chocolate-doom/chocolate-doom
+
 # Session sentinels
 .kb_plan_checked
 

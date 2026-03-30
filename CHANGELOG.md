@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-03-30
+
+### Added
+- LockBitMapTags fast path in UpdateWindowFramebuffer (direct VRAM writes when available)
+- Diagnostic logging for framebuffer blit path selection (LockBitMap vs WritePixelArray)
+- C++ compatibility shims for AmigaOS 3.x (mutex, thread, condvar)
+- Double-precision soft-float functions (SDL_os3double.c) for 68k without FPU
+- Port: 1oom (Master of Orion 1) -- pure C99, zero source mods, ~43 FPS
+
+### Fixed
+- SDL_Renderer pipeline performance: identified 5-copy bottleneck (328ms/frame), documented bypass via SDL_GetWindowSurface for 15x speedup (23ms/frame)
+
 ## [0.6.0] - 2026-03-30
 
 ### Added
