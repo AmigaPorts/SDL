@@ -47,7 +47,7 @@ int OS3_CreateWindowFramebuffer(_THIS, SDL_Window *window,
     SDL_GetWindowSizeInPixels(window, &w, &h);
 
     surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32,
-                                            SDL_PIXELFORMAT_ARGB8888);
+                                            SDL_PIXELFORMAT_RGBA8888);
     if (!surface) {
         return -1;
     }
@@ -89,6 +89,32 @@ int OS3_CreateWindowFramebuffer(_THIS, SDL_Window *window,
     return 0;
 }
 
+/* Convert ARGB8888 -> BGRA32 in-place for LockBitMapTags direct VRAM write.
+ * ARGB Uint32 0xAARRGGBB on big-endian stores as bytes [AA,RR,GG,BB].
+ * BGRA VRAM expects bytes [BB,GG,RR,AA].
+ * Byte mapping: [0]=A->B, [1]=R->G, [2]=G->R, [3]=B->A
+ * As Uint32: BGRA = ((p & 0xFF) << 24) | ((p >> 8) & 0xFF00FF) << 8 ...
+ * Simpler: rotate bytes: ARGB -> BGRA = byteswap the Uint32. */
+static void ConvertARGB_to_BGRA(Uint32 *pixels, int w, int h, int pitch)
+{
+    int y;
+    for (y = 0; y < h; y++) {
+        Uint32 *row = (Uint32 *)((Uint8 *)pixels + y * pitch);
+        int x;
+        for (x = 0; x < w; x++) {
+            Uint32 p = row[x];
+            /* ARGB [AA,RR,GG,BB] -> BGRA [BB,GG,RR,AA] = bswap32 */
+            row[x] = ((p & 0x000000FFu) << 24)  /* B -> byte 0 */
+                    | ((p & 0x0000FF00u) << 8)   /* G -> byte 1 */
+                    | ((p & 0x00FF0000u) >> 8)   /* R -> byte 2 */
+                    | ((p & 0xFF000000u) >> 24);  /* A -> byte 3 */
+        }
+    }
+}
+
+/* Convert back: BGRA -> ARGB (same operation -- bswap is its own inverse) */
+#define ConvertBGRA_to_ARGB ConvertARGB_to_BGRA
+
 int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
                                 const SDL_Rect *rects, int numrects)
 {
@@ -119,8 +145,9 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
             if (scale_rp && scale_bm) {
                 struct BitScaleArgs bsa;
 
-                /* Step 1: WritePixelArray converts ARGB surface -> native
-                 * format in the temp bitmap. This conversion is correct. */
+                /* Swap R<->B to fix FS-UAE CyberGraphX byte order */
+                ConvertARGB_to_BGRA((Uint32 *)surface->pixels, surface->w,
+                                surface->h, surface->pitch);
                 WritePixelArray(
                     (APTR)surface->pixels,
                     0, 0,
@@ -131,6 +158,9 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
                     (UWORD)surface->h,
                     RECTFMT_ARGB
                 );
+                /* Swap back so the surface data stays correct for SDL2 */
+                ConvertARGB_to_BGRA((Uint32 *)surface->pixels, surface->w,
+                                surface->h, surface->pitch);
 
                 /* Step 2: BitMapScale stretches the temp bitmap to the
                  * window's RastPort. Works on native CGX bitmaps. */
@@ -151,6 +181,8 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
                 BitMapScale(&bsa);
             } else {
                 /* Fallback: blit without scaling */
+                ConvertARGB_to_BGRA((Uint32 *)surface->pixels, surface->w,
+                                surface->h, surface->pitch);
                 WritePixelArray(
                     (APTR)surface->pixels,
                     0, 0,
@@ -161,6 +193,8 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
                     (UWORD)surface->h,
                     RECTFMT_ARGB
                 );
+                ConvertARGB_to_BGRA((Uint32 *)surface->pixels, surface->w,
+                                surface->h, surface->pitch);
             }
         } else {
             /* No scaling needed.
@@ -184,9 +218,32 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
                 if (lock && bm_base && bm_bppix == OS3_BPP) {
                     UBYTE *fb = (UBYTE *)bm_base;
 
-                    /* Direct memcpy -- no format conversion needed
-                     * when both source (ARGB8888) and dest are 32-bit.
-                     * No library calls allowed while locked! */
+                    {
+                        static int _fmt_logged = 0;
+                        if (!_fmt_logged) {
+                            SDL_Log("OS3_FB: VRAM pixfmt=%lu bppix=%lu pitch=%lu",
+                                    bm_pixfmt, bm_bppix, bm_pitch);
+                            /* Log first non-zero source pixel bytes */
+                            Uint32 *sp = (Uint32 *)surface->pixels;
+                            int j;
+                            for (j = 0; j < surface->w * 10; j++) {
+                                Uint8 *sb = (Uint8 *)&sp[j];
+                                if (sb[0] != 0 || sb[1] != 0 || sb[2] != 0 || sb[3] != 0) {
+                                    SDL_Log("OS3_FB: src px[%d] bytes=[%02x,%02x,%02x,%02x]",
+                                            j, sb[0], sb[1], sb[2], sb[3]);
+                                    break;
+                                }
+                            }
+                            _fmt_logged = 1;
+                        }
+                    }
+
+                    /* Swap R<->B before copying to VRAM.
+                     * Must do this BEFORE lock section (no lib calls while locked).
+                     * Actually we can do bitwise ops while locked - no Exec calls. */
+                    ConvertARGB_to_BGRA((Uint32 *)surface->pixels, surface->w,
+                                    surface->h, surface->pitch);
+
                     for (i = 0; i < numrects; i++) {
                         const SDL_Rect *r = &rects[i];
                         UBYTE *src_row;
@@ -212,6 +269,10 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
                         }
                     }
                     used_lock = 1;
+
+                    /* Swap back after copy */
+                    ConvertARGB_to_BGRA((Uint32 *)surface->pixels, surface->w,
+                                    surface->h, surface->pitch);
                 }
 
                 if (lock) {
@@ -232,7 +293,9 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
             }
 
             if (!used_lock) {
-                /* Fallback: WritePixelArray with format conversion */
+                /* Swap R<->B, WritePixelArray, swap back */
+                ConvertARGB_to_BGRA((Uint32 *)surface->pixels, surface->w,
+                                surface->h, surface->pitch);
                 for (i = 0; i < numrects; i++) {
                     const SDL_Rect *r = &rects[i];
                     UBYTE *src;
@@ -257,6 +320,8 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
                         RECTFMT_ARGB
                     );
                 }
+                ConvertARGB_to_BGRA((Uint32 *)surface->pixels, surface->w,
+                                surface->h, surface->pitch);
             }
         }
     }

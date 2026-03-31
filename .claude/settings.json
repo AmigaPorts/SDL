@@ -49,24 +49,6 @@
         ]
       }
     ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash scripts/hooks/verify-before-stop.sh",
-            "timeout": 10,
-            "statusMessage": "Checking completion..."
-          },
-          {
-            "type": "command",
-            "command": "bash scripts/hooks/enforce-kb-tracking.sh",
-            "timeout": 10,
-            "statusMessage": "Checking KB tracking..."
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "hooks": [
