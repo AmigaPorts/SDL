@@ -4355,10 +4355,20 @@ static void SDL_RenderSimulateVSync(SDL_Renderer *renderer)
 void SDL_RenderPresent(SDL_Renderer *renderer)
 {
     SDL_bool presented = SDL_TRUE;
+#ifdef SDL_OS3_DEBUG
+    static int rp_frame = 0;
+    Uint32 rp_t0, rp_t1, rp_t2;
+#endif
 
     CHECK_RENDERER_MAGIC(renderer, );
 
+#ifdef SDL_OS3_DEBUG
+    rp_t0 = SDL_GetTicks();
+#endif
     FlushRenderCommands(renderer); /* time to send everything to the GPU! */
+#ifdef SDL_OS3_DEBUG
+    rp_t1 = SDL_GetTicks();
+#endif
 
 #if DONT_DRAW_WHILE_HIDDEN
     /* Don't present while we're hidden */
@@ -4369,6 +4379,16 @@ void SDL_RenderPresent(SDL_Renderer *renderer)
         if (renderer->RenderPresent(renderer) < 0) {
         presented = SDL_FALSE;
     }
+#ifdef SDL_OS3_DEBUG
+    rp_t2 = SDL_GetTicks();
+    if (rp_frame < 10) {
+        SDL_Log("RP%d: flush=%lu present=%lu total=%lu",
+            rp_frame, (unsigned long)(rp_t1 - rp_t0),
+            (unsigned long)(rp_t2 - rp_t1),
+            (unsigned long)(rp_t2 - rp_t0));
+    }
+    ++rp_frame;
+#endif
 
     if (renderer->simulate_vsync ||
         (!presented && renderer->wanted_vsync)) {

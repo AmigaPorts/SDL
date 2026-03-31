@@ -96,7 +96,27 @@ int SDL_SemWaitTimeout(SDL_sem *sem, Uint32 timeout)
         return SDL_MUTEX_TIMEDOUT;
     }
 
-    /* Need to block: allocate a signal and add to waiter list */
+    /* Finite timeout: poll with SDL_Delay instead of blocking forever.
+     * A proper implementation would use timer.device combined with Wait(),
+     * but polling at 1ms granularity is sufficient for SDL_AddTimer. */
+    if (timeout != SDL_MUTEX_MAXWAIT) {
+        Uint32 start = SDL_GetTicks();
+        ReleaseSemaphore(&sem->lock);
+
+        while ((SDL_GetTicks() - start) < timeout) {
+            SDL_Delay(1);
+            ObtainSemaphore(&sem->lock);
+            if (sem->count > 0) {
+                sem->count--;
+                ReleaseSemaphore(&sem->lock);
+                return 0;
+            }
+            ReleaseSemaphore(&sem->lock);
+        }
+        return SDL_MUTEX_TIMEDOUT;
+    }
+
+    /* Infinite wait: block on signal */
     me = FindTask(NULL);
     sig = AllocSignal(-1);
     if (sig == -1) {
@@ -116,7 +136,6 @@ int SDL_SemWaitTimeout(SDL_sem *sem, Uint32 timeout)
     sem->num_waiters++;
     ReleaseSemaphore(&sem->lock);
 
-    /* Block until signaled */
     Wait(wait_mask);
 
     FreeSignal(sig);
