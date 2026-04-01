@@ -154,24 +154,16 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
             OS3_AGA_SetPalette(data->screen, pal);
         }
 
-        /* WriteChunkyPixels: inclusive xstop/ystop (ADCD) */
-        WriteChunkyPixels(
-            &data->screen->RastPort,
-            0, 0,
-            (LONG)(surface->w - 1),
-            (LONG)(surface->h - 1),
-            (UBYTE *)surface->pixels,
-            (LONG)surface->pitch
-        );
-
+        /* Kalms c2p: direct chunky-to-planar to screen bitplanes.
+         * ~10ms on 030/50MHz vs ~189ms for WriteChunkyPixels. */
         {
-            static int path_logged = 0;
-            if (!path_logged) {
-                SDL_Log("OS3_FB: AGA path active (WriteChunkyPixels %dx%d)",
-                        surface->w, surface->h);
-                path_logged = 1;
+            static int c2p_inited = 0;
+            if (!c2p_inited) {
+                OS3_AGA_C2PInit(surface->w, surface->h);
+                c2p_inited = 1;
             }
         }
+        OS3_AGA_C2P(surface->pixels, data->screen, surface->w, surface->h);
 
         return 0;
     }

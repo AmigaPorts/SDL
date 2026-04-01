@@ -1,6 +1,7 @@
 /*
   SDL2 Video Driver -- AmigaOS 3.x AGA (non-RTG) helpers.
   Palette management via LoadRGB32.
+  Chunky-to-planar via Kalms c2p assembly (public domain, 68020+).
 */
 
 #include "../../SDL_internal.h"
@@ -11,6 +12,17 @@
 #include "SDL_os3video.h"
 
 #include <proto/graphics.h>
+
+/* Kalms c2p assembly functions (c2p1x1_8_c5_gen.s, assembled by vasm).
+ * Register constraints match the asm: d0, d1, d3 for init; a0, a1 for convert.
+ * bebbo-gcc supports __asm register constraints for 68k. */
+extern void c2p1x1_8_c5_gen_init(
+    int chunkyx __asm("d0"),
+    int chunkyy __asm("d1"),
+    int scroffsy __asm("d3"));
+extern void c2p1x1_8_c5_gen(
+    void *c2pscreen __asm("a0"),
+    void *bitplanes __asm("a1"));
 
 void OS3_AGA_SetPalette(struct Screen *screen, SDL_Palette *pal)
 {
@@ -42,6 +54,33 @@ void OS3_AGA_SetPalette(struct Screen *screen, SDL_Palette *pal)
     table[1 + ncolors * 3] = 0;
 
     LoadRGB32(&screen->ViewPort, table);
+}
+
+void OS3_AGA_C2PInit(int width, int height)
+{
+    c2p1x1_8_c5_gen_init(width, height, 0);
+}
+
+void OS3_AGA_C2P(const void *chunky, struct Screen *screen,
+                 int width, int height)
+{
+    struct BitMap *bm;
+
+    (void)width;
+    (void)height;
+
+    if (!screen) {
+        return;
+    }
+
+    bm = screen->RastPort.BitMap;
+    if (!bm || !bm->Planes[0]) {
+        return;
+    }
+
+    /* Kalms c2p expects contiguous bitplanes with BPLSIZE spacing.
+     * Standard AGA screen bitmaps from OpenScreen have this layout. */
+    c2p1x1_8_c5_gen((void *)chunky, (void *)bm->Planes[0]);
 }
 
 #endif /* SDL_VIDEO_DRIVER_AMIGAOS3 */

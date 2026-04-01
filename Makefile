@@ -122,6 +122,12 @@ SRCS_VIDEO_OS3 = \
 	src/video/amigaos3/SDL_os3mouse.c \
 	src/video/amigaos3/SDL_os3aga.c
 
+# Kalms c2p assembly (assembled with vasm, not gcc)
+# BPLSIZE = offset between bitplanes = screen_width * screen_height / 8
+# Default: 320x256 PAL = 10240 bytes
+C2P_BPLSIZE = 10240
+C2P_OBJ = src/video/amigaos3/c2p1x1_8_c5_gen.o
+
 SRCS_VIDEO_DUMMY = \
 	src/video/dummy/SDL_nullevents.c \
 	src/video/dummy/SDL_nullframebuffer.c \
@@ -287,9 +293,13 @@ native-build: $(TARGET) $(TEST_LIB)
 	@echo "Built $(TEST_LIB) ($$(wc -c < $(TEST_LIB)) bytes)"
 	@echo "Sources: $$(echo $(SRCS) | wc -w) files"
 
-$(TARGET): $(OBJS)
+$(TARGET): $(OBJS) $(C2P_OBJ)
 	$(AR) rcs $@ $^
 	$(RANLIB) $@
+
+# Assemble Kalms c2p with vasm (Motorola syntax, Amiga hunk output)
+$(C2P_OBJ): src/video/amigaos3/c2p1x1_8_c5_gen.s
+	vasmm68k_mot -Fhunk -m68020 -DBPLSIZE=$(C2P_BPLSIZE) -quiet -o $@ $<
 
 $(TEST_LIB): $(OBJS_TEST_LIB)
 	$(AR) rcs $@ $^
