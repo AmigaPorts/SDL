@@ -13,6 +13,7 @@
 #if SDL_VIDEO_DRIVER_AMIGAOS3
 
 #include <proto/dos.h>
+#include <graphics/gfxbase.h>  /* ChipRevBits0, GFXF_AA_ALICE/LISA for AGA detection */
 #include "SDL_os3video.h"
 #include "SDL_os3window.h"
 #include "SDL_os3framebuffer.h"
@@ -124,11 +125,12 @@ static int OS3_VideoInit(_THIS)
     oldwin = me->pr_WindowPtr;
     me->pr_WindowPtr = (APTR)-1L;
 
+    /* V40 required for WriteChunkyPixels (AGA c2p path) */
     GfxBase = (struct GfxBase *)
-              OpenLibrary((CONST_STRPTR)"graphics.library", 39UL);
+              OpenLibrary((CONST_STRPTR)"graphics.library", 40UL);
     if (!GfxBase) {
         me->pr_WindowPtr = oldwin;
-        return SDL_SetError("Cannot open graphics.library V39+");
+        return SDL_SetError("Cannot open graphics.library V40+");
     }
 
     IntuitionBase = (struct IntuitionBase *)
@@ -153,73 +155,84 @@ static int OS3_VideoInit(_THIS)
     /* Restore requesters now that library opens are done */
     me->pr_WindowPtr = oldwin;
 
-    if (!CyberGfxBase) {
-        CloseLibrary((struct Library *)IntuitionBase);
-        IntuitionBase = NULL;
-        CloseLibrary((struct Library *)GfxBase);
-        GfxBase = NULL;
-        return SDL_SetError("Cannot open cybergraphics.library V40+"
-                            " -- no RTG board or driver not installed");
-    }
-
-    /*
-     * Enumerate RTG display modes to build the SDL display list.
-     *
-     * Strategy: collect all CGX modes, find the largest as the
-     * "desktop mode", then call SDL_AddBasicVideoDisplay to register
-     * the display. SDL_AddDisplayMode adds additional modes later
-     * via GetDisplayModes.
-     *
-     * We only look for the best mode here. GetDisplayModes fills in
-     * the full list.
-     */
     SDL_zero(best_mode);
-    best_mode.format = SDL_PIXELFORMAT_ARGB8888;
-    best_mode.w = 640;
-    best_mode.h = 480;
     best_mode.refresh_rate = 60;
     best_mode.driverdata = NULL;
 
-    /* Find the best 640x480 mode as the "desktop mode".
-     * On real Amigas this is the standard RTG resolution.
-     * Games that need larger can request specific modes.
-     * Using the largest mode (e.g. 2056x1329 on FS-UAE) causes
-     * fullscreen apps to blit enormous framebuffers. */
-    found_any = 0;
-    nextid = NextDisplayInfo(INVALID_ID);
-    while (nextid != INVALID_ID) {
-        if (IsCyberModeID(nextid)) {
-            ULONG w   = GetCyberIDAttr(CYBRIDATTR_WIDTH,  nextid);
-            ULONG h   = GetCyberIDAttr(CYBRIDATTR_HEIGHT, nextid);
-            ULONG bpp = GetCyberIDAttr(CYBRIDATTR_DEPTH,  nextid);
-            Uint32 fmt = OS3_DepthToFormat((int)bpp);
+    if (CyberGfxBase) {
+        /*
+         * RTG path: enumerate CyberGraphX display modes.
+         * If the library opened but no modes exist (P96 installed
+         * without a graphics card), fall through to AGA.
+         */
+        best_mode.format = SDL_PIXELFORMAT_ARGB8888;
+        best_mode.w = 640;
+        best_mode.h = 480;
 
-            if (fmt != SDL_PIXELFORMAT_UNKNOWN && (int)bpp >= 16) {
-                /* Prefer 640x480 as desktop mode. Accept larger only
-                 * if we haven't found a 640x480 yet. */
-                if (!found_any) {
-                    best_mode.w      = (int)w;
-                    best_mode.h      = (int)h;
-                    best_mode.format = fmt;
-                    found_any = 1;
-                } else if ((int)w == 640 && (int)h == 480) {
-                    best_mode.w      = 640;
-                    best_mode.h      = 480;
-                    best_mode.format = fmt;
-                } else if (best_mode.w != 640 && (int)w < best_mode.w) {
-                    /* Haven't found 640x480 yet; pick smallest available */
-                    best_mode.w      = (int)w;
-                    best_mode.h      = (int)h;
-                    best_mode.format = fmt;
+        found_any = 0;
+        nextid = NextDisplayInfo(INVALID_ID);
+        while (nextid != INVALID_ID) {
+            if (IsCyberModeID(nextid)) {
+                ULONG w   = GetCyberIDAttr(CYBRIDATTR_WIDTH,  nextid);
+                ULONG h   = GetCyberIDAttr(CYBRIDATTR_HEIGHT, nextid);
+                ULONG bpp = GetCyberIDAttr(CYBRIDATTR_DEPTH,  nextid);
+                Uint32 fmt = OS3_DepthToFormat((int)bpp);
+
+                if (fmt != SDL_PIXELFORMAT_UNKNOWN && (int)bpp >= 16) {
+                    if (!found_any) {
+                        best_mode.w      = (int)w;
+                        best_mode.h      = (int)h;
+                        best_mode.format = fmt;
+                        found_any = 1;
+                    } else if ((int)w == 640 && (int)h == 480) {
+                        best_mode.w      = 640;
+                        best_mode.h      = 480;
+                        best_mode.format = fmt;
+                    } else if (best_mode.w != 640 && (int)w < best_mode.w) {
+                        best_mode.w      = (int)w;
+                        best_mode.h      = (int)h;
+                        best_mode.format = fmt;
+                    }
                 }
             }
+            nextid = NextDisplayInfo(nextid);
         }
-        nextid = NextDisplayInfo(nextid);
+
+        if (!found_any) {
+            /* P96/CGX library exists but no RTG modes available
+             * (no graphics card). Close it and fall through to AGA. */
+            SDL_Log("OS3: CGX library found but no RTG modes -- trying AGA");
+            CloseLibrary(CyberGfxBase);
+            CyberGfxBase = NULL;
+        }
+    }
+
+    if (!CyberGfxBase) {
+        /* No RTG available. Check for AGA chipset (ADCD gfxbase.h:
+         * GFXF_AA_ALICE = 4, GFXF_AA_LISA = 8). */
+        if (!(GfxBase->ChipRevBits0 & (GFXF_AA_ALICE | GFXF_AA_LISA))) {
+            CloseLibrary((struct Library *)IntuitionBase);
+            IntuitionBase = NULL;
+            CloseLibrary((struct Library *)GfxBase);
+            GfxBase = NULL;
+            return SDL_SetError("No RTG and not AGA chipset"
+                                " -- ECS/OCS not supported");
+        }
+
+        SDL_Log("OS3: No RTG found, using AGA native display");
+
+        /* Register a default AGA display mode.
+         * PAL low-res: 320x256, 8-bit (256 colors). */
+        best_mode.format = SDL_PIXELFORMAT_INDEX8;
+        best_mode.w = 320;
+        best_mode.h = 256;
     }
 
     if (SDL_AddBasicVideoDisplay(&best_mode) < 0) {
-        CloseLibrary(CyberGfxBase);
-        CyberGfxBase = NULL;
+        if (CyberGfxBase) {
+            CloseLibrary(CyberGfxBase);
+            CyberGfxBase = NULL;
+        }
         CloseLibrary((struct Library *)IntuitionBase);
         IntuitionBase = NULL;
         CloseLibrary((struct Library *)GfxBase);
@@ -255,6 +268,26 @@ static void OS3_VideoQuit(_THIS)
 static void OS3_GetDisplayModes(_THIS, SDL_VideoDisplay *display)
 {
     ULONG nextid;
+
+    if (!CyberGfxBase) {
+        /* AGA mode: offer common PAL/NTSC resolutions at 8-bit */
+        static const struct { int w, h; } aga_modes[] = {
+            { 320, 200 }, { 320, 240 }, { 320, 256 },
+            { 640, 256 }, { 640, 480 }, { 640, 512 }
+        };
+        int i;
+        for (i = 0; i < (int)(sizeof(aga_modes) / sizeof(aga_modes[0])); i++) {
+            SDL_DisplayMode mode;
+            SDL_zero(mode);
+            mode.format       = SDL_PIXELFORMAT_INDEX8;
+            mode.w            = aga_modes[i].w;
+            mode.h            = aga_modes[i].h;
+            mode.refresh_rate = 50; /* PAL default */
+            mode.driverdata   = NULL;
+            SDL_AddDisplayMode(display, &mode);
+        }
+        return;
+    }
 
     nextid = NextDisplayInfo(INVALID_ID);
     while (nextid != INVALID_ID) {
@@ -293,6 +326,13 @@ static int OS3_SetDisplayMode(_THIS, SDL_VideoDisplay *display,
             CloseScreen(data->fullscreen_screen);
             data->fullscreen_screen = NULL;
         }
+        return 0;
+    }
+
+    /* AGA mode: screen management is handled in OS3_OpenFullscreen.
+     * SetDisplayMode is a no-op because we open/close the AGA screen
+     * directly in the window lifecycle, not via the display abstraction. */
+    if (!CyberGfxBase) {
         return 0;
     }
 

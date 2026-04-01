@@ -13,6 +13,7 @@
 
 #if SDL_VIDEO_DRIVER_AMIGAOS3
 
+#include <graphics/modeid.h>   /* BIDTAG_* for BestModeID (AGA mode selection) */
 #include "SDL_os3video.h"
 #include "SDL_os3window.h"
 #include "SDL_os3framebuffer.h"
@@ -72,35 +73,12 @@ static void OS3_CloseWindowAndScreen(OS3_WindowData *data)
     data->is_fullscreen = 0;
 }
 
-/* --- Internal: open a fullscreen CGX screen + borderless window --- */
-static int OS3_OpenFullscreen(OS3_WindowData *data, int w, int h)
+/* --- Internal: open a custom screen + borderless window --- */
+static int OS3_OpenScreen(OS3_WindowData *data, int w, int h,
+                          ULONG modeid, int depth)
 {
-    ULONG modeid;
-    int depth = 32;
     struct Screen *screen;
     struct Window *iwin;
-
-    /* Ensure minimum 640x480 for fullscreen (smallest standard RTG mode) */
-    if (w < 640) w = 640;
-    if (h < 480) h = 480;
-
-    modeid = BestCModeIDTags(
-        CYBRBIDTG_NominalWidth,  w,
-        CYBRBIDTG_NominalHeight, h,
-        CYBRBIDTG_Depth,         depth,
-        TAG_DONE
-    );
-    if (modeid == INVALID_ID) {
-        modeid = BestCModeIDTags(
-            CYBRBIDTG_NominalWidth,  640,
-            CYBRBIDTG_NominalHeight, 480,
-            CYBRBIDTG_Depth,         16,
-            TAG_DONE
-        );
-    }
-    if (modeid == INVALID_ID) {
-        return SDL_SetError("OS3: no suitable CGX fullscreen mode found");
-    }
 
     screen = OpenScreenTags(NULL,
         SA_Title,      (ULONG)"SDL",
@@ -115,7 +93,8 @@ static int OS3_OpenFullscreen(OS3_WindowData *data, int w, int h)
         TAG_DONE
     );
     if (!screen) {
-        return SDL_SetError("OS3: OpenScreenTags (fullscreen) failed");
+        return SDL_SetError("OS3: OpenScreenTags failed for %dx%dx%d",
+                            w, h, depth);
     }
 
     iwin = OpenWindowTags(NULL,
@@ -130,7 +109,7 @@ static int OS3_OpenFullscreen(OS3_WindowData *data, int w, int h)
     );
     if (!iwin) {
         CloseScreen(screen);
-        return SDL_SetError("OS3: OpenWindowTags (fullscreen) failed");
+        return SDL_SetError("OS3: OpenWindowTags failed");
     }
 
     data->window        = iwin;
@@ -138,12 +117,10 @@ static int OS3_OpenFullscreen(OS3_WindowData *data, int w, int h)
     data->is_fullscreen = 1;
 
     /* Hide the Intuition pointer in fullscreen to prevent flicker.
-     * Full-screen WritePixelArray blits conflict with hardware sprite
-     * overlay on RTG cards. Fullscreen games should use software cursor
-     * (PLATFORM_USE_SOFTWARE_CURSOR) for flicker-free rendering.
-     * The mouse backend (SDL_os3mouse.c) handles windowed mode cursors. */
+     * Sprite data must be in CHIP RAM (ADCD pitfall). */
     {
-        UWORD *empty_ptr = (UWORD *)AllocMem(6 * sizeof(UWORD), MEMF_CHIP | MEMF_CLEAR);
+        UWORD *empty_ptr = (UWORD *)AllocMem(6 * sizeof(UWORD),
+                                              MEMF_CHIP | MEMF_CLEAR);
         if (empty_ptr) {
             SetPointer(iwin, empty_ptr, 1, 1, 0, 0);
             screen->UserData = (APTR)empty_ptr;
@@ -153,32 +130,78 @@ static int OS3_OpenFullscreen(OS3_WindowData *data, int w, int h)
     return 0;
 }
 
-/* --- Internal: open a windowed window on WB or custom RTG screen --- */
+/* --- Internal: find RTG mode and open fullscreen --- */
+static int OS3_OpenFullscreen(OS3_WindowData *data, int w, int h)
+{
+    ULONG modeid;
+
+    if (!CyberGfxBase) {
+        /* AGA path: use BestModeID for native mode selection */
+        modeid = BestModeID(
+            BIDTAG_NominalWidth,  (ULONG)w,
+            BIDTAG_NominalHeight, (ULONG)h,
+            BIDTAG_Depth,         8UL,
+            TAG_DONE
+        );
+        if (modeid == INVALID_ID) {
+            return SDL_SetError("OS3: no AGA mode found for %dx%d", w, h);
+        }
+        return OS3_OpenScreen(data, w, h, modeid, 8);
+    }
+
+    /* RTG path: BestCModeIDTags for CyberGraphX mode */
+    if (w < 640) w = 640;
+    if (h < 480) h = 480;
+
+    modeid = BestCModeIDTags(
+        CYBRBIDTG_NominalWidth,  w,
+        CYBRBIDTG_NominalHeight, h,
+        CYBRBIDTG_Depth,         32,
+        TAG_DONE
+    );
+    if (modeid == INVALID_ID) {
+        modeid = BestCModeIDTags(
+            CYBRBIDTG_NominalWidth,  640,
+            CYBRBIDTG_NominalHeight, 480,
+            CYBRBIDTG_Depth,         16,
+            TAG_DONE
+        );
+    }
+    if (modeid == INVALID_ID) {
+        return SDL_SetError("OS3: no suitable CGX fullscreen mode found");
+    }
+
+    return OS3_OpenScreen(data, w, h, modeid, 32);
+}
+
+/* --- Internal: open a windowed window on WB or custom screen --- */
 static int OS3_OpenWindowed(OS3_WindowData *data, SDL_Window *window)
 {
-    struct Screen *wbscreen;
     struct Window *iwin;
     int use_wb = 0;
     int xpos, ypos;
 
-    /* Lock the default public screen (Workbench) and check if it's RTG.
-     * Only use WB if the window is large enough to benefit (>= 640x480).
-     * Small windows (games at 320x200 etc.) get their own custom screen
-     * to avoid the tiny-window-on-huge-desktop problem. */
-    wbscreen = LockPubScreen(NULL);
-    if (wbscreen) {
-        struct BitMap *bm = wbscreen->RastPort.BitMap;
-        if (GetCyberMapAttr(bm, CYBRMATTR_ISCYBERGFX)) {
-            /* Only use WB screen if window fills most of it */
-            if (window->w >= 640 && window->h >= 400) {
-                use_wb = 1;
+    if (!CyberGfxBase) {
+        /* AGA: always open a custom fullscreen screen.
+         * No windowed mode on AGA (no chunky WB screen to open on). */
+        return OS3_OpenFullscreen(data, window->w, window->h);
+    }
+
+    /* RTG path: check if Workbench is suitable */
+    {
+        struct Screen *wbscreen = LockPubScreen(NULL);
+        if (wbscreen) {
+            struct BitMap *bm = wbscreen->RastPort.BitMap;
+            if (GetCyberMapAttr(bm, CYBRMATTR_ISCYBERGFX)) {
+                if (window->w >= 640 && window->h >= 400) {
+                    use_wb = 1;
+                }
             }
+            UnlockPubScreen(NULL, wbscreen);
         }
-        UnlockPubScreen(NULL, wbscreen);
     }
 
     if (use_wb) {
-        /* WB is an RTG screen and window is large enough -- open on it */
         xpos = (window->x == SDL_WINDOWPOS_CENTERED ||
                 window->x == SDL_WINDOWPOS_UNDEFINED) ? 32 : window->x;
         ypos = (window->y == SDL_WINDOWPOS_CENTERED ||
@@ -200,16 +223,13 @@ static int OS3_OpenWindowed(OS3_WindowData *data, SDL_Window *window)
             return SDL_SetError("OS3: OpenWindowTags (WB) failed");
         }
         data->window        = iwin;
-        data->screen        = NULL;  /* using public screen */
+        data->screen        = NULL;
         data->is_fullscreen = 0;
     } else {
-        /* WB is AGA -- open our own RTG screen + window on it */
+        /* Open our own RTG screen + window */
         ULONG modeid;
-        struct Screen *screen;
-        int scrw, scrh;
-
-        scrw = window->w + 64;
-        scrh = window->h + 64;
+        int scrw = window->w + 64;
+        int scrh = window->h + 64;
         if (scrw < 640) scrw = 640;
         if (scrh < 480) scrh = 480;
 
@@ -231,47 +251,7 @@ static int OS3_OpenWindowed(OS3_WindowData *data, SDL_Window *window)
             return SDL_SetError("OS3: no RTG mode found for windowed");
         }
 
-        /* Open a borderless fullscreen window on a custom screen.
-         * The window fills the entire screen; SDL2's logical size
-         * scaling handles mapping the game's coordinates. */
-        screen = OpenScreenTags(NULL,
-            SA_Title,      (ULONG)"SDL",
-            SA_Quiet,      TRUE,
-            SA_ShowTitle,  FALSE,
-            SA_Depth,      32UL,
-            SA_DisplayID,  modeid,
-            SA_Type,       CUSTOMSCREEN,
-            SA_Exclusive,  TRUE,
-            SA_Draggable,  FALSE,
-            SA_AutoScroll, FALSE,
-            TAG_DONE
-        );
-        if (!screen) {
-            return SDL_SetError("OS3: OpenScreenTags (windowed) failed");
-        }
-
-        iwin = OpenWindowTags(NULL,
-            WA_Left,          0,
-            WA_Top,           0,
-            WA_Width,         (ULONG)screen->Width,
-            WA_Height,        (ULONG)screen->Height,
-            WA_Flags,         (ULONG)OS3_WFLG_FULLSCREEN,
-            WA_IDCMP,         (ULONG)OS3_IDCMP_FULLSCREEN,
-            WA_CustomScreen,  (ULONG)screen,
-            TAG_DONE
-        );
-        /* Do NOT update window->w/h to screen size. Keep the SDL window
-         * at the game's requested size (e.g. 320x200). The renderer and
-         * framebuffer stay small, WritePixelArray only blits that area.
-         * The Intuition window fills the screen but the blit is fast. */
-        if (!iwin) {
-            CloseScreen(screen);
-            return SDL_SetError("OS3: OpenWindowTags (windowed on custom) failed");
-        }
-
-        data->window        = iwin;
-        data->screen        = screen;   /* we own this screen */
-        data->is_fullscreen = 0;
+        return OS3_OpenScreen(data, scrw, scrh, modeid, 32);
     }
     return 0;
 }

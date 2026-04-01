@@ -49,3 +49,11 @@
 - **Depends on:** Phase A SDL2_mixer complete, AHI working (timidity on Paula would be very low quality)
 - **Target:** After AHI is fixed
 - **Added:** 2026-03-29 via /plan-eng-review
+
+### Custom c2p for AGA performance
+- **What:** Replace WriteChunkyPixels with optimized c2p if frame time is too high
+- **Why:** System c2p (WriteChunkyPixels) may be 30-50ms/frame on 68030. Games need <16ms for 60 FPS or <33ms for 30 FPS.
+- **How:** Measure WCP frame time on FS-UAE A1200 config with C&C. If >15ms, implement Kalms c2p1x1_8_c5_gen (public domain, 68020+ asm) or pure C 5-pass merge algorithm. Assembly API: `c2p1x1_8_c5_gen_init(w, h, offsx, offsy)` + `c2p1x1_8_c5_gen(src, dst)`. Repository: github.com/Kalmalyzer/kalms-c2p/normal/
+- **Depends on:** AGA backend working (WriteChunkyPixels path functional)
+- **Target:** Phase 6 optimization
+- **Added:** 2026-04-01 via /plan-eng-review

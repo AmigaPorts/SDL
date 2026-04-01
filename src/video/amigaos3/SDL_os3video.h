@@ -42,6 +42,9 @@ typedef struct OS3_WindowData {
     struct Window *window;    /* Intuition window */
     struct Screen *screen;    /* Intuition screen (NULL if using WB screen) */
     int            is_fullscreen; /* non-zero if we own the screen */
+    /* AGA palette shadow for dirty detection (used when CyberGfxBase == NULL) */
+    SDL_Color      aga_palette[256];
+    int            aga_palette_set; /* 0 = never synced */
 } OS3_WindowData;
 
 /* Bootstrap entry -- wired into SDL_VideoBootStrap array */

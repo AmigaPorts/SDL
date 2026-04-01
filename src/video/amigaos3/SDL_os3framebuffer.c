@@ -1,23 +1,24 @@
 /*
-  Framebuffer: SDL_Surface <-> Intuition RastPort via WritePixelArray.
+  Framebuffer: SDL_Surface <-> screen via CyberGraphX (RTG) or AGA (planar).
 
-  Pixel format: SDL_PIXELFORMAT_ARGB8888 internally.
-  WritePixelArray(RECTFMT_ARGB) handles conversion to screen native format.
-  LockBitMapTags fast path: direct VRAM write needs ARGB->native conversion.
+  RTG path: ARGB8888 surface -> WritePixelArray or LockBitMapTags.
+  AGA path: INDEX8 surface -> WriteChunkyPixels (system c2p) + LoadRGB32 palette.
 
-  Scaling strategy: WritePixelArray to a temp CGX BitMap (handles format
-  conversion), then BitMapScale to stretch to window size.
+  Scaling strategy (RTG only): WritePixelArray to temp BitMap, BitMapScale to stretch.
 
   VRAM pixel format: FS-UAE uaegfx reports PIXFMT_BGRA32 (12).
   LockBitMap memcpy must convert ARGB->BGRA inline (bswap32 per pixel).
-  WritePixelArray handles this conversion internally via RECTFMT_ARGB.
 */
 
 #include "../../SDL_internal.h"
 #include "SDL_os3video.h"
+#include "SDL_os3aga.h"
 
-#include <proto/cybergraphics.h>
 #include <proto/graphics.h>
+
+/* CyberGraphX headers only needed when RTG is available (compile always,
+ * guarded at runtime by CyberGfxBase != NULL) */
+#include <proto/cybergraphics.h>
 #include <cybergraphx/cybergraphics.h>
 
 /* Key strings for SDL_SetWindowData / SDL_GetWindowData */
@@ -27,6 +28,9 @@
 
 /* Bytes per pixel for ARGB8888 */
 #define OS3_BPP 4
+
+/* Forward declaration (defined later in this file) */
+void OS3_DestroyWindowFramebuffer(_THIS, SDL_Window *window);
 
 /* Inline ARGB->BGRA memcpy for LockBitMap VRAM writes.
  * Combines the copy and byte-swap in one pass -- 3x faster than
@@ -59,6 +63,22 @@ int OS3_CreateWindowFramebuffer(_THIS, SDL_Window *window,
 
     SDL_GetWindowSizeInPixels(window, &w, &h);
 
+    if (!CyberGfxBase) {
+        /* AGA path: 8-bit paletted surface.
+         * Games blitting 8-bit surfaces get a fast memcpy. */
+        surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 8,
+                                                SDL_PIXELFORMAT_INDEX8);
+        if (!surface) {
+            return -1;
+        }
+        SDL_SetWindowData(window, OS3_SURFACE_KEY, surface);
+        *format = SDL_PIXELFORMAT_INDEX8;
+        *pixels = surface->pixels;
+        *pitch  = surface->pitch;
+        return 0;
+    }
+
+    /* RTG path: 32-bit ARGB surface */
     surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32,
                                             SDL_PIXELFORMAT_ARGB8888);
     if (!surface) {
@@ -115,6 +135,48 @@ int OS3_UpdateWindowFramebuffer(_THIS, SDL_Window *window,
         return SDL_SetError("OS3_UpdateWindowFramebuffer: no framebuffer surface");
     }
 
+    /* --- AGA path: WriteChunkyPixels + LoadRGB32 palette --- */
+    if (!CyberGfxBase) {
+        /* Get palette from the window surface SDL2 exposes to the game.
+         * Our internal surface (OS3_SURFACE_KEY) and SDL_GetWindowSurface
+         * may return different surface objects with different palettes. */
+        SDL_Surface *win_surf = SDL_GetWindowSurface(window);
+        SDL_Palette *pal = NULL;
+
+        if (win_surf && win_surf->format) {
+            pal = win_surf->format->palette;
+        }
+        if (!pal && surface->format) {
+            pal = surface->format->palette;
+        }
+
+        if (pal) {
+            OS3_AGA_SetPalette(data->screen, pal);
+        }
+
+        /* WriteChunkyPixels: inclusive xstop/ystop (ADCD) */
+        WriteChunkyPixels(
+            &data->screen->RastPort,
+            0, 0,
+            (LONG)(surface->w - 1),
+            (LONG)(surface->h - 1),
+            (UBYTE *)surface->pixels,
+            (LONG)surface->pitch
+        );
+
+        {
+            static int path_logged = 0;
+            if (!path_logged) {
+                SDL_Log("OS3_FB: AGA path active (WriteChunkyPixels %dx%d)",
+                        surface->w, surface->h);
+                path_logged = 1;
+            }
+        }
+
+        return 0;
+    }
+
+    /* --- RTG path --- */
     {
         int win_w = data->window->Width;
         int win_h = data->window->Height;
