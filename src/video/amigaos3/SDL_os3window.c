@@ -14,10 +14,63 @@
 #if SDL_VIDEO_DRIVER_AMIGAOS3
 
 #include <graphics/modeid.h>   /* BIDTAG_* for BestModeID (AGA mode selection) */
+#include <graphics/displayinfo.h>  /* DisplayInfo, DimensionInfo for P96 fallback */
 #include "SDL_os3video.h"
 #include "SDL_os3window.h"
 #include "SDL_os3framebuffer.h"
 #include "../../events/SDL_windowevents_c.h"
+
+/*
+ * Find an RTG mode >= requested size and depth by manually walking
+ * the display database. Fallback for when BestCModeIDTags() fails
+ * (e.g. Picasso96 without cybergraphics.library on Vampire SAGA).
+ */
+static ULONG OS3_FindRTGMode(int want_w, int want_h, int want_depth)
+{
+    ULONG nextid;
+    ULONG best_id = INVALID_ID;
+    ULONG best_w = 0xFFFFFFFF, best_h = 0xFFFFFFFF;
+
+    nextid = NextDisplayInfo(INVALID_ID);
+    while (nextid != INVALID_ID) {
+        int is_rtg = 0;
+        ULONG w, h, bpp;
+
+        if (CyberGfxBase && IsCyberModeID(nextid)) {
+            w   = GetCyberIDAttr(CYBRIDATTR_WIDTH,  nextid);
+            h   = GetCyberIDAttr(CYBRIDATTR_HEIGHT, nextid);
+            bpp = GetCyberIDAttr(CYBRIDATTR_DEPTH,  nextid);
+            is_rtg = 1;
+        } else {
+            struct DisplayInfo di;
+            if (GetDisplayInfoData(NULL, (UBYTE *)&di, sizeof(di),
+                                   DTAG_DISP, nextid)) {
+                if (di.PropertyFlags & (1UL << 12)) {
+                    struct DimensionInfo dim;
+                    if (GetDisplayInfoData(NULL, (UBYTE *)&dim,
+                            sizeof(dim), DTAG_DIMS, nextid)) {
+                        w   = dim.Nominal.MaxX - dim.Nominal.MinX + 1;
+                        h   = dim.Nominal.MaxY - dim.Nominal.MinY + 1;
+                        bpp = dim.MaxDepth;
+                        is_rtg = 1;
+                    }
+                }
+            }
+        }
+
+        if (is_rtg && (int)w >= want_w && (int)h >= want_h &&
+            (int)bpp >= want_depth) {
+            /* Prefer smallest mode that fits */
+            if (w < best_w || (w == best_w && h < best_h)) {
+                best_w = w;
+                best_h = h;
+                best_id = nextid;
+            }
+        }
+        nextid = NextDisplayInfo(nextid);
+    }
+    return best_id;
+}
 
 /* IDCMP flags for windowed mode */
 #define OS3_IDCMP_WINDOWED \
@@ -168,7 +221,12 @@ static int OS3_OpenFullscreen(OS3_WindowData *data, int w, int h)
         );
     }
     if (modeid == INVALID_ID) {
-        return SDL_SetError("OS3: no suitable CGX fullscreen mode found");
+        /* P96/SAGA fallback: BestCModeIDTags may fail without
+           cybergraphics.library. Walk modes manually. */
+        modeid = OS3_FindRTGMode(w, h, 16);
+    }
+    if (modeid == INVALID_ID) {
+        return SDL_SetError("OS3: no suitable RTG fullscreen mode found");
     }
 
     return OS3_OpenScreen(data, w, h, modeid, 32);
@@ -192,10 +250,15 @@ static int OS3_OpenWindowed(OS3_WindowData *data, SDL_Window *window)
         struct Screen *wbscreen = LockPubScreen(NULL);
         if (wbscreen) {
             struct BitMap *bm = wbscreen->RastPort.BitMap;
-            if (GetCyberMapAttr(bm, CYBRMATTR_ISCYBERGFX)) {
-                if (window->w >= 640 && window->h >= 400) {
-                    use_wb = 1;
-                }
+            ULONG is_cyber = GetCyberMapAttr(bm, CYBRMATTR_ISCYBERGFX);
+            /* If GetCyberMapAttr fails (P96 without CGX), check if WB
+               screen depth >= 15 as a proxy for RTG */
+            if (!is_cyber && GetBitMapAttr(bm, BMA_DEPTH) >= 15) {
+                is_cyber = 1;
+            }
+            if (is_cyber && window->w <= (int)wbscreen->Width &&
+                window->h <= (int)wbscreen->Height) {
+                use_wb = 1;
             }
             UnlockPubScreen(NULL, wbscreen);
         }
@@ -246,6 +309,10 @@ static int OS3_OpenWindowed(OS3_WindowData *data, SDL_Window *window)
                 CYBRBIDTG_Depth,         16,
                 TAG_DONE
             );
+        }
+        if (modeid == INVALID_ID) {
+            /* P96/SAGA fallback */
+            modeid = OS3_FindRTGMode(scrw, scrh, 16);
         }
         if (modeid == INVALID_ID) {
             return SDL_SetError("OS3: no RTG mode found for windowed");

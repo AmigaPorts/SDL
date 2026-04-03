@@ -172,11 +172,36 @@ static int OS3_VideoInit(_THIS)
         found_any = 0;
         nextid = NextDisplayInfo(INVALID_ID);
         while (nextid != INVALID_ID) {
-            if (IsCyberModeID(nextid)) {
-                ULONG w   = GetCyberIDAttr(CYBRIDATTR_WIDTH,  nextid);
-                ULONG h   = GetCyberIDAttr(CYBRIDATTR_HEIGHT, nextid);
-                ULONG bpp = GetCyberIDAttr(CYBRIDATTR_DEPTH,  nextid);
-                Uint32 fmt = OS3_DepthToFormat((int)bpp);
+            ULONG is_cyber = IsCyberModeID(nextid);
+            /* Also check via DisplayInfo for P96/SAGA modes that
+               IsCyberModeID may miss on older P96 versions */
+            struct DisplayInfo di;
+            ULONG is_rtg = 0;
+            if (!is_cyber &&
+                GetDisplayInfoData(NULL, (UBYTE *)&di, sizeof(di),
+                                   DTAG_DISP, nextid)) {
+                /* PropertyFlags bit 12 = DIPF_IS_FOREIGN = RTG mode */
+                if (di.PropertyFlags & (1UL << 12))
+                    is_rtg = 1;
+            }
+            if (is_cyber || is_rtg) {
+                ULONG w, h, bpp;
+                Uint32 fmt;
+                if (is_cyber) {
+                    w   = GetCyberIDAttr(CYBRIDATTR_WIDTH,  nextid);
+                    h   = GetCyberIDAttr(CYBRIDATTR_HEIGHT, nextid);
+                    bpp = GetCyberIDAttr(CYBRIDATTR_DEPTH,  nextid);
+                } else {
+                    struct DimensionInfo dim;
+                    w = 0; h = 0; bpp = 0;
+                    if (GetDisplayInfoData(NULL, (UBYTE *)&dim,
+                            sizeof(dim), DTAG_DIMS, nextid)) {
+                        w   = dim.Nominal.MaxX - dim.Nominal.MinX + 1;
+                        h   = dim.Nominal.MaxY - dim.Nominal.MinY + 1;
+                        bpp = dim.MaxDepth;
+                    }
+                }
+                fmt = OS3_DepthToFormat((int)bpp);
 
                 if (fmt != SDL_PIXELFORMAT_UNKNOWN && (int)bpp >= 16) {
                     if (!found_any) {
@@ -197,7 +222,6 @@ static int OS3_VideoInit(_THIS)
             }
             nextid = NextDisplayInfo(nextid);
         }
-
         if (!found_any) {
             /* P96/CGX library exists but no RTG modes available
              * (no graphics card). Close it and fall through to AGA. */
