@@ -376,7 +376,11 @@ static int OS3_SetDisplayMode(_THIS, SDL_VideoDisplay *display,
         TAG_DONE
     );
     if (modeid == INVALID_ID) {
-        return SDL_SetError("OS3_SetDisplayMode: no matching CGX mode for %dx%dx%d",
+        /* P96/SAGA fallback */
+        modeid = OS3_FindRTGMode(mode->w, mode->h, depth);
+    }
+    if (modeid == INVALID_ID) {
+        return SDL_SetError("OS3_SetDisplayMode: no matching RTG mode for %dx%dx%d",
                             mode->w, mode->h, depth);
     }
 

@@ -25,7 +25,7 @@
  * the display database. Fallback for when BestCModeIDTags() fails
  * (e.g. Picasso96 without cybergraphics.library on Vampire SAGA).
  */
-static ULONG OS3_FindRTGMode(int want_w, int want_h, int want_depth)
+ULONG OS3_FindRTGMode(int want_w, int want_h, int want_depth)
 {
     ULONG nextid;
     ULONG best_id = INVALID_ID;

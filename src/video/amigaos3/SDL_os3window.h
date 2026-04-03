@@ -17,4 +17,7 @@ extern void OS3_ShowWindow(_THIS, SDL_Window *window);
 extern void OS3_HideWindow(_THIS, SDL_Window *window);
 extern void OS3_RaiseWindow(_THIS, SDL_Window *window);
 
+/* RTG mode fallback: walk display database manually when BestCModeIDTags fails */
+extern ULONG OS3_FindRTGMode(int want_w, int want_h, int want_depth);
+
 #endif /* SDL_os3window_h_ */
