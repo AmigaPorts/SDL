@@ -68,7 +68,7 @@
 #include "core/android/SDL_android.h"
 #endif
 
-#define SDL_INIT_EVERYTHING ~0U
+#define SDL_ALL_SUBSYSTEM_FLAGS ~0U
 
 // Initialization/Cleanup routines
 #include "timer/SDL_timer_c.h"
@@ -689,7 +689,7 @@ Uint32 SDL_WasInit(SDL_InitFlags flags)
     }
 
     if (!flags) {
-        flags = SDL_INIT_EVERYTHING;
+        flags = SDL_ALL_SUBSYSTEM_FLAGS;
     }
 
     num_subsystems = SDL_min(num_subsystems, SDL_MostSignificantBitIndex32(flags) + 1);
@@ -714,7 +714,7 @@ void SDL_Quit(void)
 #ifdef SDL_PLATFORM_WINDOWS
     SDL_HelperWindowDestroy();
 #endif
-    SDL_QuitSubSystem(SDL_INIT_EVERYTHING);
+    SDL_QuitSubSystem(SDL_ALL_SUBSYSTEM_FLAGS);
     SDL_CleanupTrays();
 
 #ifdef SDL_USE_LIBDBUS
