@@ -11,8 +11,15 @@
 #include "SDL_os3aga.h"
 #include "SDL_os3video.h"
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/graphics.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
+#ifndef WARPUP
 /* Kalms c2p assembly functions (c2p1x1_8_c5_gen.s, assembled by vasm).
  * Register constraints match the asm: d0, d1, d3 for init; a0, a1 for convert.
  * bebbo-gcc supports __asm register constraints for 68k. */
@@ -23,6 +30,7 @@ extern void c2p1x1_8_c5_gen_init(
 extern void c2p1x1_8_c5_gen(
     void *c2pscreen __asm("a0"),
     void *bitplanes __asm("a1"));
+#endif
 
 void OS3_AGA_SetPalette(struct Screen *screen, SDL_Palette *pal)
 {
@@ -58,7 +66,9 @@ void OS3_AGA_SetPalette(struct Screen *screen, SDL_Palette *pal)
 
 void OS3_AGA_C2PInit(int width, int height)
 {
+#ifndef WARPUP
     c2p1x1_8_c5_gen_init(width, height, 0);
+#endif
 }
 
 void OS3_AGA_C2P(const void *chunky, struct Screen *screen,
@@ -78,9 +88,11 @@ void OS3_AGA_C2P(const void *chunky, struct Screen *screen,
         return;
     }
 
+#ifndef WARPUP
     /* Kalms c2p expects contiguous bitplanes with BPLSIZE spacing.
      * Standard AGA screen bitmaps from OpenScreen have this layout. */
     c2p1x1_8_c5_gen((void *)chunky, (void *)bm->Planes[0]);
+#endif
 }
 
 #endif /* SDL_VIDEO_DRIVER_AMIGAOS3 */

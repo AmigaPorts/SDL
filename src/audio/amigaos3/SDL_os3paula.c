@@ -30,12 +30,18 @@
 
 #define _THIS SDL_AudioDevice *_this
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <proto/graphics.h>
 #include <graphics/gfxbase.h>
 #include <devices/audio.h>
 #include <exec/memory.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 #define OS3PAULA_DRIVER_NAME "paula"
 

@@ -14,12 +14,18 @@
 #include "SDL_os3video.h"
 #include "SDL_os3aga.h"
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/graphics.h>
 
 /* CyberGraphX headers only needed when RTG is available (compile always,
  * guarded at runtime by CyberGfxBase != NULL) */
 #include <proto/cybergraphics.h>
 #include <cybergraphx/cybergraphics.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 /* Key strings for SDL_SetWindowData / SDL_GetWindowData */
 #define OS3_SURFACE_KEY  "OS3_Surface"

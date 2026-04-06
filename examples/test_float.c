@@ -1,6 +1,12 @@
 /* test_float: minimal float operation test */
 #include <stdio.h>
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/mathieeesingbas.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 static const char *verstag = "$VER: test_float 0.1 (28.03.2026)";
 long __stack = 16384;

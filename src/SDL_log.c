@@ -41,8 +41,14 @@
 #endif
 
 #if defined(__AMIGAOS3__) && defined(SDL_OS3_DEBUG)
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/exec.h>
 #include <proto/dos.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 #endif
 
 #include "stdlib/SDL_vacopy.h"

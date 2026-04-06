@@ -8,8 +8,14 @@
 
 #include "../../SDL_internal.h"
 #include "SDL_pixels.h"        /* SDL_Palette, SDL_Color */
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <intuition/screens.h>
 #include <graphics/gfx.h>      /* struct BitMap */
+#ifdef WARPUP
+#pragma pop
+#endif
 
 /* Convert SDL_Palette to LoadRGB32 format and apply to AGA screen. */
 void OS3_AGA_SetPalette(struct Screen *screen, SDL_Palette *pal);

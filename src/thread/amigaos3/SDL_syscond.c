@@ -14,8 +14,14 @@
 #include "SDL_mutex.h"
 #include "SDL_thread.h"
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/exec.h>
 #include <exec/tasks.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 #define OS3_COND_MAX_WAITERS 32
 

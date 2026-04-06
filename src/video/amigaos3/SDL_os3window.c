@@ -13,8 +13,14 @@
 
 #if SDL_VIDEO_DRIVER_AMIGAOS3
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <graphics/modeid.h>   /* BIDTAG_* for BestModeID (AGA mode selection) */
 #include <graphics/displayinfo.h>  /* DisplayInfo, DimensionInfo for P96 fallback */
+#ifdef WARPUP
+#pragma pop
+#endif
 #include "SDL_os3video.h"
 #include "SDL_os3window.h"
 #include "SDL_os3framebuffer.h"

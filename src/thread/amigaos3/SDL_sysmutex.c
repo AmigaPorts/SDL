@@ -9,8 +9,14 @@
 
 #include "SDL_mutex.h"
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/exec.h>
 #include <exec/semaphores.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 struct SDL_mutex {
     struct SignalSemaphore sem;

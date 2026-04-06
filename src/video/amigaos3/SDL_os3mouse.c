@@ -16,11 +16,17 @@
 
 #if SDL_VIDEO_DRIVER_AMIGAOS3
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/exec.h>
 #include <proto/intuition.h>
 #include <proto/graphics.h>
 #include <exec/types.h>
 #include <exec/memory.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 #include "SDL_os3video.h"
 #include "SDL_os3mouse.h"

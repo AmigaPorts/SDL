@@ -29,7 +29,13 @@
 #include "SDL_timer.h"
 
 #ifdef __AMIGAOS3__
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/exec.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 #endif
 
 #if !defined(HAVE_GCC_ATOMICS) && defined(__SOLARIS__)

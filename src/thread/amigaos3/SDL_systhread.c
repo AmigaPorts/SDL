@@ -20,11 +20,17 @@
 #include "../SDL_systhread.h"
 #include "../SDL_thread_c.h"
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <exec/tasks.h>
 #include <dos/dostags.h>
 #include <dos/dosextens.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 #include "../../audio/amigaos3/SDL_os3debug.h"
 

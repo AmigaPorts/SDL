@@ -10,6 +10,9 @@
 #include "../SDL_sysvideo.h"
 
 /* AmigaOS headers */
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/exec.h>
 #include <proto/intuition.h>
 #include <proto/graphics.h>
@@ -19,6 +22,9 @@
 #include <intuition/screens.h>
 #include <intuition/intuition.h>
 #include <exec/types.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 /*
  * Library bases.

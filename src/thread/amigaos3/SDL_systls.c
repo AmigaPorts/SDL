@@ -13,8 +13,14 @@
 
 #include "../SDL_thread_c.h"
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/exec.h>
 #include <exec/tasks.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 /* TLS entry: one per task that has TLS data */
 typedef struct OS3_TLSEntry {

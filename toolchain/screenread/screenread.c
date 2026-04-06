@@ -12,9 +12,15 @@
  * opcode before calling. Exits cleanly on non-UAE systems.
  */
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <exec/types.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 #include <stdio.h>
 

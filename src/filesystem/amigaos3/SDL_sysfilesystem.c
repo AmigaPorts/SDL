@@ -37,8 +37,14 @@
 #include "SDL_error.h"
 #include "SDL_stdinc.h"
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/exec.h>
 #include <proto/dos.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 /* Create a directory, ignoring ERROR_OBJECT_EXISTS (already exists). */
 /* Returns 1 on success (created or exists), 0 on failure. */

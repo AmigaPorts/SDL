@@ -14,10 +14,16 @@
 
 #ifdef SDL_OS3_DEBUG
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <string.h>
 #include <stdio.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 /* Write debug line to WORK:sdl_debug.log.
    Safe to call from any task (uses Forbid/Permit). */

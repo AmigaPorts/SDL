@@ -12,8 +12,14 @@
 
 #if SDL_VIDEO_DRIVER_AMIGAOS3
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/dos.h>
 #include <graphics/gfxbase.h>  /* ChipRevBits0, GFXF_AA_ALICE/LISA for AGA detection */
+#ifdef WARPUP
+#pragma pop
+#endif
 #include "SDL_os3video.h"
 #include "SDL_os3window.h"
 #include "SDL_os3framebuffer.h"

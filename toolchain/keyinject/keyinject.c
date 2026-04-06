@@ -33,6 +33,9 @@
  *     AddIEvents -- must re-populate struct before each injection
  */
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <exec/types.h>
 #include <exec/memory.h>
 #include <devices/inputevent.h>
@@ -42,6 +45,9 @@
 #include <proto/dos.h>
 #include <proto/keymap.h>
 #include <proto/commodities.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 #include <string.h>
 

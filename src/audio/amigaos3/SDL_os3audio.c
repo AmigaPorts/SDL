@@ -21,9 +21,15 @@
 #include "../SDL_sysaudio.h"
 #include "SDL_os3audio.h"
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <exec/memory.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 #define OS3AHI_DRIVER_NAME "ahi"
 

@@ -18,16 +18,26 @@
 
 #include "SDL_timer.h"
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <proto/exec.h>
 #include <proto/dos.h>    /* Delay() */
 #include <proto/timer.h>
 #include <devices/timer.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 /* timer.device base -- required by proto/timer.h inline calls.
    ReadEClock is interrupt-safe (ADCD), so cross-task calls via this
    shared TimerBase are safe. Phase 5 TR_ADDREQUEST will need per-task
    MsgPort + timerequest pairs (DoIO signals the creating task only). */
+#ifdef WARPUP
+struct Library *TimerBase = NULL;
+#else
 struct Device *TimerBase = NULL;
+#endif
 
 /* Timer state */
 static struct MsgPort *timer_port = NULL;

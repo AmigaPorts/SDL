@@ -9,7 +9,13 @@
 #include "../../SDL_internal.h"
 #include "../SDL_sysaudio.h"
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <devices/ahi.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 struct SDL_PrivateAudioData {
     struct MsgPort    *port;

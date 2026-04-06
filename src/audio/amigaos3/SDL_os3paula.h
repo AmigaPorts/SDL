@@ -11,8 +11,14 @@
 #include "../../SDL_internal.h"
 #include "../SDL_sysaudio.h"
 
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
 #include <devices/audio.h>
 #include <exec/memory.h>
+#ifdef WARPUP
+#pragma pop
+#endif
 
 /* Private data for the Paula audio backend.
    Allocated per-device in OpenDevice, freed in CloseDevice.
