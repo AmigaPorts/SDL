@@ -30,7 +30,6 @@
 #define INCL_DOS
 #define INCL_DOSERRORS
 #include <os2.h>
-#include <dos.h>
 #endif
 
 #include "SDL.h"
@@ -535,5 +534,3 @@ static void SDL_InitDynamicAPI(void)
 }
 
 #endif /* SDL_DYNAMIC_API */
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -22,11 +22,13 @@
 #include "../SDL_sysvideo.h"
 #define INCL_WIN
 #define INCL_GPI
+#define INCL_DOSERRORS
+#define INCL_OS2MM
+#define INCL_MM_OS2
 #include <os2.h>
 #define  _MEERROR_H_
 #include <mmioos2.h>
 #include <os2me.h>
-#define INCL_MM_OS2
 #include <dive.h>
 #include <fourcc.h>
 #include "SDL_os2output.h"
