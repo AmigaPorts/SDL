@@ -295,12 +295,17 @@ static int OS3_OpenWindowed(OS3_WindowData *data, SDL_Window *window)
         data->screen        = NULL;
         data->is_fullscreen = 0;
     } else {
-        /* Open our own RTG screen + window */
+        /* Open our own RTG screen + window.
+         * PERF FIX (PDR-015 OpenTTD): use EXACT requested size for the screen
+         * instead of +64 padding. The padding caused BestCModeIDTags to pick
+         * the next-bigger Picasso96 mode (640+64=704 -> 800x600) which made
+         * window->Width != surface->w, forcing UpdateWindowFramebuffer down
+         * the BitMapScale path instead of the LockBitMap fast-path memcpy.
+         * For OpenTTD this was ~30 ms / frame extra. Real fix is to use the
+         * exact size and let the LockBitMap branch fire. */
         ULONG modeid;
-        int scrw = window->w + 64;
-        int scrh = window->h + 64;
-        if (scrw < 640) scrw = 640;
-        if (scrh < 480) scrh = 480;
+        int scrw = window->w;
+        int scrh = window->h;
 
         modeid = BestCModeIDTags(
             CYBRBIDTG_NominalWidth,  scrw,
