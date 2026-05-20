@@ -43,10 +43,9 @@ typedef struct
 } OS4_RenderData;
 
 extern struct BitMap * OS4_ActivateRenderer(SDL_Renderer * renderer);
-extern struct BitMap * OS4_AllocBitMap(SDL_Renderer * renderer, int width, int height, int depth, const char* const reason);
+extern struct BitMap * OS4_AllocBitMap(SDL_Renderer * renderer, int width, int height, int depth, PIX_FMT format, const char* const reason);
 extern SDL_bool OS4_IsColorModEnabled(SDL_Texture * texture);
 
 #endif
 
 /* vi: set ts=4 sw=4 expandtab: */
-

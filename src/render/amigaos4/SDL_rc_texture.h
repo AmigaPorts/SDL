@@ -43,6 +43,14 @@ extern int OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                             const SDL_Rect * rect, const void *pixels,
                             int pitch);
 
+#ifdef SDL_HAVE_YUV
+extern int OS4_UpdateTextureYUV(SDL_Renderer *renderer, SDL_Texture *texture,
+                            const SDL_Rect *rect,
+                            const Uint8 *Yplane, int Ypitch,
+                            const Uint8 *Uplane, int Upitch,
+                            const Uint8 *Vplane, int Vpitch);
+#endif
+
 extern int OS4_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture);
 
 extern int OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
@@ -57,4 +65,3 @@ extern void OS4_SetTextureScaleMode(SDL_Renderer *renderer, SDL_Texture *texture
 #endif
 
 /* vi: set ts=4 sw=4 expandtab: */
-
