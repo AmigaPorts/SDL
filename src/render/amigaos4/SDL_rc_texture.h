@@ -43,6 +43,14 @@ extern bool OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                             const SDL_Rect * rect, const void *pixels,
                             int pitch);
 
+#ifdef SDL_HAVE_YUV
+extern bool OS4_UpdateTextureYUV(SDL_Renderer *renderer, SDL_Texture *texture,
+                            const SDL_Rect *rect,
+                            const Uint8 *Yplane, int Ypitch,
+                            const Uint8 *Uplane, int Upitch,
+                            const Uint8 *Vplane, int Vpitch);
+#endif
+
 extern bool OS4_SetRenderTarget(SDL_Renderer * renderer, SDL_Texture * texture);
 
 extern bool OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,

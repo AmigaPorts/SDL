@@ -25,6 +25,7 @@
 #include "SDL_render_compositing.h"
 #include "SDL_rc_texture.h"
 
+#include <proto/exec.h>
 #include <proto/graphics.h>
 
 #include "../../main/amigaos4/SDL_os4debug.h"
@@ -50,14 +51,26 @@ OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture, SDL_Properties
     int bpp;
     Uint32 Rmask, Gmask, Bmask, Amask;
     OS4_TextureData *texturedata;
-
-    if (texture->format != SDL_PIXELFORMAT_ARGB8888) {
-        return SDL_SetError("Not supported texture format");
-    }
+    PIX_FMT format;
+    const char* reason = NULL;
 
     if (!SDL_GetMasksForPixelFormat
         (texture->format, &bpp, &Rmask, &Gmask, &Bmask, &Amask)) {
         return SDL_SetError("Unknown texture format");
+    }
+
+    switch (texture->format) {
+        case SDL_PIXELFORMAT_ARGB8888:
+            format = PIXF_A8R8G8B8;
+            reason = "texture";
+            break;
+        case SDL_PIXELFORMAT_IYUV:
+            format = PIXF_YUV420P;
+            reason = "YUV420P texture";
+            bpp = 12;
+            break;
+        default:
+            return SDL_SetError("Not supported texture format");
     }
 
     //dprintf("Allocation VRAM bitmap %d*%d*%d for texture\n", texture->w, texture->h, bpp);
@@ -69,7 +82,7 @@ OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture, SDL_Properties
         return SDL_OutOfMemory();
     }
 
-    texturedata->bitmap = OS4_AllocBitMap(renderer, texture->w, texture->h, bpp, "texture");
+    texturedata->bitmap = OS4_AllocBitMap(renderer, texture->w, texture->h, bpp, format, reason);
 
     if (!texturedata->bitmap) {
         SDL_free(texturedata);
@@ -189,7 +202,7 @@ OS4_SetTextureColorMod(SDL_Renderer * renderer, SDL_Texture * texture)
         }
 
         if (!texturedata->finalbitmap) {
-            if (!(texturedata->finalbitmap = OS4_AllocBitMap(renderer, texture->w, texture->h, 32, "color modulation"))) {
+            if (!(texturedata->finalbitmap = OS4_AllocBitMap(renderer, texture->w, texture->h, 32, PIXF_A8R8G8B8, "color modulation"))) {
                 return SDL_OutOfMemory();
             }
         }
@@ -216,6 +229,11 @@ OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
 {
     OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
 
+    if (texture->format != SDL_PIXELFORMAT_ARGB8888) {
+        dprintf("Unsupported pixel format %d\n", texture->format);
+        return SDL_SetError("Unsupported texture format");
+    }
+
     int32 ret = IGraphics->BltBitMapTags(
         BLITA_Source, pixels,
         BLITA_SrcType, BLITT_ARGB32,
@@ -234,7 +252,7 @@ OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
 
     if (OS4_IsColorModEnabled(texture)) {
         if (!texturedata->finalbitmap) {
-            if (!(texturedata->finalbitmap = OS4_AllocBitMap(renderer, texture->w, texture->h, 32, "color modulation"))) {
+            if (!(texturedata->finalbitmap = OS4_AllocBitMap(renderer, texture->w, texture->h, 32, PIXF_A8R8G8B8, "color modulation"))) {
                 return SDL_OutOfMemory();
             }
         }
@@ -248,6 +266,72 @@ OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
     return true;
 }
 
+#ifdef SDL_HAVE_YUV
+bool
+OS4_UpdateTextureYUV(SDL_Renderer *renderer, SDL_Texture *texture,
+                            const SDL_Rect *rect,
+                            const Uint8 *Yplane, int Ypitch,
+                            const Uint8 *Uplane, int Upitch,
+                            const Uint8 *Vplane, int Vpitch)
+{
+    OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
+
+    if (texture->format != SDL_PIXELFORMAT_IYUV) {
+        dprintf("Unsupported pixel format %d\n", texture->format);
+        return SDL_SetError("Unsupported texture format");
+    }
+
+    struct PlanarYUVInfo info;
+
+    texturedata->lock = IGraphics->LockBitMapTags(
+        texturedata->bitmap,
+        LBM_PlanarYUVInfo, &info,
+        TAG_DONE);
+
+    if (texturedata->lock) {
+        Uint8 *yPtr = info.YMemory;
+        Uint8 *uPtr = info.UMemory;
+        Uint8 *vPtr = info.VMemory;
+        Uint32 yPitch = info.YBytesPerRow;
+        Uint32 uPitch = info.UBytesPerRow;
+        Uint32 vPitch = info.VBytesPerRow;
+
+        //dprintf("YMemory %p, UMemory %p, VMemory %p, YBytesPerRow %u, UBytesPerRow %u, VBytesPerRow %u\n",
+        //        yPtr, uPtr, vPtr, yPitch, uPitch, vPitch);
+
+        yPtr += rect->x + rect->y * yPitch;
+
+        for (int row = 0; row < rect->h; row++) {
+            IExec->CopyMem(Yplane, yPtr, rect->w);
+
+            Yplane += Ypitch;
+            yPtr += yPitch;
+        }
+
+        uPtr += rect->x / 2 + rect->y / 2 * uPitch;
+        vPtr += rect->x / 2 + rect->y / 2 * vPitch;
+
+        for (int row = 0; row < (rect->h + 1) / 2; row++) {
+            IExec->CopyMem(Uplane, uPtr, (rect->w + 1) / 2);
+            IExec->CopyMem(Vplane, vPtr, (rect->w + 1) / 2);
+
+            Uplane += Upitch;
+            Vplane += Vpitch;
+
+            uPtr += uPitch;
+            vPtr += vPitch;
+        }
+
+        IGraphics->UnlockBitMap(texturedata->lock);
+    } else {
+        dprintf("Lock failed\n");
+        return SDL_SetError("Lock failed");
+    }
+
+    return true;
+}
+#endif
+
 bool
 OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                const SDL_Rect * rect, void **pixels, int *pitch)
@@ -258,6 +342,11 @@ OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
     uint32 bytesperrow;
 
     //dprintf("Called\n");
+
+    if (texture->format == SDL_PIXELFORMAT_ARGB8888) {
+        dprintf("Unsupported pixel format %d\n", texture->format);
+        return SDL_SetError("Unsupported pixel format");
+    }
 
     texturedata->lock = IGraphics->LockBitMapTags(
         texturedata->bitmap,

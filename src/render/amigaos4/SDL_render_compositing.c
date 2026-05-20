@@ -74,6 +74,11 @@ typedef struct {
 bool
 OS4_IsColorModEnabled(SDL_Texture * texture)
 {
+    if (texture->format != SDL_PIXELFORMAT_ARGB8888) {
+        //dprintf("Color mod is only supported on SDL_PIXELFORMAT_ARGB8888\n");
+        return false;
+    }
+
     if (texture->color.r != 1.0f || texture->color.g != 1.0f || texture->color.b != 1.0f) {
         //dprintf("Color mod enabled (%f, %f, %f)\n", texture->color.r, texture->color.g, texture->color.b);
         return true;
@@ -83,16 +88,24 @@ OS4_IsColorModEnabled(SDL_Texture * texture)
 }
 
 struct BitMap *
-OS4_AllocBitMap(SDL_Renderer * renderer, int width, int height, int depth, const char* const reason)
+OS4_AllocBitMap(SDL_Renderer * renderer, int width, int height, int depth, PIX_FMT format, const char* const reason)
 {
-    dprintf("Allocating bitmap %d*%d*%d for %s\n", width, height, depth, reason);
+    if (format == PIXF_YUV420P) {
+        // WA for YUV rendering bottom line UV glitch. Didn't find any documentation
+        // but based on some examples it seems we need to allocate more pixels.
+        width = ((width + 3) / 4) * 4;
+        height = ((height + 1) / 2) * 2;
+    }
+
+    dprintf("Allocating bitmap %d*%d*%d (format %d) for %s\n", width, height, depth, format, reason);
 
     struct BitMap *bitmap = IGraphics->AllocBitMapTags(
         width,
         height,
         depth,
         BMATags_Displayable, TRUE,
-        BMATags_PixelFormat, PIXF_A8R8G8B8,
+        BMATags_PixelFormat, format,
+        (format == PIXF_YUV420P) ? BMATags_Clear : TAG_IGNORE, TRUE,
         TAG_DONE);
 
     if (bitmap) {
@@ -101,13 +114,16 @@ OS4_AllocBitMap(SDL_Renderer * renderer, int width, int height, int depth, const
         IGraphics->InitRastPort(&rp);
         rp.BitMap = bitmap;
 
-        IGraphics->RectFillColor(
-            &rp,
-            0,
-            0,
-            width - 1,
-            height - 1,
-            0x00000000); // graphics.lib v54!
+        if (format != PIXF_YUV420P) {
+            dprintf("Clearing bitmap\n");
+            IGraphics->RectFillColor(
+                &rp,
+                0,
+                0,
+                width - 1,
+                height - 1,
+                0x00000000); // graphics.lib v54!
+        }
     } else {
         dprintf("Failed to allocate bitmap\n");
     }
@@ -129,7 +145,7 @@ OS4_ActivateRenderer(SDL_Renderer * renderer)
         int height = renderer->window->h;
         int depth = 32;
 
-        data->target = data->bitmap = OS4_AllocBitMap(renderer, width, height, depth, "renderer");
+        data->target = data->bitmap = OS4_AllocBitMap(renderer, width, height, depth, PIXF_A8R8G8B8, "renderer");
     }
 
     if (!data->solidcolor) {
@@ -137,7 +153,7 @@ OS4_ActivateRenderer(SDL_Renderer * renderer)
         int height = 1;
         int depth = 32;
 
-        data->solidcolor = OS4_AllocBitMap(renderer, width, height, depth, "solid color");
+        data->solidcolor = OS4_AllocBitMap(renderer, width, height, depth, PIXF_A8R8G8B8, "solid color");
     }
 
     data->rastport.BitMap = data->target;
@@ -469,6 +485,22 @@ OS4_RenderFillRects(SDL_Renderer * renderer, const SDL_FRect * rects, int count,
     return status;
 }
 
+static uint32
+OS4_GetYUVStandard(SDL_Colorspace colorspace)
+{
+    // NOTE: SDL has more options
+    switch (colorspace) {
+        case SDL_COLORSPACE_BT601_LIMITED:
+        case SDL_COLORSPACE_BT601_FULL:
+        default:
+            return COMPYUV_BT601;
+
+        case SDL_COLORSPACE_BT709_LIMITED:
+        case SDL_COLORSPACE_BT709_FULL:
+            return COMPYUV_BT709;
+    }
+}
+
 static bool
 OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Vertex * vertices,
     size_t count, struct BitMap * dst)
@@ -493,10 +525,13 @@ OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Ver
 
     //dprintf("clip x %d, y %d, w %d, h %d\n", data->cliprect.x, data->cliprect.y, data->cliprect.w, data->cliprect.h);
 
+    const uint32 standard = OS4_GetYUVStandard(texture->colorspace);
+
     ret_code = IGraphics->CompositeTags(
         OS4_ConvertBlendMode(mode),
         src,
         dst,
+        (texture->format == SDL_PIXELFORMAT_IYUV) ? COMPTAG_SrcYUVStandard : TAG_IGNORE, standard,
         COMPTAG_SrcAlpha,   COMP_FLOAT_TO_FIX(params.srcAlpha),
         COMPTAG_DestAlpha,  COMP_FLOAT_TO_FIX(params.destAlpha),
         COMPTAG_DestX,      data->cliprect.x,
@@ -1170,6 +1205,9 @@ OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, SDL_PropertiesI
     renderer->GetOutputSize = OS4_GetOutputSize;
     renderer->CreateTexture = OS4_CreateTexture;
     renderer->UpdateTexture = OS4_UpdateTexture;
+#ifdef SDL_HAVE_YUV
+    renderer->UpdateTextureYUV = OS4_UpdateTextureYUV;
+#endif
     renderer->LockTexture = OS4_LockTexture;
     renderer->UnlockTexture = OS4_UnlockTexture;
     renderer->SetRenderTarget = OS4_SetRenderTarget;
@@ -1192,6 +1230,9 @@ OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, SDL_PropertiesI
     renderer->internal = data;
 
     SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_ARGB8888);
+#ifdef SDL_HAVE_YUV
+    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_IYUV);
+#endif
 
     IGraphics->InitRastPort(&data->rastport);
 
