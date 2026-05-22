@@ -48,21 +48,16 @@ OS4_IsBlendModeSupported(SDL_BlendMode mode)
 bool
 OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture, SDL_PropertiesID create_props)
 {
-    int bpp;
-    Uint32 Rmask, Gmask, Bmask, Amask;
+    int bpp = 0;
     OS4_TextureData *texturedata;
-    PIX_FMT format;
+    PIX_FMT format = PIXF_NONE;
     const char* reason = NULL;
-
-    if (!SDL_GetMasksForPixelFormat
-        (texture->format, &bpp, &Rmask, &Gmask, &Bmask, &Amask)) {
-        return SDL_SetError("Unknown texture format");
-    }
 
     switch (texture->format) {
         case SDL_PIXELFORMAT_ARGB8888:
             format = PIXF_A8R8G8B8;
             reason = "texture";
+            bpp = 32;
             break;
         case SDL_PIXELFORMAT_IYUV:
             format = PIXF_YUV420P;
@@ -229,10 +224,20 @@ OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
 {
     OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
 
-    if (texture->format != SDL_PIXELFORMAT_ARGB8888) {
-        dprintf("Unsupported pixel format %d\n", texture->format);
-        return SDL_SetError("Unsupported texture format");
+#ifdef SDL_HAVE_YUV
+    if (texture->format == SDL_PIXELFORMAT_IYUV) {
+        const Uint8* yPlane = pixels;
+        const Uint8* uPlane = yPlane + rect->h * pitch;
+        const Uint8* vPlane = uPlane + ((rect->h + 1) / 2) * ((pitch + 1) / 2);
+        const int yPitch = pitch;
+        const int uPitch = (pitch + 1) / 2;
+        const int vPitch = uPitch;
+        return OS4_UpdateTextureYUV(renderer, texture, rect,
+                                    yPlane, yPitch,
+                                    uPlane, uPitch,
+                                    vPlane, vPitch);
     }
+#endif
 
     int32 ret = IGraphics->BltBitMapTags(
         BLITA_Source, pixels,
@@ -267,6 +272,15 @@ OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
 }
 
 #ifdef SDL_HAVE_YUV
+struct YUVInfo {
+    Uint8 *yPtr;
+    Uint8 *uPtr;
+    Uint8 *vPtr;
+    int yPitch;
+    int uPitch;
+    int vPitch;
+};
+
 bool
 OS4_UpdateTextureYUV(SDL_Renderer *renderer, SDL_Texture *texture,
                             const SDL_Rect *rect,
@@ -289,37 +303,49 @@ OS4_UpdateTextureYUV(SDL_Renderer *renderer, SDL_Texture *texture,
         TAG_DONE);
 
     if (texturedata->lock) {
-        Uint8 *yPtr = info.YMemory;
-        Uint8 *uPtr = info.UMemory;
-        Uint8 *vPtr = info.VMemory;
-        Uint32 yPitch = info.YBytesPerRow;
-        Uint32 uPitch = info.UBytesPerRow;
-        Uint32 vPitch = info.VBytesPerRow;
+        struct YUVInfo src;
+        struct YUVInfo dst;
+
+        src.yPtr = (Uint8*)Yplane;
+        src.uPtr = (Uint8*)Uplane;
+        src.vPtr = (Uint8*)Vplane;
+        src.yPitch = Ypitch;
+        src.uPitch = Upitch;
+        src.vPitch = Vpitch;
+
+        dst.yPtr = info.YMemory;
+        dst.uPtr = info.UMemory;
+        dst.vPtr = info.VMemory;
+        dst.yPitch = info.YBytesPerRow;
+        dst.uPitch = info.UBytesPerRow;
+        dst.vPitch = info.VBytesPerRow;
 
         //dprintf("YMemory %p, UMemory %p, VMemory %p, YBytesPerRow %u, UBytesPerRow %u, VBytesPerRow %u\n",
-        //        yPtr, uPtr, vPtr, yPitch, uPitch, vPitch);
+        //        dst.yPtr, dst.uPtr, dst.vPtr, dst.yPitch, dst.uPitch, dst.vPitch);
 
-        yPtr += rect->x + rect->y * yPitch;
+        dst.yPtr += rect->x + rect->y * dst.yPitch;
 
         for (int row = 0; row < rect->h; row++) {
-            IExec->CopyMem(Yplane, yPtr, rect->w);
+            IExec->CopyMem(src.yPtr, dst.yPtr, rect->w);
 
-            Yplane += Ypitch;
-            yPtr += yPitch;
+            src.yPtr += src.yPitch;
+            dst.yPtr += dst.yPitch;
         }
 
-        uPtr += rect->x / 2 + rect->y / 2 * uPitch;
-        vPtr += rect->x / 2 + rect->y / 2 * vPitch;
+        dst.uPtr += rect->x / 2 + rect->y / 2 * dst.uPitch;
+        dst.vPtr += rect->x / 2 + rect->y / 2 * dst.vPitch;
+
+        const ULONG bytesToCopy = (rect->w + 1) / 2;
 
         for (int row = 0; row < (rect->h + 1) / 2; row++) {
-            IExec->CopyMem(Uplane, uPtr, (rect->w + 1) / 2);
-            IExec->CopyMem(Vplane, vPtr, (rect->w + 1) / 2);
+            IExec->CopyMem(src.uPtr, dst.uPtr, bytesToCopy);
+            IExec->CopyMem(src.vPtr, dst.vPtr, bytesToCopy);
 
-            Uplane += Upitch;
-            Vplane += Vpitch;
+            src.uPtr += src.uPitch;
+            src.vPtr += src.vPitch;
 
-            uPtr += uPitch;
-            vPtr += vPitch;
+            dst.uPtr += dst.uPitch;
+            dst.vPtr += dst.vPitch;
         }
 
         IGraphics->UnlockBitMap(texturedata->lock);
