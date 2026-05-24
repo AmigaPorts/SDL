@@ -528,11 +528,14 @@ OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Ver
 
     const uint32 standard = OS4_GetYUVStandard(texture->w, texture->h);
 
+    const BOOL yuv = texture->format == SDL_PIXELFORMAT_IYUV ||
+                     texture->format == SDL_PIXELFORMAT_YV12;
+
     ret_code = IGraphics->CompositeTags(
         OS4_ConvertBlendMode(mode),
         src,
         dst,
-        (texture->format == SDL_PIXELFORMAT_IYUV) ? COMPTAG_SrcYUVStandard : TAG_IGNORE, standard,
+        yuv ? COMPTAG_SrcYUVStandard : TAG_IGNORE, standard,
         COMPTAG_SrcAlpha,   COMP_FLOAT_TO_FIX(params.srcAlpha),
         COMPTAG_DestAlpha,  COMP_FLOAT_TO_FIX(params.destAlpha),
         COMPTAG_DestX,      data->cliprect.x,
@@ -1171,7 +1174,7 @@ OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, Uint32 flags)
     renderer->GetOutputSize = OS4_GetOutputSize;
     renderer->CreateTexture = OS4_CreateTexture;
     renderer->UpdateTexture = OS4_UpdateTexture;
-#ifdef SDL_HAVE_YUV
+#if SDL_HAVE_YUV
     renderer->UpdateTextureYUV = OS4_UpdateTextureYUV;
 #endif
     renderer->LockTexture = OS4_LockTexture;
@@ -1196,6 +1199,7 @@ OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, Uint32 flags)
 
 #if SDL_HAVE_YUV
     renderer->info.texture_formats[renderer->info.num_texture_formats++] = SDL_PIXELFORMAT_IYUV;
+    renderer->info.texture_formats[renderer->info.num_texture_formats++] = SDL_PIXELFORMAT_YV12;
 #endif
 
     renderer->driverdata = data;
