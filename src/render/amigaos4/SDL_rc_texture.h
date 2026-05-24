@@ -43,7 +43,7 @@ extern int OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
                             const SDL_Rect * rect, const void *pixels,
                             int pitch);
 
-#ifdef SDL_HAVE_YUV
+#if SDL_HAVE_YUV
 extern int OS4_UpdateTextureYUV(SDL_Renderer *renderer, SDL_Texture *texture,
                             const SDL_Rect *rect,
                             const Uint8 *Yplane, int Ypitch,
