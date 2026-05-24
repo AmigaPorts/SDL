@@ -60,6 +60,7 @@ OS4_CreateTexture(SDL_Renderer * renderer, SDL_Texture * texture, SDL_Properties
             bpp = 32;
             break;
         case SDL_PIXELFORMAT_IYUV:
+        case SDL_PIXELFORMAT_YV12:
             format = PIXF_YUV420P;
             reason = "YUV420P texture";
             bpp = 12;
@@ -225,17 +226,27 @@ OS4_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
     OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
 
 #ifdef SDL_HAVE_YUV
-    if (texture->format == SDL_PIXELFORMAT_IYUV) {
+    if (texture->format == SDL_PIXELFORMAT_IYUV || texture->format == SDL_PIXELFORMAT_YV12) {
         const Uint8* yPlane = pixels;
-        const Uint8* uPlane = yPlane + rect->h * pitch;
-        const Uint8* vPlane = uPlane + ((rect->h + 1) / 2) * ((pitch + 1) / 2);
+        const Uint8* secondPlane = yPlane + rect->h * pitch;
+        const Uint8* thirdPlane = secondPlane + ((rect->h + 1) / 2) * ((pitch + 1) / 2);
+        const Uint8* uPlane;
+        const Uint8* vPlane;
         const int yPitch = pitch;
-        const int uPitch = (pitch + 1) / 2;
-        const int vPitch = uPitch;
+        const int uvPitch = (pitch + 1) / 2;
+
+        if (texture->format == SDL_PIXELFORMAT_IYUV) {
+            uPlane = secondPlane;
+            vPlane = thirdPlane;
+        } else {
+            uPlane = thirdPlane;
+            vPlane = secondPlane;
+        }
+
         return OS4_UpdateTextureYUV(renderer, texture, rect,
                                     yPlane, yPitch,
-                                    uPlane, uPitch,
-                                    vPlane, vPitch);
+                                    uPlane, uvPitch,
+                                    vPlane, uvPitch);
     }
 #endif
 
@@ -290,7 +301,7 @@ OS4_UpdateTextureYUV(SDL_Renderer *renderer, SDL_Texture *texture,
 {
     OS4_TextureData *texturedata = (OS4_TextureData *) texture->internal;
 
-    if (texture->format != SDL_PIXELFORMAT_IYUV) {
+    if (texture->format != SDL_PIXELFORMAT_IYUV && texture->format != SDL_PIXELFORMAT_YV12) {
         dprintf("Unsupported pixel format %d\n", texture->format);
         return SDL_SetError("Unsupported texture format");
     }

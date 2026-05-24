@@ -527,11 +527,14 @@ OS4_RenderCopyEx(SDL_Renderer * renderer, SDL_RenderCommand * cmd, const OS4_Ver
 
     const uint32 standard = OS4_GetYUVStandard(texture->colorspace);
 
+    const bool yuv = texture->format == SDL_PIXELFORMAT_IYUV ||
+                     texture->format == SDL_PIXELFORMAT_YV12;
+
     ret_code = IGraphics->CompositeTags(
         OS4_ConvertBlendMode(mode),
         src,
         dst,
-        (texture->format == SDL_PIXELFORMAT_IYUV) ? COMPTAG_SrcYUVStandard : TAG_IGNORE, standard,
+        yuv ? COMPTAG_SrcYUVStandard : TAG_IGNORE, standard,
         COMPTAG_SrcAlpha,   COMP_FLOAT_TO_FIX(params.srcAlpha),
         COMPTAG_DestAlpha,  COMP_FLOAT_TO_FIX(params.destAlpha),
         COMPTAG_DestX,      data->cliprect.x,
@@ -1232,6 +1235,7 @@ OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, SDL_PropertiesI
     SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_ARGB8888);
 #ifdef SDL_HAVE_YUV
     SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_IYUV);
+    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_YV12);
 #endif
 
     IGraphics->InitRastPort(&data->rastport);
