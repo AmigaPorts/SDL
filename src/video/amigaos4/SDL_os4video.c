@@ -56,35 +56,6 @@ static void OS4_VideoQuit(SDL_VideoDevice *_this);
 bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window) = NULL;
 void (*OS4_UpdateGlWindowPointer)(SDL_VideoDevice *_this, SDL_Window * window) = NULL;
 
-static void
-OS4_FindApplicationName(SDL_VideoDevice *_this)
-{
-    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
-
-    size_t size;
-    const size_t maxPathLen = 255;
-    char pathBuffer[maxPathLen];
-
-    if (IDOS->GetCliProgramName(pathBuffer, maxPathLen - 1)) {
-        dprintf("GetCliProgramName: '%s'\n", pathBuffer);
-    } else {
-        dprintf("Failed to get CLI program name, checking task node\n");
-
-        struct Task* me = IExec->FindTask(NULL);
-        SDL_snprintf(pathBuffer, maxPathLen, "%s", ((struct Node *)me)->ln_Name);
-    }
-
-    size = SDL_strlen(pathBuffer) + 1;
-
-    data->appName = SDL_malloc(size);
-
-    if (data->appName) {
-        SDL_snprintf(data->appName, size, pathBuffer);
-    }
-
-    dprintf("Application name: '%s'\n", data->appName);
-}
-
 static bool
 OS4_SuspendScreenSaver(SDL_VideoDevice *_this)
 {
@@ -124,13 +95,13 @@ OS4_RegisterApplication(SDL_VideoDevice *_this)
         }
     }
 
-    data->appId = IApplication->RegisterApplication(data->appName,
+    data->appId = IApplication->RegisterApplication(SDL_GetExeName(),
                                                     REGAPP_Description, description,
                                                     TAG_DONE);
 
     if (data->appId) {
         dprintf("Registered application '%s' with description '%s' and id %lu\n",
-                data->appName,
+                SDL_GetExeName(),
                 description,
                 data->appId);
     } else {
@@ -165,7 +136,6 @@ OS4_AllocSystemResources(SDL_VideoDevice *_this)
     }
 
     OS4_InitLocale();
-    OS4_FindApplicationName(_this);
     OS4_RegisterApplication(_this);
 
     if (!(data->userPort = IExec->AllocSysObjectTags(ASOT_PORT, TAG_DONE))) {
@@ -268,10 +238,6 @@ OS4_FreeSystemResources(SDL_VideoDevice *_this)
     if (data->userPort) {
         dprintf("Freeing user port\n");
         IExec->FreeSysObject(ASOT_PORT, data->userPort);
-    }
-
-    if (data->appName) {
-        SDL_free(data->appName);
     }
 
     if (data->appId) {

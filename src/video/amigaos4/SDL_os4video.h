@@ -33,7 +33,6 @@
 
 struct SDL_VideoData
 {
-    STRPTR                  appName;
     uint32                  appId;
 
     struct Screen          *publicScreen;

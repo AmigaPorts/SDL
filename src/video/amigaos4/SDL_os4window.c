@@ -1134,14 +1134,13 @@ OS4_RestoreWindow(SDL_VideoDevice *_this, SDL_Window * window)
 }
 
 static struct DiskObject*
-OS4_GetDiskObject(SDL_VideoDevice *_this)
+OS4_GetDiskObject(void)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *) _this->internal;
     struct DiskObject *diskObject = NULL;
 
-    if (videodata->appName) {
+    if (SDL_GetExeName()) {
         BPTR oldDir = IDOS->SetCurrentDir(IDOS->GetProgramDir());
-        diskObject = IIcon->GetDiskObject(videodata->appName);
+        diskObject = IIcon->GetDiskObject(SDL_GetExeName());
         IDOS->SetCurrentDir(oldDir);
     }
 
@@ -1165,7 +1164,7 @@ OS4_IconifyWindow(SDL_VideoDevice *_this, SDL_Window * window)
     if (window->flags & SDL_WINDOW_MINIMIZED) {
         dprintf("Window '%s' is already iconified\n", window->title);
     } else {
-        struct DiskObject *diskObject = OS4_GetDiskObject(_this);
+        struct DiskObject *diskObject = OS4_GetDiskObject();
 
         if (diskObject) {
             diskObject->do_CurrentX = NO_ICON_POSITION;
@@ -1174,7 +1173,7 @@ OS4_IconifyWindow(SDL_VideoDevice *_this, SDL_Window * window)
             data->appIcon = IWorkbench->AddAppIcon(
                 0,
                 (ULONG)window,
-                videodata->appName,
+                SDL_GetExeName(),
                 videodata->appMsgPort,
                 0,
                 diskObject,

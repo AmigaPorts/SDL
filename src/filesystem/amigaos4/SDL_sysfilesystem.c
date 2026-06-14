@@ -31,6 +31,7 @@
 #include "../../main/amigaos4/SDL_os4debug.h"
 
 #include <proto/dos.h>
+#include <proto/exec.h>
 
 bool OS4_CreateDirTree(const char *path)
 {
@@ -94,6 +95,38 @@ char *SDL_SYS_GetBasePath(void)
     SDL_snprintf(buffer, len, "%s", basePath);
 
     return buffer;
+}
+
+char *SDL_SYS_GetExeName(void)
+{
+    if (!IDOS) {
+        dprintf("IDOS nullptr\n");
+        return NULL;
+    }
+
+    size_t size;
+    const size_t maxPathLen = 255;
+    char pathBuffer[maxPathLen];
+    char* appName = NULL;
+
+    if (IDOS->GetCliProgramName(pathBuffer, maxPathLen - 1)) {
+        dprintf("GetCliProgramName: '%s'\n", pathBuffer);
+    } else {
+        dprintf("Failed to get CLI program name, checking task node\n");
+
+        struct Task* me = IExec->FindTask(NULL);
+        SDL_snprintf(pathBuffer, maxPathLen, "%s", ((struct Node *)me)->ln_Name);
+    }
+
+    size = SDL_strlen(pathBuffer) + 1;
+    appName = SDL_malloc(size);
+
+    if (appName) {
+        SDL_snprintf(appName, size, pathBuffer);
+    }
+
+    dprintf("Application name: '%s'\n", appName);
+    return appName;
 }
 
 char *SDL_SYS_GetPrefPath(const char *org, const char *app)

@@ -242,7 +242,6 @@ OS4_CloseScreen(SDL_VideoDevice *_this, struct Screen * screen)
 bool
 OS4_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
 {
-    SDL_VideoData *driverdata = (SDL_VideoData *) _this->internal;
     SDL_DisplayData *displaydata = (SDL_DisplayData *) display->internal;
     SDL_DisplayModeData *data = (SDL_DisplayModeData *) mode->internal;
     ULONG openError = 0;
@@ -254,7 +253,7 @@ OS4_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_Displ
         SA_Depth,       bpp,
         SA_DisplayID,   data->modeid,
         SA_Quiet,       TRUE,
-        SA_Title,       driverdata->appName,
+        SA_Title,       SDL_GetExeName(),
         SA_ShowTitle,   FALSE,
         SA_ErrorCode,   &openError,
         SA_LikeWorkbench, TRUE,
