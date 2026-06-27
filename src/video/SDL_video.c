@@ -1359,6 +1359,12 @@ int SDL_GetWindowDisplayMode(SDL_Window *window, SDL_DisplayMode *mode)
 
     display = SDL_GetDisplayForWindow(window);
 
+#ifdef __ANDROID__
+    /* Android does not support native resolution changes (SDL_WINDOW_FULLSCREEN) */
+    if((window->flags & FULLSCREEN_MASK) != 0) {
+        fullscreen_mode = display->desktop_mode;
+    }
+#else
     /* if in desktop size mode, just return the size of the desktop */
     if ((window->flags & SDL_WINDOW_FULLSCREEN_DESKTOP) == SDL_WINDOW_FULLSCREEN_DESKTOP) {
         fullscreen_mode = display->desktop_mode;
@@ -1368,6 +1374,7 @@ int SDL_GetWindowDisplayMode(SDL_Window *window, SDL_DisplayMode *mode)
         SDL_zerop(mode);
         return SDL_SetError("Couldn't find display mode match");
     }
+#endif
 
     *mode = fullscreen_mode;
 
@@ -3404,7 +3411,7 @@ void SDL_DestroyWindow(SDL_Window *window)
     }
 
     display = SDL_GetDisplayForWindow(window);
-    if (display->fullscreen_window == window) {
+    if (display && display->fullscreen_window == window) {
         display->fullscreen_window = NULL;
     }
 
