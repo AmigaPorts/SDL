@@ -46,14 +46,21 @@
 
 #include "SDL_iostream_c.h"
 
+
 /* This file provides a general interface for SDL to read and write
    data sources.  It can easily be extended to files, memory, etc.
 */
+
+// IOStreams have various Properties. The first time SDL_GetIOProperties() is
+//  called, it creates the SDL_PropertiesID and then uses this function
+//  interface to fill in the appropriate props for the stream on-demand.
+typedef void (*SetIOPropertiesFn)(SDL_PropertiesID props, void *userdata);
 
 struct SDL_IOStream
 {
     SDL_IOStreamInterface iface;
     void *userdata;
+    SetIOPropertiesFn setioprops;
     SDL_IOStatus status;
     SDL_PropertiesID props;
 };
@@ -430,6 +437,12 @@ static bool SDLCALL windows_file_close(void *userdata)
     return result;
 }
 
+static void windows_setioprops(SDL_PropertiesID props, void *userdata)
+{
+    const IOStreamWindowsData *iodata = (const IOStreamWindowsData *) userdata;
+    SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_WINDOWS_HANDLE_POINTER, iodata->h);
+}
+
 SDL_IOStream *SDL_IOFromHandle(HANDLE handle, const char *mode, bool autoclose)
 {
     IOStreamWindowsData *iodata = (IOStreamWindowsData *) SDL_calloc(1, sizeof (*iodata));
@@ -475,10 +488,7 @@ SDL_IOStream *SDL_IOFromHandle(HANDLE handle, const char *mode, bool autoclose)
     if (!iostr) {
         iface.close(iodata);
     } else {
-        const SDL_PropertiesID props = SDL_GetIOProperties(iostr);
-        if (props) {
-            SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_WINDOWS_HANDLE_POINTER, iodata->h);
-        }
+        iostr->setioprops = windows_setioprops;
     }
 
     return iostr;
@@ -1019,6 +1029,12 @@ static bool SDLCALL fd_close(void *userdata)
     return status;
 }
 
+static void fd_setioprops(SDL_PropertiesID props, void *userdata)
+{
+    const IOStreamFDData *iodata = (const IOStreamFDData *) userdata;
+    SDL_SetNumberProperty(props, SDL_PROP_IOSTREAM_FILE_DESCRIPTOR_NUMBER, iodata->fd);
+}
+
 SDL_IOStream *SDL_IOFromFD(int fd, bool autoclose)
 {
     IOStreamFDData *iodata = (IOStreamFDData *) SDL_calloc(1, sizeof (*iodata));
@@ -1045,10 +1061,7 @@ SDL_IOStream *SDL_IOFromFD(int fd, bool autoclose)
     if (!iostr) {
         iface.close(iodata);
     } else {
-        const SDL_PropertiesID props = SDL_GetIOProperties(iostr);
-        if (props) {
-            SDL_SetNumberProperty(props, SDL_PROP_IOSTREAM_FILE_DESCRIPTOR_NUMBER, fd);
-        }
+        iostr->setioprops = fd_setioprops;
     }
 
     return iostr;
@@ -1217,6 +1230,14 @@ static bool SDLCALL stdio_close(void *userdata)
     return status;
 }
 
+static void stdio_setioprops(SDL_PropertiesID props, void *userdata)
+{
+    const IOStreamStdioData *iodata = (const IOStreamStdioData *) userdata;
+    FILE *fp = iodata->fp;
+    SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_STDIO_FILE_POINTER, fp);
+    SDL_SetNumberProperty(props, SDL_PROP_IOSTREAM_FILE_DESCRIPTOR_NUMBER, fileno(fp));
+}
+
 SDL_IOStream *SDL_IOFromFP(FILE *fp, bool autoclose)
 {
     IOStreamStdioData *iodata = (IOStreamStdioData *) SDL_calloc(1, sizeof (*iodata));
@@ -1243,11 +1264,7 @@ SDL_IOStream *SDL_IOFromFP(FILE *fp, bool autoclose)
     if (!iostr) {
         iface.close(iodata);
     } else {
-        const SDL_PropertiesID props = SDL_GetIOProperties(iostr);
-        if (props) {
-            SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_STDIO_FILE_POINTER, fp);
-            SDL_SetNumberProperty(props, SDL_PROP_IOSTREAM_FILE_DESCRIPTOR_NUMBER, fileno(fp));
-        }
+        iostr->setioprops = stdio_setioprops;
     }
 
     return iostr;
@@ -1261,6 +1278,7 @@ typedef struct IOStreamMemData
     Uint8 *base;
     Uint8 *here;
     Uint8 *stop;
+    size_t size;
     SDL_PropertiesID props;
 } IOStreamMemData;
 
@@ -1343,6 +1361,15 @@ static bool SDLCALL mem_close(void *userdata)
     return true;
 }
 
+static void mem_setioprops(SDL_PropertiesID props, void *userdata)
+{
+    IOStreamMemData *iodata = (IOStreamMemData *) userdata;
+    SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_MEMORY_POINTER, iodata->base);
+    SDL_SetNumberProperty(props, SDL_PROP_IOSTREAM_MEMORY_SIZE_NUMBER, iodata->size);
+    SDL_assert(iodata->props == 0);
+    iodata->props = props;
+}
+
 // Functions to create SDL_IOStream structures from various data sources
 
 // private platforms might define SKIP_STDIO_DIR_TEST in their build configs, too.
@@ -1358,6 +1385,13 @@ static bool IsStdioFileADirectory(FILE *f)
 }
 #else
 #define IsStdioFileADirectory(f) false
+#endif
+
+#ifdef SDL_PLATFORM_ANDROID
+static void android_setioprops(SDL_PropertiesID props, void *userdata)
+{
+    SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_ANDROID_AASSET_POINTER, userdata);
+}
 #endif
 
 SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
@@ -1439,10 +1473,7 @@ SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
     if (!iostr) {
         iface.close(iodata);
     } else {
-        const SDL_PropertiesID props = SDL_GetIOProperties(iostr);
-        if (props) {
-            SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_ANDROID_AASSET_POINTER, iodata);
-        }
+        iostr->setioprops = android_setioprops;
     }
 
 #elif defined(SDL_PLATFORM_IOS)
@@ -1542,18 +1573,15 @@ SDL_IOStream *SDL_IOFromMem(void *mem, size_t size)
     iodata->base = (Uint8 *)mem;
     iodata->here = iodata->base;
     iodata->stop = iodata->base + size;
+    iodata->size = size;
 
     SDL_IOStream *iostr = SDL_OpenIO(&iface, iodata);
     if (!iostr) {
         SDL_free(iodata);
     } else {
-        const SDL_PropertiesID props = SDL_GetIOProperties(iostr);
-        if (props) {
-            iodata->props = props;
-            SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_MEMORY_POINTER, mem);
-            SDL_SetNumberProperty(props, SDL_PROP_IOSTREAM_MEMORY_SIZE_NUMBER, size);
-        }
+        iostr->setioprops = mem_setioprops;
     }
+
     return iostr;
 }
 
@@ -1585,19 +1613,15 @@ SDL_IOStream *SDL_IOFromConstMem(const void *mem, size_t size)
     if (!iostr) {
         SDL_free(iodata);
     } else {
-        const SDL_PropertiesID props = SDL_GetIOProperties(iostr);
-        if (props) {
-            iodata->props = props;
-            SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_MEMORY_POINTER, (void *)mem);
-            SDL_SetNumberProperty(props, SDL_PROP_IOSTREAM_MEMORY_SIZE_NUMBER, size);
-        }
+        iostr->setioprops = mem_setioprops;
     }
+
     return iostr;
 }
 
 typedef struct IOStreamDynamicMemData
 {
-    SDL_IOStream *stream;
+    SDL_PropertiesID props;
     IOStreamMemData data;
     Uint8 *end;
 } IOStreamDynamicMemData;
@@ -1626,7 +1650,7 @@ static size_t SDLCALL dynamic_mem_read(void *userdata, void *ptr, size_t size, S
 
 static bool dynamic_mem_realloc(IOStreamDynamicMemData *iodata, size_t size)
 {
-    size_t chunksize = (size_t)SDL_GetNumberProperty(SDL_GetIOProperties(iodata->stream), SDL_PROP_IOSTREAM_DYNAMIC_CHUNKSIZE_NUMBER, 0);
+    size_t chunksize = (size_t)SDL_GetNumberProperty(iodata->props, SDL_PROP_IOSTREAM_DYNAMIC_CHUNKSIZE_NUMBER, 1024);
     if (!chunksize) {
         chunksize = 1024;
     }
@@ -1645,7 +1669,7 @@ static bool dynamic_mem_realloc(IOStreamDynamicMemData *iodata, size_t size)
     iodata->data.here = base + here_offset;
     iodata->data.stop = base + stop_offset;
     iodata->end = base + length;
-    return SDL_SetPointerProperty(SDL_GetIOProperties(iodata->stream), SDL_PROP_IOSTREAM_DYNAMIC_MEMORY_POINTER, base);
+    return iodata->props ? SDL_SetPointerProperty(iodata->props, SDL_PROP_IOSTREAM_DYNAMIC_MEMORY_POINTER, base) : true;
 }
 
 static size_t SDLCALL dynamic_mem_write(void *userdata, const void *ptr, size_t size, SDL_IOStatus *status)
@@ -1668,10 +1692,18 @@ static size_t SDLCALL dynamic_mem_write(void *userdata, const void *ptr, size_t 
 static bool SDLCALL dynamic_mem_close(void *userdata)
 {
     const IOStreamDynamicMemData *iodata = (IOStreamDynamicMemData *) userdata;
-    void *mem = SDL_GetPointerProperty(SDL_GetIOProperties(iodata->stream), SDL_PROP_IOSTREAM_DYNAMIC_MEMORY_POINTER, NULL);
+    void *mem = iodata->props ? SDL_GetPointerProperty(iodata->props, SDL_PROP_IOSTREAM_DYNAMIC_MEMORY_POINTER, NULL) : iodata->data.base;
     SDL_free(mem);
     SDL_free(userdata);
     return true;
+}
+
+static void dynamic_mem_setioprops(SDL_PropertiesID props, void *userdata)
+{
+    IOStreamDynamicMemData *iodata = (IOStreamDynamicMemData *) userdata;
+    SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_DYNAMIC_MEMORY_POINTER, iodata->data.base);
+    SDL_assert(iodata->props == 0);
+    iodata->props = props;
 }
 
 SDL_IOStream *SDL_IOFromDynamicMem(void)
@@ -1690,11 +1722,12 @@ SDL_IOStream *SDL_IOFromDynamicMem(void)
     iface.close = dynamic_mem_close;
 
     SDL_IOStream *iostr = SDL_OpenIO(&iface, iodata);
-    if (iostr) {
-        iodata->stream = iostr;
-    } else {
+    if (!iostr) {
         SDL_free(iodata);
+    } else {
+        iostr->setioprops = dynamic_mem_setioprops;
     }
+
     return iostr;
 }
 
@@ -1885,6 +1918,10 @@ SDL_PropertiesID SDL_GetIOProperties(SDL_IOStream *context)
 
     if (context->props == 0) {
         context->props = SDL_CreateProperties();
+        if (context->props && context->setioprops) {
+            context->setioprops(context->props, context->userdata);
+            context->setioprops = NULL;  // NULL so we don't try to set props again, just in case.
+        }
     }
     return context->props;
 }

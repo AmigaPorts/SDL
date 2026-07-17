@@ -198,6 +198,7 @@ static const char *s_GamepadMappings[] = {
     "03000000380700003888000000000000,Madcatz Arcade Fightstick TE S+ PS3,a:b1,b:b2,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12,leftshoulder:b4,lefttrigger:b6,leftx:a0,lefty:a1,rightshoulder:b5,righttrigger:b7,rightx:a2,righty:a3,start:b9,x:b0,y:b3,",
     "030000002a0600001024000000000000,Matricom,a:b0,b:b1,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12,leftshoulder:b4,leftstick:b10,lefttrigger:b6,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b11,righttrigger:b7,rightx:a3,righty:a4,start:b9,x:b2,y:b3,",
     "03000000250900000128000000000000,Mayflash Arcade Stick,a:b1,b:b2,back:b8,leftshoulder:b0,lefttrigger:b4,leftx:a0,lefty:a1,rightshoulder:b3,righttrigger:b7,start:b9,x:b5,y:b6,",
+    "030000008f0e00001330000000000000,Mayflash N64 Controller Adapter,crc:226d,a:b1,b:b2,back:b8,start:b9,leftshoulder:b6,rightshoulder:b7,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a3~,righty:a2,",
     "030000008f0e00001030000000000000,Mayflash USB Adapter for original Sega Saturn controller,a:b0,b:b1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,leftshoulder:b6,lefttrigger:b5,rightshoulder:b2,righttrigger:b7,start:b9,x:b3,y:b4,",
     "0300000025090000e803000000000000,Mayflash Wii Classic Controller,a:b1,b:b0,back:b8,dpdown:b13,dpleft:b12,dpright:b14,dpup:b11,guide:b10,leftshoulder:b4,lefttrigger:b6,leftx:a0,lefty:a1,rightshoulder:b5,righttrigger:b7,rightx:a2,righty:a3,start:b9,x:b3,y:b2,",
     "03000000790000000018000000000000,Mayflash WiiU Pro Game Controller Adapter (DInput),a:b1,b:b2,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,leftshoulder:b4,leftstick:b10,lefttrigger:b6,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b11,righttrigger:b7,rightx:a2,righty:a3,start:b9,x:b0,y:b3,",
@@ -337,6 +338,8 @@ static const char *s_GamepadMappings[] = {
     "03000000790000001b18000000000000,Venom Arcade Joystick,a:b1,b:b2,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12,leftshoulder:b4,lefttrigger:b6,rightshoulder:b5,righttrigger:b7,start:b9,x:b0,y:b3,",
     "030000006f0e00000302000000000000,Victrix Pro Fight Stick for PS4,a:b1,b:b2,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12,leftshoulder:b4,lefttrigger:b6,rightshoulder:b5,righttrigger:b7,start:b9,x:b0,y:b3,",
     "030000006f0e00000702000000000000,Victrix Pro Fight Stick for PS4,a:b1,b:b2,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12,leftshoulder:b4,leftstick:b10,lefttrigger:b6,rightshoulder:b5,righttrigger:b7,start:b9,x:b0,y:b3,",
+    "03000000d23800001010000000000000,Void Gaming Void GENESIS,a:b0,b:b1,back:b16,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b6,leftshoulder:b2,leftstick:b9,lefttrigger:a3,leftx:a0,lefty:a1,misc1:b18,misc2:b21,misc3:b20,paddle1:b22,paddle2:b15,paddle3:b23,paddle4:b17,rightshoulder:b5,rightstick:b10,righttrigger:a4,rightx:a2,righty:a5,start:b19,x:b3,y:b4,",
+    "03000000d23800001210000000000000,Void Gaming Void GENESIS,a:b0,b:b1,back:b16,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b6,leftshoulder:b2,leftstick:b9,lefttrigger:a3,leftx:a0,lefty:a1,misc1:b18,misc2:b21,misc3:b20,paddle1:b22,paddle2:b15,paddle3:b23,paddle4:b17,rightshoulder:b5,rightstick:b10,righttrigger:a4,rightx:a2,righty:a5,start:b19,x:b3,y:b4,",
     "03000000450c00002043000000000000,XEOX Gamepad SL-6556-BK,a:b0,b:b1,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,leftshoulder:b4,leftstick:b10,lefttrigger:b6,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b11,righttrigger:b7,rightx:a2,righty:a3,start:b9,x:b2,y:b3,",
     "03000000341a00000608000000000000,Xeox,a:b0,b:b1,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12,leftshoulder:b4,leftstick:b10,lefttrigger:b6,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b11,righttrigger:b7,rightx:a2,righty:a3,start:b9,x:b2,y:b3,",
     "03000000172700004431000000000000,XiaoMi Game Controller,a:b0,b:b1,back:b10,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b20,leftshoulder:b6,leftstick:b13,lefttrigger:b8,leftx:a0,lefty:a1,rightshoulder:b7,rightstick:b14,righttrigger:a7,rightx:a2,righty:a5,start:b11,x:b3,y:b4,",
@@ -865,10 +868,10 @@ static const char *s_GamepadMappings[] = {
     "default,*,a:b0,b:b1,back:b6,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b10,leftshoulder:b4,leftstick:b8,lefttrigger:a4,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b9,righttrigger:a5,rightx:a2,righty:a3,start:b7,x:b2,y:b3,",
 #endif
 #ifdef SDL_JOYSTICK_PS2
-    "0000000050533220436f6e74726f6c00,PS2 Controller,crc:ed87,a:b14,b:b13,back:b0,dpdown:b6,dpleft:b7,dpright:b5,dpup:b4,leftshoulder:b10,leftstick:b1,lefttrigger:b8,leftx:a0,lefty:a1,rightshoulder:b11,rightstick:b2,righttrigger:b9,rightx:a2,righty:a3,start:b3,x:b15,y:b12,",
+    "0000000050533220436f6e74726f6c00,PS2 Controller,crc:ed87,a:b10,b:b9,back:b0,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,leftshoulder:b6,leftstick:b1,lefttrigger:b4,leftx:a0,lefty:a1,rightshoulder:b7,rightstick:b2,righttrigger:b5,rightx:a2,righty:a3,start:b3,x:b11,y:b8,",
 #endif
 #ifdef SDL_JOYSTICK_PSP
-    "00000000505350206275696c74696e00,PSP builtin joypad,crc:bb86,a:b2,b:b1,back:b10,dpdown:b6,dpleft:b7,dpright:b9,dpup:b8,leftshoulder:b4,leftx:a0,lefty:a1,rightshoulder:b5,rightx:a2,righty:a3,start:b11,x:b3,y:b0,",
+    "00000000505350206275696c74696e00,PSP builtin joypad,crc:bb86,a:b2,b:b1,back:b6,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,leftshoulder:b4,leftx:a0,lefty:a1,rightshoulder:b5,rightx:a2,righty:a3,start:b7,x:b3,y:b0,",
 #endif
 #ifdef SDL_JOYSTICK_AMIGAINPUT
     "0300b95453504545442d4c494e4b2000,SPEED-LINK Competition Pro,platform:AmigaOS 4,a:b0,b:b1,x:b3,y:b2,leftx:a0,lefty:a1,",
@@ -893,10 +896,10 @@ static const char *s_GamepadMappings[] = {
     "030057564475616c53656e7365205700,DualSense Wireless Controller,crc:5657,platform:AmigaOS 4,a:b1,b:b2,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b13,leftshoulder:b4,leftstick:b10,lefttrigger:b6,leftx:a0,lefty:a1,misc1:b12,rightshoulder:b5,rightstick:b11,righttrigger:b7,rightx:a2,righty:a3,start:b9,x:b0,y:b3,",
 #endif
 #ifdef SDL_JOYSTICK_VITA
-    "0000000050535669746120436f6e7400,PSVita Controller,crc:d598,a:b2,b:b1,back:b10,dpdown:b6,dpleft:b7,dpright:b9,dpup:b8,leftshoulder:b4,leftstick:b14,lefttrigger:a4,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b15,righttrigger:a5,rightx:a2,righty:a3,start:b11,x:b3,y:b0,",
+    "0000000050535669746120436f6e7400,PSVita Controller,crc:d598,a:b2,b:b1,back:b6,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,leftshoulder:b4,leftstick:b10,lefttrigger:a4,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b11,righttrigger:a5,rightx:a2,righty:a3,start:b7,x:b3,y:b0,",
 #endif
 #ifdef SDL_JOYSTICK_N3DS
-    "000000004e696e74656e646f20334400,Nintendo 3DS,crc:3210,a:b1,b:b0,back:b2,dpdown:b7,dpleft:b5,dpright:b4,dpup:b6,leftshoulder:b9,lefttrigger:b14,leftx:a0,lefty:a1,rightshoulder:b8,righttrigger:b15,rightx:a2,righty:a3,start:b3,x:b11,y:b10,hint:!SDL_GAMECONTROLLER_USE_BUTTON_LABELS:=1,",
+    "000000004e696e74656e646f20334400,Nintendo 3DS,crc:3210,a:b1,b:b0,back:b2,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,leftshoulder:b5,lefttrigger:b10,leftx:a0,lefty:a1,rightshoulder:b4,righttrigger:b11,rightx:a2,righty:a3,start:b3,x:b7,y:b6,hint:!SDL_GAMECONTROLLER_USE_BUTTON_LABELS:=1,",
 #endif
     NULL
 };
