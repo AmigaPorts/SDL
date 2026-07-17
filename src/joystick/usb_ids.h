@@ -26,6 +26,7 @@
 
 #define USB_VENDOR_8BITDO       0x2dc8
 #define USB_VENDOR_AMAZON       0x1949
+#define USB_VENDOR_ANDGAMER     0x38d2
 #define USB_VENDOR_APPLE        0x05ac
 #define USB_VENDOR_ASTRO        0x9886
 #define USB_VENDOR_ASUS         0x0b05
@@ -77,6 +78,7 @@
 #define USB_PRODUCT_8BITDO_PRO_2_BT                       0x6006    // mode switch to D
 #define USB_PRODUCT_8BITDO_PRO_3                          0x6009    // mode switch to D
 #define USB_PRODUCT_8BITDO_ULTIMATE2_WIRELESS             0x6012    // mode switch to BT
+#define USB_PRODUCT_8BITDO_ULTIMATE3                      0x202f    // mode switch to BT
 #define USB_PRODUCT_AMAZON_LUNA_CONTROLLER                0x0419
 #define USB_PRODUCT_ASTRO_C40_XBOX360                     0x0024
 #define USB_PRODUCT_BACKBONE_ONE_IOS                      0x0103
@@ -212,6 +214,7 @@
 #define USB_PRODUCT_ZUIKI_EVOTOP_PC_DINPUT                0X001d
 #define USB_PRODUCT_ZUIKI_EVOTOP_PC_BT                    0X0017
 #define USB_PRODUCT_VOIDGAMING_PS4FIREBIRD                0x10e5
+#define USB_PRODUCT_VOIDGAMING_GENESIS_SINPUT             0x1014
 
 // USB usage pages
 #define USB_USAGEPAGE_GENERIC_DESKTOP 0x0001
