@@ -198,6 +198,7 @@ OS4_TimerClearAlarm(OS4_TimerInstance * timer)
         }
 
         IExec->WaitIO((struct IORequest *)timer->request);
+        timer->requestSent = false;
     }
 }
 
