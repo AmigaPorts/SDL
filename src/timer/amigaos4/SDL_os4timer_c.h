@@ -32,6 +32,7 @@ typedef struct OS4_TimerInstance
 {
     struct MsgPort* timerPort;
     struct TimeRequest* timerRequest;
+    BOOL requestSent;
 } OS4_TimerInstance;
 
 void OS4_InitTimerSubSystem(void);
