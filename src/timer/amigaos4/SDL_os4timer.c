@@ -133,6 +133,8 @@ OS4_TimerCreate(OS4_TimerInstance * timer)
         dprintf("Failed to allocate timer port\n");
     }
 
+    timer->requestSent = FALSE;
+
     if (!success) {
         OS4_TimerCleanup(timer);
     }
@@ -145,7 +147,7 @@ OS4_TimerDestroy(OS4_TimerInstance * timer)
 {
     dprintf("Destroying timer %p for task %p\n", timer, IExec->FindTask(NULL));
 
-    if (timer && timer->timerRequest) {
+    if (timer && timer->timerRequest && timer->requestSent) {
         if (!IExec->CheckIO((struct IORequest *)timer->timerRequest)) {
             IExec->AbortIO((struct IORequest *)timer->timerRequest);
             IExec->WaitIO((struct IORequest *)timer->timerRequest);
@@ -168,41 +170,51 @@ OS4_TimerSetAlarm(OS4_TimerInstance * timer, Uint32 alarmTicks)
 
     //dprintf("Called for timer %p, ticks %u\n", timer, alarmTicks);
 
-    timer->timerRequest->Request.io_Command = TR_ADDREQUEST;
-    timer->timerRequest->Time.Seconds = seconds;
-    timer->timerRequest->Time.Microseconds  = (alarmTicks - (seconds * 1000)) * 1000;
+    if (timer && timer->timerRequest && timer->timerPort) {
+        timer->timerRequest->Request.io_Command = TR_ADDREQUEST;
+        timer->timerRequest->Time.Seconds = seconds;
+        timer->timerRequest->Time.Microseconds  = (alarmTicks - (seconds * 1000)) * 1000;
 
-    SDL2_ITimer->GetSysTime(&now);
-    SDL2_ITimer->AddTime(&timer->timerRequest->Time, &now);
+        SDL2_ITimer->GetSysTime(&now);
+        SDL2_ITimer->AddTime(&timer->timerRequest->Time, &now);
 
-    IExec->SetSignal(0, 1L << timer->timerPort->mp_SigBit);
-    IExec->SendIO((struct IORequest *)timer->timerRequest);
+        IExec->SetSignal(0, 1L << timer->timerPort->mp_SigBit);
+        IExec->SendIO((struct IORequest *)timer->timerRequest);
+        timer->requestSent = TRUE;
 
-    // Return the alarm signal for Wait() use
-    return 1L << timer->timerPort->mp_SigBit;
+        // Return the alarm signal for Wait() use
+        return 1L << timer->timerPort->mp_SigBit;
+    }
+
+    return 0;
 }
 
 void
 OS4_TimerClearAlarm(OS4_TimerInstance * timer)
 {
-    if (!IExec->CheckIO((struct IORequest *)timer->timerRequest)) {
-        IExec->AbortIO((struct IORequest *)timer->timerRequest);
-    }
+    if (timer && timer->timerRequest && timer->requestSent) {
+        if (!IExec->CheckIO((struct IORequest *)timer->timerRequest)) {
+            IExec->AbortIO((struct IORequest *)timer->timerRequest);
+        }
 
-    IExec->WaitIO((struct IORequest *)timer->timerRequest);
+        IExec->WaitIO((struct IORequest *)timer->timerRequest);
+        timer->requestSent = FALSE;
+    }
 }
 
 BOOL
 OS4_TimerDelay(Uint32 ticks)
 {
-	OS4_TimerInstance* timer = OS4_ThreadGetTimer();
+    OS4_TimerInstance* timer = OS4_ThreadGetTimer();
 
-	const ULONG alarmSig = OS4_TimerSetAlarm(timer, ticks);
-    if (alarmSig) {
-    	const ULONG sigsReceived = IExec->Wait(alarmSig | SIGBREAKF_CTRL_C);
+    if (timer) {
+        const ULONG alarmSig = OS4_TimerSetAlarm(timer, ticks);
+        if (alarmSig) {
+            const ULONG sigsReceived = IExec->Wait(alarmSig | SIGBREAKF_CTRL_C);
 
-    	OS4_TimerClearAlarm(timer);
-    	return (sigsReceived & alarmSig) == alarmSig;
+            OS4_TimerClearAlarm(timer);
+            return (sigsReceived & alarmSig) == alarmSig;
+        }
     }
 
     return FALSE;
@@ -211,6 +223,11 @@ OS4_TimerDelay(Uint32 ticks)
 void
 OS4_TimerGetTime(struct TimeVal * timeval)
 {
+    if (!timeval) {
+        dprintf("NULL timeval\n");
+        return;
+    }
+
     if (!SDL2_ITimer) {
         dprintf("Timer subsystem not initialized\n");
         timeval->Seconds = 0;
