@@ -54,15 +54,15 @@ About SDL_Renderers
 A renderer is a subsystem that can do 2D drawing. There are 3 renderers:
 software, OpenGL ES 2.0 and compositing.
 
-Software renderer is always available. Pixels are plotted by the CPU so this is
-usually a slow option.
+Software renderer is always available. This is the slowest option but emulator
+users may need to use this one.
 
 OpenGL ES 2.0 renderer uses ogles2.library (and Warp3D Nova).
 
 Compositing renderer uses AmigaOS 4 graphics.library for accelerated drawing.
 However, blended lines and points are not accelerated since compositing doesn't
-support them. Compositing renderer supports only 32-bit bitmaps. If (Workbench)
-screen mode is 16-bit, color format conversion can slow things down.
+support them. Compositing renderer supports ARGB8888, IYUV and YV12 texture
+formats. Compositing renderer is the default one.
 
 It's possible to select the preferred renderer before its creation, like this:
 
@@ -129,8 +129,8 @@ also the default setup.
 About Joysticks
 ================================================================================
 
-Joysticks that are compatible with AmigaInput can be used with SDL3. At the
-moment game controller database contains the following entries:
+AmigaInput-compatible joysticks can be used with SDL3. At the moment game
+controller database contains the following entries:
 
 - Speedlink Competition Pro
 - Ewent Joypad EW3170
@@ -167,11 +167,11 @@ SDL_SetBooleanProperty(SDL_GetGlobalProperties(), SDL_PROP_IOSTREAM_AMIGAOS4_USE
 before opening iostreams. Buffered mode uses FOpen() instead of Open().
 
 ================================================================================
-WinUAE
+WinUAE / QEMU
 ================================================================================
 
-Because WinUAE doesn't support hardware-accelerated compositing or 3D, you need
-to install the following software:
+Because emulators doesn't support hardware-accelerated compositing or 3D, you
+need to install the following software:
 
 - http://os4depot.net/index.php?function=showfile&file=graphics/misc/patchcompositetags.lha
 - http://os4depot.net/index.php?function=showfile&file=library/graphics/wazp3d.lha
@@ -192,8 +192,8 @@ information using SDL_GetError() function!
 Limitations
 ================================================================================
 
-Altivec support is disabled. It should be possible to enable in private builds
-but it hasn't been tested so far.
+Altivec support is disabled for compatibility reasons. It should be possible to
+enable in private builds.
 
 Unsupported subsystems include Camera, GPU, Haptic, Pen, Power and Sensor. There
 is no Vulkan backend for AmigaOS either.
