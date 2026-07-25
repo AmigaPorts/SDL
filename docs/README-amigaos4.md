@@ -54,8 +54,8 @@ About SDL_Renderers
 A renderer is a subsystem that can do 2D drawing. There are 4 renderers:
 software, OpenGL, OpenGL ES 2.0 and compositing.
 
-Software renderer is always available. Pixels are plotted by the CPU so this is
-usually a slow option.
+Software renderer is always available. This is the slowest option but emulation
+users may need to use this.
 
 OpenGL renderer uses MiniGL (and Warp3D) for accelerated drawing. Drawing is
 done in immediate mode. This should be fairly fast if textures are static.
@@ -64,8 +64,8 @@ OpenGL ES 2.0 renderer uses ogles2.library (and Warp3D Nova).
 
 Compositing renderer uses AmigaOS 4 graphics.library for accelerated drawing.
 However, blended lines and points are not accelerated since compositing doesn't
-support them. Compositing renderer supports only 32-bit bitmaps. If (Workbench)
-screen mode is 16-bit, color format conversion can slow things down.
+support them. Compositing renderer supports ARGB8888, IYUV and YV12 texture
+formats. Compositing renderer is the default one.
 
 It's possible to select the preferred renderer before its creation, like this:
 
@@ -138,10 +138,10 @@ also the default setup.
 About Joysticks
 ================================================================================
 
-Joysticks that are compatible with AmigaInput can be used with SDL2. In addition
-to legacy joystick API, SDL supports new game controller API which uses a
-predefined database to map joystick axes and buttons. At the moment
-game controller database contains the following entries:
+AmigaInput-compatible joysticks can be used with SDL2. In addition to legacy
+joystick API, SDL supports new game controller API which uses a predefined
+database to map joystick axes and buttons. At the moment game controller
+database contains the following entries:
 
 - Speedlink Competition Pro
 - Ewent Joypad EW3170
@@ -168,11 +168,11 @@ can be generated using controllermap tool. New mappings can be then added to
 the game controller database.
 
 ================================================================================
-WinUAE
+WinUAE / QEMU
 ================================================================================
 
-Because WinUAE doesn't support hardware-accelerated compositing or 3D, you need
-to install the following software:
+Because emulators doesn't support hardware-accelerated compositing or 3D, you
+need to install the following software:
 
 - http://os4depot.net/index.php?function=showfile&file=graphics/misc/patchcompositetags.lha
 - http://os4depot.net/index.php?function=showfile&file=library/graphics/wazp3d.lha
@@ -193,8 +193,8 @@ information using SDL_GetError() function!
 Limitations
 ================================================================================
 
-Altivec support is disabled. It should be possible to enable in private builds
-but it hasn't been tested so far.
+Altivec support is disabled for compatibility reasons. It should be possible to
+enable in private builds.
 
 Unsupported subsystems include Haptic and Power. There is no Vulkan backend for
 AmigaOS either.
