@@ -428,7 +428,7 @@ OS4_SetFunctionPointers(SDL_VideoDevice * device)
 
     device->SetWindowOpacity = OS4_SetWindowOpacity;
     // device->SetWindowModalFor = OS4_SetWindowModalFor;
-    // device->SetWindowInputFocus = OS4_SetWindowInputFocus;
+    device->SetWindowInputFocus = OS4_SetWindowInputFocus;
 
     device->ShowWindow = OS4_ShowWindow;
     device->HideWindow = OS4_HideWindow;
