@@ -115,6 +115,8 @@ extern int OS4_GetWindowBordersSize(_THIS, SDL_Window * window, int * top, int *
 extern void OS4_IconifyWindow(_THIS, SDL_Window * window);
 extern void OS4_UniconifyWindow(_THIS, SDL_Window * window);
 
+extern int OS4_SetWindowInputFocus(_THIS, SDL_Window * window);
+
 #endif /* SDL_os4window_h_ */
 
 /* vi: set ts=4 sw=4 expandtab: */

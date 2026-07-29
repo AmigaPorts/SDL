@@ -1301,6 +1301,17 @@ OS4_FlashWindow(_THIS, SDL_Window * window, SDL_FlashOperation operation)
     return 0;
 }
 
+int
+OS4_SetWindowInputFocus(_THIS, SDL_Window * window)
+{
+    SDL_WindowData *data = window->driverdata;
+
+    if (data->syswin) {
+       IIntuition->ActivateWindow(data->syswin);
+    }
+    return 0;
+}
+
 #endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */
 
 /* vi: set ts=4 sw=4 expandtab: */
