@@ -1198,6 +1198,12 @@ OS4_CreateRenderer(SDL_Renderer * renderer, SDL_Window * window, SDL_PropertiesI
 
     dprintf("Creating renderer for '%s'\n", window->title);
 
+    SDL_SetupRendererColorspace(renderer, create_props);
+
+    if (renderer->output_colorspace != SDL_COLORSPACE_RGB_DEFAULT) {
+        return SDL_SetError("Unsupported output colorspace");
+    }
+
     data = (OS4_RenderData *) SDL_calloc(1, sizeof(*data));
     if (!data) {
         OS4_DestroyRenderer(renderer);
