@@ -1467,6 +1467,9 @@ SDL_bool SDLTest_CommonInit(SDLTest_CommonState *state)
         }
     }
 
+    // AmigaOS 4: call to make sure subsystem reference counting works (testtimer)
+    SDL_InitSubSystem(state->flags);
+
     return SDL_TRUE;
 }
 
