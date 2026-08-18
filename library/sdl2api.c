@@ -1414,11 +1414,8 @@ const char* SDL2_GetPlatform(void)
     return SDL_GetPlatform();
 }
 
-SDL_PowerState SDL2_GetPowerInfo(register int *a __asm("a0"),
-    register int *b __asm("a1"))
-{
-    return SDL_GetPowerInfo(a, b);
-}
+/* slot 265: SDL_GetPowerInfo -- returns a struct by value */
+long SDL2_Reserved0265(void) { return 0; }
 
 SDL_bool SDL2_HasIntersection(register const SDL_Rect *a __asm("a0"),
     register const SDL_Rect *b __asm("a1"))
@@ -4554,59 +4551,120 @@ const char* SDL2_GameControllerGetAppleSFSymbolsNameForAxis(register SDL_GameCon
     return SDL_GameControllerGetAppleSFSymbolsNameForAxis(a, b);
 }
 
-/* slot 801: SDL_hid_init -- not built for AmigaOS */
-long SDL2_Reserved0801(void) { return 0; }
+int SDL2_hid_init(void)
+{
+    return SDL_hid_init();
+}
 
-/* slot 802: SDL_hid_exit -- not built for AmigaOS */
-long SDL2_Reserved0802(void) { return 0; }
+int SDL2_hid_exit(void)
+{
+    return SDL_hid_exit();
+}
 
-/* slot 803: SDL_hid_device_change_count -- not built for AmigaOS */
-long SDL2_Reserved0803(void) { return 0; }
+Uint32 SDL2_hid_device_change_count(void)
+{
+    return SDL_hid_device_change_count();
+}
 
-/* slot 804: SDL_hid_enumerate -- not built for AmigaOS */
-long SDL2_Reserved0804(void) { return 0; }
+SDL_hid_device_info* SDL2_hid_enumerate(register unsigned short a __asm("d0"),
+    register unsigned short b __asm("d1"))
+{
+    return SDL_hid_enumerate(a, b);
+}
 
-/* slot 805: SDL_hid_free_enumeration -- not built for AmigaOS */
-long SDL2_Reserved0805(void) { return 0; }
+void SDL2_hid_free_enumeration(register SDL_hid_device_info *a __asm("a0"))
+{
+    SDL_hid_free_enumeration(a);
+}
 
-/* slot 806: SDL_hid_open -- not built for AmigaOS */
-long SDL2_Reserved0806(void) { return 0; }
+SDL_hid_device* SDL2_hid_open(register unsigned short a __asm("d0"),
+    register unsigned short b __asm("d1"),
+    register const wchar_t *c __asm("a0"))
+{
+    return SDL_hid_open(a, b, c);
+}
 
-/* slot 807: SDL_hid_open_path -- not built for AmigaOS */
-long SDL2_Reserved0807(void) { return 0; }
+SDL_hid_device* SDL2_hid_open_path(register const char *a __asm("a0"),
+    register int b __asm("d0"))
+{
+    return SDL_hid_open_path(a, b);
+}
 
-/* slot 808: SDL_hid_write -- not built for AmigaOS */
-long SDL2_Reserved0808(void) { return 0; }
+int SDL2_hid_write(register SDL_hid_device *a __asm("a0"),
+    register const unsigned char *b __asm("a1"),
+    register size_t c __asm("d0"))
+{
+    return SDL_hid_write(a, b, c);
+}
 
-/* slot 809: SDL_hid_read_timeout -- not built for AmigaOS */
-long SDL2_Reserved0809(void) { return 0; }
+int SDL2_hid_read_timeout(register SDL_hid_device *a __asm("a0"),
+    register unsigned char *b __asm("a1"),
+    register size_t c __asm("d0"),
+    register int d __asm("d1"))
+{
+    return SDL_hid_read_timeout(a, b, c, d);
+}
 
-/* slot 810: SDL_hid_read -- not built for AmigaOS */
-long SDL2_Reserved0810(void) { return 0; }
+int SDL2_hid_read(register SDL_hid_device *a __asm("a0"),
+    register unsigned char *b __asm("a1"),
+    register size_t c __asm("d0"))
+{
+    return SDL_hid_read(a, b, c);
+}
 
-/* slot 811: SDL_hid_set_nonblocking -- not built for AmigaOS */
-long SDL2_Reserved0811(void) { return 0; }
+int SDL2_hid_set_nonblocking(register SDL_hid_device *a __asm("a0"),
+    register int b __asm("d0"))
+{
+    return SDL_hid_set_nonblocking(a, b);
+}
 
-/* slot 812: SDL_hid_send_feature_report -- not built for AmigaOS */
-long SDL2_Reserved0812(void) { return 0; }
+int SDL2_hid_send_feature_report(register SDL_hid_device *a __asm("a0"),
+    register const unsigned char *b __asm("a1"),
+    register size_t c __asm("d0"))
+{
+    return SDL_hid_send_feature_report(a, b, c);
+}
 
-/* slot 813: SDL_hid_get_feature_report -- not built for AmigaOS */
-long SDL2_Reserved0813(void) { return 0; }
+int SDL2_hid_get_feature_report(register SDL_hid_device *a __asm("a0"),
+    register unsigned char *b __asm("a1"),
+    register size_t c __asm("d0"))
+{
+    return SDL_hid_get_feature_report(a, b, c);
+}
 
-/* slot 814: SDL_hid_close -- not built for AmigaOS */
-long SDL2_Reserved0814(void) { return 0; }
+void SDL2_hid_close(register SDL_hid_device *a __asm("a0"))
+{
+    SDL_hid_close(a);
+}
 
-/* slot 815: SDL_hid_get_manufacturer_string -- not built for AmigaOS */
-long SDL2_Reserved0815(void) { return 0; }
+int SDL2_hid_get_manufacturer_string(register SDL_hid_device *a __asm("a0"),
+    register wchar_t *b __asm("a1"),
+    register size_t c __asm("d0"))
+{
+    return SDL_hid_get_manufacturer_string(a, b, c);
+}
 
-/* slot 816: SDL_hid_get_product_string -- not built for AmigaOS */
-long SDL2_Reserved0816(void) { return 0; }
+int SDL2_hid_get_product_string(register SDL_hid_device *a __asm("a0"),
+    register wchar_t *b __asm("a1"),
+    register size_t c __asm("d0"))
+{
+    return SDL_hid_get_product_string(a, b, c);
+}
 
-/* slot 817: SDL_hid_get_serial_number_string -- not built for AmigaOS */
-long SDL2_Reserved0817(void) { return 0; }
+int SDL2_hid_get_serial_number_string(register SDL_hid_device *a __asm("a0"),
+    register wchar_t *b __asm("a1"),
+    register size_t c __asm("d0"))
+{
+    return SDL_hid_get_serial_number_string(a, b, c);
+}
 
-/* slot 818: SDL_hid_get_indexed_string -- not built for AmigaOS */
-long SDL2_Reserved0818(void) { return 0; }
+int SDL2_hid_get_indexed_string(register SDL_hid_device *a __asm("a0"),
+    register int b __asm("d0"),
+    register wchar_t *c __asm("a1"),
+    register size_t d __asm("d1"))
+{
+    return SDL_hid_get_indexed_string(a, b, c, d);
+}
 
 int SDL2_SetWindowMouseRect(register SDL_Window *a __asm("a0"),
     register const SDL_Rect *b __asm("a1"))
@@ -4657,8 +4715,10 @@ SDL_bool SDL2_GameControllerHasRumbleTriggers(register SDL_GameController *a __a
     return SDL_GameControllerHasRumbleTriggers(a);
 }
 
-/* slot 827: SDL_hid_ble_scan -- not built for AmigaOS */
-long SDL2_Reserved0827(void) { return 0; }
+void SDL2_hid_ble_scan(register SDL_bool a __asm("d0"))
+{
+    SDL_hid_ble_scan(a);
+}
 
 int SDL2_PremultiplyAlpha(register int a __asm("d0"),
     register int b __asm("d1"),

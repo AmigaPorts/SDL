@@ -26,14 +26,18 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#ifdef __NEWLIB__
 extern struct Interface* INewlib;
+#endif
 
 void OS4_DebugPrintF(const char* const fmt, ...)
 {
+#ifdef __NEWLIB__
     if (!INewlib) {
         IExec->DebugPrintF("INewlib nullptr\n");
         return;
     }
+#endif
 
     va_list ap;
     va_start(ap, fmt);
@@ -50,5 +54,4 @@ void OS4_DebugPrintF(const char* const fmt, ...)
 
     va_end(ap);
 }
-
 

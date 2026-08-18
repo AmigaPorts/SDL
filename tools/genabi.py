@@ -27,6 +27,8 @@ with us, and we can grow without renumbering SDL.
 Usage:  python tools/genabi.py        (from the repository root)
 
 Writes: library/sdl2_lib.fd
+        library/sdl2_lib.sfd
+        library/amigaos4/sdl2_lib.sfd
         library/sdl2api.c
         library/sdl2table.c
         library/clib/sdl2_protos.h
@@ -39,6 +41,7 @@ from collections import Counter
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROCS = os.path.join(REPO, 'src', 'dynapi', 'SDL_dynapi_procs.h')
 IMAGE = os.environ.get('IMAGE', 'amigadev/crosstools:m68k-amigaos')
+ARCHIVE = os.environ.get('SDL2_ARCHIVE', 'libSDL2.a')
 
 DATA_REGS = ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7']
 ADDR_REGS = ['a0', 'a1', 'a2', 'a3']       # a4/a5 left alone, a6 is the base
@@ -92,6 +95,16 @@ BLOCKLIST = {
     'SDL_Vulkan_GetInstanceExtensions':     'no Vulkan on AmigaOS 3',
     'SDL_Vulkan_CreateSurface':             'no Vulkan on AmigaOS 3',
     'SDL_Vulkan_GetDrawableSize':           'no Vulkan on AmigaOS 3',
+}
+
+# SFDC's AmigaOS 4 compatibility gates cannot marshal the PPC va_list type
+# through the 68K register array. These remain available from the static and
+# shared SDL builds, but are not methods of the native library interface.
+OS4_BLOCKLIST = {
+    'SDL_LogMessageV',
+    'SDL_vasprintf',
+    'SDL_vsnprintf',
+    'SDL_vsscanf',
 }
 
 HDR = ("/*\n * %s -- %s\n *\n"
@@ -225,10 +238,17 @@ def is_wide(decl):
 
 
 def defined_symbols():
+    archive = os.path.abspath(os.path.join(REPO, ARCHIVE))
+    try:
+        archive_rel = os.path.relpath(archive, REPO)
+    except ValueError:
+        raise SystemExit('SDL2_ARCHIVE must be inside the repository')
+    if archive_rel == '..' or archive_rel.startswith('..' + os.sep):
+        raise SystemExit('SDL2_ARCHIVE must be inside the repository')
     env = dict(os.environ, MSYS_NO_PATHCONV='1')
     r = subprocess.run(
         ['docker', 'run', '--rm', '-v', REPO + ':/work', '-w', '/work', IMAGE,
-         'sh', '-c', 'm68k-amigaos-nm --defined-only libSDL2.a'],
+         'm68k-amigaos-nm', '--defined-only', archive_rel],
         capture_output=True, text=True, env=env)
     out = set()
     for line in r.stdout.splitlines():
@@ -236,8 +256,8 @@ def defined_symbols():
         if len(p) >= 3 and p[1] in 'TDBR' and p[2].startswith('_SDL_'):
             out.add(p[2][1:])
     if not out:
-        raise SystemExit('no symbols read from libSDL2.a -- build it first '
-                         '(./build.sh sdl2)')
+        raise SystemExit('no symbols read from %s -- build it first '
+                         '(./build.sh sdl2)' % ARCHIVE)
     return out
 
 
@@ -366,6 +386,53 @@ def emit(slots):
             fd.append('SDL2_Reserved%04d()()' % i)
     fd.append('##end')
     w('library/sdl2_lib.fd', '\n'.join(fd) + '\n')
+
+    # ------------------------------------------------------------ .sfd
+    # SFDC is the common SDK-header generator for AmigaOS, AmigaOS 4,
+    # AROS, MorphOS and related targets. Keep the legacy FD for the existing
+    # library ABI and emit the equivalent SFD from the same slot list so the
+    # two descriptions cannot drift apart.
+    sfd = ["==id $Id: sdl2_lib.sfd generated from SDL_dynapi_procs.h $",
+           "* sdl2.library function descriptions -- GENERATED, do not edit.",
+           "==base _SDL2Base",
+           "==basetype struct Library *",
+           "==libname sdl2.library",
+           "==bias 30",
+           "==include <SDL.h>",
+           "==include <SDL_syswm.h>",
+           "==public"]
+    for slot in slots:
+        if slot['ok']:
+            sfd.append('%s SDL2_%s(%s) (%s)' %
+                       (slot['ret'], slot['export'],
+                        ', '.join(slot['args']) or 'void',
+                        ','.join(r.upper() for r in slot['regs'])))
+        else:
+            sfd.append('==reserve 1')
+    sfd.append('==end')
+    w('library/sdl2_lib.sfd', '\n'.join(sfd) + '\n')
+
+    # AmigaOS 4 uses the same proven subset, but the native interface can
+    # expose SDL's normal names because SFDC supplies the Self-argument gates.
+    # Keep this interface compact: SFDC emits Pad members for SFD reserves in
+    # interface mode but omits those entries in function-table mode.
+    os4sfd = ["==id $Id: sdl2_lib.sfd generated from SDL_dynapi_procs.h $",
+              "* sdl2.library AmigaOS 4 interface -- GENERATED, do not edit.",
+              "==base _SDL2Base",
+              "==basetype struct Library *",
+              "==libname sdl2.library",
+              "==bias 30",
+              "==include <SDL.h>",
+              "==include <SDL_syswm.h>",
+              "==public"]
+    for slot in sdl:
+        if slot['ok'] and slot['sdl'] not in OS4_BLOCKLIST:
+            os4sfd.append('%s %s(%s) (%s)' %
+                          (slot['ret'], slot['sdl'],
+                           ', '.join(slot['args']) or 'void',
+                           ','.join(r.upper() for r in slot['regs'])))
+    os4sfd.append('==end')
+    w('library/amigaos4/sdl2_lib.sfd', '\n'.join(os4sfd) + '\n')
 
     # -------------------------------------------------------- wrappers
     out = [HDR % ('sdl2api.c', 'register-argument wrappers for the SDL2 API'),

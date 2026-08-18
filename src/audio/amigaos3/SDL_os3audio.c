@@ -1,14 +1,22 @@
 /*
-  SDL2 Audio Driver -- AmigaOS 3.x (AHI)
+  Simple DirectMedia Layer
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
-  Device interface matching SDL 1.2 AmigaPorts pattern exactly:
-  - OpenDevice(AHINAME, 0, req, NULL) -- unit 0, no flags
-  - CMD_WRITE + SendIO double-buffered
-  - CheckIO before WaitIO (non-blocking check)
-  - ahir_Link chaining for gapless playback
-  - playing counter: WaitIO only after 2nd buffer submitted
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
 
-  Reference: AmigaPorts/libSDL12/audio/amigaos/SDL_ahiaudio.c
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
 */
 
 #include "../../SDL_internal.h"
@@ -28,257 +36,370 @@
 #include <proto/dos.h>
 #include <exec/memory.h>
 #ifdef WARPUP
-#pragma pop
+#pragma pack(pop)
 #endif
 
 #define OS3AHI_DRIVER_NAME "ahi"
+#define OS3AHI_RESTART_CAPTURE_THRESHOLD 500
 
 static void OS3AHI_DetectDevices(void)
 {
 }
 
+static void OS3AHI_FinishRequest(struct SDL_PrivateAudioData *hidden, int index, SDL_bool abort_request)
+{
+    struct IORequest *request;
+
+    if (!hidden->pending[index] || !hidden->req[index]) {
+        return;
+    }
+
+    request = (struct IORequest *)hidden->req[index];
+    if (abort_request && !CheckIO(request)) {
+        AbortIO(request);
+    }
+    WaitIO(request);
+    hidden->pending[index] = SDL_FALSE;
+}
+
+static void OS3AHI_CloseAhiDevice(struct SDL_PrivateAudioData *hidden)
+{
+    if (hidden->req[1]) {
+        OS3AHI_FinishRequest(hidden, 1, SDL_TRUE);
+    }
+    if (hidden->req[0]) {
+        OS3AHI_FinishRequest(hidden, 0, SDL_TRUE);
+    }
+
+    hidden->link = NULL;
+    if (hidden->device_open) {
+        CloseDevice((struct IORequest *)hidden->req[0]);
+        hidden->device_open = SDL_FALSE;
+    }
+    if (hidden->req[1]) {
+        FreeVec(hidden->req[1]);
+        hidden->req[1] = NULL;
+    }
+    if (hidden->req[0]) {
+        DeleteIORequest((struct IORequest *)hidden->req[0]);
+        hidden->req[0] = NULL;
+    }
+    if (hidden->port) {
+        DeleteMsgPort(hidden->port);
+        hidden->port = NULL;
+    }
+}
+
+static int OS3AHI_OpenAhiDevice(struct SDL_PrivateAudioData *hidden)
+{
+    hidden->port = CreateMsgPort();
+    if (!hidden->port) {
+        return SDL_SetError("AHI: CreateMsgPort failed");
+    }
+
+    hidden->req[0] = (struct AHIRequest *)CreateIORequest(hidden->port, sizeof(struct AHIRequest));
+    if (!hidden->req[0]) {
+        OS3AHI_CloseAhiDevice(hidden);
+        return SDL_SetError("AHI: CreateIORequest failed");
+    }
+
+    hidden->req[0]->ahir_Version = 4;
+    if (OpenDevice((CONST_STRPTR)AHINAME, AHI_DEFAULT_UNIT,
+                   (struct IORequest *)hidden->req[0], 0) != 0) {
+        OS3AHI_CloseAhiDevice(hidden);
+        return SDL_SetError("AHI: OpenDevice failed");
+    }
+    hidden->device_open = SDL_TRUE;
+
+    hidden->req[1] = (struct AHIRequest *)AllocVec(sizeof(struct AHIRequest), MEMF_PUBLIC);
+    if (!hidden->req[1]) {
+        OS3AHI_CloseAhiDevice(hidden);
+        return SDL_SetError("AHI: second request allocation failed");
+    }
+    SDL_memcpy(hidden->req[1], hidden->req[0], sizeof(struct AHIRequest));
+
+    hidden->current = 0;
+    hidden->link = NULL;
+    hidden->pending[0] = SDL_FALSE;
+    hidden->pending[1] = SDL_FALSE;
+    hidden->last_capture_ticks = 0;
+    return 0;
+}
+
 static int OS3AHI_OpenDevice(_THIS, const char *devname)
 {
-    struct SDL_PrivateAudioData *hidden = NULL;
+    struct SDL_PrivateAudioData *hidden;
     SDL_AudioFormat test_format;
     ULONG ahi_type = AHIST_S16S;
     int found = 0;
 
     (void)devname;
 
-    hidden = (struct SDL_PrivateAudioData *)
-        SDL_malloc(sizeof(struct SDL_PrivateAudioData));
-    if (!hidden) return SDL_OutOfMemory();
-    SDL_memset(hidden, 0, sizeof(struct SDL_PrivateAudioData));
+    hidden = (struct SDL_PrivateAudioData *)SDL_calloc(1, sizeof(*hidden));
+    if (!hidden) {
+        return SDL_OutOfMemory();
+    }
     _this->hidden = hidden;
 
-    if (_this->spec.channels > 2) _this->spec.channels = 2;
-    if (_this->spec.channels < 1) _this->spec.channels = 1;
+    if (_this->spec.channels > 2) {
+        _this->spec.channels = 2;
+    } else if (_this->spec.channels < 1) {
+        _this->spec.channels = 1;
+    }
 
     for (test_format = SDL_FirstAudioFormat(_this->spec.format);
          test_format && !found;
          test_format = SDL_NextAudioFormat()) {
         switch (test_format) {
         case AUDIO_S16MSB:
-            ahi_type = (_this->spec.channels >= 2) ? AHIST_S16S : AHIST_M16S;
-            found = 1; break;
         case AUDIO_S16LSB:
-            ahi_type = (_this->spec.channels >= 2) ? AHIST_S16S : AHIST_M16S;
             test_format = AUDIO_S16MSB;
-            found = 1; break;
+            ahi_type = (_this->spec.channels == 2) ? AHIST_S16S : AHIST_M16S;
+            found = 1;
+            break;
         case AUDIO_S8:
-            ahi_type = (_this->spec.channels >= 2) ? AHIST_S8S : AHIST_M8S;
-            found = 1; break;
-        default: break;
+        case AUDIO_U8:
+            test_format = AUDIO_S8;
+            ahi_type = (_this->spec.channels == 2) ? AHIST_S8S : AHIST_M8S;
+            found = 1;
+            break;
+        default:
+            break;
         }
     }
     if (!found) {
         test_format = AUDIO_S16MSB;
-        ahi_type = (_this->spec.channels >= 2) ? AHIST_S16S : AHIST_M16S;
+        ahi_type = (_this->spec.channels == 2) ? AHIST_S16S : AHIST_M16S;
     }
+
     _this->spec.format = test_format;
     SDL_CalculateAudioSpec(&_this->spec);
 
     hidden->ahi_type = ahi_type;
     hidden->ahi_freq = (ULONG)_this->spec.freq;
-    hidden->bufsize  = (ULONG)_this->spec.size;
-    hidden->current  = 0;
-    hidden->playing  = 0;
-
-    /* Create MsgPort -- matching SDL 1.2 exactly */
-    hidden->port = CreateMsgPort();
-    if (!hidden->port)
-        return SDL_SetError("AHI: CreateMsgPort failed");
-
-    /* Create primary AHIRequest */
-    hidden->req[0] = (struct AHIRequest *)
-        CreateIORequest(hidden->port, sizeof(struct AHIRequest));
-    if (!hidden->req[0])
-        return SDL_SetError("AHI: CreateIORequest failed");
-
-    hidden->req[0]->ahir_Version = 4;
-
-    /* OpenDevice -- unit 0, flags NULL, matching SDL 1.2.
-       NO pr_WindowPtr suppression (SDL 1.2 doesn't do it). */
-    if (OpenDevice((CONST_STRPTR)AHINAME, 0,
-                   (struct IORequest *)hidden->req[0], NULL) != 0) {
-        DeleteIORequest((struct IORequest *)hidden->req[0]);
-        hidden->req[0] = NULL;
-        return SDL_SetError("AHI: OpenDevice failed");
-    }
-
-    /* Allocate buffers */
+    hidden->bufsize = (ULONG)_this->spec.size;
     hidden->mixbuf[0] = (Uint8 *)AllocVec(hidden->bufsize, MEMF_PUBLIC);
     hidden->mixbuf[1] = (Uint8 *)AllocVec(hidden->bufsize, MEMF_PUBLIC);
-    if (!hidden->mixbuf[0] || !hidden->mixbuf[1])
-        return SDL_SetError("AHI: buffer alloc failed");
+    if (!hidden->mixbuf[0] || !hidden->mixbuf[1]) {
+        if (hidden->mixbuf[0]) {
+            FreeVec(hidden->mixbuf[0]);
+        }
+        if (hidden->mixbuf[1]) {
+            FreeVec(hidden->mixbuf[1]);
+        }
+        SDL_free(hidden);
+        _this->hidden = NULL;
+        return SDL_OutOfMemory();
+    }
 
-    /* Clone req[0] to req[1] -- matching SDL 1.2 (AllocVec + memcpy) */
-    hidden->req[1] = (struct AHIRequest *)AllocVec(sizeof(struct AHIRequest),
-                                                    MEMF_PUBLIC);
-    if (!hidden->req[1])
-        return SDL_SetError("AHI: req[1] alloc failed");
-
-    SDL_memcpy(hidden->req[1], hidden->req[0], sizeof(struct AHIRequest));
-
-    /* Clear buffers with silence */
     SDL_memset(hidden->mixbuf[0], _this->spec.silence, hidden->bufsize);
     SDL_memset(hidden->mixbuf[1], _this->spec.silence, hidden->bufsize);
-
     return 0;
 }
 
-/* WaitAudio: CheckIO before WaitIO -- matching SDL 1.2 exactly.
-   Only block if the request hasn't completed yet. */
+static void OS3AHI_ThreadInit(_THIS)
+{
+    /* CreateMsgPort allocates a signal for the calling task, so AHI must be
+       opened by the SDL audio thread that will wait on that signal. */
+    OS3AHI_OpenAhiDevice(_this->hidden);
+}
+
+static void OS3AHI_ThreadDeinit(_THIS)
+{
+    OS3AHI_CloseAhiDevice(_this->hidden);
+}
+
 static void OS3AHI_WaitDevice(_THIS)
 {
     struct SDL_PrivateAudioData *hidden = _this->hidden;
 
-    if (!CheckIO((struct IORequest *)hidden->req[hidden->current])) {
-        WaitIO((struct IORequest *)hidden->req[hidden->current]);
+    if (hidden->device_open) {
+        OS3AHI_FinishRequest(hidden, hidden->current, SDL_FALSE);
     }
 }
 
 static Uint8 *OS3AHI_GetDeviceBuf(_THIS)
 {
     struct SDL_PrivateAudioData *hidden = _this->hidden;
-    return hidden->mixbuf[hidden->current];
+
+    return hidden->device_open ? hidden->mixbuf[hidden->current] : NULL;
 }
 
-/* PlayAudio: CMD_WRITE + SendIO -- matching SDL 1.2 exactly. */
 static void OS3AHI_PlayDevice(_THIS)
 {
     struct SDL_PrivateAudioData *hidden = _this->hidden;
-    struct AHIRequest *req = hidden->req[hidden->current];
+    struct AHIRequest *request;
+    int current;
 
-    /* Wait for THIS buffer's previous use to complete (if any).
-       SDL 1.2: "if (playing > 1) WaitIO(req[current])" */
-    if (hidden->playing > 1) {
-        WaitIO((struct IORequest *)req);
+    if (!hidden->device_open) {
+        return;
     }
 
-    req->ahir_Std.io_Message.mn_Node.ln_Pri = 60;
-    req->ahir_Std.io_Data    = hidden->mixbuf[hidden->current];
-    req->ahir_Std.io_Length  = hidden->bufsize;
-    req->ahir_Std.io_Offset  = 0;
-    req->ahir_Std.io_Command = CMD_WRITE;
-    req->ahir_Frequency = hidden->ahi_freq;
-    req->ahir_Volume    = 0x10000L;
-    req->ahir_Type      = hidden->ahi_type;
-    req->ahir_Position  = 0x8000L;
-    req->ahir_Link      = (hidden->playing > 0)
-                          ? hidden->req[hidden->current ^ 1]
-                          : NULL;
+    current = hidden->current;
+    OS3AHI_FinishRequest(hidden, current, SDL_FALSE);
+    request = hidden->req[current];
+    request->ahir_Std.io_Message.mn_Node.ln_Pri = 60;
+    request->ahir_Std.io_Data = hidden->mixbuf[current];
+    request->ahir_Std.io_Length = hidden->bufsize;
+    request->ahir_Std.io_Offset = 0;
+    request->ahir_Std.io_Command = CMD_WRITE;
+    request->ahir_Frequency = hidden->ahi_freq;
+    request->ahir_Volume = 0x10000L;
+    request->ahir_Type = hidden->ahi_type;
+    request->ahir_Position = 0x8000L;
+    request->ahir_Link = hidden->link;
 
-    SendIO((struct IORequest *)req);
+    SendIO((struct IORequest *)request);
+    hidden->pending[current] = SDL_TRUE;
+    hidden->link = request;
     hidden->current ^= 1;
-    hidden->playing++;
+}
+
+static void OS3AHI_FillCaptureRequest(struct SDL_PrivateAudioData *hidden,
+                                      Uint8 *buffer)
+{
+    struct AHIRequest *request = hidden->req[0];
+
+    request->ahir_Std.io_Message.mn_Node.ln_Pri = 60;
+    request->ahir_Std.io_Data = buffer;
+    request->ahir_Std.io_Length = hidden->bufsize;
+    request->ahir_Std.io_Offset = 0;
+    request->ahir_Std.io_Command = CMD_READ;
+    request->ahir_Frequency = hidden->ahi_freq;
+    request->ahir_Volume = 0x10000L;
+    request->ahir_Type = hidden->ahi_type;
+    request->ahir_Position = 0x8000L;
+    request->ahir_Link = NULL;
+}
+
+static void OS3AHI_FlushCapture(_THIS)
+{
+    struct SDL_PrivateAudioData *hidden = _this->hidden;
+
+    OS3AHI_FinishRequest(hidden, 0, SDL_TRUE);
+    hidden->last_capture_ticks = 0;
+}
+
+static int OS3AHI_CaptureFromDevice(_THIS, void *buffer, int buflen)
+{
+    struct SDL_PrivateAudioData *hidden = _this->hidden;
+    struct AHIRequest *request;
+    Uint32 now;
+    int completed;
+    int copylen;
+
+    if (!hidden->device_open) {
+        return -1;
+    }
+
+    request = hidden->req[0];
+    now = SDL_GetTicks();
+    OS3AHI_FinishRequest(hidden, 0, SDL_FALSE);
+
+    if (hidden->last_capture_ticks == 0 ||
+        now - hidden->last_capture_ticks > OS3AHI_RESTART_CAPTURE_THRESHOLD) {
+        OS3AHI_FillCaptureRequest(hidden, hidden->mixbuf[hidden->current]);
+        DoIO((struct IORequest *)request);
+        completed = hidden->current;
+
+        OS3AHI_FillCaptureRequest(hidden, hidden->mixbuf[hidden->current ^ 1]);
+        SendIO((struct IORequest *)request);
+        hidden->pending[0] = SDL_TRUE;
+    } else {
+        OS3AHI_FillCaptureRequest(hidden, hidden->mixbuf[hidden->current]);
+        SendIO((struct IORequest *)request);
+        hidden->pending[0] = SDL_TRUE;
+        completed = hidden->current ^ 1;
+        hidden->current ^= 1;
+    }
+
+    copylen = (buflen < (int)hidden->bufsize) ? buflen : (int)hidden->bufsize;
+    SDL_memcpy(buffer, hidden->mixbuf[completed], (size_t)copylen);
+    hidden->last_capture_ticks = now;
+    return copylen;
 }
 
 static void OS3AHI_CloseDevice(_THIS)
 {
     struct SDL_PrivateAudioData *hidden = _this->hidden;
 
-    if (!hidden) return;
-
-    if (hidden->req[0]) {
-        if (hidden->req[1] && hidden->playing > 1) {
-            AbortIO((struct IORequest *)hidden->req[1]);
-            WaitIO((struct IORequest *)hidden->req[1]);
-        }
-
-        AbortIO((struct IORequest *)hidden->req[0]);
-        WaitIO((struct IORequest *)hidden->req[0]);
-
-        if (hidden->req[1] && hidden->playing > 1) {
-            AbortIO((struct IORequest *)hidden->req[1]);
-            WaitIO((struct IORequest *)hidden->req[1]);
-        }
-
-        CloseDevice((struct IORequest *)hidden->req[0]);
-
-        if (hidden->req[1]) {
-            FreeVec(hidden->req[1]);
-            hidden->req[1] = NULL;
-        }
-        DeleteIORequest((struct IORequest *)hidden->req[0]);
-        hidden->req[0] = NULL;
+    if (!hidden) {
+        return;
     }
 
-    hidden->playing = 0;
-
-    if (hidden->mixbuf[0]) { FreeVec(hidden->mixbuf[0]); hidden->mixbuf[0] = NULL; }
-    if (hidden->mixbuf[1]) { FreeVec(hidden->mixbuf[1]); hidden->mixbuf[1] = NULL; }
-
-    if (hidden->port) {
-        DeleteMsgPort(hidden->port);
-        hidden->port = NULL;
+    /* ThreadDeinit normally owns this cleanup. Keep this fallback for an
+       audio-thread creation failure, before ThreadInit has run. */
+    OS3AHI_CloseAhiDevice(hidden);
+    if (hidden->mixbuf[0]) {
+        FreeVec(hidden->mixbuf[0]);
     }
-
+    if (hidden->mixbuf[1]) {
+        FreeVec(hidden->mixbuf[1]);
+    }
     SDL_free(hidden);
     _this->hidden = NULL;
 }
 
-/* Probe whether ahi.device can be opened.
-   If not, return SDL_FALSE so SDL2 falls through to Paula. */
 static int OS3AHI_Available(void)
 {
-    struct MsgPort *p;
-    struct AHIRequest *req;
-    int ok = 0;
-    struct Process *me;
-    APTR oldwin;
+    struct MsgPort *port;
+    struct AHIRequest *request;
+    struct Process *process;
+    APTR old_window;
+    int available = 0;
 
-    p = CreateMsgPort();
-    if (!p) return 0;
-
-    req = (struct AHIRequest *)CreateIORequest(p, sizeof(struct AHIRequest));
-    if (!req) {
-        DeleteMsgPort(p);
+    port = CreateMsgPort();
+    if (!port) {
+        return 0;
+    }
+    request = (struct AHIRequest *)CreateIORequest(port, sizeof(struct AHIRequest));
+    if (!request) {
+        DeleteMsgPort(port);
         return 0;
     }
 
-    req->ahir_Version = 4;
-
-    me = (struct Process *)FindTask(NULL);
-    oldwin = me->pr_WindowPtr;
-    me->pr_WindowPtr = (APTR)-1L;
-
-    if (OpenDevice((CONST_STRPTR)AHINAME, 0,
-                   (struct IORequest *)req, NULL) == 0) {
-        ok = 1;
-        CloseDevice((struct IORequest *)req);
+    request->ahir_Version = 4;
+    process = (struct Process *)FindTask(NULL);
+    old_window = process->pr_WindowPtr;
+    process->pr_WindowPtr = (APTR)-1L;
+    if (OpenDevice((CONST_STRPTR)AHINAME, AHI_DEFAULT_UNIT,
+                   (struct IORequest *)request, 0) == 0) {
+        available = 1;
+        CloseDevice((struct IORequest *)request);
     }
+    process->pr_WindowPtr = old_window;
 
-    me->pr_WindowPtr = oldwin;
-
-    DeleteIORequest((struct IORequest *)req);
-    DeleteMsgPort(p);
-    return ok;
+    DeleteIORequest((struct IORequest *)request);
+    DeleteMsgPort(port);
+    return available;
 }
 
 static SDL_bool OS3AHI_Init(SDL_AudioDriverImpl *impl)
 {
-    if (!OS3AHI_Available())
+    if (!OS3AHI_Available()) {
         return SDL_FALSE;
+    }
 
     impl->DetectDevices = OS3AHI_DetectDevices;
-    impl->OpenDevice    = OS3AHI_OpenDevice;
-    impl->PlayDevice    = OS3AHI_PlayDevice;
-    impl->GetDeviceBuf  = OS3AHI_GetDeviceBuf;
-    impl->WaitDevice    = OS3AHI_WaitDevice;
-    impl->CloseDevice   = OS3AHI_CloseDevice;
+    impl->OpenDevice = OS3AHI_OpenDevice;
+    impl->ThreadInit = OS3AHI_ThreadInit;
+    impl->ThreadDeinit = OS3AHI_ThreadDeinit;
+    impl->PlayDevice = OS3AHI_PlayDevice;
+    impl->GetDeviceBuf = OS3AHI_GetDeviceBuf;
+    impl->WaitDevice = OS3AHI_WaitDevice;
+    impl->CaptureFromDevice = OS3AHI_CaptureFromDevice;
+    impl->FlushCapture = OS3AHI_FlushCapture;
+    impl->CloseDevice = OS3AHI_CloseDevice;
 
     impl->OnlyHasDefaultOutputDevice = SDL_TRUE;
-    impl->HasCaptureSupport = SDL_FALSE;
+    impl->OnlyHasDefaultCaptureDevice = SDL_TRUE;
+    impl->HasCaptureSupport = SDL_TRUE;
     impl->ProvidesOwnCallbackThread = SDL_FALSE;
-
     return SDL_TRUE;
 }
 
 AudioBootStrap OS3AHI_bootstrap = {
-    OS3AHI_DRIVER_NAME, "AmigaOS AHI Audio",
-    OS3AHI_Init, SDL_FALSE
+    OS3AHI_DRIVER_NAME, "AmigaOS AHI Audio", OS3AHI_Init, SDL_FALSE
 };
 
 #endif /* SDL_AUDIO_DRIVER_AHI */
