@@ -57,6 +57,8 @@
 #define SDL_DYNAMIC_API 0
 #elif defined(__PSP__) && __PSP__
 #define SDL_DYNAMIC_API 0
+#elif defined(__AMIGAOS4__) /* It seems we cannot load .so from a statically linked binary */
+#define SDL_DYNAMIC_API 0
 #elif defined(__riscos__) && __riscos__ /* probably not useful on RISC OS, since dlopen() can't be used when using static linking. */
 #define SDL_DYNAMIC_API 0
 #elif defined(__clang_analyzer__) || defined(SDL_THREAD_SAFETY_ANALYSIS)

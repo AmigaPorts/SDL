@@ -40,6 +40,7 @@ dist
 *.swp
 *.tmp
 *.rej
+*.d
 
 # for CMake
 CMakeFiles/

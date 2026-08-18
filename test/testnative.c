@@ -33,6 +33,9 @@ static NativeWindowFactory *factories[] = {
 #ifdef TEST_NATIVE_COCOA
     &CocoaWindowFactory,
 #endif
+#ifdef TEST_NATIVE_AMIGAOS4
+    &AmigaOS4WindowFactory,
+#endif
 #ifdef TEST_NATIVE_OS2
     &OS2WindowFactory,
 #endif
@@ -46,10 +49,13 @@ static SDL_Rect *positions, *velocities;
 static void
 quit(int rc)
 {
-    SDL_VideoQuit();
     if (native_window && factory) {
         factory->DestroyNativeWindow(native_window);
     }
+
+    SDL_VideoQuit();
+    SDL_Quit();
+
     exit(rc);
 }
 
@@ -199,6 +205,8 @@ int main(int argc, char *argv[])
         }
         MoveSprites(renderer, sprite);
     }
+
+    SDL_DestroyRenderer(renderer);
 
     quit(0);
 

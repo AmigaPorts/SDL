@@ -49,6 +49,8 @@
 #include "SDL_config_ngage.h"
 #elif defined(__AMIGAOS3__)
 #include "SDL_config_amigaos3.h"
+#elif defined(__AMIGAOS4__)
+#include "SDL_config_amigaos4.h"
 #else
 /* This is a minimal configuration just to get SDL running on new platforms. */
 #include "SDL_config_minimal.h"
