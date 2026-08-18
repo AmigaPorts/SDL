@@ -67,7 +67,11 @@ assert can have unique static variables associated with it.
     #define SDL_TriggerBreakpoint() { _asm { int 0x03 } }
 #elif defined(HAVE_SIGNAL_H) && !defined(__WATCOMC__)
     #include <signal.h>
-    #define SDL_TriggerBreakpoint() raise(SIGTRAP)
+    #ifdef SIGTRAP
+        #define SDL_TriggerBreakpoint() raise(SIGTRAP)
+    #else
+        #define SDL_TriggerBreakpoint()
+    #endif
 #else
     /* How do we trigger breakpoints on this platform? */
     #define SDL_TriggerBreakpoint()

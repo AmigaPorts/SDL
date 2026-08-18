@@ -1,0 +1,36 @@
+set(CPM_DOWNLOAD_VERSION 0.40.8)
+
+if(CPM_SOURCE_CACHE)
+  set(CPM_DOWNLOAD_LOCATION "${CPM_SOURCE_CACHE}/cpm/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
+elseif(DEFINED ENV{CPM_SOURCE_CACHE})
+  set(CPM_DOWNLOAD_LOCATION "$ENV{CPM_SOURCE_CACHE}/cpm/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
+else()
+  set(CPM_DOWNLOAD_LOCATION "${CMAKE_BINARY_DIR}/cmake/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
+endif()
+
+get_filename_component(CPM_DOWNLOAD_LOCATION "${CPM_DOWNLOAD_LOCATION}" ABSOLUTE)
+
+function(download_cpm)
+  message(STATUS "Downloading CPM.cmake to ${CPM_DOWNLOAD_LOCATION}")
+  file(DOWNLOAD
+    "https://github.com/cpm-cmake/CPM.cmake/releases/download/v${CPM_DOWNLOAD_VERSION}/CPM.cmake"
+    "${CPM_DOWNLOAD_LOCATION}"
+    TLS_VERIFY ON
+    STATUS CPM_DOWNLOAD_STATUS)
+  list(GET CPM_DOWNLOAD_STATUS 0 CPM_DOWNLOAD_ERROR)
+  if(CPM_DOWNLOAD_ERROR)
+    list(GET CPM_DOWNLOAD_STATUS 1 CPM_DOWNLOAD_MESSAGE)
+    message(FATAL_ERROR "Could not download CPM.cmake: ${CPM_DOWNLOAD_MESSAGE}")
+  endif()
+endfunction()
+
+if(NOT EXISTS "${CPM_DOWNLOAD_LOCATION}")
+  download_cpm()
+else()
+  file(SIZE "${CPM_DOWNLOAD_LOCATION}" CPM_DOWNLOAD_SIZE)
+  if(CPM_DOWNLOAD_SIZE EQUAL 0)
+    download_cpm()
+  endif()
+endif()
+
+include("${CPM_DOWNLOAD_LOCATION}")

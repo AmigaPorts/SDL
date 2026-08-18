@@ -3,9 +3,9 @@
 SDL2 for m68k Amiga as a **shared library** — called into from an application
 rather than linked into it.
 
-This is a complete, self-contained SDL2 distribution. It vendors the SDL2
-AmigaOS 3.x port and adds an AmigaOS shared-library envelope on top, so one
-clone builds both `libSDL2.a` and `sdl2.library` with nothing else to fetch.
+This distribution vendors the SDL2 AmigaOS 3.x port and adds an AmigaOS
+shared-library envelope on top. It builds both `libSDL2.a` and `sdl2.library`;
+the CMake native-library build fetches its pinned SFDC tooling on first use.
 
 **Porting a game?** See [PORTING.md](PORTING.md). The short version: write
 ordinary SDL2, rename `SDL_Foo` to `SDL2_Foo`, open the library, link nothing.
@@ -46,8 +46,8 @@ Verified on Picasso96 RTG under emulation:
 | Video | window, surface, `SDL_FillRect`, `SDL_UpdateWindowSurface` |
 | Clean shutdown | `SDL_Quit` returns, library expunges, nothing pinned |
 
-**783 of SDL2's 877 public functions are exported**, plus 12 diagnostics. The
-94 that are not are reserved slots with recorded reasons, not omissions — see
+**801 of SDL2's 877 public functions are exported**, plus 12 diagnostics. The
+remaining entries are reserved slots with recorded reasons, not omissions — see
 *The ABI* below.
 
 The AGA path (8-bit `INDEX8` surface, c2p) exists in the video driver but has
@@ -58,13 +58,15 @@ not been exercised here.
 ```
 library/              the shared-library envelope
   sdl2lib.c             ROMTag, __UserLibInit/__UserLibCleanup
-  sdl2api.c             GENERATED -- register wrappers, 783 SDL functions
+  sdl2api.c             GENERATED -- register wrappers, 801 SDL functions
   sdl2table.c           GENERATED -- the export table, ORDER IS THE ABI
   sdl2_lib.fd           GENERATED -- function descriptions
+  sdl2_lib.sfd          GENERATED -- SFDC source for Amiga-like SDKs
   clib/sdl2_protos.h    GENERATED -- fd2pragma input
+  amigaos4/             native OS4 resident, SFDC server sources and SDK
   sdl2probes.c          hand-written diagnostics, slots 1000+
   sdl2crt.c             globals a library has no startup module to provide
-tools/genabi.py       regenerates the four generated files from SDL's dynapi
+tools/genabi.py       regenerates the ABI files from SDL's dynapi
 test/                 the test application
   sdl2test.c            opens the library, draws squares, plays a sound
   sdl2test.cfg          runtime configuration
@@ -116,12 +118,13 @@ added export calls off the end of it. `dev` names each build uniquely, so a
 pinned copy from a crashed run is simply not what the next one asks for. No
 reboots.
 
-The only requirement is Docker, for `amigadev/crosstools:m68k-amigaos` (GCC
-6.5). Newer m68k GCC releases miscompile NDK macros and mishandle libnix's exit
-list; 6.5 predates both.
+The only host requirement is Docker. See
+[docs/README-amiga.md](docs/README-amiga.md) for CMake commands covering
+AmigaOS 3, AmigaOS 4 and WarpOS, native-library options, dependency downloads,
+and runtime caveats.
 
-Changing the library itself? See [CONTRIBUTING.md](CONTRIBUTING.md) — four
-files under `library/` are generated and must not be hand-edited.
+Changing the library itself? See [CONTRIBUTING.md](CONTRIBUTING.md) — generated
+ABI files under `library/` must not be hand-edited.
 
 See [BUILDING.md](BUILDING.md) for the full procedure and the non-obvious
 constraints — several of which silently produce a library that loads and then
@@ -131,8 +134,8 @@ crashes on its first call.
 
 **Generated, not hand-maintained.** `tools/genabi.py` reads SDL's own
 `src/dynapi/SDL_dynapi_procs.h` — the list that becomes `SDL2.dll`'s export
-table — and emits `sdl2_lib.fd`, `sdl2api.c`, `sdl2table.c` and
-`clib/sdl2_protos.h` from it.
+table — and emits the FD/SFD descriptions, register wrappers, export table and
+classic clib prototypes from it.
 
 That file declares itself append-only:
 
@@ -149,9 +152,9 @@ as `##private`, so nothing after them shifts:
 | reserved | count | why |
 |---|---|---|
 | future SDL | 123 | headroom to slot 1000 before our own exports begin |
-| not built for AmigaOS | 55 | Android/iOS/D3D/WinRT/Linux platform calls |
+| not built for AmigaOS | 36 | Android/iOS/D3D/WinRT/Linux platform calls |
 | variadic | 12 | `...` has no register form — SDL's `*V` variants **are** exported |
-| returns a struct by value | 8 | the hidden return pointer collides with an argument register |
+| returns a struct by value | 9 | the hidden return pointer collides with an argument register |
 | Windows-only signature | 6 | dynapi carries `pfnSDL_CurrentBeginThread` for the thread calls |
 | no Vulkan on AmigaOS 3 | 6 | headers absent |
 | struct passed by value | 4 | `SDL_JoystickGUID` by value has no register form |

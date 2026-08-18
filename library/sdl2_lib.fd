@@ -323,7 +323,10 @@ SDL2_GetRGB(a,b,c,d,e)(D0,A0,A1,A2,A3)
 SDL2_GetRGBA(a,b,c,d,e,f)(D0,A0,A1,A2,A3,D1)
 SDL2_CalculateGammaRamp(a,b)(D0,A0)
 SDL2_GetPlatform()()
-SDL2_GetPowerInfo(a,b)(A0,A1)
+##private
+* slot 265: SDL_GetPowerInfo -- returns a struct by value
+SDL2_Reserved0265()()
+##public
 SDL2_HasIntersection(a,b)(A0,A1)
 SDL2_IntersectRect(a,b,c)(A0,A1,A2)
 SDL2_UnionRect(a,b,c)(A0,A1,A2)
@@ -920,44 +923,24 @@ SDL2_Reserved0798()()
 ##public
 SDL2_GameControllerGetAppleSFSymbolsNameForButton(a,b)(A0,D0)
 SDL2_GameControllerGetAppleSFSymbolsNameForAxis(a,b)(A0,D0)
-##private
-* slot 801: SDL_hid_init -- not built for AmigaOS
-SDL2_Reserved0801()()
-* slot 802: SDL_hid_exit -- not built for AmigaOS
-SDL2_Reserved0802()()
-* slot 803: SDL_hid_device_change_count -- not built for AmigaOS
-SDL2_Reserved0803()()
-* slot 804: SDL_hid_enumerate -- not built for AmigaOS
-SDL2_Reserved0804()()
-* slot 805: SDL_hid_free_enumeration -- not built for AmigaOS
-SDL2_Reserved0805()()
-* slot 806: SDL_hid_open -- not built for AmigaOS
-SDL2_Reserved0806()()
-* slot 807: SDL_hid_open_path -- not built for AmigaOS
-SDL2_Reserved0807()()
-* slot 808: SDL_hid_write -- not built for AmigaOS
-SDL2_Reserved0808()()
-* slot 809: SDL_hid_read_timeout -- not built for AmigaOS
-SDL2_Reserved0809()()
-* slot 810: SDL_hid_read -- not built for AmigaOS
-SDL2_Reserved0810()()
-* slot 811: SDL_hid_set_nonblocking -- not built for AmigaOS
-SDL2_Reserved0811()()
-* slot 812: SDL_hid_send_feature_report -- not built for AmigaOS
-SDL2_Reserved0812()()
-* slot 813: SDL_hid_get_feature_report -- not built for AmigaOS
-SDL2_Reserved0813()()
-* slot 814: SDL_hid_close -- not built for AmigaOS
-SDL2_Reserved0814()()
-* slot 815: SDL_hid_get_manufacturer_string -- not built for AmigaOS
-SDL2_Reserved0815()()
-* slot 816: SDL_hid_get_product_string -- not built for AmigaOS
-SDL2_Reserved0816()()
-* slot 817: SDL_hid_get_serial_number_string -- not built for AmigaOS
-SDL2_Reserved0817()()
-* slot 818: SDL_hid_get_indexed_string -- not built for AmigaOS
-SDL2_Reserved0818()()
-##public
+SDL2_hid_init()()
+SDL2_hid_exit()()
+SDL2_hid_device_change_count()()
+SDL2_hid_enumerate(a,b)(D0,D1)
+SDL2_hid_free_enumeration(a)(A0)
+SDL2_hid_open(a,b,c)(D0,D1,A0)
+SDL2_hid_open_path(a,b)(A0,D0)
+SDL2_hid_write(a,b,c)(A0,A1,D0)
+SDL2_hid_read_timeout(a,b,c,d)(A0,A1,D0,D1)
+SDL2_hid_read(a,b,c)(A0,A1,D0)
+SDL2_hid_set_nonblocking(a,b)(A0,D0)
+SDL2_hid_send_feature_report(a,b,c)(A0,A1,D0)
+SDL2_hid_get_feature_report(a,b,c)(A0,A1,D0)
+SDL2_hid_close(a)(A0)
+SDL2_hid_get_manufacturer_string(a,b,c)(A0,A1,D0)
+SDL2_hid_get_product_string(a,b,c)(A0,A1,D0)
+SDL2_hid_get_serial_number_string(a,b,c)(A0,A1,D0)
+SDL2_hid_get_indexed_string(a,b,c,d)(A0,D0,A1,D1)
 SDL2_SetWindowMouseRect(a,b)(A0,A1)
 SDL2_GetWindowMouseRect(a)(A0)
 SDL2_RenderWindowToLogical(a,b,c,d,e)(A0,D0,D1,A1,A2)
@@ -966,10 +949,7 @@ SDL2_JoystickHasRumble(a)(A0)
 SDL2_JoystickHasRumbleTriggers(a)(A0)
 SDL2_GameControllerHasRumble(a)(A0)
 SDL2_GameControllerHasRumbleTriggers(a)(A0)
-##private
-* slot 827: SDL_hid_ble_scan -- not built for AmigaOS
-SDL2_Reserved0827()()
-##public
+SDL2_hid_ble_scan(a)(D0)
 SDL2_PremultiplyAlpha(a,b,c,d,e,f,g,h)(D0,D1,D2,A0,D3,D4,A1,D5)
 ##private
 * slot 829: SDL_AndroidSendMessage -- not built for AmigaOS

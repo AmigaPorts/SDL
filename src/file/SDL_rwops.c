@@ -395,7 +395,7 @@ static Sint64 SDLCALL stdio_seek(SDL_RWops *context, Sint64 offset, int whence)
     }
 #endif
 
-#ifdef __AMIGAOS4__
+#if defined(__AMIGAOS4__) && defined(__NEWLIB__)
     if ((context->hidden.stdio.fp->_flags & __SL64) == 0) {
         return SDL_SetError("File wasn't opened with fopen64");
     }

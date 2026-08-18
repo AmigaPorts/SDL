@@ -28,7 +28,37 @@ Building SDL 2 library
     # with serial debug prints
     gmake -f Makefile.amigaos4 debug
 
-    At the moment configure script and CMake are not supported.
+The `amigadev/crosstools:ppc-amigaos` image also supports CMake. Its `cmake`
+wrapper selects the image's AmigaOS 4 toolchain automatically. See
+`README-amiga.md` for the complete cross-build guide and dependency caveats:
+
+    docker run --rm -v "$PWD:/work" -w /work \
+        amigadev/crosstools:ppc-amigaos \
+        cmake -S . -B build-amigaos4 -DPPC_CRT=newlib
+    docker run --rm -v "$PWD:/work" -w /work \
+        amigadev/crosstools:ppc-amigaos \
+        cmake --build build-amigaos4
+
+The newlib configuration builds both `libSDL2.a` and
+`libSDL2-2.<minor>.so`. The image's default clib2 configuration builds the
+static library only, because clib2 cannot link this port's shared object.
+
+A native AmigaOS 4 library can be requested independently of the ELF shared
+object:
+
+    cmake -S . -B build-amigaos4-library -DPPC_CRT=newlib \
+        -DSDL_AMIGAOS4_LIBRARY=ON
+
+This produces `sdl2.library` with native `__library` and `main` interfaces.
+The option requires newlib. CMake uses the single `sfdc(...)` integration from
+`cmake-amiga-common-library`; the native library target depends on and links
+the generated interface target. Its resident and SFDC-generated server sources
+are kept under `library/amigaos4/`. There is no Python OS4 library generator.
+
+The PPC image currently lacks SFDC. The CMake build fetches the pinned
+`AmigaPorts/sfdc` source through CPM on first configure. Set
+`CPM_SOURCE_CACHE` for repeatable downloads or provide
+`SDL_SFDC_EXECUTABLE` for an offline build.
 
 ================================================================================
 Using SDL 2 in your projects

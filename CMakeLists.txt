@@ -163,6 +163,12 @@ endif()
 # Get the platform
 SDL_DetectCMakePlatform()
 
+if(AMIGA)
+  set(CMAKE_C_STANDARD 99)
+  set(CMAKE_C_STANDARD_REQUIRED TRUE)
+  set(CMAKE_C_EXTENSIONS TRUE)
+endif()
+
 # Don't mistake osx for unix
 if(UNIX AND NOT ANDROID AND NOT APPLE AND NOT RISCOS)
   set(UNIX_SYS ON)
@@ -242,10 +248,10 @@ if(USE_GCC OR USE_CLANG OR USE_INTELCC OR USE_QCC)
 endif()
 
 # Default option knobs
-if(UNIX OR MINGW OR MSYS OR OS2 OR (USE_CLANG AND NOT WINDOWS) OR VITA OR PSP OR PS2 OR N3DS OR SDL_CPU_ARM64EC)
+if(UNIX OR MINGW OR MSYS OR OS2 OR AMIGA OR (USE_CLANG AND NOT WINDOWS) OR VITA OR PSP OR PS2 OR N3DS OR SDL_CPU_ARM64EC)
   set(OPT_DEF_LIBC ON)
 endif()
-if(WINDOWS OR MACOS OR IOS OR TVOS OR VISIONOS OR WATCHOS)
+if(WINDOWS OR MACOS OR IOS OR TVOS OR VISIONOS OR WATCHOS OR AMIGAOS3)
   set(SDL_SYSTEM_ICONV_DEFAULT OFF)
 else()
   set(SDL_SYSTEM_ICONV_DEFAULT ON)
@@ -364,6 +370,32 @@ if(VITA OR PSP OR PS2 OR N3DS)
   set(SDL_LOADSO_ENABLED_BY_DEFAULT OFF)
 endif()
 
+if(AMIGAOS3)
+  set(OPT_DEF_ASM FALSE)
+  set(OPT_DEF_GCC_ATOMICS OFF)
+  set(SDL_SHARED_ENABLED_BY_DEFAULT OFF)
+  set(SDL_LOADSO_ENABLED_BY_DEFAULT OFF)
+  set(SDL_HAPTIC_ENABLED_BY_DEFAULT OFF)
+  set(SDL_HIDAPI_ENABLED_BY_DEFAULT OFF)
+  set(SDL_SENSOR_ENABLED_BY_DEFAULT OFF)
+  set(SDL_POWER_ENABLED_BY_DEFAULT OFF)
+  set(SDL_LOCALE_ENABLED_BY_DEFAULT OFF)
+  set(SDL_MISC_ENABLED_BY_DEFAULT OFF)
+endif()
+if(AMIGAOS4)
+  set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
+  set(CMAKE_SHARED_LIBRARY_PREFIX "lib")
+  set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
+  set(CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS "-shared")
+  set(CMAKE_SHARED_LIBRARY_SONAME_C_FLAG "-Wl,-soname,")
+  if(DEFINED PPC_CRT AND NOT PPC_CRT STREQUAL "newlib")
+    set(SDL_SHARED_ENABLED_BY_DEFAULT OFF)
+  endif()
+  set(SDL_ALTIVEC_DEFAULT OFF)
+else()
+  set(SDL_ALTIVEC_DEFAULT ON)
+endif()
+
 set(SDL_X11_XRANDR_DEFAULT ON)
 if(SOLARIS)
   set(SDL_X11_XRANDR_DEFAULT OFF)
@@ -419,7 +451,7 @@ dep_option(SDL_SSE2                "Use SSE2 assembly routines" ON "SDL_ASSEMBLY
 dep_option(SDL_SSE3                "Use SSE3 assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_X86 OR SDL_CPU_X64" OFF)
 dep_option(SDL_MMX                 "Use MMX assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_X86 OR SDL_CPU_X64" OFF)
 dep_option(SDL_3DNOW               "Use 3Dnow! MMX assembly routines" OFF "SDL_ASSEMBLY;SDL_CPU_X86 OR SDL_CPU_X64" OFF)
-dep_option(SDL_ALTIVEC             "Use Altivec assembly routines" ON "SDL_ASSEMBLY" OFF)
+dep_option(SDL_ALTIVEC             "Use Altivec assembly routines" ${SDL_ALTIVEC_DEFAULT} "SDL_ASSEMBLY" OFF)
 dep_option(SDL_ARMSIMD             "Use SIMD assembly blitters on ARM" OFF "SDL_ASSEMBLY;SDL_CPU_ARM32" OFF)
 dep_option(SDL_ARMNEON             "Use NEON assembly blitters on ARM" OFF "SDL_ASSEMBLY;SDL_CPU_ARM32" OFF)
 dep_option(SDL_LSX                 "Use LSX assembly routines" ON "SDL_ASSEMBLY;SDL_CPU_LOONGARCH64" OFF)
@@ -428,7 +460,14 @@ dep_option(SDL_LASX                "Use LASX assembly routines" ON "SDL_ASSEMBLY
 set_option(SDL_LIBC                "Use the system C library" ${OPT_DEF_LIBC})
 set_option(SDL_GCC_ATOMICS         "Use gcc builtin atomics" ${OPT_DEF_GCC_ATOMICS})
 dep_option(SDL_DBUS                "Enable D-Bus support" ON ${UNIX_SYS} OFF)
-set_option(SDL_DISKAUDIO           "Support the disk writer audio driver" ON)
+if(AMIGA)
+  set(SDL_DISKAUDIO_DEFAULT OFF)
+  set(SDL_OFFSCREEN_DEFAULT OFF)
+else()
+  set(SDL_DISKAUDIO_DEFAULT ON)
+  set(SDL_OFFSCREEN_DEFAULT ON)
+endif()
+set_option(SDL_DISKAUDIO           "Support the disk writer audio driver" ${SDL_DISKAUDIO_DEFAULT})
 set_option(SDL_DUMMYAUDIO          "Support the dummy audio driver" ON)
 set_option(SDL_DIRECTFB            "Use DirectFB video driver" OFF)
 dep_option(SDL_DIRECTFB_SHARED     "Dynamically load directfb support" ON "SDL_DIRECTFB" OFF)
@@ -489,7 +528,7 @@ dep_option(SDL_VULKAN              "Enable Vulkan support" ON "ANDROID OR APPLE 
 set_option(SDL_METAL               "Enable Metal support" ${APPLE})
 set_option(SDL_KMSDRM              "Use KMS DRM video driver" ${UNIX_SYS})
 dep_option(SDL_KMSDRM_SHARED       "Dynamically load KMS DRM support" ON "SDL_KMSDRM" OFF)
-set_option(SDL_OFFSCREEN           "Use offscreen video driver" ON)
+set_option(SDL_OFFSCREEN           "Use offscreen video driver" ${SDL_OFFSCREEN_DEFAULT})
 option_string(SDL_BACKGROUNDING_SIGNAL "number to use for magic backgrounding signal or 'OFF'" OFF)
 option_string(SDL_FOREGROUNDING_SIGNAL "number to use for magic foregrounding signal or 'OFF'" OFF)
 set_option(SDL_HIDAPI              "Enable the HIDAPI subsystem" ON)
@@ -506,6 +545,60 @@ option(SDL_WERROR "Enable -Werror" OFF)
 option(SDL_SHARED "Build a shared version of the library" ${SDL_SHARED_ENABLED_BY_DEFAULT})
 option(SDL_STATIC "Build a static version of the library" ${SDL_STATIC_ENABLED_BY_DEFAULT})
 option(SDL_TEST   "Build the SDL2_test library" ${SDL_TEST_ENABLED_BY_DEFAULT})
+
+if(AMIGAOS4 AND SDL_SHARED AND DEFINED PPC_CRT AND NOT PPC_CRT STREQUAL "newlib")
+  message_error("AmigaOS 4 .so builds require -DPPC_CRT=newlib")
+endif()
+
+if(AMIGAOS3 AND NOT WARPUP)
+  set_option(SDL_AMIGAOS3_LIBRARY "Build the AmigaOS 3 sdl2.library wrapper" ON)
+  if(SDL_AMIGAOS3_LIBRARY)
+    set(HAVE_AMIGAOS3_LIBRARY TRUE)
+  endif()
+endif()
+if(AMIGAOS4)
+  set_option(SDL_AMIGAOS4_LIBRARY "Build the native AmigaOS 4 sdl2.library" OFF)
+  set_option(SDL_AMIGAOS4_PREFS "Build the AmigaOS 4 SDL2 preferences program" ON)
+  if(SDL_AMIGAOS4_LIBRARY)
+    set(HAVE_AMIGAOS4_LIBRARY TRUE)
+  endif()
+  if(SDL_AMIGAOS4_PREFS)
+    set(HAVE_AMIGAOS4_PREFS TRUE)
+  endif()
+endif()
+
+if(SDL_AMIGAOS3_LIBRARY OR SDL_AMIGAOS4_LIBRARY)
+  include(${SDL2_SOURCE_DIR}/cmake/CPM-init.cmake)
+  find_program(SDL_SFDC_EXECUTABLE
+    NAMES sfdc
+    HINTS /opt/m68k-amigaos/bin
+    DOC "Path to the SFDC interface compiler")
+  if(NOT SDL_SFDC_EXECUTABLE)
+    CPMGetPackage(SFDC)
+    set(SDL_SFDC_EXECUTABLE "${CPM_PACKAGE_sfdc_SOURCE_DIR}/sfdc")
+  endif()
+  if(NOT EXISTS "${SDL_SFDC_EXECUTABLE}")
+    message_error("SFDC was not found and CPM did not provide it")
+  endif()
+
+  if(AMIGAOS4)
+    set(SDL_AMIGA_SFDC_TARGET_DEFAULT ppc-amigaos)
+  else()
+    set(SDL_AMIGA_SFDC_TARGET_DEFAULT m68k-amigaos)
+  endif()
+  set(SDL_AMIGA_SFDC_TARGET "${SDL_AMIGA_SFDC_TARGET_DEFAULT}" CACHE STRING
+    "SFDC target triple (for example m68k-amigaos, ppc-amigaos, ppc-morphos or i386-aros)")
+  set(SDL_SFDC_WRAPPER "${SDL2_BINARY_DIR}/cmake/sfdc-${SDL_AMIGA_SFDC_TARGET}")
+  file(WRITE "${SDL_SFDC_WRAPPER}"
+    "#!/bin/sh\nexec \"${SDL_SFDC_EXECUTABLE}\" --target=${SDL_AMIGA_SFDC_TARGET} \"$@\"\n")
+  file(CHMOD "${SDL_SFDC_WRAPPER}" PERMISSIONS
+    OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+  if(NOT TARGET sfdc)
+    add_executable(sfdc IMPORTED GLOBAL)
+    set_target_properties(sfdc PROPERTIES IMPORTED_LOCATION "${SDL_SFDC_WRAPPER}")
+  endif()
+  message(STATUS "Using SFDC: ${SDL_SFDC_EXECUTABLE} (${SDL_AMIGA_SFDC_TARGET})")
+endif()
 
 dep_option(SDL_STATIC_PIC      "Static version of the library should be built with Position Independent Code" "${CMAKE_POSITION_INDEPENDENT_CODE}" "SDL_STATIC" OFF)
 dep_option(SDL_TESTS           "Build the test directory" OFF SDL_TEST OFF)
@@ -1061,6 +1154,10 @@ if(SDL_LIBC)
     set(STDC_HEADERS 1)
   else()
     set(HAVE_LIBC TRUE)
+    if(AMIGAOS3 AND CMAKE_TRY_COMPILE_TARGET_TYPE STREQUAL "STATIC_LIBRARY")
+      set(SDL_SAVED_TRY_COMPILE_TARGET_TYPE "${CMAKE_TRY_COMPILE_TARGET_TYPE}")
+      set(CMAKE_TRY_COMPILE_TARGET_TYPE EXECUTABLE)
+    endif()
     set(headers_to_check
         ctype.h
         float.h
@@ -1108,6 +1205,11 @@ if(SDL_LIBC)
       set(_HAVEVAR "HAVE_${_UPPER}")
       check_symbol_exists("${_FN}" "${STDC_HEADER_NAMES}" ${_HAVEVAR})
     endforeach()
+    if(AMIGAOS3)
+      # _Exit is supplied by the executable startup, which sdl2.library
+      # deliberately does not link. Use the library's _exit stub instead.
+      set(HAVE__EXIT FALSE)
+    endif()
 
     check_symbol_exists(sigaction "signal.h" HAVE_SIGACTION)
     check_symbol_exists(sigtimedwait "signal.h" HAVE_SIGTIMEDWAIT)
@@ -1185,6 +1287,10 @@ if(SDL_LIBC)
     endif()
 
     check_struct_has_member("struct sigaction" "sa_sigaction" "signal.h" HAVE_SA_SIGACTION)
+    if(SDL_SAVED_TRY_COMPILE_TARGET_TYPE)
+      set(CMAKE_TRY_COMPILE_TARGET_TYPE "${SDL_SAVED_TRY_COMPILE_TARGET_TYPE}")
+      unset(SDL_SAVED_TRY_COMPILE_TARGET_TYPE)
+    endif()
   endif()
 else()
   if(WINDOWS)
@@ -2480,6 +2586,178 @@ elseif(HAIKU)
   CheckPTHREAD()
   list(APPEND EXTRA_LIBS root be media game device textencoding)
 
+elseif(AMIGA)
+  if(AMIGAOS3)
+    target_compile_definitions(sdl-build-options INTERFACE __AMIGAOS3__ SDL_OS3_DEBUG)
+    if(WARPUP)
+      target_compile_definitions(sdl-build-options INTERFACE WARPUP)
+    endif()
+
+    if(SDL_AUDIO)
+      set(SDL_AUDIO_DRIVER_AHI 1)
+      set(SDL_AUDIO_DRIVER_PAULA 1)
+      file(GLOB AMIGAOS3_AUDIO_SOURCES ${SDL2_SOURCE_DIR}/src/audio/amigaos3/*.c)
+      list(APPEND SOURCE_FILES ${AMIGAOS3_AUDIO_SOURCES})
+      set(HAVE_SDL_AUDIO TRUE)
+    endif()
+
+    if(SDL_FILESYSTEM)
+      set(SDL_FILESYSTEM_AMIGAOS3 1)
+      file(GLOB AMIGAOS3_FILESYSTEM_SOURCES ${SDL2_SOURCE_DIR}/src/filesystem/amigaos3/*.c)
+      list(APPEND SOURCE_FILES ${AMIGAOS3_FILESYSTEM_SOURCES})
+      set(HAVE_SDL_FILESYSTEM TRUE)
+    endif()
+
+    if(SDL_JOYSTICK)
+      set(SDL_JOYSTICK_AMIGAOS3 1)
+      file(GLOB AMIGAOS3_JOYSTICK_SOURCES ${SDL2_SOURCE_DIR}/src/joystick/amigaos3/*.c)
+      list(APPEND SOURCE_FILES ${AMIGAOS3_JOYSTICK_SOURCES})
+      set(HAVE_SDL_JOYSTICK TRUE)
+    endif()
+
+    if(SDL_THREADS)
+      set(SDL_THREAD_AMIGAOS3 1)
+      file(GLOB AMIGAOS3_THREAD_SOURCES ${SDL2_SOURCE_DIR}/src/thread/amigaos3/*.c)
+      list(APPEND SOURCE_FILES ${AMIGAOS3_THREAD_SOURCES})
+      set(HAVE_SDL_THREADS TRUE)
+    endif()
+
+    if(SDL_TIMERS)
+      set(SDL_TIMER_AMIGAOS3 1)
+      file(GLOB AMIGAOS3_TIMER_SOURCES ${SDL2_SOURCE_DIR}/src/timer/amigaos3/*.c)
+      list(APPEND SOURCE_FILES ${AMIGAOS3_TIMER_SOURCES})
+      set(HAVE_SDL_TIMERS TRUE)
+    endif()
+
+    if(SDL_VIDEO)
+      set(SDL_VIDEO_DRIVER_AMIGAOS3 1)
+      set(SDL_VIDEO_RENDER_SW 1)
+      file(GLOB AMIGAOS3_VIDEO_SOURCES ${SDL2_SOURCE_DIR}/src/video/amigaos3/*.c)
+      list(APPEND SOURCE_FILES ${AMIGAOS3_VIDEO_SOURCES})
+      set(HAVE_SDL_VIDEO TRUE)
+
+      if(NOT WARPUP)
+        set_option(SDL_AMIGAOS3_AGA "Build the AmigaOS 3 AGA c2p path" ON)
+        set(SDL_AMIGAOS3_C2P_BPLSIZE "10240" CACHE STRING "AmigaOS 3 c2p bitplane size")
+        if(SDL_AMIGAOS3_AGA)
+          find_program(VASMM68K_EXECUTABLE vasmm68k_mot)
+          if(NOT VASMM68K_EXECUTABLE)
+            message_error("vasmm68k_mot is required for SDL_AMIGAOS3_AGA")
+          endif()
+          set(AMIGAOS3_C2P_OBJECT "${SDL2_BINARY_DIR}/src/video/amigaos3/c2p1x1_8_c5_gen.o")
+          add_custom_command(
+            OUTPUT "${AMIGAOS3_C2P_OBJECT}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${SDL2_BINARY_DIR}/src/video/amigaos3"
+            COMMAND "${VASMM68K_EXECUTABLE}" -Fhunk -m68020 -DBPLSIZE=${SDL_AMIGAOS3_C2P_BPLSIZE} -quiet
+                    -o "${AMIGAOS3_C2P_OBJECT}" "${SDL2_SOURCE_DIR}/src/video/amigaos3/c2p1x1_8_c5_gen.s"
+            DEPENDS "${SDL2_SOURCE_DIR}/src/video/amigaos3/c2p1x1_8_c5_gen.s"
+            VERBATIM)
+          set_source_files_properties("${AMIGAOS3_C2P_OBJECT}" PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
+          list(APPEND SOURCE_FILES "${AMIGAOS3_C2P_OBJECT}")
+          target_compile_definitions(sdl-build-options INTERFACE SDL_AMIGAOS3_AGA=1)
+          set(HAVE_AMIGAOS3_AGA TRUE)
+        endif()
+      endif()
+    endif()
+
+    file(GLOB AMIGAOS3_MAIN_SOURCES ${SDL2_SOURCE_DIR}/src/main/amigaos3/*.c)
+    list(APPEND SDLMAIN_SOURCES ${AMIGAOS3_MAIN_SOURCES})
+    list(APPEND EXTRA_LIBS debug amiga m stubs)
+  elseif(AMIGAOS4)
+    string(TIMESTAMP AMIGA_BUILD_DAY "%d")
+    string(TIMESTAMP AMIGA_BUILD_MONTH_YEAR "%m.%Y")
+    string(REGEX REPLACE "^0" "" AMIGA_BUILD_DAY "${AMIGA_BUILD_DAY}")
+    set(AMIGA_BUILD_DATE "${AMIGA_BUILD_DAY}.${AMIGA_BUILD_MONTH_YEAR}")
+    target_compile_definitions(sdl-build-options INTERFACE __AMIGAOS4__ "__AMIGADATE__=\"${AMIGA_BUILD_DATE}\"")
+    target_compile_options(sdl-build-options INTERFACE -fPIC -fcommon)
+
+    if(SDL_AUDIO)
+      set(SDL_AUDIO_DRIVER_AMIGAOS4 1)
+      file(GLOB AMIGAOS4_AUDIO_SOURCES ${SDL2_SOURCE_DIR}/src/audio/amigaos4/*.c)
+      list(APPEND SOURCE_FILES ${AMIGAOS4_AUDIO_SOURCES})
+      set(HAVE_SDL_AUDIO TRUE)
+    endif()
+
+    if(SDL_FILESYSTEM)
+      set(SDL_FILESYSTEM_AMIGAOS4 1)
+      file(GLOB AMIGAOS4_FILESYSTEM_SOURCES ${SDL2_SOURCE_DIR}/src/filesystem/amigaos4/*.c)
+      list(APPEND SOURCE_FILES ${AMIGAOS4_FILESYSTEM_SOURCES})
+      set(HAVE_SDL_FILESYSTEM TRUE)
+    endif()
+
+    if(SDL_JOYSTICK)
+      set(SDL_JOYSTICK_AMIGAINPUT 1)
+      file(GLOB AMIGAOS4_JOYSTICK_SOURCES ${SDL2_SOURCE_DIR}/src/joystick/amigaos4/*.c)
+      list(APPEND SOURCE_FILES ${AMIGAOS4_JOYSTICK_SOURCES})
+      set(HAVE_SDL_JOYSTICK TRUE)
+    endif()
+
+    if(SDL_LOADSO)
+      set(SDL_LOADSO_AMIGAOS4 1)
+      file(GLOB AMIGAOS4_LOADSO_SOURCES ${SDL2_SOURCE_DIR}/src/loadso/amigaos4/*.c)
+      list(APPEND SOURCE_FILES ${AMIGAOS4_LOADSO_SOURCES})
+      set(HAVE_SDL_LOADSO TRUE)
+    endif()
+
+    if(SDL_LOCALE)
+      file(GLOB AMIGAOS4_LOCALE_SOURCES ${SDL2_SOURCE_DIR}/src/locale/amigaos4/*.c)
+      list(APPEND SOURCE_FILES ${AMIGAOS4_LOCALE_SOURCES})
+      set(HAVE_SDL_LOCALE TRUE)
+    endif()
+
+    if(SDL_MISC)
+      file(GLOB AMIGAOS4_MISC_SOURCES ${SDL2_SOURCE_DIR}/src/misc/amigaos4/*.c)
+      list(APPEND SOURCE_FILES ${AMIGAOS4_MISC_SOURCES})
+      set(HAVE_SDL_MISC TRUE)
+    endif()
+
+    if(SDL_THREADS)
+      set(SDL_THREAD_AMIGAOS4 1)
+      file(GLOB AMIGAOS4_THREAD_SOURCES ${SDL2_SOURCE_DIR}/src/thread/amigaos4/*.c)
+      list(APPEND SOURCE_FILES ${AMIGAOS4_THREAD_SOURCES}
+        ${SDL2_SOURCE_DIR}/src/thread/generic/SDL_syscond.c
+        ${SDL2_SOURCE_DIR}/src/thread/generic/SDL_systls.c)
+      set(HAVE_SDL_THREADS TRUE)
+    endif()
+
+    if(SDL_TIMERS)
+      set(SDL_TIMER_AMIGAOS4 1)
+      file(GLOB AMIGAOS4_TIMER_SOURCES ${SDL2_SOURCE_DIR}/src/timer/amigaos4/*.c)
+      list(APPEND SOURCE_FILES ${AMIGAOS4_TIMER_SOURCES})
+      set(HAVE_SDL_TIMERS TRUE)
+    endif()
+
+    if(SDL_VIDEO)
+      set(SDL_VIDEO_DRIVER_AMIGAOS4 1)
+      set(SDL_VIDEO_RENDER_AMIGAOS4 1)
+      file(GLOB AMIGAOS4_VIDEO_SOURCES ${SDL2_SOURCE_DIR}/src/video/amigaos4/*.c)
+      list(APPEND SOURCE_FILES ${AMIGAOS4_VIDEO_SOURCES})
+      set(HAVE_SDL_VIDEO TRUE)
+      if(SDL_OPENGL)
+        find_path(AMIGAOS4_OPENGL_INCLUDE_DIR GL/gl.h)
+        if(AMIGAOS4_OPENGL_INCLUDE_DIR)
+          target_include_directories(sdl-build-options INTERFACE "${AMIGAOS4_OPENGL_INCLUDE_DIR}")
+          set(SDL_VIDEO_OPENGL 1)
+          set(SDL_VIDEO_RENDER_OGL 1)
+          set(HAVE_OPENGL TRUE)
+        endif()
+      endif()
+      if(SDL_OPENGLES)
+        find_path(AMIGAOS4_OPENGLES2_INCLUDE_DIR proto/ogles2.h)
+        if(AMIGAOS4_OPENGLES2_INCLUDE_DIR)
+          target_include_directories(sdl-build-options INTERFACE "${AMIGAOS4_OPENGLES2_INCLUDE_DIR}")
+          set(SDL_VIDEO_OPENGL_ES2 1)
+          set(SDL_VIDEO_RENDER_OGL_ES2 1)
+          set(HAVE_OPENGLES TRUE)
+        endif()
+      endif()
+    endif()
+
+    list(APPEND SOURCE_FILES ${SDL2_SOURCE_DIR}/src/main/amigaos4/SDL_os4debug.c)
+    set(VERSION_SOURCES ${SDL2_SOURCE_DIR}/src/main/amigaos4/SDL_os4version.c)
+    set(SDLMAIN_SOURCES ${SDL2_SOURCE_DIR}/src/main/amigaos4/SDL_dummy_main.c)
+  endif()
+
 elseif(RISCOS)
   if(SDL_MISC)
     file(GLOB MISC_SOURCES ${SDL2_SOURCE_DIR}/src/misc/riscos/*.c)
@@ -3484,6 +3762,9 @@ if(SDL_SHARED)
       VERSION ${LT_VERSION}
       SOVERSION ${LT_MAJOR}
       OUTPUT_NAME "SDL2-${LT_RELEASE}")
+  elseif(AMIGAOS4)
+    set_target_properties(SDL2 PROPERTIES
+      OUTPUT_NAME "SDL2-${SDL_MAJOR_VERSION}.${SDL_MINOR_VERSION}")
   else()
     if(WINDOWS OR CYGWIN)
       set_target_properties(SDL2 PROPERTIES
@@ -3560,6 +3841,133 @@ if(SDL_STATIC)
   set_property(TARGET SDL2-static PROPERTY INTERFACE_SDL2_SHARED FALSE)
   set_property(TARGET SDL2-static APPEND PROPERTY  COMPATIBLE_INTERFACE_STRING "SDL_VERSION")
   set_property(TARGET SDL2-static PROPERTY INTERFACE_SDL_VERSION "SDL2")
+endif()
+
+if(SDL_AMIGAOS3_LIBRARY)
+  if(NOT TARGET SDL2-static)
+    message_error("SDL_AMIGAOS3_LIBRARY requires SDL_STATIC")
+  endif()
+
+  set(SDL_AMIGAOS3_LIBRARY_NAME "sdl2.library" CACHE STRING "AmigaOS 3 shared library filename")
+  set(SDL2LIB_VERSION ${SDL_MINOR_VERSION})
+  set(SDL2LIB_REVISION ${SDL_MICRO_VERSION})
+  set(SDL2LIB_VERSTRING "${SDL_MINOR_VERSION}.${SDL_MICRO_VERSION}")
+  set(SDL2LIB_NAME "${SDL_AMIGAOS3_LIBRARY_NAME}")
+  set(SDL2LIB_SDLVER "${SDL_VERSION}")
+  configure_file(
+    "${SDL2_SOURCE_DIR}/library/sdl2version.h.cmake"
+    "${SDL2_BINARY_DIR}/sdl2version.h" @ONLY)
+
+  # cmake-amiga-common-library turns the generated SFD into the normal
+  # clib/proto/inline/pragmas SDK headers.
+  sfdc(library/sdl2_lib.sfd)
+  target_include_directories(sdl2 INTERFACE "${SDL2_SOURCE_DIR}/include")
+
+  function(SDL_find_amiga_compiler_file OUTPUT_VAR FILE_NAME)
+    if(DEFINED ${OUTPUT_VAR})
+      set(COMPILER_FILE "${${OUTPUT_VAR}}")
+    endif()
+    if(NOT IS_ABSOLUTE "${COMPILER_FILE}" OR NOT EXISTS "${COMPILER_FILE}")
+      set(AMIGA_COMPILER_FLAGS "${CMAKE_C_FLAGS}")
+      separate_arguments(AMIGA_COMPILER_FLAGS)
+      execute_process(
+        COMMAND "${CMAKE_C_COMPILER}" ${AMIGA_COMPILER_FLAGS} "-print-file-name=${FILE_NAME}"
+        OUTPUT_VARIABLE COMPILER_FILE
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+    endif()
+    if(NOT IS_ABSOLUTE "${COMPILER_FILE}" OR NOT EXISTS "${COMPILER_FILE}")
+      message_error("The AmigaOS 3 compiler could not locate ${FILE_NAME}")
+    endif()
+    set(${OUTPUT_VAR} "${COMPILER_FILE}" CACHE FILEPATH "Path to the AmigaOS 3 ${FILE_NAME}" FORCE)
+    set(${OUTPUT_VAR} "${COMPILER_FILE}" PARENT_SCOPE)
+  endfunction()
+
+  SDL_find_amiga_compiler_file(SDL_AMIGAOS3_LIBINIT libinit.o)
+  SDL_find_amiga_compiler_file(SDL_AMIGAOS3_LIBNIX20 libnix20.a)
+  SDL_find_amiga_compiler_file(SDL_AMIGAOS3_LIBNIX libnix.a)
+  SDL_find_amiga_compiler_file(SDL_AMIGAOS3_LIBM libm.a)
+  SDL_find_amiga_compiler_file(SDL_AMIGAOS3_LIBAMIGA libamiga.a)
+  SDL_find_amiga_compiler_file(SDL_AMIGAOS3_LIBGCC libgcc.a)
+
+  add_executable(SDL2-amiga-library
+    ${SDL2_SOURCE_DIR}/library/sdl2lib.c
+    ${SDL2_SOURCE_DIR}/library/sdl2api.c
+    ${SDL2_SOURCE_DIR}/library/sdl2probes.c
+    ${SDL2_SOURCE_DIR}/library/sdl2table.c
+    ${SDL2_SOURCE_DIR}/library/sdl2crt.c)
+  add_dependencies(SDL2-amiga-library SDL2-static sdl_headers_copy sdl2)
+  target_compile_definitions(SDL2-amiga-library PRIVATE USING_GENERATED_CONFIG_H __AMIGAOS3__)
+  target_compile_options(SDL2-amiga-library PRIVATE -m68030 -O2 -fomit-frame-pointer -noixemul)
+  target_include_directories(SDL2-amiga-library PRIVATE
+    "${SDL2_BINARY_DIR}"
+    "${SDL2_BINARY_DIR}/include"
+    "${SDL2_BINARY_DIR}/include/SDL2"
+    "${SDL2_BINARY_DIR}/include-config-$<LOWER_CASE:$<CONFIG>>/SDL2"
+    "${SDL2_SOURCE_DIR}/include"
+    "${SDL2_SOURCE_DIR}/library")
+  target_link_libraries(SDL2-amiga-library PRIVATE
+    sdl2
+    "${SDL_AMIGAOS3_LIBINIT}"
+    "-Wl,--start-group"
+    "-Wl,$<TARGET_FILE:SDL2-static>"
+    "${SDL_AMIGAOS3_LIBNIX20}"
+    "${SDL_AMIGAOS3_LIBNIX}"
+    "${SDL_AMIGAOS3_LIBM}"
+    "${SDL_AMIGAOS3_LIBAMIGA}"
+    "${SDL_AMIGAOS3_LIBGCC}"
+    "-Wl,--end-group")
+  set_target_properties(SDL2-amiga-library PROPERTIES
+    OUTPUT_NAME "${SDL_AMIGAOS3_LIBRARY_NAME}"
+    SUFFIX ""
+    PREFIX ""
+    LINK_FLAGS "-m68030 -noixemul -nostartfiles -nostdlib")
+endif()
+
+if(SDL_AMIGAOS4_LIBRARY)
+  if(NOT TARGET SDL2-static)
+    message_error("SDL_AMIGAOS4_LIBRARY requires SDL_STATIC")
+  endif()
+  if(NOT DEFINED PPC_CRT OR NOT PPC_CRT STREQUAL "newlib")
+    message_error("SDL_AMIGAOS4_LIBRARY requires -DPPC_CRT=newlib")
+  endif()
+
+  set(SDL_AMIGAOS4_LIBRARY_NAME "sdl2.library" CACHE STRING "AmigaOS 4 native library filename")
+  sfdc(library/amigaos4/sdl2_lib.sfd)
+  target_include_directories(sdl2 INTERFACE "${SDL2_SOURCE_DIR}/include")
+
+  add_executable(SDL2-amigaos4-library
+    ${SDL2_SOURCE_DIR}/library/amigaos4/sdl2lib.c
+    ${SDL2_SOURCE_DIR}/library/amigaos4/generated/sdl2_gates.c)
+  add_dependencies(SDL2-amigaos4-library SDL2-static sdl_headers_copy sdl2)
+  target_link_libraries(SDL2-amigaos4-library PRIVATE SDL2-static sdl2)
+  target_include_directories(SDL2-amigaos4-library PRIVATE
+    "${SDL2_SOURCE_DIR}/library/amigaos4/generated"
+    "${SDL2_SOURCE_DIR}/library/amigaos4/include"
+    "${SDL2_BINARY_DIR}/include"
+    "${SDL2_BINARY_DIR}/include/SDL2"
+    "${SDL2_BINARY_DIR}/include-config-$<LOWER_CASE:$<CONFIG>>/SDL2")
+  target_compile_definitions(SDL2-amigaos4-library PRIVATE
+    USING_GENERATED_CONFIG_H __AMIGAOS4__ "__AMIGADATE__=\"${AMIGA_BUILD_DATE}\"")
+  target_compile_options(SDL2-amigaos4-library PRIVATE -fPIC -fcommon)
+  target_link_options(SDL2-amigaos4-library PRIVATE -nostartfiles)
+  set_target_properties(SDL2-amigaos4-library PROPERTIES
+    OUTPUT_NAME "${SDL_AMIGAOS4_LIBRARY_NAME}"
+    SUFFIX ""
+    PREFIX "")
+endif()
+
+if(SDL_AMIGAOS4_PREFS)
+  add_executable(SDL2-amigaos4-prefs
+    ${SDL2_SOURCE_DIR}/amiga-extra/prefs.c
+    ${SDL2_SOURCE_DIR}/src/main/amigaos4/SDL_os4debug.c)
+  add_dependencies(SDL2-amigaos4-prefs sdl_headers_copy)
+  target_include_directories(SDL2-amigaos4-prefs PRIVATE
+    "${SDL2_SOURCE_DIR}/include"
+    "${SDL2_SOURCE_DIR}/amiga-extra")
+  target_compile_definitions(SDL2-amigaos4-prefs PRIVATE
+    __AMIGAOS4__ "__AMIGADATE__=\"${AMIGA_BUILD_DATE}\"")
+  target_compile_options(SDL2-amigaos4-prefs PRIVATE -fPIC -fcommon)
+  set_target_properties(SDL2-amigaos4-prefs PROPERTIES OUTPUT_NAME SDL2)
 endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DSDL_BUILD_MAJOR_VERSION=${SDL_MAJOR_VERSION}")
@@ -3644,6 +4052,31 @@ if(NOT SDL2_DISABLE_INSTALL)
     if(MSVC)
       SDL_install_pdb(SDL2_test "${CMAKE_INSTALL_LIBDIR}")
     endif()
+  endif()
+
+  if(SDL_AMIGAOS3_LIBRARY)
+    install(TARGETS SDL2-amiga-library RUNTIME DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+    install(DIRECTORY "${SDL2_SOURCE_DIR}/include/"
+      DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    install(DIRECTORY "${SDL2_BINARY_DIR}/include/"
+      DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+      FILES_MATCHING PATTERN "sdl2*.h")
+    install(FILES "${SDL2_SOURCE_DIR}/library/sdl2_lib.sfd"
+      DESTINATION "${CMAKE_INSTALL_DATADIR}/sfd")
+  endif()
+  if(SDL_AMIGAOS4_LIBRARY)
+    install(TARGETS SDL2-amigaos4-library RUNTIME DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+    install(DIRECTORY "${SDL2_SOURCE_DIR}/include/"
+      DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    install(DIRECTORY "${SDL2_SOURCE_DIR}/library/amigaos4/include/"
+      DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    install(DIRECTORY "${SDL2_BINARY_DIR}/include/"
+      DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    install(FILES "${SDL2_SOURCE_DIR}/library/amigaos4/sdl2_lib.sfd"
+      DESTINATION "${CMAKE_INSTALL_DATADIR}/sfd")
+  endif()
+  if(SDL_AMIGAOS4_PREFS)
+    install(TARGETS SDL2-amigaos4-prefs RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
   endif()
 
   ##### Export files #####
@@ -3749,7 +4182,7 @@ if(NOT SDL2_DISABLE_INSTALL)
     if(SDL_SHARED)
       set(SOEXT ${CMAKE_SHARED_LIBRARY_SUFFIX}) # ".so", ".dylib", etc.
       get_target_property(SONAME SDL2 OUTPUT_NAME)
-      if(NOT ANDROID AND NOT MINGW AND NOT OS2)
+      if(NOT ANDROID AND NOT MINGW AND NOT OS2 AND NOT AMIGA)
           install(CODE "
             execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
               \"lib${SONAME}${SOPOSTFIX}${SOEXT}\" \"libSDL2${SOPOSTFIX}${SOEXT}\"
