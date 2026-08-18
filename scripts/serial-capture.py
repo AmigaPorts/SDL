@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""serial-capture.py — Capture Amiga Enforcer serial output via TCP.
+"""serial-capture.py â Capture Amiga Enforcer serial output via TCP.
 
 FS-UAE listens on a TCP port for serial connections when configured with:
     serial_port = tcp://127.0.0.1:PORT/wait
@@ -8,7 +8,7 @@ This script connects to that port as a TCP client and streams all received
 serial data (Enforcer hits, Mungwall output) to a log file.
 
 # Lifecycle:
-#   connect(host:port) → stream to file → EOF → exit
+#   connect(host:port) â stream to file â EOF â exit
 
 Usage:
     python3 scripts/serial-capture.py <host:port> <log-file> [--ready-file FILE]
@@ -179,7 +179,7 @@ def main():
                 )
                 break
     except ConnectionResetError:
-        # FS-UAE closed the connection abruptly — not an error
+        # FS-UAE closed the connection abruptly â not an error
         pass
     except OSError as e:
         print(

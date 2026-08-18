@@ -1,4 +1,17 @@
 /*
+ * ALTERED SOURCE -- SDL2.Library-Amiga-m68K.
+ *
+ * This file differs from the original libSDL2-amigaos3 release at
+ * https://github.com/bdgscotland/libSDL2-amigaos3
+ *
+ * Change: OS3_OpenWindowed honours SDL_HINT_VIDEO_AMIGAOS3_SCREEN,
+ *         so the application chooses between a Workbench window
+ *         and a private screen instead of the driver deciding.
+ *
+ * See patches/ for the change in isolation, and docs/ALTERATIONS.md
+ * for the full list of files this repository modifies.
+ */
+/*
   SDL2 Video Driver -- AmigaOS 3.x (CyberGraphX)
   Window management: open/close Intuition windows and screens.
 
@@ -25,6 +38,7 @@
 #include "SDL_os3window.h"
 #include "SDL_os3framebuffer.h"
 #include "../../events/SDL_windowevents_c.h"
+#include "SDL_hints.h"
 
 /*
  * Find an RTG mode >= requested size and depth by manually walking
@@ -244,10 +258,40 @@ static int OS3_OpenWindowed(OS3_WindowData *data, SDL_Window *window)
     struct Window *iwin;
     int use_wb = 0;
     int xpos, ypos;
+    const char *hint;
+    int force_wb = 0, force_screen = 0;
+
+    /*
+     * SDL_HINT_VIDEO_AMIGAOS3_SCREEN lets the APPLICATION say where its
+     * window goes, rather than this driver deciding on its behalf.
+     *
+     *   "workbench"  -- open on the Workbench public screen, skipping the
+     *                   capability sniffing below
+     *   "screen"     -- always open our own screen
+     *   "auto"/unset -- existing behaviour: Workbench when the probe says
+     *                   it is usable, our own screen otherwise
+     *
+     * The probe is a heuristic and it is demonstrably wrong in at least
+     * one real case: on a Picasso96 Workbench it declines a screen that
+     * SDL 1.2 windows onto quite happily. A heuristic nobody can override
+     * is a policy baked into the driver, so it stays as the DEFAULT and
+     * the application gets the last word.
+     */
+    hint = SDL_GetHint(SDL_HINT_VIDEO_AMIGAOS3_SCREEN);
+    if (hint) {
+        force_wb     = (SDL_strcasecmp(hint, "workbench") == 0);
+        force_screen = (SDL_strcasecmp(hint, "screen") == 0);
+    }
+
+    if (force_screen) {
+        return OS3_OpenFullscreen(data, window->w, window->h);
+    }
 
     if (!CyberGfxBase) {
         /* AGA: always open a custom fullscreen screen.
-         * No windowed mode on AGA (no chunky WB screen to open on). */
+         * No windowed mode on AGA (no chunky WB screen to open on).
+         * "workbench" cannot be honoured here: there is no blit path for
+         * an ARGB surface into a window on a planar screen. */
         return OS3_OpenFullscreen(data, window->w, window->h);
     }
 
@@ -264,6 +308,11 @@ static int OS3_OpenWindowed(OS3_WindowData *data, SDL_Window *window)
             }
             if (is_cyber && window->w <= (int)wbscreen->Width &&
                 window->h <= (int)wbscreen->Height) {
+                use_wb = 1;
+            }
+            /* Asked for Workbench explicitly: a public screen existing is
+             * the only precondition we still insist on. */
+            if (force_wb) {
                 use_wb = 1;
             }
             UnlockPubScreen(NULL, wbscreen);

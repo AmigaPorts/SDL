@@ -1,4 +1,15 @@
 /*
+ * ALTERED SOURCE -- SDL2.Library-Amiga-m68K.
+ *
+ * This file differs from the original libSDL2-amigaos3 release at
+ * https://github.com/bdgscotland/libSDL2-amigaos3
+ *
+ * Change: added SDL_HINT_VIDEO_AMIGAOS3_SCREEN.
+ *
+ * See patches/ for the change in isolation, and docs/ALTERATIONS.md
+ * for the full list of files this repository modifies.
+ */
+/*
   Simple DirectMedia Layer
   Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
@@ -2249,6 +2260,27 @@ extern "C" {
  * By default SDL will disable the screensaver.
  */
 #define SDL_HINT_VIDEO_ALLOW_SCREENSAVER    "SDL_VIDEO_ALLOW_SCREENSAVER"
+
+/**
+ *  \brief  Where the AmigaOS 3 driver should put a non-fullscreen window.
+ *
+ *  This variable can be set to the following values:
+ *    "auto"       - Use the Workbench screen when the driver judges it
+ *                   usable, otherwise open a private screen (default)
+ *    "workbench"  - Always open on the Workbench public screen, giving a
+ *                   normal titled, draggable window
+ *    "screen"     - Always open a private screen with a borderless window
+ *
+ *  The "auto" probe asks whether the Workbench bitmap is CyberGraphX or
+ *  at least 15 bits deep. That test is conservative and declines some
+ *  Picasso96 Workbench screens that are perfectly capable of hosting the
+ *  window, so an application that knows its target can say so directly.
+ *
+ *  Has no effect on AGA (no RTG library): there is no blit path for an
+ *  ARGB surface into a window on a planar screen, so a private screen is
+ *  used regardless.
+ */
+#define SDL_HINT_VIDEO_AMIGAOS3_SCREEN      "SDL_VIDEO_AMIGAOS3_SCREEN"
 
 /**
  * Tell the video driver that we only want a double buffer.

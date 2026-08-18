@@ -3196,7 +3196,7 @@ int SDL_RenderDrawLinesF(SDL_Renderer *renderer,
     *ptr_indices++ = cur_index + i3; \
     num_indices += 3;
 
-                /* closed polyline, don´t draw twice the point */
+                /* closed polyline, donÂ´t draw twice the point */
                 if (i || is_looping == 0) {
                     ADD_TRIANGLE(4, 5, 6)
                     ADD_TRIANGLE(4, 6, 7)

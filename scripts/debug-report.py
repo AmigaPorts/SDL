@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-debug-report.py — Parse Enforcer crash output and map addresses to source lines.
+debug-report.py â Parse Enforcer crash output and map addresses to source lines.
 
 Part of the amiport autonomous debug pipeline (Layer 1d).
 
@@ -275,7 +275,7 @@ def parse_enforcer_log(filepath):
             current_hit["cli_name"] = m.group(2)
             continue
 
-        # PC-8: and PC *: lines — store as optional context but don't parse deeply
+        # PC-8: and PC *: lines â store as optional context but don't parse deeply
         # These are code dump lines around the crash point
 
     # Don't forget the last hit
@@ -358,7 +358,7 @@ def filter_app_hits(result, app_name):
     unless the app appears in their SegTracker or stack trace references.
     Known ROM false positives (interrupt handler writes to CIAB) are always excluded.
 
-    Enforcer has no built-in filtering — this post-processing step is the
+    Enforcer has no built-in filtering â this post-processing step is the
     standard practice per Amiga developer documentation.
     """
     app_lower = app_name.lower()
@@ -588,7 +588,7 @@ def cmd_map(args):
         hunk_map = parse_linker_map(map_path)
         if hunk_map is None:
             print(
-                "error: multi-hunk binary requires .map file — "
+                "error: multi-hunk binary requires .map file â "
                 "rebuild with -Wl,-Map={}".format(map_path),
                 file=sys.stderr,
             )
@@ -601,7 +601,7 @@ def cmd_map(args):
         if not seg:
             mapped_hits.append({
                 "address": hit.get("pc"),
-                "error": "no SegTracker data — cannot map to source",
+                "error": "no SegTracker data â cannot map to source",
             })
             continue
 
@@ -620,7 +620,7 @@ def cmd_map(args):
         }
 
         if source_file is None and line_num is None:
-            entry["error"] = "no debug info — rebuild with -gstabs"
+            entry["error"] = "no debug info â rebuild with -gstabs"
             if func:
                 entry["function"] = func
         else:
