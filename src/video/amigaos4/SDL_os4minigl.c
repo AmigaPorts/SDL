@@ -31,7 +31,8 @@
 #include "SDL_os4video.h"
 #include "SDL_os4window.h"
 #include "SDL_os4library.h"
-#include "SDL_os4opengl.h"
+#include "SDL_os4minigl.h"
+#include "SDL_os4miniglwrapper.h"
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
@@ -46,17 +47,15 @@ struct MiniGLIFace *IMiniGL;
  */
 SDL_DECLSPEC struct GLContextIFace *mini_CurrentContext = 0;
 
-void *AmiGetGLProc(const char *proc);
-
 static void
-OS4_GL_LogLibraryError()
+OS4_MiniGL_LogLibraryError()
 {
     dprintf("No MiniGL library available\n");
     SDL_SetError("No MiniGL library available");
 }
 
 bool
-OS4_GL_LoadLibrary(SDL_VideoDevice *_this, const char * path)
+OS4_MiniGL_LoadLibrary(SDL_VideoDevice *_this, const char * path)
 {
     dprintf("Called %d\n", _this->gl_config.driver_loaded);
 
@@ -84,14 +83,14 @@ OS4_GL_LoadLibrary(SDL_VideoDevice *_this, const char * path)
 }
 
 SDL_FunctionPointer
-OS4_GL_GetProcAddress(SDL_VideoDevice *_this, const char * proc)
+OS4_MiniGL_GetProcAddress(SDL_VideoDevice *_this, const char * proc)
 {
     void *func = NULL;
 
     dprintf("Called for '%s' (current context %p)\n", proc, mini_CurrentContext);
 
     if (IMiniGL && mini_CurrentContext) {
-        func = AmiGetGLProc(proc);
+        func = OS4_GetMiniGLProc(proc);
     }
 
     if (func == NULL) {
@@ -102,7 +101,7 @@ OS4_GL_GetProcAddress(SDL_VideoDevice *_this, const char * proc)
 }
 
 void
-OS4_GL_UnloadLibrary(SDL_VideoDevice *_this)
+OS4_MiniGL_UnloadLibrary(SDL_VideoDevice *_this)
 {
     dprintf("Called %d\n", _this->gl_config.driver_loaded);
 
@@ -187,7 +186,7 @@ OS4_GL_FreeBuffers(SDL_VideoDevice *_this, SDL_WindowData * data)
 }
 
 SDL_GLContext
-OS4_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
+OS4_MiniGL_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
 {
     dprintf("Called\n");
 
@@ -244,13 +243,13 @@ OS4_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
         }
 
     } else {
-        OS4_GL_LogLibraryError();
+        OS4_MiniGL_LogLibraryError();
         return NULL;
     }
 }
 
 bool
-OS4_GL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext context)
+OS4_MiniGL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext context)
 {
     if (!window || !context) {
         dprintf("Called (window %p, context %p)\n", window, context);
@@ -260,14 +259,14 @@ OS4_GL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext co
         mglMakeCurrent(context);
         return true;
     } else {
-        OS4_GL_LogLibraryError();
+        OS4_MiniGL_LogLibraryError();
     }
 
     return false;
 }
 
 void
-OS4_GL_GetDrawableSize(SDL_VideoDevice *_this, SDL_Window * window, int * w, int * h)
+OS4_MiniGL_GetDrawableSize(SDL_VideoDevice *_this, SDL_Window * window, int * w, int * h)
 {
     OS4_WaitForResize(window, w, h);
 }
@@ -302,7 +301,7 @@ OS4_GL_GetSwapInterval(SDL_VideoDevice *_this, int* interval)
 }
 
 bool
-OS4_GL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
+OS4_MiniGL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
     //dprintf("Called\n");
 
@@ -373,14 +372,14 @@ OS4_GL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
             dprintf("No MiniGL context\n");
         }
     } else {
-        OS4_GL_LogLibraryError();
+        OS4_MiniGL_LogLibraryError();
     }
 
     return false;
 }
 
 bool
-OS4_GL_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
+OS4_MiniGL_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
 {
     dprintf("Called with context=%p\n", context);
 
@@ -413,7 +412,7 @@ OS4_GL_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
 	    return false;
         }
     } else {
-        OS4_GL_LogLibraryError();
+        OS4_MiniGL_LogLibraryError();
 	return false;
     }
 
@@ -421,7 +420,7 @@ OS4_GL_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
 }
 
 bool
-OS4_GL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
+OS4_MiniGL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
 {
     if (IMiniGL) {
         SDL_WindowData *data = window->internal;
@@ -444,14 +443,14 @@ OS4_GL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
             //SDL_Quit();
         }
     } else {
-        OS4_GL_LogLibraryError();
+        OS4_MiniGL_LogLibraryError();
     }
 
     return false;
 }
 
 void
-OS4_GL_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window)
+OS4_MiniGL_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window)
 {
     // Nothing to do for MiniGL
 }

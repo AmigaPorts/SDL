@@ -20,18 +20,9 @@
 */
 #include "SDL_internal.h"
 
-#ifndef SDL_os4opengles2_h_
-#define SDL_os4opengles2_h_
+#ifndef SDL_os4opengles2wrapper_h_
+#define SDL_os4opengles2wrapper_h_
 
-extern bool OS4_OGLES2_LoadLibrary(SDL_VideoDevice *_this, const char *path);
-extern SDL_FunctionPointer OS4_OGLES2_GetProcAddress(SDL_VideoDevice *_this, const char *proc);
-extern void OS4_OGLES2_UnloadLibrary(SDL_VideoDevice *_this);
-extern SDL_GLContext OS4_OGLES2_CreateContext(SDL_VideoDevice *_this, SDL_Window * window);
-extern bool OS4_OGLES2_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext context);
-extern bool OS4_OGLES2_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window);
-extern bool OS4_OGLES2_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context);
+extern void *OS4_GetOGLES2Proc(const char *proc);
 
-extern bool OS4_OGLES2_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window);
-extern void OS4_OGLES2_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window);
-
-#endif /* SDL_os4opengles2_h_ */
+#endif /* SDL_os4opengles2wrapper_h_ */
