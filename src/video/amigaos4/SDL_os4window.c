@@ -38,7 +38,7 @@
 #include "SDL_os4shape.h"
 #include "SDL_os4window.h"
 #include "SDL_os4modes.h"
-#include "SDL_os4opengl.h"
+#include "SDL_os4minigl.h"
 #include "SDL_os4mouse.h"
 #include "SDL_os4events.h"
 #include "SDL_os4locale.h"
@@ -934,7 +934,7 @@ OS4_DestroyWindow(_THIS, SDL_Window * window)
     }
 
     if (window->flags & SDL_WINDOW_OPENGL) {
-        OS4_GL_FreeBuffers(_this, data);
+        OS4_MiniGL_FreeBuffers(_this, data);
     }
 
     SDL_free(data);

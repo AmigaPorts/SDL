@@ -45,7 +45,7 @@
 #include "SDL_os4framebuffer.h"
 #include "SDL_os4mouse.h"
 #include "SDL_os4locale.h"
-#include "SDL_os4opengl.h"
+#include "SDL_os4minigl.h"
 #include "SDL_os4opengles2.h"
 #include "SDL_os4shape.h"
 #include "SDL_os4messagebox.h"
@@ -312,39 +312,38 @@ OS4_DeleteDevice(SDL_VideoDevice * device)
 static void
 OS4_SetMiniGLFunctions(SDL_VideoDevice * device)
 {
-    device->GL_GetProcAddress = OS4_GL_GetProcAddress;
-    device->GL_UnloadLibrary = OS4_GL_UnloadLibrary;
-    device->GL_MakeCurrent = OS4_GL_MakeCurrent;
+    device->GL_GetProcAddress = OS4_MiniGL_GetProcAddress;
+    device->GL_UnloadLibrary = OS4_MiniGL_UnloadLibrary;
+    device->GL_MakeCurrent = OS4_MiniGL_MakeCurrent;
     device->GL_GetDrawableSize = OS4_GL_GetDrawableSize;
     device->GL_SetSwapInterval = OS4_GL_SetSwapInterval;
     device->GL_GetSwapInterval = OS4_GL_GetSwapInterval;
-    device->GL_SwapWindow = OS4_GL_SwapWindow;
-    device->GL_CreateContext = OS4_GL_CreateContext;
-    device->GL_DeleteContext = OS4_GL_DeleteContext;
-    //device->GL_DefaultProfileConfig = OS4_GL_DefaultProfileConfig;
+    device->GL_SwapWindow = OS4_MiniGL_SwapWindow;
+    device->GL_CreateContext = OS4_MiniGL_CreateContext;
+    device->GL_DeleteContext = OS4_MiniGL_DeleteContext;
+    //device->GL_DefaultProfileConfig = OS4_MiniGL_DefaultProfileConfig;
 
-    OS4_ResizeGlContext = OS4_GL_ResizeContext;
-    OS4_UpdateGlWindowPointer = OS4_GL_UpdateWindowPointer;
+    OS4_ResizeGlContext = OS4_MiniGL_ResizeContext;
+    OS4_UpdateGlWindowPointer = OS4_MiniGL_UpdateWindowPointer;
 }
 
 #if SDL_VIDEO_OPENGL_ES2
 static void
-OS4_SetGLESFunctions(SDL_VideoDevice * device)
+OS4_SetOGLES2Functions(SDL_VideoDevice * device)
 {
-    /* Some functions are recycled from SDL_os4opengl.c 100% ... */
-    device->GL_GetProcAddress = OS4_GLES_GetProcAddress;
-    device->GL_UnloadLibrary = OS4_GLES_UnloadLibrary;
-    device->GL_MakeCurrent = OS4_GLES_MakeCurrent;
+    device->GL_GetProcAddress = OS4_OGLES2_GetProcAddress;
+    device->GL_UnloadLibrary = OS4_OGLES2_UnloadLibrary;
+    device->GL_MakeCurrent = OS4_OGLES2_MakeCurrent;
     device->GL_GetDrawableSize = OS4_GL_GetDrawableSize;
     device->GL_SetSwapInterval = OS4_GL_SetSwapInterval;
     device->GL_GetSwapInterval = OS4_GL_GetSwapInterval;
-    device->GL_SwapWindow = OS4_GLES_SwapWindow;
-    device->GL_CreateContext = OS4_GLES_CreateContext;
-    device->GL_DeleteContext = OS4_GLES_DeleteContext;
-    //device->GL_DefaultProfileConfig = OS4_GL(ES)_DefaultProfileConfig;
+    device->GL_SwapWindow = OS4_OGLES2_SwapWindow;
+    device->GL_CreateContext = OS4_OGLES2_CreateContext;
+    device->GL_DeleteContext = OS4_OGLES2_DeleteContext;
+    //device->GL_DefaultProfileConfig = OS4_OGLES2_DefaultProfileConfig;
 
-    OS4_ResizeGlContext = OS4_GLES_ResizeContext;
-    OS4_UpdateGlWindowPointer = OS4_GLES_UpdateWindowPointer;
+    OS4_ResizeGlContext = OS4_OGLES2_ResizeContext;
+    OS4_UpdateGlWindowPointer = OS4_OGLES2_UpdateWindowPointer;
 }
 #endif
 
@@ -386,13 +385,13 @@ OS4_LoadGlLibrary(_THIS, const char * path)
 
     if (OS4_IsMiniGL(_this)) {
         OS4_SetMiniGLFunctions(_this);
-        return OS4_GL_LoadLibrary(_this, path);
+        return OS4_MiniGL_LoadLibrary(_this, path);
     }
 
 #if SDL_VIDEO_OPENGL_ES2
     if (OS4_IsOpenGLES2(_this)) {
-        OS4_SetGLESFunctions(_this);
-        return OS4_GLES_LoadLibrary(_this, path);
+        OS4_SetOGLES2Functions(_this);
+        return OS4_OGLES2_LoadLibrary(_this, path);
     }
 #endif
 

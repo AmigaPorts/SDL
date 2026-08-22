@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,20 +20,9 @@
 */
 #include "../../SDL_internal.h"
 
-#ifndef SDL_os4opengles2_h_
-#define SDL_os4opengles2_h_
+#ifndef SDL_os4miniglwrapper_h_
+#define SDL_os4miniglwrapper_h_
 
-extern int OS4_OGLES2_LoadLibrary(_THIS, const char *path);
-extern void *OS4_OGLES2_GetProcAddress(_THIS, const char *proc);
-extern void OS4_OGLES2_UnloadLibrary(_THIS);
-extern SDL_GLContext OS4_OGLES2_CreateContext(_THIS, SDL_Window * window);
-extern int OS4_OGLES2_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context);
-extern int OS4_OGLES2_SwapWindow(_THIS, SDL_Window * window);
-extern void OS4_OGLES2_DeleteContext(_THIS, SDL_GLContext context);
+extern void *OS4_GetMiniGLProc(const char *proc);
 
-extern SDL_bool OS4_OGLES2_ResizeContext(_THIS, SDL_Window * window);
-extern void OS4_OGLES2_UpdateWindowPointer(_THIS, SDL_Window * window);
-
-#endif /* SDL_os4opengles_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif /* SDL_os4miniglwrapper_h_ */
