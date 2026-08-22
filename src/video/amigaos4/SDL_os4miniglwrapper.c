@@ -25,6 +25,8 @@
 
 #if SDL_VIDEO_DRIVER_AMIGAOS4
 
+#include "SDL_os4miniglwrapper.h"
+
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include <GL/glut.h>
@@ -1471,7 +1473,7 @@ struct MyGLFunc
    APTR func;
 };
 
-void *AmiGetGLProc(const char *proc)
+void *OS4_GetMiniGLProc(const char *proc)
 {
    static CONST struct MyGLFunc table[] = {
         {"glClipPlane", AmiglClipPlane},

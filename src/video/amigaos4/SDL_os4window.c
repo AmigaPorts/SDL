@@ -37,7 +37,7 @@
 #include "SDL_os4video.h"
 #include "SDL_os4window.h"
 #include "SDL_os4modes.h"
-#include "SDL_os4opengl.h"
+#include "SDL_os4minigl.h"
 #include "SDL_os4mouse.h"
 #include "SDL_os4events.h"
 #include "SDL_os4locale.h"
