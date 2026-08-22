@@ -25,6 +25,8 @@
 
 #if SDL_VIDEO_OPENGL_ES2
 
+#include "SDL_os4opengles2wrapper.h"
+
 #include <GLES2/gl2.h>
 #include <string.h>
 
@@ -607,7 +609,7 @@ struct MyGLFunc
 #define MY_GL_FUNC(name) {#name, Ami##name},
 
 
-void *AmiGetGLESProc(const char *proc)
+void *OS4_GetOGLES2Proc(const char *proc)
 {
    static CONST struct MyGLFunc table[] = {
         MY_GL_FUNC(glActiveTexture)

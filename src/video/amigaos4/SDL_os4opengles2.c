@@ -30,8 +30,9 @@
 
 #include "SDL_os4video.h"
 #include "SDL_os4window.h"
-#include "SDL_os4opengl.h"
+//#include "SDL_os4opengl.h"
 #include "SDL_os4opengles2.h"
+#include "SDL_os4opengles2wrapper.h"
 #include "SDL_os4library.h"
 
 #include "../../main/amigaos4/SDL_os4debug.h"
@@ -39,17 +40,15 @@
 static struct Library *OGLES2base;
 struct OGLES2IFace *IOGLES2;
 
-void *AmiGetGLESProc(const char *proc);
-
 static void
-OS4_GLES_LogLibraryError()
+OS4_OGLES2_LogLibraryError()
 {
     dprintf("No OpenGL ES 2 library available\n");
     SDL_SetError("No OpenGL ES 2 library available");
 }
 
 int
-OS4_GLES_LoadLibrary(_THIS, const char * path)
+OS4_OGLES2_LoadLibrary(_THIS, const char * path)
 {
     dprintf("Called %d\n", _this->gl_config.driver_loaded);
 
@@ -79,14 +78,14 @@ OS4_GLES_LoadLibrary(_THIS, const char * path)
 }
 
 void *
-OS4_GLES_GetProcAddress(_THIS, const char * proc)
+OS4_OGLES2_GetProcAddress(_THIS, const char * proc)
 {
     void *func = NULL;
 
     dprintf("Called for '%s'\n", proc);
 
     if (IOGLES2) {
-        func = AmiGetGLESProc(proc);
+        func = OS4_GetOGLES2Proc(proc);
     }
 
     if (func == NULL) {
@@ -98,7 +97,7 @@ OS4_GLES_GetProcAddress(_THIS, const char * proc)
 }
 
 void
-OS4_GLES_UnloadLibrary(_THIS)
+OS4_OGLES2_UnloadLibrary(_THIS)
 {
     dprintf("Called %d\n", _this->gl_config.driver_loaded);
 
@@ -107,7 +106,7 @@ OS4_GLES_UnloadLibrary(_THIS)
 }
 
 SDL_GLContext
-OS4_GLES_CreateContext(_THIS, SDL_Window * window)
+OS4_OGLES2_CreateContext(_THIS, SDL_Window * window)
 {
     dprintf("Called\n");
 
@@ -168,7 +167,7 @@ OS4_GLES_CreateContext(_THIS, SDL_Window * window)
             return NULL;
         }
     } else {
-        OS4_GLES_LogLibraryError();
+        OS4_OGLES2_LogLibraryError();
         return NULL;
     }
 
@@ -176,7 +175,7 @@ OS4_GLES_CreateContext(_THIS, SDL_Window * window)
 }
 
 int
-OS4_GLES_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
+OS4_OGLES2_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
 {
     int result = -1;
 
@@ -188,7 +187,7 @@ OS4_GLES_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
         aglMakeCurrent(context);
         result = 0;
     } else {
-        OS4_GLES_LogLibraryError();
+        OS4_OGLES2_LogLibraryError();
     }
 
     return result;
@@ -260,14 +259,14 @@ OS4_GLES_SwapWindow(_THIS, SDL_Window * window)
             dprintf("No OpenGL ES 2 context\n");
         }
     } else {
-        OS4_GLES_LogLibraryError();
+        OS4_OGLES2_LogLibraryError();
     }
 
     return -1;
 }
 
 void
-OS4_GLES_DeleteContext(_THIS, SDL_GLContext context)
+OS4_OGLES2_DestroyContext(_THIS, SDL_GLContext context)
 {
     dprintf("Called with context=%p\n", context);
 
@@ -299,12 +298,12 @@ OS4_GLES_DeleteContext(_THIS, SDL_GLContext context)
         }
 
     } else {
-        OS4_GLES_LogLibraryError();
+        OS4_OGLES2_LogLibraryError();
     }
 }
 
 SDL_bool
-OS4_GLES_ResizeContext(_THIS, SDL_Window * window)
+OS4_OGLES2_ResizeContext(_THIS, SDL_Window * window)
 {
     if (IOGLES2) {
 #if MANAGE_BITMAP
@@ -326,14 +325,14 @@ OS4_GLES_ResizeContext(_THIS, SDL_Window * window)
 #endif
         return SDL_TRUE;
     } else {
-        OS4_GLES_LogLibraryError();
+        OS4_OGLES2_LogLibraryError();
     }
 
     return SDL_FALSE;
 }
 
 void
-OS4_GLES_UpdateWindowPointer(_THIS, SDL_Window * window)
+OS4_OGLES2_UpdateWindowPointer(_THIS, SDL_Window * window)
 {
     if (IOGLES2) {
         SDL_WindowData *data = window->driverdata;
@@ -341,7 +340,7 @@ OS4_GLES_UpdateWindowPointer(_THIS, SDL_Window * window)
         dprintf("Updating GLES2 window pointer %p\n", data->syswin);
         aglSetParamsTags2(OGLES2_CCT_WINDOW, (ULONG)data->syswin, TAG_DONE);
     } else {
-        OS4_GLES_LogLibraryError();
+        OS4_OGLES2_LogLibraryError();
     }
 }
 
