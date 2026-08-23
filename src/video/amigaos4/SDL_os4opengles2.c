@@ -109,10 +109,6 @@ OS4_OGLES2_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
     dprintf("Called\n");
 
     if (IOGLES2) {
-#if MANAGE_BITMAP
-        uint32 depth;
-#endif
-
         ULONG errCode = 0;
 
         SDL_WindowData *data = window->internal;
@@ -125,14 +121,6 @@ OS4_OGLES2_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
             data->glContext = NULL;
         }
 
-#if MANAGE_BITMAP
-        depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
-
-        if (!OS4_GL_AllocateBuffers(_this, window->w, window->h, depth, data)) {
-            SDL_SetError("Failed to allocate OpenGL ES 2 buffers");
-            return NULL;
-        }
-#endif
         dprintf("Depth buffer size %d, stencil buffer size %d\n",
             _this->gl_config.depth_size, _this->gl_config.stencil_size);
 
@@ -140,9 +128,6 @@ OS4_OGLES2_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
             &errCode,
             OGLES2_CCT_WINDOW, (ULONG)data->syswin,
             OGLES2_CCT_VSYNC, 0,
-#if MANAGE_BITMAP
-            OGLES2_CCT_BITMAP, (ULONG)data->glBackBuffer,
-#endif
             OGLES2_CCT_DEPTH, _this->gl_config.depth_size,
             OGLES2_CCT_STENCIL, _this->gl_config.stencil_size,
             TAG_DONE);
@@ -159,9 +144,6 @@ OS4_OGLES2_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
                 window->title, errCode);
 
             SDL_SetError("Failed to create OpenGL ES 2 context");
-#if MANAGE_BITMAP
-            OS4_GL_FreeBuffers(_this, data);
-#endif
             return NULL;
         }
     } else {
@@ -200,15 +182,6 @@ OS4_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
         if (data->glContext) {
             SDL_VideoData *videodata = _this->internal;
 
-#if MANAGE_BITMAP
-            struct BitMap *temp;
-            int w, h;
-            BOOL blitRpRet;
-            int32 blitRet;
-
-            OS4_GetWindowSize(_this, data->syswin, &w, &h);
-#endif
-
             glFinish();
 
             if (videodata->vsyncEnabled) {
@@ -216,40 +189,6 @@ OS4_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
             }
 
             aglSwapBuffers();
-
-#if MANAGE_BITMAP
-            blitRpRet = IGraphics->BltBitMapRastPort(data->glBackBuffer, 0, 0, data->syswin->RPort,
-                data->syswin->BorderLeft, data->syswin->BorderTop, w, h, 0xC0);
-
-            if (!blitRpRet) {
-                dprintf("BltBitMapRastPort() failed\n");
-            }
-
-            blitRet = IGraphics->BltBitMapTags(BLITA_Source,  data->glBackBuffer,
-                                     BLITA_SrcType, BLITT_BITMAP,
-                                     BLITA_SrcX,    0,
-                                     BLITA_SrcY,    0,
-                                     BLITA_Dest,    data->glFrontBuffer,
-                                     BLITA_DestType,BLITT_BITMAP,
-                                     BLITA_DestX,   0,
-                                     BLITA_DestY,   0,
-                                     BLITA_Width,   w,
-                                     BLITA_Height,  h,
-                                     BLITA_Minterm, 0xC0,
-                                     TAG_DONE);
-
-            if (blitRet == -1) {
-                temp = data->glFrontBuffer;
-                data->glFrontBuffer = data->glBackBuffer;
-                data->glBackBuffer = temp;
-
-                aglSetBitmap(data->glBackBuffer);
-
-                return true;
-            } else {
-                dprintf("BltBitMapTags() returned %d\n", blitRet);
-            }
-#endif
         } else {
             dprintf("No OpenGL ES 2 context\n");
         }
@@ -304,23 +243,6 @@ bool
 OS4_OGLES2_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
 {
     if (IOGLES2) {
-#if MANAGE_BITMAP
-        SDL_WindowData *data = window->internal;
-
-        uint32 depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
-
-        if (OS4_GL_AllocateBuffers(_this, window->floating.w, window->floating.h, depth, data)) {
-            dprintf("Resizing context to %d*%d\n", window->floating.w, window->floating.h);
-
-            aglSetBitmap(data->glBackBuffer);
-
-            glViewport(0, 0, window->floating.w, window->floating.h);
-            return true;
-        } else {
-            dprintf("Failed to re-allocate OpenGL ES 2 buffers\n");
-            //SDL_Quit();
-        }
-#endif
         return true;
     } else {
         OS4_OGLES2_LogLibraryError();
