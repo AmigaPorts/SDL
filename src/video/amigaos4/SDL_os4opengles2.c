@@ -172,7 +172,7 @@ OS4_OGLES2_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContex
 }
 
 bool
-OS4_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
+OS4_OGLES2_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
     //dprintf("Called\n");
 
