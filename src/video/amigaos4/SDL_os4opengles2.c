@@ -176,7 +176,7 @@ OS4_OGLES2_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
 }
 
 int
-OS4_GLES_SwapWindow(_THIS, SDL_Window * window)
+OS4_OGLES2_SwapWindow(_THIS, SDL_Window * window)
 {
     //dprintf("Called\n");
 
