@@ -30,9 +30,7 @@
 
 #include "SDL_os4video.h"
 #include "SDL_os4window.h"
-//#include "SDL_os4opengl.h"
 #include "SDL_os4opengles2.h"
-#include "SDL_os4opengles2wrapper.h"
 #include "SDL_os4library.h"
 
 #include "../../main/amigaos4/SDL_os4debug.h"
@@ -83,7 +81,7 @@ OS4_OGLES2_GetProcAddress(SDL_VideoDevice *_this, const char * proc)
     dprintf("Called for '%s'\n", proc);
 
     if (IOGLES2) {
-        func = OS4_GetOGLES2Proc(proc);
+        func = aglGetProcAddress(proc);
     }
 
     if (func == NULL) {
