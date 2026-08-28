@@ -38,11 +38,11 @@
 static struct Library *OGLES2base;
 struct OGLES2IFace *IOGLES2;
 
-static void
+static int
 OS4_OGLES2_LogLibraryError()
 {
     dprintf("No OpenGL ES 2 library available\n");
-    SDL_SetError("No OpenGL ES 2 library available");
+    return SDL_SetError("No OpenGL ES 2 library available");
 }
 
 int
@@ -52,26 +52,23 @@ OS4_OGLES2_LoadLibrary(_THIS, const char * path)
 
     if (!OGLES2base) {
         OGLES2base = OS4_OpenLibrary("ogles2.library", 2);
+    }
 
-        if (!OGLES2base) {
-            dprintf("Failed to open ogles2.library\n");
-            SDL_SetError("Failed to open ogles2.library");
-            return -1;
-        }
+    if (!OGLES2base) {
+        dprintf("Failed to open ogles2.library\n");
+        return SDL_SetError("Failed to open ogles2.library");
     }
 
     if (!IOGLES2) {
         IOGLES2 = (struct OGLES2IFace *) OS4_GetInterface(OGLES2base);
-
-        if (!IOGLES2) {
-            dprintf("Failed to open OpenGL ES 2 interface\n");
-            SDL_SetError("Failed to open OpenGL ES 2 interface");
-            return -1;
-        }
-
-        dprintf("OpenGL ES 2 library opened\n");
     }
 
+    if (!IOGLES2) {
+        dprintf("Failed to open OpenGL ES 2 interface\n");
+        return SDL_SetError("Failed to open OpenGL ES 2 interface");
+    }
+
+    dprintf("OpenGL ES 2 library opened\n");
     return 0;
 }
 
@@ -108,69 +105,63 @@ OS4_OGLES2_CreateContext(_THIS, SDL_Window * window)
 {
     dprintf("Called\n");
 
-    if (IOGLES2) {
-        ULONG errCode = 0;
-
-        SDL_WindowData *data = window->driverdata;
-
-        if (data->glContext) {
-            dprintf("Old context %p found, deleting\n", data->glContext);
-
-            aglDestroyContext(data->glContext);
-
-            data->glContext = NULL;
-        }
-
-        dprintf("Depth buffer size %d, stencil buffer size %d\n",
-            _this->gl_config.depth_size, _this->gl_config.stencil_size);
-
-        data->glContext = aglCreateContextTags2(
-            &errCode,
-            OGLES2_CCT_WINDOW, (ULONG)data->syswin,
-            OGLES2_CCT_VSYNC, 0,
-            OGLES2_CCT_DEPTH, _this->gl_config.depth_size,
-            OGLES2_CCT_STENCIL, _this->gl_config.stencil_size,
-            TAG_DONE);
-
-        if (data->glContext) {
-            dprintf("OpenGL ES 2 context %p created for window '%s'\n",
-                data->glContext, window->title);
-
-            aglMakeCurrent(data->glContext);
-            glViewport(0, 0, window->w, window->h);
-            return data->glContext;
-        } else {
-            dprintf("Failed to create OpenGL ES 2 context for window '%s' (error code %lu)\n",
-                window->title, errCode);
-
-            SDL_SetError("Failed to create OpenGL ES 2 context");
-            return NULL;
-        }
-    } else {
+    if (!IOGLES2) {
         OS4_OGLES2_LogLibraryError();
         return NULL;
     }
 
-    return NULL;
+    ULONG errCode = 0;
+
+    SDL_WindowData *data = window->driverdata;
+
+    if (data->glContext) {
+        dprintf("Old context %p found, deleting\n", data->glContext);
+
+        aglDestroyContext(data->glContext);
+
+        data->glContext = NULL;
+    }
+
+    dprintf("Depth buffer size %d, stencil buffer size %d\n",
+        _this->gl_config.depth_size, _this->gl_config.stencil_size);
+
+    data->glContext = aglCreateContextTags2(
+        &errCode,
+        OGLES2_CCT_WINDOW, (ULONG)data->syswin,
+        OGLES2_CCT_VSYNC, 0,
+        OGLES2_CCT_DEPTH, _this->gl_config.depth_size,
+        OGLES2_CCT_STENCIL, _this->gl_config.stencil_size,
+        TAG_DONE);
+
+    if (!data->glContext) {
+        dprintf("Failed to create OpenGL ES 2 context for window '%s' (error code %lu)\n",
+            window->title, errCode);
+
+        SDL_SetError("Failed to create OpenGL ES 2 context");
+        return NULL;
+    }
+
+    dprintf("OpenGL ES 2 context %p created for window '%s'\n",
+        data->glContext, window->title);
+
+    aglMakeCurrent(data->glContext);
+    glViewport(0, 0, window->w, window->h);
+    return (SDL_GLContext)data->glContext;
 }
 
 int
 OS4_OGLES2_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
 {
-    int result = -1;
-
     if (!window || !context) {
         dprintf("Called (window %p, context %p)\n", window, context);
     }
 
-    if (IOGLES2) {
-        aglMakeCurrent(context);
-        result = 0;
-    } else {
-        OS4_OGLES2_LogLibraryError();
+    if (!IOGLES2) {
+        return OS4_OGLES2_LogLibraryError();
     }
 
-    return result;
+    aglMakeCurrent(context);
+    return 0;
 }
 
 int
@@ -178,28 +169,27 @@ OS4_OGLES2_SwapWindow(_THIS, SDL_Window * window)
 {
     //dprintf("Called\n");
 
-    if (IOGLES2) {
-
-        SDL_WindowData *data = window->driverdata;
-
-        if (data->glContext) {
-            SDL_VideoData *videodata = _this->driverdata;
-
-            glFinish();
-
-            if (videodata->vsyncEnabled) {
-                IGraphics->WaitTOF();
-            }
-
-            aglSwapBuffers();
-        } else {
-            dprintf("No OpenGL ES 2 context\n");
-        }
-    } else {
-        OS4_OGLES2_LogLibraryError();
+    if (!IOGLES2) {
+        return OS4_OGLES2_LogLibraryError();
     }
 
-    return -1;
+    SDL_WindowData *data = window->driverdata;
+
+    if (!data->glContext) {
+        dprintf("No OpenGL ES 2 context\n");
+        return -1;
+    }
+
+    SDL_VideoData *videodata = _this->driverdata;
+
+    glFinish();
+
+    if (videodata->vsyncEnabled) {
+        IGraphics->WaitTOF();
+    }
+
+    aglSwapBuffers();
+    return 0;
 }
 
 void
@@ -207,61 +197,56 @@ OS4_OGLES2_DestroyContext(_THIS, SDL_GLContext context)
 {
     dprintf("Called with context=%p\n", context);
 
-    if (IOGLES2) {
-
-        if (context) {
-            SDL_Window *sdlwin;
-            Uint32 deletions = 0;
-
-            for (sdlwin = _this->windows; sdlwin; sdlwin = sdlwin->next) {
-
-                SDL_WindowData *data = sdlwin->driverdata;
-
-                if (data->glContext == context) {
-                    dprintf("Found OpenGL ES 2 context, clearing window binding\n");
-
-                    aglDestroyContext(context);
-
-                    data->glContext = NULL;
-                    deletions++;
-                }
-            }
-
-            if (deletions == 0) {
-                dprintf("OpenGL ES 2 context doesn't seem to have window binding\n");
-            }
-        } else {
-            dprintf("No context to delete\n");
-        }
-
-    } else {
+    if (!IOGLES2) {
         OS4_OGLES2_LogLibraryError();
+        return;
+    }
+
+    if (!context) {
+        dprintf("No context to delete\n");
+        return;
+    }
+
+    SDL_Window *sdlwin;
+    Uint32 deletions = 0;
+
+    for (sdlwin = _this->windows; sdlwin; sdlwin = sdlwin->next) {
+        SDL_WindowData *data = sdlwin->driverdata;
+
+        if ((SDL_GLContext)data->glContext == context) {
+            dprintf("Found OpenGL ES 2 context, clearing window binding\n");
+
+            aglDestroyContext(context);
+
+            data->glContext = NULL;
+            deletions++;
+        }
+    }
+
+    if (deletions == 0) {
+        dprintf("OpenGL ES 2 context doesn't seem to have window binding\n");
     }
 }
 
 SDL_bool
 OS4_OGLES2_ResizeContext(_THIS, SDL_Window * window)
 {
-    if (IOGLES2) {
-        return SDL_TRUE;
-    } else {
-        OS4_OGLES2_LogLibraryError();
-    }
-
-    return SDL_FALSE;
+    // TODO: remove function?
+    return SDL_TRUE;
 }
 
 void
 OS4_OGLES2_UpdateWindowPointer(_THIS, SDL_Window * window)
 {
-    if (IOGLES2) {
-        SDL_WindowData *data = window->driverdata;
-
-        dprintf("Updating GLES2 window pointer %p\n", data->syswin);
-        aglSetParamsTags2(OGLES2_CCT_WINDOW, (ULONG)data->syswin, TAG_DONE);
-    } else {
+    if (!IOGLES2) {
         OS4_OGLES2_LogLibraryError();
+        return;
     }
+
+    SDL_WindowData *data = window->driverdata;
+
+    dprintf("Updating GLES2 window pointer %p\n", data->syswin);
+    aglSetParamsTags2(OGLES2_CCT_WINDOW, (ULONG)data->syswin, TAG_DONE);
 }
 
 #endif /* SDL_VIDEO_OPENGL_ES2 */
