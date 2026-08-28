@@ -22,6 +22,8 @@
 
 #if SDL_VIDEO_DRIVER_AMIGAOS4
 
+#if SDL_VIDEO_OPENGL
+
 #include <proto/graphics.h>
 #include <proto/minigl.h>
 
@@ -61,24 +63,23 @@ OS4_MiniGL_LoadLibrary(SDL_VideoDevice *_this, const char * path)
 
     if (!MiniGLBase) {
         MiniGLBase = OS4_OpenLibrary("minigl.library", 2);
+    }
 
-        if (!MiniGLBase) {
-            dprintf("Failed to open minigl.library\n");
-            return SDL_SetError("Failed to open minigl.library");
-        }
+    if (!MiniGLBase) {
+        dprintf("Failed to open minigl.library\n");
+        return SDL_SetError("Failed to open minigl.library");
     }
 
     if (!IMiniGL) {
         IMiniGL = (struct MiniGLIFace *) OS4_GetInterface(MiniGLBase);
-
-        if (!IMiniGL) {
-            dprintf("Failed to open MiniGL interace\n");
-            return SDL_SetError("Failed to open MiniGL interface");
-        }
-
-        dprintf("MiniGL library opened\n");
     }
 
+    if (!IMiniGL) {
+        dprintf("Failed to open MiniGL interace\n");
+        return SDL_SetError("Failed to open MiniGL interface");
+    }
+
+    dprintf("MiniGL library opened\n");
     return true;
 }
 
@@ -190,79 +191,76 @@ OS4_MiniGL_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
 {
     dprintf("Called\n");
 
-    if (IMiniGL) {
-        uint32 depth;
-
-        SDL_WindowData * data = window->internal;
-
-        if (data->glContext) {
-            struct GLContextIFace *IGL = (struct GLContextIFace *)data->glContext;
-
-            dprintf("Old context %p found, deleting\n", data->glContext);
-
-            IGL->DeleteContext();
-
-            data->glContext = NULL;
-        }
-
-        depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
-
-        if (!OS4_GL_AllocateBuffers(_this, window->w, window->h, depth, data)) {
-            SDL_SetError("Failed to allocate MiniGL buffers");
-            return NULL;
-        }
-
-        data->glContext = IMiniGL->CreateContextTags(
-                        MGLCC_PrivateBuffers,   2,
-                        MGLCC_FrontBuffer,      data->glFrontBuffer,
-                        MGLCC_BackBuffer,       data->glBackBuffer,
-                        MGLCC_Buffers,          2,
-                        MGLCC_PixelDepth,       depth,
-                        MGLCC_StencilBuffer,    TRUE,
-                        MGLCC_VertexBufferSize, 1 << 17,
-                        TAG_DONE);
-
-        if (data->glContext) {
-
-            dprintf("MiniGL context %p created for window '%s'\n",
-                data->glContext, window->title);
-
-            ((struct GLContextIFace *)data->glContext)->GLViewport(0, 0, window->w, window->h);
-            mglMakeCurrent(data->glContext);
-            mglLockMode(MGL_LOCK_SMART);
-
-            return (SDL_GLContext)data->glContext;
-        } else {
-            dprintf("Failed to create MiniGL context for window '%s'\n", window->title);
-
-            SDL_SetError("Failed to create MiniGL context");
-
-            OS4_GL_FreeBuffers(_this, data);
-
-            return NULL;
-        }
-
-    } else {
+    if (!IMiniGL) {
         OS4_MiniGL_LogLibraryError();
         return NULL;
     }
+
+    uint32 depth;
+
+    SDL_WindowData * data = window->internal;
+
+    if (data->glContext) {
+        struct GLContextIFace *IGL = (struct GLContextIFace *)data->glContext;
+
+        dprintf("Old context %p found, deleting\n", data->glContext);
+
+        IGL->DeleteContext();
+
+        data->glContext = NULL;
+    }
+
+    depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
+
+    if (!OS4_GL_AllocateBuffers(_this, window->w, window->h, depth, data)) {
+        SDL_SetError("Failed to allocate MiniGL buffers");
+        return NULL;
+    }
+
+    data->glContext = IMiniGL->CreateContextTags(
+                    MGLCC_PrivateBuffers,   2,
+                    MGLCC_FrontBuffer,      data->glFrontBuffer,
+                    MGLCC_BackBuffer,       data->glBackBuffer,
+                    MGLCC_Buffers,          2,
+                    MGLCC_PixelDepth,       depth,
+                    MGLCC_StencilBuffer,    TRUE,
+                    MGLCC_VertexBufferSize, 1 << 17,
+                    TAG_DONE);
+
+    if (!data->glContext) {
+        dprintf("Failed to create MiniGL context for window '%s'\n", window->title);
+
+        SDL_SetError("Failed to create MiniGL context");
+
+        OS4_GL_FreeBuffers(_this, data);
+
+        return NULL;
+    }
+
+    dprintf("MiniGL context %p created for window '%s'\n",
+        data->glContext, window->title);
+
+    ((struct GLContextIFace *)data->glContext)->GLViewport(0, 0, window->w, window->h);
+    mglMakeCurrent(data->glContext);
+    mglLockMode(MGL_LOCK_SMART);
+
+    return (SDL_GLContext)data->glContext;
 }
 
 bool
 OS4_MiniGL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext context)
 {
+    if (!IMiniGL) {
+        OS4_MiniGL_LogLibraryError();
+        return false;
+    }
+
     if (!window || !context) {
         dprintf("Called (window %p, context %p)\n", window, context);
     }
 
-    if (IMiniGL) {
-        mglMakeCurrent(context);
-        return true;
-    } else {
-        OS4_MiniGL_LogLibraryError();
-    }
-
-    return false;
+    mglMakeCurrent(context);
+    return true;
 }
 
 void
@@ -305,77 +303,76 @@ OS4_MiniGL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
     //dprintf("Called\n");
 
-    if (IMiniGL) {
-
-        SDL_WindowData *data = window->internal;
-
-        if (data->glContext) {
-            SDL_VideoData *videodata = _this->internal;
-
-            struct BitMap *temp;
-            int w, h;
-            GLint buf;
-
-            int32 blitRet;
-
-            mglUnlockDisplay();
-
-            ((struct GLContextIFace *)data->glContext)->MGLWaitGL(); // TODO: still needed?
-
-            OS4_GetWindowSize(data->syswin, &w, &h);
-
-            if (videodata->vsyncEnabled) {
-                IGraphics->WaitTOF();
-            }
-
-            glGetIntegerv(GL_DRAW_BUFFER, &buf);
-
-            if (buf == GL_BACK || buf == GL_FRONT) {
-                struct BitMap *from = (buf == GL_BACK) ? data->glBackBuffer : data->glFrontBuffer;
-
-                BOOL ret = IGraphics->BltBitMapRastPort(from, 0, 0, data->syswin->RPort,
-                    data->syswin->BorderLeft, data->syswin->BorderTop, w, h, 0xC0);
-
-                if (!ret) {
-                    dprintf("BltBitMapRastPort() failed\n");
-                }
-            }
-
-            blitRet = IGraphics->BltBitMapTags(BLITA_Source,  data->glBackBuffer,
-                                     BLITA_SrcType, BLITT_BITMAP,
-                                     BLITA_SrcX,    0,
-                                     BLITA_SrcY,    0,
-                                     BLITA_Dest,    data->glFrontBuffer,
-                                     BLITA_DestType,BLITT_BITMAP,
-                                     BLITA_DestX,   0,
-                                     BLITA_DestY,   0,
-                                     BLITA_Width,   w,
-                                     BLITA_Height,  h,
-                                     BLITA_Minterm, 0xC0,
-                                     TAG_DONE);
-
-            if (blitRet == -1) {
-                temp = data->glFrontBuffer;
-                data->glFrontBuffer = data->glBackBuffer;
-                data->glBackBuffer = temp;
-
-                ((struct GLContextIFace *)data->glContext)->MGLUpdateContextTags(
-                                    MGLCC_FrontBuffer,data->glFrontBuffer,
-                                    MGLCC_BackBuffer, data->glBackBuffer,
-                                    TAG_DONE);
-                return true;
-            } else {
-                dprintf("BltBitMapTags() returned %ld\n", blitRet);
-                return SDL_SetError("BltBitMapTags failed");
-            }
-        } else {
-            dprintf("No MiniGL context\n");
-        }
-    } else {
+    if (!IMiniGL) {
         OS4_MiniGL_LogLibraryError();
+        return false;
     }
 
-    return false;
+    SDL_WindowData *data = window->internal;
+
+    if (!data->glContext) {
+        dprintf("No MiniGL context\n");
+        return false;
+    }
+
+    SDL_VideoData *videodata = _this->internal;
+
+    int w = 0;
+    int h = 0;
+    GLint buf = 0;
+
+    int32 blitRet;
+
+    mglUnlockDisplay();
+
+    ((struct GLContextIFace *)data->glContext)->MGLWaitGL(); // TODO: still needed?
+
+    OS4_GetWindowSize(data->syswin, &w, &h);
+
+    if (videodata->vsyncEnabled) {
+        IGraphics->WaitTOF();
+    }
+
+    glGetIntegerv(GL_DRAW_BUFFER, &buf);
+
+    if (buf == GL_BACK || buf == GL_FRONT) {
+        struct BitMap *from = (buf == GL_BACK) ? data->glBackBuffer : data->glFrontBuffer;
+
+        BOOL ret = IGraphics->BltBitMapRastPort(from, 0, 0, data->syswin->RPort,
+            data->syswin->BorderLeft, data->syswin->BorderTop, w, h, 0xC0);
+
+        if (!ret) {
+            dprintf("BltBitMapRastPort() failed\n");
+        }
+    }
+
+    blitRet = IGraphics->BltBitMapTags(BLITA_Source,  data->glBackBuffer,
+                             BLITA_SrcType, BLITT_BITMAP,
+                             BLITA_SrcX,    0,
+                             BLITA_SrcY,    0,
+                             BLITA_Dest,    data->glFrontBuffer,
+                             BLITA_DestType,BLITT_BITMAP,
+                             BLITA_DestX,   0,
+                             BLITA_DestY,   0,
+                             BLITA_Width,   w,
+                             BLITA_Height,  h,
+                             BLITA_Minterm, 0xC0,
+                             TAG_DONE);
+
+    if (blitRet != -1) {
+        dprintf("BltBitMapTags() returned %ld\n", blitRet);
+        return SDL_SetError("BltBitMapTags failed");
+    }
+
+    struct BitMap *temp = data->glFrontBuffer;
+    data->glFrontBuffer = data->glBackBuffer;
+    data->glBackBuffer = temp;
+
+    ((struct GLContextIFace *)data->glContext)->MGLUpdateContextTags(
+                        MGLCC_FrontBuffer,data->glFrontBuffer,
+                        MGLCC_BackBuffer, data->glBackBuffer,
+                        TAG_DONE);
+    return true;
 }
 
 bool
@@ -383,37 +380,37 @@ OS4_MiniGL_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
 {
     dprintf("Called with context=%p\n", context);
 
-    if (IMiniGL) {
-        if (context) {
-            SDL_Window *sdlwin;
-            Uint32 deletions = 0;
-
-            for (sdlwin = _this->windows; sdlwin; sdlwin = sdlwin->next) {
-                SDL_WindowData *data = sdlwin->internal;
-
-                if ((SDL_GLContext)data->glContext == context) {
-                    struct GLContextIFace *IGL = (struct GLContextIFace *)context;
-
-                    dprintf("Found MiniGL context, clearing window binding\n");
-
-                    IGL->DeleteContext();
-
-                    data->glContext = NULL;
-                    deletions++;
-                }
-            }
-
-            if (deletions == 0) {
-                dprintf("MiniGL context doesn't seem to have window binding\n");
-		return false;
-            }
-        } else {
-            dprintf("No context to delete\n");
-	    return false;
-        }
-    } else {
+    if (!IMiniGL) {
         OS4_MiniGL_LogLibraryError();
-	return false;
+        return false;
+    }
+
+    if (!context) {
+       dprintf("No context to delete\n");
+       return false;
+    }
+
+    SDL_Window *sdlwin;
+    Uint32 deletions = 0;
+
+    for (sdlwin = _this->windows; sdlwin; sdlwin = sdlwin->next) {
+        SDL_WindowData *data = sdlwin->internal;
+
+        if ((SDL_GLContext)data->glContext == context) {
+            struct GLContextIFace *IGL = (struct GLContextIFace *)context;
+
+            dprintf("Found MiniGL context, clearing window binding\n");
+
+            IGL->DeleteContext();
+
+            data->glContext = NULL;
+            deletions++;
+        }
+    }
+
+    if (deletions == 0) {
+        dprintf("MiniGL context doesn't seem to have window binding\n");
+        return false;
     }
 
     return true;
@@ -422,31 +419,30 @@ OS4_MiniGL_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
 bool
 OS4_MiniGL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    if (IMiniGL) {
-        SDL_WindowData *data = window->internal;
-
-        uint32 depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
-
-        if (OS4_GL_AllocateBuffers(_this, window->floating.w, window->floating.h, depth, data)) {
-            dprintf("Resizing MiniGL context to %d*%d\n", window->floating.w, window->floating.h);
-
-            ((struct GLContextIFace *)data->glContext)->MGLUpdateContextTags(
-                            MGLCC_FrontBuffer, data->glFrontBuffer,
-                            MGLCC_BackBuffer, data->glBackBuffer,
-                            TAG_DONE);
-
-            ((struct GLContextIFace *)data->glContext)->GLViewport(0, 0, window->floating.w, window->floating.h);
-
-            return true;
-        } else {
-            dprintf("Failed to re-allocate MiniGL buffers\n");
-            //SDL_Quit();
-        }
-    } else {
+    if (!IMiniGL) {
         OS4_MiniGL_LogLibraryError();
+        return false;
     }
 
-    return false;
+    SDL_WindowData *data = window->internal;
+
+    uint32 depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
+
+    if (!OS4_GL_AllocateBuffers(_this, window->floating.w, window->floating.h, depth, data)) {
+        dprintf("Failed to re-allocate MiniGL buffers\n");
+        return false;
+    }
+
+    dprintf("Resizing MiniGL context to %d*%d\n", window->floating.w, window->floating.h);
+
+    ((struct GLContextIFace *)data->glContext)->MGLUpdateContextTags(
+                    MGLCC_FrontBuffer, data->glFrontBuffer,
+                    MGLCC_BackBuffer, data->glBackBuffer,
+                    TAG_DONE);
+
+    ((struct GLContextIFace *)data->glContext)->GLViewport(0, 0, window->floating.w, window->floating.h);
+
+    return true;
 }
 
 void
@@ -454,5 +450,7 @@ OS4_MiniGL_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window)
 {
     // Nothing to do for MiniGL
 }
+
+#endif /* SDL_VIDEO_OPENGL */
 
 #endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */
