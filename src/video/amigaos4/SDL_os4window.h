@@ -55,7 +55,7 @@ typedef struct
 
     Uint32            pointerGrabTicks;
 
-    void*           * glContext;
+    void            * glContext;
     struct BitMap   * glFrontBuffer;
     struct BitMap   * glBackBuffer;
 
