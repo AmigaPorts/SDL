@@ -39,6 +39,7 @@
 #include "SDL_os4mouse.h"
 #include "SDL_os4minigl.h"
 #include "SDL_os4opengles2.h"
+#include "SDL_os4mesa.h"
 #include "SDL_os4messagebox.h"
 #include "SDL_os4modes.h"
 #include "SDL_os4keyboard.h"
@@ -323,27 +324,32 @@ OS4_SetOGLES2Functions(SDL_VideoDevice * device)
 }
 #endif
 
+#if SDL_VIDEO_OPENGL_MESA
+static void
+OS4_SetMesaFunctions(SDL_VideoDevice * device)
+{
+    device->GL_GetProcAddress = OS4_Mesa_GetProcAddress;
+    device->GL_UnloadLibrary = OS4_Mesa_UnloadLibrary;
+    device->GL_MakeCurrent = OS4_Mesa_MakeCurrent;
+    device->GL_SetSwapInterval = OS4_GL_SetSwapInterval;
+    device->GL_GetSwapInterval = OS4_GL_GetSwapInterval;
+    device->GL_SwapWindow = OS4_Mesa_SwapWindow;
+    device->GL_CreateContext = OS4_Mesa_CreateContext;
+    device->GL_DestroyContext = OS4_Mesa_DestroyContext;
+    //device->GL_DefaultProfileConfig = OS4_Mesa_DefaultProfileConfig;
+
+    OS4_ResizeGlContext = NULL;
+    OS4_UpdateGlWindowPointer = OS4_Mesa_UpdateWindowPointer;
+}
+#endif
+
+#if SDL_VIDEO_OPENGL
 static bool
 OS4_IsMiniGL(SDL_VideoDevice *_this)
 {
     if ((_this->gl_config.profile_mask == 0) &&
         (_this->gl_config.major_version == 1) &&
         (_this->gl_config.minor_version == 3)) {
-            dprintf("OpenGL 1.3 requested\n");
-            return true;
-    }
-
-    return false;
-}
-
-#if SDL_VIDEO_OPENGL_ES2
-static bool
-OS4_IsOpenGLES2(SDL_VideoDevice *_this)
-{
-    if ((_this->gl_config.profile_mask == SDL_GL_CONTEXT_PROFILE_ES) &&
-        (_this->gl_config.major_version == 2) &&
-        (_this->gl_config.minor_version == 0)) {
-            dprintf("OpenGL ES 2.0 requested\n");
             return true;
     }
 
@@ -351,23 +357,59 @@ OS4_IsOpenGLES2(SDL_VideoDevice *_this)
 }
 #endif
 
+#if SDL_VIDEO_OPENGL_ES2
+static bool
+OS4_IsOGLES2(SDL_VideoDevice *_this)
+{
+    if ((_this->gl_config.profile_mask == SDL_GL_CONTEXT_PROFILE_ES) &&
+        (_this->gl_config.major_version == 2) &&
+        (_this->gl_config.minor_version == 0)) {
+            return true;
+    }
+
+    return false;
+}
+#endif
+
+#if SDL_VIDEO_OPENGL_MESA
+static bool
+OS4_IsMesa(SDL_VideoDevice *_this)
+{
+    // TODO: check what is supported
+    return true;
+}
+#endif
+
 static bool
 OS4_LoadGlLibrary(SDL_VideoDevice *_this, const char * path)
 {
-    dprintf("Profile_mask %d, major ver %d, minor ver %d\n",
+    dprintf("Profile_mask %d, major ver %d, minor ver %d, path %s\n",
         _this->gl_config.profile_mask,
         _this->gl_config.major_version,
-        _this->gl_config.minor_version);
+        _this->gl_config.minor_version,
+        path);
 
+#if SDL_VIDEO_OPENGL
     if (OS4_IsMiniGL(_this)) {
+        dprintf("Loading MiniGL\n");
         OS4_SetMiniGLFunctions(_this);
         return OS4_MiniGL_LoadLibrary(_this, path);
     }
+#endif
 
 #if SDL_VIDEO_OPENGL_ES2
-    if (OS4_IsOpenGLES2(_this)) {
+    if (OS4_IsOGLES2(_this)) {
+        dprintf("Loading OGLES2\n");
         OS4_SetOGLES2Functions(_this);
         return OS4_OGLES2_LoadLibrary(_this, path);
+    }
+#endif
+
+#if SDL_VIDEO_OPENGL_MESA
+    if (OS4_IsMesa(_this)) {
+        dprintf("Loading Mesa\n");
+        OS4_SetMesaFunctions(_this);
+        return OS4_Mesa_LoadLibrary(_this, path);
     }
 #endif
 

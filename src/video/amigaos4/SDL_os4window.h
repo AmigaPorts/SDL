@@ -64,6 +64,10 @@ struct SDL_WindowData
     struct Gadget   * gadget;
     struct Image    * image;
 
+#ifdef SDL_VIDEO_OPENGL_MESA
+    void            * mesaDrawable;
+#endif
+
     BOOL              wasMaximized; /* Remember state when going to fullscreen mode, or back */
 };
 
