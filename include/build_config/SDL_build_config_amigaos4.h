@@ -185,8 +185,9 @@
 #define SDL_VIDEO_RENDER_AMIGAOS4 1
 
 /* Enable OpenGL support */
-#define SDL_VIDEO_OPENGL 1
-#define SDL_VIDEO_OPENGL_ES2 1
+#define SDL_VIDEO_OPENGL 1 // MiniGL
+#define SDL_VIDEO_OPENGL_ES2 1 // OGLES2
+#define SDL_VIDEO_OPENGL_MESA 1 // Mesa
 
 /* Enable Vulkan support */
 
