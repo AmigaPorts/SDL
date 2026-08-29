@@ -364,6 +364,7 @@
 /* #undef SDL_VIDEO_OPENGL_WGL */
 /* #undef SDL_VIDEO_OPENGL_OSMESA */
 /* #undef SDL_VIDEO_OPENGL_OSMESA_DYNAMIC */
+#define SDL_VIDEO_OPENGL_MESA 1
 
 /* Enable Vulkan support */
 /* #undef SDL_VIDEO_VULKAN */
