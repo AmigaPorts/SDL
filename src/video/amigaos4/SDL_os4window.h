@@ -59,6 +59,10 @@ typedef struct
     struct BitMap   * glFrontBuffer;
     struct BitMap   * glBackBuffer;
 
+#ifdef SDL_VIDEO_OPENGL_MESA
+    void            * mesaDrawable;
+#endif
+
     HitTestInfo       hti;
 
     struct Gadget   * gadget;

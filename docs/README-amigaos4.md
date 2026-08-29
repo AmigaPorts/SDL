@@ -5,6 +5,7 @@ SDL 2 requirements
 AmigaOS 4.1 Final Edition
 MiniGL (optional)
 OpenGL ES 2.0 (optional)
+Mesa (optional)
 
 ================================================================================
 Installation
@@ -128,11 +129,19 @@ version before window creation, for example:
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 
-MiniGL context can be created using major version 1 and minor version 3. This is
-also the default setup.
+MiniGL context can be created using major version 1 and minor version 3.
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+
+Mesa context is the third option. It will be attempted if versions don't match
+exactly to MiniGL or OGLES2.
+
+Mesa headers conflict with MiniGL and OGLES2 headers, so if you want to build
+an SDL library that supports multiple OpenGL libraries, then you need to install
+headers in separate directories and use preprocessor to include correct ones.
+
+Alternatively you can disable unwanted OpenGL libraries from build config.
 
 ================================================================================
 About Joysticks
