@@ -31,15 +31,11 @@ extern void OS4_MiniGL_UnloadLibrary(SDL_VideoDevice *_this);
 extern SDL_GLContext OS4_MiniGL_CreateContext(SDL_VideoDevice *_this, SDL_Window * window);
 extern bool OS4_MiniGL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext context);
 extern void OS4_MiniGL_GetDrawableSize(SDL_VideoDevice *_this, SDL_Window * window, int *w, int *h);
-extern bool OS4_GL_SetSwapInterval(SDL_VideoDevice *_this, int interval);
-extern bool OS4_GL_GetSwapInterval(SDL_VideoDevice *_this, int* interval);
 extern bool OS4_MiniGL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window);
 extern bool OS4_MiniGL_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context);
 
 /* Non-SDL functions */
-extern bool OS4_GL_AllocateBuffers(SDL_VideoDevice *_this, int width, int height, int depth, SDL_WindowData * data);
-extern void OS4_GL_FreeBuffers(SDL_VideoDevice *_this, SDL_WindowData * data);
+extern void OS4_MiniGL_FreeBuffers(SDL_VideoDevice *_this, SDL_WindowData * data);
 extern bool OS4_MiniGL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window);
-extern void OS4_MiniGL_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window);
 
 #endif /* SDL_os4minigl_h_ */

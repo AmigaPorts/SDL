@@ -52,8 +52,6 @@
 #define CATCOMP_NUMBERS
 #include "../../amiga-extra/locale_generated.h"
 
-extern bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window);
-
 struct MyIntuiMessage
 {
     uint32 Class;
@@ -555,7 +553,7 @@ OS4_HandleResize(SDL_VideoDevice *_this, struct MyIntuiMessage * imsg)
                     imsg->InnerWidth,
                     imsg->InnerHeight);
 
-                if (data->glContext /*sdlwin->flags & SDL_WINDOW_OPENGL*/ ) {
+                if (data->glContext && OS4_ResizeGlContext/*sdlwin->flags & SDL_WINDOW_OPENGL*/) {
                     OS4_ResizeGlContext(_this, sdlwin);
                 }
             }

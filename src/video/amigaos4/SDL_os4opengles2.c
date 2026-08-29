@@ -233,13 +233,6 @@ OS4_OGLES2_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
     return true;
 }
 
-bool
-OS4_OGLES2_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
-{
-    // TODO: remove function?
-    return true;
-}
-
 void
 OS4_OGLES2_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window)
 {

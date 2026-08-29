@@ -57,6 +57,35 @@ bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window) = NULL;
 void (*OS4_UpdateGlWindowPointer)(SDL_VideoDevice *_this, SDL_Window * window) = NULL;
 
 static bool
+OS4_GL_SetSwapInterval(SDL_VideoDevice *_this, int interval)
+{
+    SDL_VideoData *data = _this->internal;
+
+    switch (interval) {
+        case 0:
+        case 1:
+            data->vsyncEnabled = interval ? TRUE : FALSE;
+            dprintf("VSYNC %d\n", interval);
+            return true;
+        default:
+            dprintf("Unsupported interval %d\n", interval);
+            return false;
+    }
+}
+
+static bool
+OS4_GL_GetSwapInterval(SDL_VideoDevice *_this, int* interval)
+{
+    //dprintf("Called\n");
+
+    SDL_VideoData *data = _this->internal;
+
+    *interval = data->vsyncEnabled ? 1 : 0;
+
+    return true;
+}
+
+static bool
 OS4_SuspendScreenSaver(SDL_VideoDevice *_this)
 {
     SDL_VideoData *data = (SDL_VideoData *) _this->internal;
@@ -264,7 +293,6 @@ OS4_SetMiniGLFunctions(SDL_VideoDevice * device)
     device->GL_GetProcAddress = OS4_MiniGL_GetProcAddress;
     device->GL_UnloadLibrary = OS4_MiniGL_UnloadLibrary;
     device->GL_MakeCurrent = OS4_MiniGL_MakeCurrent;
-    //device->GL_GetDrawableSize = OS4_MiniGL_GetDrawableSize; TODO:
     device->GL_SetSwapInterval = OS4_GL_SetSwapInterval;
     device->GL_GetSwapInterval = OS4_GL_GetSwapInterval;
     device->GL_SwapWindow = OS4_MiniGL_SwapWindow;
@@ -273,26 +301,24 @@ OS4_SetMiniGLFunctions(SDL_VideoDevice * device)
     //device->GL_DefaultProfileConfig = OS4_MiniGL_DefaultProfileConfig;
 
     OS4_ResizeGlContext = OS4_MiniGL_ResizeContext;
-    OS4_UpdateGlWindowPointer = OS4_MiniGL_UpdateWindowPointer;
+    OS4_UpdateGlWindowPointer = NULL;
 }
 
 #if SDL_VIDEO_OPENGL_ES2
 static void
 OS4_SetOGLES2Functions(SDL_VideoDevice * device)
 {
-    /* Some functions are recycled from SDL_os4opengl.c 100% ... */
     device->GL_GetProcAddress = OS4_OGLES2_GetProcAddress;
     device->GL_UnloadLibrary = OS4_OGLES2_UnloadLibrary;
     device->GL_MakeCurrent = OS4_OGLES2_MakeCurrent;
-    //device->GL_GetDrawableSize = OS4_GL_GetDrawableSize; // TODO:
     device->GL_SetSwapInterval = OS4_GL_SetSwapInterval;
     device->GL_GetSwapInterval = OS4_GL_GetSwapInterval;
     device->GL_SwapWindow = OS4_OGLES2_SwapWindow;
     device->GL_CreateContext = OS4_OGLES2_CreateContext;
     device->GL_DestroyContext = OS4_OGLES2_DestroyContext;
-    //device->GL_DefaultProfileConfig = OS4_(O)GL(ES2)_DefaultProfileConfig;
+    //device->GL_DefaultProfileConfig = OS4_OGLES2_DefaultProfileConfig;
 
-    OS4_ResizeGlContext = OS4_OGLES2_ResizeContext;
+    OS4_ResizeGlContext = NULL;
     OS4_UpdateGlWindowPointer = OS4_OGLES2_UpdateWindowPointer;
 }
 #endif
