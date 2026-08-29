@@ -59,4 +59,7 @@ extern void OS4_SaveFreeVecPooled(SDL_VideoDevice *this, void *mem);
 
 extern SDL_DECLSPEC struct MsgPort * OS4_GetSharedMessagePort();
 
+extern bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window);
+extern void (*OS4_UpdateGlWindowPointer)(SDL_VideoDevice *_this, SDL_Window * window);
+
 #endif /* SDL_os4video_h_ */

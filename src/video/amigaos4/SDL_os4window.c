@@ -54,9 +54,6 @@
 
 #define MIN_WINDOW_SIZE 100
 
-extern bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window);
-extern void (*OS4_UpdateGlWindowPointer)(SDL_VideoDevice *_this, SDL_Window * window);
-
 static void OS4_CloseSystemWindow(SDL_VideoDevice *_this, struct Window * window);
 static void OS4_CloseWindow(SDL_VideoDevice *_this, SDL_Window * sdlwin);
 
@@ -635,7 +632,7 @@ OS4_SetWindowBox(SDL_VideoDevice *_this, SDL_Window * window, SDL_Rect * rect)
             dprintf("SetWindowAttrs() returned %ld\n", ret);
         }
 
-        if (data->glContext) {
+        if (data->glContext && OS4_ResizeGlContext) {
             OS4_ResizeGlContext(_this, window);
         }
     }
@@ -889,7 +886,7 @@ OS4_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDi
                 // Make sure the new window is active
                 OS4_ShowWindow(_this, window);
 
-                if ((window->flags & SDL_WINDOW_OPENGL) && data->glContext) {
+                if ((window->flags & SDL_WINDOW_OPENGL) && data->glContext && OS4_UpdateGlWindowPointer) {
                     OS4_UpdateGlWindowPointer(_this, window);
                 }
 
@@ -997,9 +994,11 @@ OS4_DestroyWindow(SDL_VideoDevice *_this, SDL_Window * window)
         }
     }
 
+#ifdef SDL_VIDEO_OPENGL
     if (window->flags & SDL_WINDOW_OPENGL) {
-        OS4_GL_FreeBuffers(_this, data);
+        OS4_MiniGL_FreeBuffers(_this, data);
     }
+#endif
 
     SDL_free(data);
     window->internal = NULL;
@@ -1236,7 +1235,7 @@ OS4_RecreateWindow(SDL_VideoDevice *_this, SDL_Window * window)
         // Make sure the new window is active
         OS4_ShowWindow(_this, window);
 
-        if ((window->flags & SDL_WINDOW_OPENGL) && data->glContext) {
+        if ((window->flags & SDL_WINDOW_OPENGL) && data->glContext && OS4_UpdateGlWindowPointer) {
             OS4_UpdateGlWindowPointer(_this, window);
         }
     } else {

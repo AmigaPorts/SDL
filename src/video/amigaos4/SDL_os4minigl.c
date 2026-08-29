@@ -111,7 +111,7 @@ OS4_MiniGL_UnloadLibrary(SDL_VideoDevice *_this)
 }
 
 bool
-OS4_GL_AllocateBuffers(SDL_VideoDevice *_this, int width, int height, int depth, SDL_WindowData * data)
+OS4_MiniGL_AllocateBuffers(SDL_VideoDevice *_this, int width, int height, int depth, SDL_WindowData * data)
 {
     dprintf("Allocate double buffer bitmaps %d*%d*%d\n", width, height, depth);
 
@@ -119,7 +119,7 @@ OS4_GL_AllocateBuffers(SDL_VideoDevice *_this, int width, int height, int depth,
         dprintf("Old front buffer pointer %p, back buffer pointer %p\n",
             data->glFrontBuffer, data->glBackBuffer);
 
-        OS4_GL_FreeBuffers(_this, data);
+        OS4_MiniGL_FreeBuffers(_this, data);
     }
 
     if (!(data->glFrontBuffer = IGraphics->AllocBitMapTags(
@@ -171,7 +171,7 @@ OS4_GL_AllocateBuffers(SDL_VideoDevice *_this, int width, int height, int depth,
 }
 
 void
-OS4_GL_FreeBuffers(SDL_VideoDevice *_this, SDL_WindowData * data)
+OS4_MiniGL_FreeBuffers(SDL_VideoDevice *_this, SDL_WindowData * data)
 {
     dprintf("Called\n");
 
@@ -212,7 +212,7 @@ OS4_MiniGL_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
 
     depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
 
-    if (!OS4_GL_AllocateBuffers(_this, window->w, window->h, depth, data)) {
+    if (!OS4_MiniGL_AllocateBuffers(_this, window->w, window->h, depth, data)) {
         SDL_SetError("Failed to allocate MiniGL buffers");
         return NULL;
     }
@@ -232,7 +232,7 @@ OS4_MiniGL_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
 
         SDL_SetError("Failed to create MiniGL context");
 
-        OS4_GL_FreeBuffers(_this, data);
+        OS4_MiniGL_FreeBuffers(_this, data);
 
         return NULL;
     }
@@ -267,35 +267,6 @@ void
 OS4_MiniGL_GetDrawableSize(SDL_VideoDevice *_this, SDL_Window * window, int * w, int * h)
 {
     OS4_WaitForResize(window, w, h);
-}
-
-bool
-OS4_GL_SetSwapInterval(SDL_VideoDevice *_this, int interval)
-{
-    SDL_VideoData *data = _this->internal;
-
-    switch (interval) {
-        case 0:
-        case 1:
-            data->vsyncEnabled = interval ? TRUE : FALSE;
-            dprintf("VSYNC %d\n", interval);
-            return true;
-        default:
-            dprintf("Unsupported interval %d\n", interval);
-            return false;
-    }
-}
-
-bool
-OS4_GL_GetSwapInterval(SDL_VideoDevice *_this, int* interval)
-{
-    //dprintf("Called\n");
-
-    SDL_VideoData *data = _this->internal;
-
-    *interval = data->vsyncEnabled ? 1 : 0;
-
-    return true;
 }
 
 bool
@@ -428,7 +399,7 @@ OS4_MiniGL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
 
     uint32 depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
 
-    if (!OS4_GL_AllocateBuffers(_this, window->floating.w, window->floating.h, depth, data)) {
+    if (!OS4_MiniGL_AllocateBuffers(_this, window->floating.w, window->floating.h, depth, data)) {
         dprintf("Failed to re-allocate MiniGL buffers\n");
         return false;
     }
@@ -443,12 +414,6 @@ OS4_MiniGL_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window)
     ((struct GLContextIFace *)data->glContext)->GLViewport(0, 0, window->floating.w, window->floating.h);
 
     return true;
-}
-
-void
-OS4_MiniGL_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window)
-{
-    // Nothing to do for MiniGL
 }
 
 #endif /* SDL_VIDEO_OPENGL */

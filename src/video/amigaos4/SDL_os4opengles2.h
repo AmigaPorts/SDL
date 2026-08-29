@@ -31,7 +31,6 @@ extern bool OS4_OGLES2_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, 
 extern bool OS4_OGLES2_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window);
 extern bool OS4_OGLES2_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context);
 
-extern bool OS4_OGLES2_ResizeContext(SDL_VideoDevice *_this, SDL_Window * window);
 extern void OS4_OGLES2_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window);
 
 #endif /* SDL_os4opengles2_h_ */
