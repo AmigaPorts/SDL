@@ -228,13 +228,6 @@ OS4_OGLES2_DestroyContext(_THIS, SDL_GLContext context)
     }
 }
 
-SDL_bool
-OS4_OGLES2_ResizeContext(_THIS, SDL_Window * window)
-{
-    // TODO: remove function?
-    return SDL_TRUE;
-}
-
 void
 OS4_OGLES2_UpdateWindowPointer(_THIS, SDL_Window * window)
 {

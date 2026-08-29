@@ -110,8 +110,8 @@ OS4_MiniGL_UnloadLibrary(_THIS)
     OS4_CloseLibrary(&MiniGLBase);
 }
 
-SDL_bool
-OS4_GL_AllocateBuffers(_THIS, int width, int height, int depth, SDL_WindowData * data)
+static SDL_bool
+OS4_MiniGL_AllocateBuffers(_THIS, int width, int height, int depth, SDL_WindowData * data)
 {
     dprintf("Allocate double buffer bitmaps %d*%d*%d\n", width, height, depth);
 
@@ -212,7 +212,7 @@ OS4_MiniGL_CreateContext(_THIS, SDL_Window * window)
 
     depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
 
-    if (!OS4_GL_AllocateBuffers(_this, window->w, window->h, depth, data)) {
+    if (!OS4_MiniGL_AllocateBuffers(_this, window->w, window->h, depth, data)) {
         SDL_SetError("Failed to allocate MiniGL buffers");
         return NULL;
     }
@@ -267,33 +267,6 @@ void
 OS4_GL_GetDrawableSize(_THIS, SDL_Window * window, int * w, int * h)
 {
     OS4_WaitForResize(_this, window, w, h);
-}
-
-int
-OS4_GL_SetSwapInterval(_THIS, int interval)
-{
-    SDL_VideoData *data = _this->driverdata;
-
-    switch (interval) {
-        case 0:
-        case 1:
-            data->vsyncEnabled = interval ? TRUE : FALSE;
-            dprintf("VSYNC %d\n", interval);
-            return 0;
-        default:
-            dprintf("Unsupported interval %d\n", interval);
-            return -1;
-    }
-}
-
-int
-OS4_GL_GetSwapInterval(_THIS)
-{
-    //dprintf("Called\n");
-
-    SDL_VideoData *data = _this->driverdata;
-
-    return data->vsyncEnabled ? 1 : 0;
 }
 
 int
@@ -422,7 +395,7 @@ OS4_MiniGL_ResizeContext(_THIS, SDL_Window * window)
 
     uint32 depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
 
-    if (!OS4_GL_AllocateBuffers(_this, window->w, window->h, depth, data)) {
+    if (!OS4_MiniGL_AllocateBuffers(_this, window->w, window->h, depth, data)) {
         dprintf("Failed to re-allocate MiniGL buffers\n");
         return SDL_FALSE;
     }
@@ -437,12 +410,6 @@ OS4_MiniGL_ResizeContext(_THIS, SDL_Window * window)
     ((struct GLContextIFace *)data->glContext)->GLViewport(0, 0, window->w, window->h);
 
     return SDL_TRUE;
-}
-
-void
-OS4_MiniGL_UpdateWindowPointer(_THIS, SDL_Window * window)
-{
-    // Nothing to do for MiniGL
 }
 
 #endif /* SDL_VIDEO_OPENGL */

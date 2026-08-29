@@ -64,6 +64,33 @@ static void OS4_VideoQuit(_THIS);
 SDL_bool (*OS4_ResizeGlContext)(_THIS, SDL_Window * window) = NULL;
 void (*OS4_UpdateGlWindowPointer)(_THIS, SDL_Window * window) = NULL;
 
+static int
+OS4_GL_SetSwapInterval(_THIS, int interval)
+{
+    SDL_VideoData *data = _this->driverdata;
+
+    switch (interval) {
+        case 0:
+        case 1:
+            data->vsyncEnabled = interval ? TRUE : FALSE;
+            dprintf("VSYNC %d\n", interval);
+            return 0;
+        default:
+            dprintf("Unsupported interval %d\n", interval);
+            return -1;
+    }
+}
+
+static int
+OS4_GL_GetSwapInterval(_THIS)
+{
+    //dprintf("Called\n");
+
+    SDL_VideoData *data = _this->driverdata;
+
+    return data->vsyncEnabled ? 1 : 0;
+}
+
 static SDL_bool
 OS4_CheckInterfaces(_THIS)
 {
@@ -324,7 +351,7 @@ OS4_SetMiniGLFunctions(SDL_VideoDevice * device)
     //device->GL_DefaultProfileConfig = OS4_MiniGL_DefaultProfileConfig;
 
     OS4_ResizeGlContext = OS4_MiniGL_ResizeContext;
-    OS4_UpdateGlWindowPointer = OS4_MiniGL_UpdateWindowPointer;
+    OS4_UpdateGlWindowPointer = NULL;
 }
 
 #if SDL_VIDEO_OPENGL_ES2
@@ -342,7 +369,7 @@ OS4_SetOGLES2Functions(SDL_VideoDevice * device)
     device->GL_DeleteContext = OS4_OGLES2_DeleteContext;
     //device->GL_DefaultProfileConfig = OS4_OGLES2_DefaultProfileConfig;
 
-    OS4_ResizeGlContext = OS4_OGLES2_ResizeContext;
+    OS4_ResizeGlContext = NULL;
     OS4_UpdateGlWindowPointer = OS4_OGLES2_UpdateWindowPointer;
 }
 #endif
