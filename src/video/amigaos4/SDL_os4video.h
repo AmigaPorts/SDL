@@ -60,6 +60,9 @@ extern void OS4_SaveFreeVecPooled(_THIS, void *mem);
 
 extern DECLSPEC struct MsgPort * OS4_GetSharedMessagePort();
 
+extern SDL_bool (*OS4_ResizeGlContext)(_THIS, SDL_Window * window);
+extern void (*OS4_UpdateGlWindowPointer)(_THIS, SDL_Window * window);
+
 #endif /* SDL_os4video_h_ */
 
 /* vi: set ts=4 sw=4 expandtab: */

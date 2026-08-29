@@ -31,7 +31,6 @@ extern int OS4_OGLES2_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext cont
 extern int OS4_OGLES2_SwapWindow(_THIS, SDL_Window * window);
 extern void OS4_OGLES2_DeleteContext(_THIS, SDL_GLContext context);
 
-extern SDL_bool OS4_OGLES2_ResizeContext(_THIS, SDL_Window * window);
 extern void OS4_OGLES2_UpdateWindowPointer(_THIS, SDL_Window * window);
 
 #endif /* SDL_os4opengles_h_ */

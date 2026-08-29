@@ -31,16 +31,12 @@ extern void OS4_MiniGL_UnloadLibrary(_THIS);
 extern SDL_GLContext OS4_MiniGL_CreateContext(_THIS, SDL_Window * window);
 extern int OS4_MiniGL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context);
 extern void OS4_GL_GetDrawableSize(_THIS, SDL_Window * window, int *w, int *h);
-extern int OS4_GL_SetSwapInterval(_THIS, int interval);
-extern int OS4_GL_GetSwapInterval(_THIS);
 extern int OS4_MiniGL_SwapWindow(_THIS, SDL_Window * window);
 extern void OS4_MiniGL_DeleteContext(_THIS, SDL_GLContext context);
 
 /* Non-SDL functions */
-extern SDL_bool Mini_GL_AllocateBuffers(_THIS, int width, int height, int depth, SDL_WindowData * data);
 extern void OS4_MiniGL_FreeBuffers(_THIS, SDL_WindowData * data);
 extern SDL_bool OS4_MiniGL_ResizeContext(_THIS, SDL_Window * window);
-extern void OS4_MiniGL_UpdateWindowPointer(_THIS, SDL_Window * window);
 
 #endif /* SDL_os4opengl_h_ */
 
