@@ -55,9 +55,12 @@ struct SDL_WindowData
 
     Uint32            pointerGrabTicks;
 
-    void            * glContext;
+    void            * glContext; // Common for MiniGL/OGLES2/Mesa
+
+#ifdef SDL_VIDEO_OPENGL // MiniGL only
     struct BitMap   * glFrontBuffer;
     struct BitMap   * glBackBuffer;
+#endif
 
     HitTestInfo       hti;
 
