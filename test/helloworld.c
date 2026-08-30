@@ -1,6 +1,6 @@
 /*
 
-This is not an official SDL2 test. It's a collection of random tests
+This is not an official SDL3 test. It's a collection of random tests
 for doing ad-hoc testing related to AmigaOS 4 port.
 
 */
@@ -300,6 +300,23 @@ static void testFullscreen()
     }
 }
 
+static void getGlInfo()
+{
+    typedef const GLubyte *(APIENTRY* PFNGLGETSTRINGPROC) (GLenum name);
+
+    PFNGLGETSTRINGPROC glGetStringFunc;
+    glGetStringFunc = (PFNGLGETSTRINGPROC)SDL_GL_GetProcAddress("glGetString");
+
+    if (!glGetStringFunc) {
+        printf("Failed to load glGetString: %s\n", SDL_GetError());
+        return;
+    }
+
+    printf("GL_VENDOR: %s\n", glGetStringFunc(GL_VENDOR));
+    printf("GL_RENDERER: %s\n", glGetStringFunc(GL_RENDERER));
+    printf("GL_VERSION: %s\n", glGetStringFunc(GL_VERSION));
+}
+
 // TODO: should load GL functions
 // NOTE: will not work on OGLES2 (try testgles2.c instead of)
 static void drawUsingFixedFunctionPipeline(SDL_Window *w)
@@ -308,6 +325,7 @@ static void drawUsingFixedFunctionPipeline(SDL_Window *w)
         SDL_GLContext c = SDL_GL_CreateContext(w);
 
         if (c) {
+            getGlInfo();
 
             //SDL_GL_SetSwapInterval(1);
 
@@ -384,14 +402,7 @@ static void testDeleteContext()
     }
 }
 
-static void testOpenGL()
-{
-    SDL_Window * w = createWindow("Centered & Resizable OpenGL window");
-
-    drawUsingFixedFunctionPipeline(w);
-}
-
-static void testOpenGLES2()
+static void setGlVersion(int newMajor, int newMinor, int newProfile)
 {
     int mask, major, minor;
 
@@ -401,18 +412,31 @@ static void testOpenGLES2()
 
     printf("Current GL mask %d, major version %d, minor version %d\n", mask, major, minor);
 
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, newProfile);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, newMajor);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, newMinor);
+}
+
+static void testMiniGL()
+{
+    setGlVersion(1, 3, 0);
+
+    SDL_Window * w = createWindow("Centered & Resizable MiniGL window");
+
+    drawUsingFixedFunctionPipeline(w);
+}
+
+static void testOpenGLES2()
+{
+    setGlVersion(2, 0, SDL_GL_CONTEXT_PROFILE_ES);
 
     SDL_Window * w = createWindow("Centered & Resizable OGLES2 window");
 
-    if (w)
-    {
+    if (w) {
         SDL_GLContext c = SDL_GL_CreateContext(w);
 
         if (c) {
-            puts("OGLES2 context created, now exiting");
+            getGlInfo();
             SDL_GL_DestroyContext(c);
         } else {
             puts("Failed to create OGLES2 context");
@@ -422,43 +446,46 @@ static void testOpenGLES2()
     } else {
         puts("Failed to create OGLES2 window");
     }
-
-    // Restore flags
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, mask);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, major);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minor);
 }
 
+static void testMesaInner()
+{
+    SDL_Window * w = createWindow("Centered & Resizable Mesa window");
+
+    if (w) {
+        SDL_GLContext c = SDL_GL_CreateContext(w);
+
+        if (c) {
+            getGlInfo();
+            SDL_GL_DestroyContext(c);
+        } else {
+            puts("Failed to create Mesa context");
+        }
+
+        SDL_DestroyWindow(w);
+    } else {
+        puts("Failed to create Mesa window");
+    }
+}
+
+static void testMesa()
+{
+    setGlVersion(3, 0, SDL_GL_CONTEXT_PROFILE_ES);
+    testMesaInner();
+
+    setGlVersion(3, 2, SDL_GL_CONTEXT_PROFILE_CORE);
+    testMesaInner();
+
+    setGlVersion(2, 0, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+    testMesaInner();
+}
 
 static void testOpenGLSwitching()
 {
-    SDL_Window* w = createWindow("Centered & Resizable OpenGL window");
-
-    if (w) {
-        SDL_DestroyWindow(w);
-    }
-
-    // Switch to OGLES2
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-
-    w = createWindow("Centered & Resizable OGLES2 window");
-
-    if (w) {
-        SDL_DestroyWindow(w);
-    } else {
-        printf("%s\n", SDL_GetError());
-    }
-
-    // Switch back to MiniGL
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-
-    w = createWindow("Centered & Resizable OpenGL window");
-
-    drawUsingFixedFunctionPipeline(w);
+    testMiniGL();
+    testOpenGLES2();
+    testMesa();
+    testMiniGL();
 }
 
 static void testFullscreenOpenGL()
@@ -890,12 +917,12 @@ int main(void)
         if (0) testPath();
         if (0) testWindow();
         if (0) testManyWindows();
-        if (1) testFullscreen();
+        if (0) testFullscreen();
         if (0) testFullscreenOpenGL();
         if (0) testDeleteContext();
-        if (0) testOpenGL();
+        if (0) testMiniGL();
         if (0) testOpenGLES2();
-        if (0) testOpenGLSwitching();
+        if (1) testOpenGLSwitching();
         if (0) testOpenGLVersion();
         if (0) testRenderer();
         if (0) testDraw();
