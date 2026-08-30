@@ -375,8 +375,23 @@ OS4_IsOGLES2(SDL_VideoDevice *_this)
 static bool
 OS4_IsMesa(SDL_VideoDevice *_this)
 {
-    // TODO: check what is supported
-    return true;
+    const int version = _this->gl_config.major_version * 10 + _this->gl_config.minor_version;
+
+    switch(_this->gl_config.profile_mask) {
+        case SDL_GL_CONTEXT_PROFILE_ES:
+            return ((version == 20) ||
+                    (version >= 30 && version <= 32));
+        case SDL_GL_CONTEXT_PROFILE_CORE:
+            return (version >= 32);
+        default:
+            return ((version >= 10 && version <= 15) ||
+                    (version >= 20 && version <= 21) ||
+                    (version >= 30 && version <= 33) ||
+                    (version >= 40 && version <= 46));
+    }
+
+
+    return false;
 }
 #endif
 
