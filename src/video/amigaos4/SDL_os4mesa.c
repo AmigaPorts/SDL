@@ -39,11 +39,11 @@
 static struct Library *Mesabase;
 struct MesaIFace *IMesa;
 
-static void
+static bool
 OS4_Mesa_LogLibraryError()
 {
     dprintf("No Mesa library available\n");
-    SDL_SetError("No Mesa library available");
+    return SDL_SetError("No Mesa library available");
 }
 
 static bool
@@ -71,7 +71,7 @@ OS4_Mesa_CreateWindowDrawable(SDL_VideoDevice *_this, const SDL_WindowData * dat
         { TAG_DONE, TAG_DONE }
     };
 
-    const MesaStatus status = IMesa->MesaCreateWindowDrawable(data->syswin, drawableTags, (MesaDrawable *)&data->mesaDrawable);
+    const MesaStatus status = IMesa->MesaCreateWindowDrawable(data->syswin, drawableTags, (MesaDrawable *)&data->glDrawable);
     if (status != MESA_STATUS_OK) {
         dprintf("MesaCreateWindowDrawable() failed %d\n", status);
         return false;
@@ -96,6 +96,18 @@ OS4_Mesa_DestroyDrawable(MesaDrawable* drawable)
     *drawable = NULL;
 }
 
+static bool
+OS4_Mesa_MakeCurrent2(const SDL_WindowData * data)
+{
+    const MesaStatus status = IMesa->MesaMakeCurrent(data->glContext, data->glDrawable, data->glDrawable);
+    if (!status != MESA_STATUS_OK) {
+        dprintf("MesaMakeCurrent() failed %d\n", status);
+        return false;
+    }
+
+    return true;
+}
+
 static void
 OS4_Mesa_UnbindCurrent()
 {
@@ -103,6 +115,17 @@ OS4_Mesa_UnbindCurrent()
     if (status != MESA_STATUS_OK) {
         dprintf("MesaUnbindContext() failed %d\n", status);
     }
+}
+
+static void
+OS4_Mesa_DestroyContext2(SDL_WindowData * data)
+{
+    const MesaStatus status = IMesa->MesaDestroyContext((MesaContext)data->glContext);
+    if (status != MESA_STATUS_OK) {
+        dprintf("MesaDestroyContext() failed %d\n", status);
+    }
+
+    data->glContext = NULL;
 }
 
 bool
@@ -176,15 +199,8 @@ OS4_Mesa_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
         dprintf("Old context %p found, deleting\n", data->glContext);
 
         OS4_Mesa_UnbindCurrent();
-
-        MesaStatus status = IMesa->MesaDestroyContext((MesaContext)data->glContext);
-        if (status != MESA_STATUS_OK) {
-            dprintf("MesaDestroyContext() failed %d\n", status);
-        }
-
-        data->glContext = NULL;
-
-        OS4_Mesa_DestroyDrawable((MesaDrawable*)&data->mesaDrawable);
+        OS4_Mesa_DestroyContext2(data);
+        OS4_Mesa_DestroyDrawable((MesaDrawable*)&data->glDrawable);
     }
 
     if (!OS4_Mesa_CreateWindowDrawable(_this, data)) {
@@ -212,27 +228,24 @@ OS4_Mesa_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
         { TAG_DONE, TAG_DONE }
     };
 
-    MesaStatus status = IMesa->MesaCreateContext(data->mesaDrawable, contextTags, (MesaContext *)&data->glContext);
+    MesaStatus status = IMesa->MesaCreateContext(data->glDrawable, contextTags, (MesaContext *)&data->glContext);
     if (status != MESA_STATUS_OK) {
         dprintf("MesaCreateContext() failed %d\n", status);
-        OS4_Mesa_DestroyDrawable((MesaDrawable*)&data->mesaDrawable);
+        OS4_Mesa_DestroyDrawable((MesaDrawable*)&data->glDrawable);
         return NULL;
     }
 
     if (!data->glContext) {
         dprintf("Failed to create Mesa context for window '%s'\n", window->title);
         SDL_SetError("Failed to create Mesa context");
-        OS4_Mesa_DestroyDrawable((MesaDrawable*)&data->mesaDrawable);
+        OS4_Mesa_DestroyDrawable((MesaDrawable*)&data->glDrawable);
         return NULL;
     }
 
     dprintf("Mesa context %p created for window '%s'\n",
         data->glContext, window->title);
 
-    status = IMesa->MesaMakeCurrent((MesaContext)data->glContext, data->mesaDrawable, data->mesaDrawable);
-    if (status != MESA_STATUS_OK) {
-        dprintf("MesaMakeCurrent() failed %d\n", status);
-    }
+    OS4_Mesa_MakeCurrent2(data);
 
     IMesa->glViewport(0, 0, window->w, window->h);
     return (SDL_GLContext)data->glContext;
@@ -242,8 +255,7 @@ bool
 OS4_Mesa_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext context)
 {
     if (!IMesa) {
-        OS4_Mesa_LogLibraryError();
-        return false;
+        return OS4_Mesa_LogLibraryError();
     }
 
     if (!window) {
@@ -260,10 +272,12 @@ OS4_Mesa_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext 
 
     SDL_WindowData *data = window->internal;
 
-    const MesaStatus status = IMesa->MesaMakeCurrent((MesaContext)context, data->mesaDrawable, data->mesaDrawable);
+    const MesaStatus status = IMesa->MesaMakeCurrent((MesaContext)context, data->glDrawable, data->glDrawable);
     if (status != MESA_STATUS_OK) {
         dprintf("MesaMakeCurrent() failed %d\n", status);
+        return false;
     }
+
     return true;
 }
 
@@ -273,7 +287,7 @@ OS4_Mesa_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
     //dprintf("Called\n");
 
     if (!IMesa) {
-        OS4_Mesa_LogLibraryError();
+        return OS4_Mesa_LogLibraryError();
     }
 
     SDL_WindowData *data = window->internal;
@@ -291,7 +305,7 @@ OS4_Mesa_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
         IGraphics->WaitTOF();
     }
 
-    const MesaStatus status = IMesa->MesaSwapBuffers(data->mesaDrawable);
+    const MesaStatus status = IMesa->MesaSwapBuffers(data->glDrawable);
     if (status != MESA_STATUS_OK) {
         dprintf("MesaSwapBuffers() failed %d\n", status);
         return false;
@@ -306,8 +320,7 @@ OS4_Mesa_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
     dprintf("Called with context=%p\n", context);
 
     if (!IMesa) {
-        OS4_Mesa_LogLibraryError();
-	    return false;
+        return OS4_Mesa_LogLibraryError();
     }
 
     if (!context) {
@@ -326,14 +339,8 @@ OS4_Mesa_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
         if ((SDL_GLContext)data->glContext == context) {
             dprintf("Found Mesa context, clearing window binding\n");
 
-            const MesaStatus status = IMesa->MesaDestroyContext((MesaContext)context);
-            if (status != MESA_STATUS_OK) {
-                dprintf("MesaDestroyContext() failed %d\n", status);
-            }
-
-            data->glContext = NULL;
-
-            OS4_Mesa_DestroyDrawable((MesaDrawable *)&data->mesaDrawable);
+            OS4_Mesa_DestroyContext2(data);
+            OS4_Mesa_DestroyDrawable((MesaDrawable *)&data->glDrawable);
 
             deletions++;
         }
@@ -360,17 +367,13 @@ OS4_Mesa_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window)
     dprintf("Updating Mesa window pointer %p\n", data->syswin);
 
     OS4_Mesa_UnbindCurrent();
-    OS4_Mesa_DestroyDrawable((MesaDrawable *)&data->mesaDrawable);
+    OS4_Mesa_DestroyDrawable((MesaDrawable *)&data->glDrawable);
 
     if (!OS4_Mesa_CreateWindowDrawable(_this, data)) {
         return;
     }
 
-    const MesaStatus status = IMesa->MesaMakeCurrent(data->glContext, data->mesaDrawable, data->mesaDrawable);
-    if (!status != MESA_STATUS_OK) {
-        dprintf("MesaMakeCurrent() failed %d\n", status);
-        return;
-    }
+    OS4_Mesa_MakeCurrent2(data);
 }
 
 #endif /* SDL_VIDEO_DRIVER_AMIGAOS4 && SDL_VIDEO_OPENGL_MESA */
