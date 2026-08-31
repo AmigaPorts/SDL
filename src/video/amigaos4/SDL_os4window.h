@@ -63,7 +63,7 @@ typedef struct
 #endif
 
 #ifdef SDL_VIDEO_OPENGL_MESA
-    void            * mesaDrawable;
+    void            * glDrawable;
 #endif
 
     HitTestInfo       hti;
