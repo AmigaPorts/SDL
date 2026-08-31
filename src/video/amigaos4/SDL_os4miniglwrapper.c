@@ -23,7 +23,7 @@
 
 /* wrapper functions for MiniGL */
 
-#if SDL_VIDEO_DRIVER_AMIGAOS4
+#if defined(SDL_VIDEO_DRIVER_AMIGAOS4) && defined(SDL_VIDEO_OPENGL)
 
 #include "SDL_os4miniglwrapper.h"
 
@@ -1846,4 +1846,4 @@ void *OS4_GetMiniGLProc(const char *proc)
    return NULL;
 }
 
-#endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */
+#endif /* SDL_VIDEO_DRIVER_AMIGAOS4 && SDL_VIDEO_OPENGL */
