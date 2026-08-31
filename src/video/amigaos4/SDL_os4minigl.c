@@ -20,9 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_AMIGAOS4
-
-#if SDL_VIDEO_OPENGL
+#if defined(SDL_VIDEO_DRIVER_AMIGAOS4) && defined(SDL_VIDEO_OPENGL)
 
 #include <proto/graphics.h>
 #include <proto/minigl.h>
@@ -412,8 +410,4 @@ OS4_MiniGL_ResizeContext(_THIS, SDL_Window * window)
     return SDL_TRUE;
 }
 
-#endif /* SDL_VIDEO_OPENGL */
-
-#endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif /* SDL_VIDEO_DRIVER_AMIGAOS4 && SDL_VIDEO_OPENGL */
