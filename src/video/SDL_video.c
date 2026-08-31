@@ -3732,13 +3732,8 @@ void SDL_GL_ResetAttributes(void)
     _this->gl_config.accelerated = -1; /* accelerated or not, both are fine */
 
 #ifdef SDL_VIDEO_OPENGL
-#ifdef __AMIGAOS4__
-    _this->gl_config.major_version = 1; /* MiniGL */
-    _this->gl_config.minor_version = 3;
-#else
     _this->gl_config.major_version = 2;
     _this->gl_config.minor_version = 1;
-#endif
     _this->gl_config.profile_mask = 0;
 #elif defined(SDL_VIDEO_OPENGL_ES2)
     _this->gl_config.major_version = 2;
