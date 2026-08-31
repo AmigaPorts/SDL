@@ -25,9 +25,6 @@
 #include <proto/graphics.h>
 #include <proto/minigl.h>
 
-#include <GL/gl.h>
-//#include <mgl/gl.h>
-
 #include "SDL_os4video.h"
 #include "SDL_os4window.h"
 #include "SDL_os4library.h"
@@ -120,26 +117,22 @@ OS4_MiniGL_AllocateBuffers(_THIS, int width, int height, int depth, SDL_WindowDa
         OS4_MiniGL_FreeBuffers(_this, data);
     }
 
-    if (!(data->glFrontBuffer = IGraphics->AllocBitMapTags(
-                                    width,
-                                    height,
-                                    depth,
-                                    BMATags_Displayable, TRUE,
-                                    BMATags_Friend, data->syswin->RPort->BitMap,
-                                    TAG_DONE))) {
+    data->glFrontBuffer = IGraphics->AllocBitMapTags(width, height, depth,
+                                        BMATags_Displayable, TRUE,
+                                        BMATags_Friend, data->syswin->RPort->BitMap,
+                                        TAG_DONE);
 
+    if (!data->glFrontBuffer) {
         dprintf("Failed to allocate front buffer\n");
         return SDL_FALSE;
     }
 
-    if (!(data->glBackBuffer = IGraphics->AllocBitMapTags(
-                                    width,
-                                    height,
-                                    depth,
-                                    BMATags_Displayable, TRUE,
-                                    BMATags_Friend, data->syswin->RPort->BitMap,
-                                    TAG_DONE))) {
+    data->glBackBuffer = IGraphics->AllocBitMapTags(width, height, depth,
+                                        BMATags_Displayable, TRUE,
+                                        BMATags_Friend, data->syswin->RPort->BitMap,
+                                        TAG_DONE);
 
+    if (!data->glBackBuffer) {
         dprintf("Failed to allocate back buffer\n");
 
         IGraphics->FreeBitMap(data->glFrontBuffer);
@@ -149,22 +142,12 @@ OS4_MiniGL_AllocateBuffers(_THIS, int width, int height, int depth, SDL_WindowDa
     }
 
 #ifdef DEBUG
-    uint32 srcFmt =
-#endif
-        IGraphics->GetBitMapAttr(data->glBackBuffer, BMA_PIXELFORMAT);
-
-#ifdef DEBUG
-    uint32 src2Fmt =
-#endif
-        IGraphics->GetBitMapAttr(data->glFrontBuffer, BMA_PIXELFORMAT);
-
-#ifdef DEBUG
-    uint32 dstFmt =
-#endif
-        IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_PIXELFORMAT);
+    const uint32 srcFmt = IGraphics->GetBitMapAttr(data->glBackBuffer, BMA_PIXELFORMAT);
+    const uint32 src2Fmt = IGraphics->GetBitMapAttr(data->glFrontBuffer, BMA_PIXELFORMAT);
+    const uint32 dstFmt = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_PIXELFORMAT);
 
     dprintf("SRC FMT %lu, SRC2 FMT %lu, DST FMT %lu\n", srcFmt, src2Fmt, dstFmt);
-
+#endif
     return SDL_TRUE;
 }
 
@@ -194,8 +177,6 @@ OS4_MiniGL_CreateContext(_THIS, SDL_Window * window)
         return NULL;
     }
 
-    uint32 depth;
-
     SDL_WindowData *data = window->driverdata;
 
     if (data->glContext) {
@@ -204,11 +185,10 @@ OS4_MiniGL_CreateContext(_THIS, SDL_Window * window)
         dprintf("Old context %p found, deleting\n", data->glContext);
 
         IGL->DeleteContext();
-
         data->glContext = NULL;
     }
 
-    depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
+    const uint32 depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
 
     if (!OS4_MiniGL_AllocateBuffers(_this, window->w, window->h, depth, data)) {
         SDL_SetError("Failed to allocate MiniGL buffers");
@@ -216,14 +196,14 @@ OS4_MiniGL_CreateContext(_THIS, SDL_Window * window)
     }
 
     data->glContext = IMiniGL->CreateContextTags(
-                    MGLCC_PrivateBuffers,   2,
-                    MGLCC_FrontBuffer,      data->glFrontBuffer,
-                    MGLCC_BackBuffer,       data->glBackBuffer,
-                    MGLCC_Buffers,          2,
-                    MGLCC_PixelDepth,       depth,
-                    MGLCC_StencilBuffer,    TRUE,
-                    MGLCC_VertexBufferSize, 1 << 17,
-                    TAG_DONE);
+                            MGLCC_PrivateBuffers,   2,
+                            MGLCC_FrontBuffer,      data->glFrontBuffer,
+                            MGLCC_BackBuffer,       data->glBackBuffer,
+                            MGLCC_Buffers,          2,
+                            MGLCC_PixelDepth,       depth,
+                            MGLCC_StencilBuffer,    TRUE,
+                            MGLCC_VertexBufferSize, 1 << 17,
+                            TAG_DONE);
 
     if (!data->glContext) {
         dprintf("Failed to create MiniGL context for window '%s'\n", window->title);
@@ -249,8 +229,7 @@ int
 OS4_MiniGL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
 {
     if (!IMiniGL) {
-        OS4_MiniGL_LogLibraryError();
-        return -1;
+        return OS4_MiniGL_LogLibraryError();
     }
 
     if (!window || !context) {
@@ -261,6 +240,7 @@ OS4_MiniGL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
     return 0;
 }
 
+// TODO:
 void
 OS4_GL_GetDrawableSize(_THIS, SDL_Window * window, int * w, int * h)
 {
@@ -289,8 +269,6 @@ OS4_MiniGL_SwapWindow(_THIS, SDL_Window * window)
     int h = 0;
     GLint buf = 0;
 
-    int32 blitRet;
-
     mglUnlockDisplay();
 
     ((struct GLContextIFace *)data->glContext)->MGLWaitGL(); // TODO: still needed?
@@ -306,7 +284,7 @@ OS4_MiniGL_SwapWindow(_THIS, SDL_Window * window)
     if (buf == GL_BACK || buf == GL_FRONT) {
         struct BitMap *from = (buf == GL_BACK) ? data->glBackBuffer : data->glFrontBuffer;
 
-        BOOL ret = IGraphics->BltBitMapRastPort(from, 0, 0, data->syswin->RPort,
+        const BOOL ret = IGraphics->BltBitMapRastPort(from, 0, 0, data->syswin->RPort,
             data->syswin->BorderLeft, data->syswin->BorderTop, w, h, 0xC0);
 
         if (!ret) {
@@ -314,7 +292,7 @@ OS4_MiniGL_SwapWindow(_THIS, SDL_Window * window)
         }
     }
 
-    blitRet = IGraphics->BltBitMapTags(BLITA_Source,  data->glBackBuffer,
+    int32 blitRet = IGraphics->BltBitMapTags(BLITA_Source,  data->glBackBuffer,
                              BLITA_SrcType, BLITT_BITMAP,
                              BLITA_SrcX,    0,
                              BLITA_SrcY,    0,
@@ -391,7 +369,7 @@ OS4_MiniGL_ResizeContext(_THIS, SDL_Window * window)
 
     SDL_WindowData *data = window->driverdata;
 
-    uint32 depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
+    const uint32 depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
 
     if (!OS4_MiniGL_AllocateBuffers(_this, window->w, window->h, depth, data)) {
         dprintf("Failed to re-allocate MiniGL buffers\n");
