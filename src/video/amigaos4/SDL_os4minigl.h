@@ -23,14 +23,11 @@
 #ifndef SDL_os4minigl_h_
 #define SDL_os4minigl_h_
 
-#include "SDL_os4window.h"
-
 extern bool OS4_MiniGL_LoadLibrary(SDL_VideoDevice *_this, const char *path);
 extern SDL_FunctionPointer OS4_MiniGL_GetProcAddress(SDL_VideoDevice *_this, const char *proc);
 extern void OS4_MiniGL_UnloadLibrary(SDL_VideoDevice *_this);
 extern SDL_GLContext OS4_MiniGL_CreateContext(SDL_VideoDevice *_this, SDL_Window * window);
 extern bool OS4_MiniGL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext context);
-extern void OS4_MiniGL_GetDrawableSize(SDL_VideoDevice *_this, SDL_Window * window, int *w, int *h);
 extern bool OS4_MiniGL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window);
 extern bool OS4_MiniGL_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context);
 

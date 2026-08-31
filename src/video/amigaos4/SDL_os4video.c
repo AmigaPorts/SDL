@@ -45,6 +45,7 @@
 #include "SDL_os4keyboard.h"
 #include "SDL_os4library.h"
 #include "SDL_os4locale.h"
+#include "SDL_os4window.h"
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
