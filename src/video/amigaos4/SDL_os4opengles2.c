@@ -36,11 +36,11 @@
 static struct Library *OGLES2base;
 struct OGLES2IFace *IOGLES2;
 
-static void
+static bool
 OS4_OGLES2_LogLibraryError()
 {
     dprintf("No OpenGL ES 2 library available\n");
-    SDL_SetError("No OpenGL ES 2 library available");
+    return SDL_SetError("No OpenGL ES 2 library available");
 }
 
 bool
@@ -155,8 +155,7 @@ OS4_OGLES2_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContex
     }
 
     if (!IOGLES2) {
-        OS4_OGLES2_LogLibraryError();
-        return false;
+        return OS4_OGLES2_LogLibraryError();
     }
 
     aglMakeCurrent(context);
@@ -169,8 +168,7 @@ OS4_OGLES2_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
     //dprintf("Called\n");
 
     if (!IOGLES2) {
-        OS4_OGLES2_LogLibraryError();
-        return false;
+        return OS4_OGLES2_LogLibraryError();
     }
 
     SDL_WindowData *data = window->internal;
@@ -198,8 +196,7 @@ OS4_OGLES2_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
     dprintf("Called with context=%p\n", context);
 
     if (!IOGLES2) {
-        OS4_OGLES2_LogLibraryError();
-        return false;
+        return OS4_OGLES2_LogLibraryError();
     }
 
     if (!context) {
