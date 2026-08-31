@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_AMIGAOS4
+#ifdef SDL_VIDEO_DRIVER_AMIGAOS4
 
 #include <proto/exec.h>
 #include <proto/intuition.h>

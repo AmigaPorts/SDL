@@ -20,9 +20,7 @@
 */
 #include "SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_AMIGAOS4
-
-#if SDL_VIDEO_OPENGL_ES2
+#if defined(SDL_VIDEO_DRIVER_AMIGAOS4) && defined(SDL_VIDEO_OPENGL_ES2)
 
 #include <proto/graphics.h>
 #include <proto/ogles2.h>
@@ -247,6 +245,4 @@ OS4_OGLES2_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window)
     aglSetParamsTags2(OGLES2_CCT_WINDOW, (ULONG)data->syswin, TAG_DONE);
 }
 
-#endif /* SDL_VIDEO_OPENGL_ES2 */
-
-#endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */
+#endif /* SDL_VIDEO_DRIVER_AMIGAOS4 && SDL_VIDEO_OPENGL_ES2 */
