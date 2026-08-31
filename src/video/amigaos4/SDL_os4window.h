@@ -62,14 +62,14 @@ struct SDL_WindowData
     struct BitMap   * glBackBuffer;
 #endif
 
+#ifdef SDL_VIDEO_OPENGL_MESA
+    void            * glDrawable;
+#endif
+
     HitTestInfo       hti;
 
     struct Gadget   * gadget;
     struct Image    * image;
-
-#ifdef SDL_VIDEO_OPENGL_MESA
-    void            * mesaDrawable;
-#endif
 
     BOOL              wasMaximized; /* Remember state when going to fullscreen mode, or back */
 };
