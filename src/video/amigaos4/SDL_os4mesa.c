@@ -20,9 +20,7 @@
 */
 #include "SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_AMIGAOS4
-
-#if SDL_VIDEO_OPENGL_MESA
+#if defined(SDL_VIDEO_DRIVER_AMIGAOS4) && defined(SDL_VIDEO_OPENGL_MESA)
 
 // NOTE: Mesa needs its own GL headers which conflict with both MiniGL and OGLES2.
 // This define is used to reroute preprocessor to correct files.
@@ -375,6 +373,4 @@ OS4_Mesa_UpdateWindowPointer(SDL_VideoDevice *_this, SDL_Window * window)
     }
 }
 
-#endif /* SDL_VIDEO_OPENGL_MESA */
-
-#endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */
+#endif /* SDL_VIDEO_DRIVER_AMIGAOS4 && SDL_VIDEO_OPENGL_MESA */

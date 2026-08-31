@@ -20,7 +20,7 @@
 */
 #include "SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_AMIGAOS4
+#ifdef SDL_VIDEO_DRIVER_AMIGAOS4
 
 #include <proto/exec.h>
 #include <proto/application.h>
@@ -288,6 +288,7 @@ OS4_DeleteDevice(SDL_VideoDevice * device)
     SDL_free(device);
 }
 
+#ifdef SDL_VIDEO_OPENGL
 static void
 OS4_SetMiniGLFunctions(SDL_VideoDevice * device)
 {
@@ -305,7 +306,20 @@ OS4_SetMiniGLFunctions(SDL_VideoDevice * device)
     OS4_UpdateGlWindowPointer = NULL;
 }
 
-#if SDL_VIDEO_OPENGL_ES2
+static bool
+OS4_IsMiniGL(SDL_VideoDevice *_this)
+{
+    if ((_this->gl_config.profile_mask == 0) &&
+        (_this->gl_config.major_version == 1) &&
+        (_this->gl_config.minor_version == 3)) {
+            return true;
+    }
+
+    return false;
+}
+#endif
+
+#ifdef SDL_VIDEO_OPENGL_ES2
 static void
 OS4_SetOGLES2Functions(SDL_VideoDevice * device)
 {
@@ -322,9 +336,21 @@ OS4_SetOGLES2Functions(SDL_VideoDevice * device)
     OS4_ResizeGlContext = NULL;
     OS4_UpdateGlWindowPointer = OS4_OGLES2_UpdateWindowPointer;
 }
+
+static bool
+OS4_IsOGLES2(SDL_VideoDevice *_this)
+{
+    if ((_this->gl_config.profile_mask == SDL_GL_CONTEXT_PROFILE_ES) &&
+        (_this->gl_config.major_version == 2) &&
+        (_this->gl_config.minor_version == 0)) {
+            return true;
+    }
+
+    return false;
+}
 #endif
 
-#if SDL_VIDEO_OPENGL_MESA
+#ifdef SDL_VIDEO_OPENGL_MESA
 static void
 OS4_SetMesaFunctions(SDL_VideoDevice * device)
 {
@@ -341,37 +367,7 @@ OS4_SetMesaFunctions(SDL_VideoDevice * device)
     OS4_ResizeGlContext = NULL;
     OS4_UpdateGlWindowPointer = OS4_Mesa_UpdateWindowPointer;
 }
-#endif
 
-#if SDL_VIDEO_OPENGL
-static bool
-OS4_IsMiniGL(SDL_VideoDevice *_this)
-{
-    if ((_this->gl_config.profile_mask == 0) &&
-        (_this->gl_config.major_version == 1) &&
-        (_this->gl_config.minor_version == 3)) {
-            return true;
-    }
-
-    return false;
-}
-#endif
-
-#if SDL_VIDEO_OPENGL_ES2
-static bool
-OS4_IsOGLES2(SDL_VideoDevice *_this)
-{
-    if ((_this->gl_config.profile_mask == SDL_GL_CONTEXT_PROFILE_ES) &&
-        (_this->gl_config.major_version == 2) &&
-        (_this->gl_config.minor_version == 0)) {
-            return true;
-    }
-
-    return false;
-}
-#endif
-
-#if SDL_VIDEO_OPENGL_MESA
 static bool
 OS4_IsMesa(SDL_VideoDevice *_this)
 {
@@ -404,7 +400,7 @@ OS4_LoadGlLibrary(SDL_VideoDevice *_this, const char * path)
         _this->gl_config.minor_version,
         path);
 
-#if SDL_VIDEO_OPENGL
+#ifdef SDL_VIDEO_OPENGL
     if (OS4_IsMiniGL(_this)) {
         dprintf("Loading MiniGL\n");
         OS4_SetMiniGLFunctions(_this);
@@ -412,7 +408,7 @@ OS4_LoadGlLibrary(SDL_VideoDevice *_this, const char * path)
     }
 #endif
 
-#if SDL_VIDEO_OPENGL_ES2
+#ifdef SDL_VIDEO_OPENGL_ES2
     if (OS4_IsOGLES2(_this)) {
         dprintf("Loading OGLES2\n");
         OS4_SetOGLES2Functions(_this);
@@ -420,7 +416,7 @@ OS4_LoadGlLibrary(SDL_VideoDevice *_this, const char * path)
     }
 #endif
 
-#if SDL_VIDEO_OPENGL_MESA
+#ifdef SDL_VIDEO_OPENGL_MESA
     if (OS4_IsMesa(_this)) {
         dprintf("Loading Mesa\n");
         OS4_SetMesaFunctions(_this);
