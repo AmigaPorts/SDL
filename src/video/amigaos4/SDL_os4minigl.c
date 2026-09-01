@@ -240,13 +240,6 @@ OS4_MiniGL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
     return 0;
 }
 
-// TODO:
-void
-OS4_GL_GetDrawableSize(_THIS, SDL_Window * window, int * w, int * h)
-{
-    OS4_WaitForResize(_this, window, w, h);
-}
-
 int
 OS4_MiniGL_SwapWindow(_THIS, SDL_Window * window)
 {
