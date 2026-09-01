@@ -30,7 +30,6 @@ extern void *OS4_MiniGL_GetProcAddress(_THIS, const char *proc);
 extern void OS4_MiniGL_UnloadLibrary(_THIS);
 extern SDL_GLContext OS4_MiniGL_CreateContext(_THIS, SDL_Window * window);
 extern int OS4_MiniGL_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context);
-extern void OS4_GL_GetDrawableSize(_THIS, SDL_Window * window, int *w, int *h);
 extern int OS4_MiniGL_SwapWindow(_THIS, SDL_Window * window);
 extern void OS4_MiniGL_DeleteContext(_THIS, SDL_GLContext context);
 

@@ -93,6 +93,12 @@ OS4_GL_GetSwapInterval(_THIS)
     return data->vsyncEnabled ? 1 : 0;
 }
 
+static void
+OS4_GL_GetDrawableSize(_THIS, SDL_Window * window, int * w, int * h)
+{
+    OS4_WaitForResize(_this, window, w, h);
+}
+
 static SDL_bool
 OS4_CheckInterfaces(_THIS)
 {
@@ -345,7 +351,7 @@ OS4_SetMiniGLFunctions(SDL_VideoDevice * device)
     device->GL_GetProcAddress = OS4_MiniGL_GetProcAddress;
     device->GL_UnloadLibrary = OS4_MiniGL_UnloadLibrary;
     device->GL_MakeCurrent = OS4_MiniGL_MakeCurrent;
-    device->GL_GetDrawableSize = OS4_GL_GetDrawableSize; // TODO:
+    device->GL_GetDrawableSize = OS4_GL_GetDrawableSize;
     device->GL_SetSwapInterval = OS4_GL_SetSwapInterval;
     device->GL_GetSwapInterval = OS4_GL_GetSwapInterval;
     device->GL_SwapWindow = OS4_MiniGL_SwapWindow;
