@@ -245,7 +245,12 @@ OS4_Mesa_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
     dprintf("Mesa context %p created for window '%s'\n",
         data->glContext, window->title);
 
-    OS4_Mesa_MakeCurrent2(data);
+    if (!OS4_Mesa_MakeCurrent2(data)) {
+        OS4_Mesa_UnbindCurrent();
+        OS4_Mesa_DestroyContext2(data);
+        OS4_Mesa_DestroyDrawable((MesaDrawable*)&data->glDrawable);
+        return NULL;
+    }
 
     IMesa->glViewport(0, 0, window->w, window->h);
     return (SDL_GLContext)data->glContext;
@@ -259,18 +264,23 @@ OS4_Mesa_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext 
     }
 
     if (!window) {
-        dprintf("Window NULL\n");
-        return false;
-    }
-
-    if (!context) {
-        dprintf("Context NULL\n");
+        dprintf("Window NULL -> unbinding current\n");
         OS4_Mesa_UnbindCurrent();
         return false;
     }
 
+    if (!context) {
+        dprintf("Context NULL -> unbinding current\n");
+        OS4_Mesa_UnbindCurrent();
+        return false;
+    }
 
     SDL_WindowData *data = window->internal;
+
+    if (!data->glDrawable) {
+        dprintf("Drawable NULL\n");
+        return false;
+    }
 
     const MesaStatus status = IMesa->MesaMakeCurrent((MesaContext)context, data->glDrawable, data->glDrawable);
     if (status != MESA_STATUS_OK) {
