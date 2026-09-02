@@ -315,7 +315,7 @@ OS4_MiniGL_SwapWindow(_THIS, SDL_Window * window)
 }
 
 void
-OS4_MiniGL_DestroyContext(_THIS, SDL_GLContext context)
+OS4_MiniGL_DeleteContext(_THIS, SDL_GLContext context)
 {
     dprintf("Called with context=%p\n", context);
 

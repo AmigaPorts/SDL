@@ -191,7 +191,7 @@ OS4_OGLES2_SwapWindow(_THIS, SDL_Window * window)
 }
 
 void
-OS4_OGLES2_DestroyContext(_THIS, SDL_GLContext context)
+OS4_OGLES2_DeleteContext(_THIS, SDL_GLContext context)
 {
     dprintf("Called with context=%p\n", context);
 
