@@ -151,7 +151,7 @@ OS4_Mesa_LoadLibrary(SDL_VideoDevice *_this, const char * path)
         return SDL_SetError("Failed to open Mesa interface");
     }
 
-    dprintf("Mesa library opened\n");
+    dprintf("Mesa library %d.%d opened\n", Mesabase->lib_Version, Mesabase->lib_Revision);
     return true;
 }
 
