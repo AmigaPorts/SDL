@@ -66,7 +66,7 @@ OS4_OGLES2_LoadLibrary(_THIS, const char * path)
         return SDL_SetError("Failed to open OpenGL ES 2 interface");
     }
 
-    dprintf("OpenGL ES 2 library opened\n");
+    dprintf("OpenGL ES 2 library %d.%d opened\n", OGLES2base->lib_Version, OGLES2base->lib_Revision);
     return 0;
 }
 
@@ -236,7 +236,7 @@ OS4_OGLES2_UpdateWindowPointer(_THIS, SDL_Window * window)
 
     SDL_WindowData *data = window->driverdata;
 
-    dprintf("Updating GLES2 window pointer %p\n", data->syswin);
+    dprintf("Updating OGLES2 window pointer %p\n", data->syswin);
     aglSetParamsTags2(OGLES2_CCT_WINDOW, (ULONG)data->syswin, TAG_DONE);
 }
 

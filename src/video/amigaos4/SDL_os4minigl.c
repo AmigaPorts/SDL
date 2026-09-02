@@ -74,7 +74,7 @@ OS4_MiniGL_LoadLibrary(_THIS, const char * path)
         return SDL_SetError("Failed to open MiniGL interface");
     }
 
-    dprintf("MiniGL library opened\n");
+    dprintf("MiniGL library %d.%d opened\n", MiniGLBase->lib_Version, MiniGLBase->lib_Revision);
     return 0;
 }
 
