@@ -1,0 +1,527 @@
+#!/usr/bin/env python3
+"""Generate sdl2.library's ABI from SDL's own src/dynapi/SDL_dynapi_procs.h.
+
+That file is SDL's definition of its public ABI -- the same list that
+becomes SDL2.dll's export table -- and it declares itself append-only:
+
+    NEVER REARRANGE THIS FILE, THE ORDER IS ABI LAW.
+
+Adopting its order wholesale means our jump table inherits the guarantee.
+Slot n is dynapi entry n, so a later SDL release (which only appends)
+appends to us too and no existing LVO ever moves.
+
+Entries we cannot express in a register ABI still consume their slot, as
+##private, so nothing after them shifts. A slot is reserved when:
+
+  not built for AmigaOS   the symbol is absent from this libSDL2.a --
+                          Android/iOS/D3D/WinRT/Linux platform calls
+  variadic                "..." has no register-ABI form; SDL ships *V
+                          variants which are separate entries and ARE
+                          exported
+  more than 11 arguments  wider than the LP macros can carry
+
+Slots SDL_SLOTS.. are ours: diagnostics and anything else this library
+adds. Keeping them above SDL's range means SDL can grow without colliding
+with us, and we can grow without renumbering SDL.
+
+Usage:  python tools/genabi.py        (from the repository root)
+
+Writes: library/sdl2_lib.fd
+        library/sdl2_lib.sfd
+        library/amigaos4/sdl2_lib.sfd
+        library/sdl2api.c
+        library/sdl2table.c
+        library/clib/sdl2_protos.h
+"""
+import os
+import re
+import subprocess
+from collections import Counter
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROCS = os.path.join(REPO, 'src', 'dynapi', 'SDL_dynapi_procs.h')
+IMAGE = os.environ.get('IMAGE', 'amigadev/crosstools:m68k-amigaos')
+ARCHIVE = os.environ.get('SDL2_ARCHIVE', 'libSDL2.a')
+
+DATA_REGS = ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7']
+ADDR_REGS = ['a0', 'a1', 'a2', 'a3']       # a4/a5 left alone, a6 is the base
+MAX_ARGS = 11                              # LP11 is the widest macro
+
+# SDL's list ends at 877 today and only ever grows. Our own additions must
+# not sit immediately after it or SDL's next release collides with them.
+SDL_SLOTS = 1000
+
+# Our own exports, placed above SDL's range. Defined in sdl2probes.c --
+# these are diagnostics, not SDL API. (ret, name, [(decl, argname, reg)])
+EXTENSIONS = [
+    ('long', 'Ping',           [('long value', 'value', 'd0')]),
+    ('long', 'ProbeBSS',       [('long which', 'which', 'd0')]),
+    ('long', 'ProbeSpin',      []),
+    ('long', 'ProbeCAS',       []),
+    ('long', 'ProbeFindTask',  []),
+    ('long', 'ProbeSem',       []),
+    ('long', 'ProbeMalloc',    []),
+    ('long', 'ProbeTLSCreate', []),
+    ('long', 'ProbeTLSGet',    []),
+    ('long', 'ProbeTLSSet',    []),
+    ('long', 'ProbeWB',        [('long which', 'which', 'd0')]),
+    ('const char *', 'ProbeWBName', []),
+]
+
+# Functions that survive every structural test but still cannot be
+# wrapped. Determined by compiling the generated file, not by guesswork.
+BLOCKLIST = {
+    # SDL_JoystickGUID is a struct passed BY VALUE; a register ABI has no
+    # way to express that. Wrapping them by pointer would be a different
+    # signature from SDL's, so they stay reserved.
+    'SDL_GUIDToString':                 'struct passed by value',
+    'SDL_GameControllerMappingForGUID': 'struct passed by value',
+    'SDL_GetJoystickGUIDInfo':          'struct passed by value',
+    'SDL_JoystickGetGUIDString':        'struct passed by value',
+
+    # dynapi carries the Windows signature, with pfnSDL_CurrentBeginThread
+    # and pfnSDL_CurrentEndThread parameters that do not exist elsewhere.
+    'SDL_CreateThread':                 'dynapi lists the Windows signature',
+    'SDL_CreateThreadWithStackSize':    'dynapi lists the Windows signature',
+
+    # Declared with FILE * or void * depending on HAVE_STDIO_H, so the
+    # prototype here and in SDL disagree.
+    'SDL_RWFromFP':                     'FILE * vs void * by configuration',
+
+    # No Vulkan on AmigaOS 3; the headers are not present to wrap against.
+    'SDL_Vulkan_LoadLibrary':               'no Vulkan on AmigaOS 3',
+    'SDL_Vulkan_UnloadLibrary':             'no Vulkan on AmigaOS 3',
+    'SDL_Vulkan_GetVkGetInstanceProcAddr':  'no Vulkan on AmigaOS 3',
+    'SDL_Vulkan_GetInstanceExtensions':     'no Vulkan on AmigaOS 3',
+    'SDL_Vulkan_CreateSurface':             'no Vulkan on AmigaOS 3',
+    'SDL_Vulkan_GetDrawableSize':           'no Vulkan on AmigaOS 3',
+}
+
+# SFDC's AmigaOS 4 compatibility gates cannot marshal the PPC va_list type
+# through the 68K register array. These remain available from the static and
+# shared SDL builds, but are not methods of the native library interface.
+OS4_BLOCKLIST = {
+    'SDL_LogMessageV',
+    'SDL_vasprintf',
+    'SDL_vsnprintf',
+    'SDL_vsscanf',
+}
+
+HDR = ("/*\n * %s -- %s\n *\n"
+       " * Part of SDL2.Library-Amiga-m68K.\n"
+       " * Copyright (c) 2026 JennaScvl\n *\n"
+       " * GENERATED by tools/genabi.py from src/dynapi/SDL_dynapi_procs.h.\n"
+       " * Do not edit by hand -- rerun the generator.\n *\n"
+       " * This software is provided 'as-is', without any express or implied\n"
+       " * warranty. See LICENCE.MD (zlib License) for the full terms.\n"
+       " */\n\n")
+
+
+def parse_procs():
+    pat = re.compile(r'^SDL_DYNAPI_PROC\(\s*(.+?)\s*,\s*(SDL_\w+)\s*,\s*'
+                     r'\((.*)\)\s*,\s*\((.*)\)\s*,\s*(return)?\s*\)\s*$')
+    out = []
+    for line in open(PROCS, encoding='utf-8', errors='replace'):
+        m = pat.match(line.strip())
+        if m:
+            out.append({'ret': m.group(1).strip(), 'sdl': m.group(2),
+                        'argstr': m.group(3).strip(),
+                        'ret_kw': bool(m.group(5))})
+    return out
+
+
+def split_args(a):
+    a = a.strip()
+    if a in ('void', ''):
+        return []
+    parts, depth, cur = [], 0, ''
+    for c in a:
+        if c in '([':
+            depth += 1
+        elif c in ')]':
+            depth -= 1
+        if c == ',' and depth == 0:
+            parts.append(cur.strip())
+            cur = ''
+        else:
+            cur += c
+    if cur.strip():
+        parts.append(cur.strip())
+    return parts
+
+
+NAME_RE = re.compile(r'([A-Za-z_]\w*)\s*(\[\s*\])?$')
+
+
+def arg_name(decl):
+    m = NAME_RE.search(decl.strip())
+    return m.group(1) if m else None
+
+
+def is_pointer(decl):
+    d = decl.strip()
+    return '*' in d or d.endswith('[]')
+
+
+# A 64-bit value occupies a PAIR of consecutive data registers on m68k.
+# Giving it one and handing the next argument the second half is how
+# "two parameters allocated for one register" happens.
+BASE64 = {'Sint64', 'Uint64', 'double', 'long long', 'unsigned long long'}
+
+
+def wide_types():
+    """Every typedef that resolves to a 64-bit base, read from the
+    headers rather than assumed -- SDL_TouchID, SDL_FingerID and
+    SDL_GestureID are all Sint64, and missing one is a silent
+    miscompile."""
+    found = set(BASE64)
+    pat = re.compile(r'typedef\s+(\w+)\s+(\w+)\s*;')
+    for _ in range(3):                     # resolve typedef chains
+        for fn in os.listdir(os.path.join(REPO, 'include')):
+            if not fn.endswith('.h'):
+                continue
+            txt = open(os.path.join(REPO, 'include', fn),
+                       encoding='utf-8', errors='replace').read()
+            for m in pat.finditer(txt):
+                if m.group(1) in found:
+                    found.add(m.group(2))
+    return found
+
+
+WIDE = None
+STRUCTS = None
+
+
+def struct_types():
+    """Names of typedef'd structs and unions. A function RETURNING one by
+    value gets a hidden pointer parameter from the compiler, which lands
+    on a register we have already handed to a real argument."""
+    found = set()
+    txt = ''
+    for fn in os.listdir(os.path.join(REPO, 'include')):
+        if fn.endswith('.h'):
+            txt += open(os.path.join(REPO, 'include', fn),
+                        encoding='utf-8', errors='replace').read()
+    # Only struct/union bodies. Matching every "} NAME;" also catches
+    # every typedef'd ENUM, which is int-sized and returns in d0 quite
+    # happily -- that mistake reserved 98 perfectly exportable functions.
+    for m in re.finditer(r'typedef\s+(?:struct|union)\b[^{;]*\{.*?^\}\s*(\w+)\s*;',
+                         txt, re.S | re.M):
+        found.add(m.group(1))
+    for m in re.finditer(r'typedef\s+(?:struct|union)\s+(\w+)\s+(\w+)\s*;', txt):
+        found.add(m.group(2))
+    # Aliases: SDL_JoystickGUID is "typedef SDL_GUID SDL_JoystickGUID;",
+    # so the struct is one hop away and a single pass misses it.
+    alias = re.compile(r'typedef\s+(\w+)\s+(\w+)\s*;')
+    for _ in range(3):
+        for m in alias.finditer(txt):
+            if m.group(1) in found:
+                found.add(m.group(2))
+    return found
+
+
+def returns_struct(ret):
+    r = ret.replace('const', '').strip()
+    if '*' in r:
+        return False
+    return r.split()[-1] in STRUCTS if r.split() else False
+
+
+def is_wide(decl):
+    d = ' '.join(decl.split())
+    if is_pointer(d):
+        return False
+    for t in WIDE:
+        if re.search(r'\b%s\b' % re.escape(t), d):
+            return True
+    return False
+
+
+def defined_symbols():
+    archive = os.path.abspath(os.path.join(REPO, ARCHIVE))
+    try:
+        archive_rel = os.path.relpath(archive, REPO)
+    except ValueError:
+        raise SystemExit('SDL2_ARCHIVE must be inside the repository')
+    if archive_rel == '..' or archive_rel.startswith('..' + os.sep):
+        raise SystemExit('SDL2_ARCHIVE must be inside the repository')
+    env = dict(os.environ, MSYS_NO_PATHCONV='1')
+    r = subprocess.run(
+        ['docker', 'run', '--rm', '-v', REPO + ':/work', '-w', '/work', IMAGE,
+         'm68k-amigaos-nm', '--defined-only', archive_rel],
+        capture_output=True, text=True, env=env)
+    out = set()
+    for line in r.stdout.splitlines():
+        p = line.split()
+        if len(p) >= 3 and p[1] in 'TDBR' and p[2].startswith('_SDL_'):
+            out.add(p[2][1:])
+    if not out:
+        raise SystemExit('no symbols read from %s -- build it first '
+                         '(./build.sh sdl2)' % ARCHIVE)
+    return out
+
+
+def build_slots():
+    global WIDE, STRUCTS
+    WIDE = wide_types()
+    STRUCTS = struct_types()
+    print('64-bit types: %s' % ', '.join(sorted(WIDE)))
+    procs = parse_procs()
+    defined = defined_symbols()
+    print('dynapi entries %d, symbols in libSDL2.a %d' %
+          (len(procs), len(defined)))
+
+    slots = []
+    for p in procs:
+        rec = dict(p, ok=False, reason='', args=[], regs=[], names=[],
+                   export=p['sdl'][4:], generated=True)
+        args = split_args(p['argstr'])
+
+        if p['sdl'] in BLOCKLIST:
+            rec['reason'] = BLOCKLIST[p['sdl']]
+        elif '...' in p['argstr']:
+            rec['reason'] = 'variadic'
+        elif p['sdl'] not in defined:
+            rec['reason'] = 'not built for AmigaOS'
+        elif len(args) > MAX_ARGS:
+            rec['reason'] = 'more than %d arguments' % MAX_ARGS
+        elif returns_struct(p['ret']):
+            rec['reason'] = 'returns a struct by value'
+        else:
+            free_d, free_a = list(DATA_REGS), list(ADDR_REGS)
+            regs, names, bad = [], [], False
+            for a in args:
+                nm = arg_name(a)
+                if nm is None:
+                    bad = True
+                    break
+                # Pointers prefer address registers and spill into data
+                # registers when a0-a3 run out. That is legal: an address
+                # travels in a data register perfectly well, and it is
+                # what lets the 5-pointer functions be exported at all.
+                if is_wide(a):
+                    # 64-bit: takes a consecutive PAIR. free_d is consumed
+                    # in order, so popping twice yields dN and dN+1; the
+                    # .fd names only the first, which is the convention.
+                    if len(free_d) < 2:
+                        bad = True
+                        break
+                    regs.append(free_d.pop(0))
+                    free_d.pop(0)
+                elif is_pointer(a) and free_a:
+                    regs.append(free_a.pop(0))
+                elif free_d:
+                    regs.append(free_d.pop(0))
+                elif free_a:
+                    regs.append(free_a.pop(0))
+                else:
+                    bad = True
+                    break
+                names.append(nm)
+            if bad:
+                rec['reason'] = 'no free register for an argument'
+            else:
+                rec.update(ok=True, args=args, regs=regs, names=names)
+        slots.append(rec)
+
+    if len(slots) > SDL_SLOTS:
+        raise SystemExit('SDL now has %d entries, past the %d reserved for '
+                         'it -- raise SDL_SLOTS (this MOVES our extensions '
+                         'and breaks their ABI)' % (len(slots), SDL_SLOTS))
+
+    while len(slots) < SDL_SLOTS:
+        slots.append({'ok': False, 'reason': 'reserved for future SDL',
+                      'sdl': None, 'export': None, 'generated': True})
+
+    for ret, name, params in EXTENSIONS:
+        slots.append({'ok': True, 'reason': '', 'ret': ret, 'sdl': None,
+                      'export': name, 'generated': False, 'ret_kw': True,
+                      'args': [d for d, _, _ in params],
+                      'names': [n for _, n, _ in params],
+                      'regs': [r for _, _, r in params]})
+    return slots
+
+
+def emit(slots):
+    sdl = slots[:SDL_SLOTS]
+    real = [s for s in sdl if s['ok']]
+    print('exported %d, reserved %d, extensions %d, total slots %d' %
+          (len(real), len(sdl) - len(real), len(slots) - SDL_SLOTS, len(slots)))
+    for k, v in Counter(s['reason'] for s in sdl if not s['ok']).most_common():
+        print('   reserved: %-26s %d' % (k, v))
+
+    def w(rel, text):
+        p = os.path.join(REPO, rel.replace('/', os.sep))
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        open(p, 'w', encoding='utf-8', newline='\n').write(text)
+        print('   wrote %-30s %8d bytes' % (rel, len(text)))
+
+    # ------------------------------------------------------------- .fd
+    fd = ["* sdl2.library function descriptions -- GENERATED, do not edit.",
+          "*",
+          "* Order comes from SDL's own src/dynapi/SDL_dynapi_procs.h, which",
+          "* declares itself append-only ('THE ORDER IS ABI LAW'). Slot n is",
+          "* dynapi entry n, so a later SDL release appends here rather than",
+          "* renumbering. Entries with no register-ABI form still hold their",
+          "* slot as ##private so nothing after them moves.",
+          "*",
+          "* Slots %d.. are this library's own additions." % SDL_SLOTS,
+          "*",
+          "##base _SDL2Base",
+          "##bias 30"]
+    mode = None
+    for i, s in enumerate(slots):
+        want = 'public' if s['ok'] else 'private'
+        if want != mode:
+            fd.append('##' + want)
+            mode = want
+        if s['ok']:
+            fd.append('SDL2_%s(%s)(%s)' %
+                      (s['export'], ','.join(s['names']),
+                       ','.join(r.upper() for r in s['regs'])))
+        else:
+            fd.append('* slot %d: %s' %
+                      (i, (s['sdl'] + ' -- ' + s['reason']) if s['sdl']
+                       else s['reason']))
+            fd.append('SDL2_Reserved%04d()()' % i)
+    fd.append('##end')
+    w('library/sdl2_lib.fd', '\n'.join(fd) + '\n')
+
+    # ------------------------------------------------------------ .sfd
+    # SFDC is the common SDK-header generator for AmigaOS, AmigaOS 4,
+    # AROS, MorphOS and related targets. Keep the legacy FD for the existing
+    # library ABI and emit the equivalent SFD from the same slot list so the
+    # two descriptions cannot drift apart.
+    sfd = ["==id $Id: sdl2_lib.sfd generated from SDL_dynapi_procs.h $",
+           "* sdl2.library function descriptions -- GENERATED, do not edit.",
+           "==base _SDL2Base",
+           "==basetype struct Library *",
+           "==libname sdl2.library",
+           "==bias 30",
+           "==include <SDL.h>",
+           "==include <SDL_syswm.h>",
+           "==public"]
+    for slot in slots:
+        if slot['ok']:
+            sfd.append('%s SDL2_%s(%s) (%s)' %
+                       (slot['ret'], slot['export'],
+                        ', '.join(slot['args']) or 'void',
+                        ','.join(r.upper() for r in slot['regs'])))
+        else:
+            sfd.append('==reserve 1')
+    sfd.append('==end')
+    w('library/sdl2_lib.sfd', '\n'.join(sfd) + '\n')
+
+    # AmigaOS 4 uses the same proven subset, but the native interface can
+    # expose SDL's normal names because SFDC supplies the Self-argument gates.
+    # Keep this interface compact: SFDC emits Pad members for SFD reserves in
+    # interface mode but omits those entries in function-table mode.
+    os4sfd = ["==id $Id: sdl2_lib.sfd generated from SDL_dynapi_procs.h $",
+              "* sdl2.library AmigaOS 4 interface -- GENERATED, do not edit.",
+              "==base _SDL2Base",
+              "==basetype struct Library *",
+              "==libname sdl2.library",
+              "==bias 30",
+              "==include <SDL.h>",
+              "==include <SDL_syswm.h>",
+              "==public"]
+    for slot in sdl:
+        if slot['ok'] and slot['sdl'] not in OS4_BLOCKLIST:
+            os4sfd.append('%s %s(%s) (%s)' %
+                          (slot['ret'], slot['sdl'],
+                           ', '.join(slot['args']) or 'void',
+                           ','.join(r.upper() for r in slot['regs'])))
+    os4sfd.append('==end')
+    w('library/amigaos4/sdl2_lib.sfd', '\n'.join(os4sfd) + '\n')
+
+    # -------------------------------------------------------- wrappers
+    out = [HDR % ('sdl2api.c', 'register-argument wrappers for the SDL2 API'),
+           '/*\n'
+           ' * Amiga library functions take arguments in REGISTERS; SDL2\'s\n'
+           ' * take them on the stack. Each wrapper below declares register\n'
+           ' * arguments and calls straight through. The register choice here\n'
+           ' * and in sdl2_lib.fd come from the same generator run, so they\n'
+           ' * cannot disagree -- and a disagreement would deliver arguments\n'
+           ' * to the wrong places with no diagnostic at all.\n'
+           ' */\n',
+           '#include "SDL.h"',
+           '/* SDL.h does not pull this in, and SDL_GetWindowWMInfo is worth\n'
+           ' * having on Amiga: it hands back the Intuition Window. */',
+           '#include "SDL_syswm.h"\n']
+    for i, s in enumerate(slots):
+        if not s['generated']:
+            continue                      # hand-written in sdl2probes.c
+        if not s['ok']:
+            out.append('/* slot %d: %s */' %
+                       (i, (s['sdl'] + ' -- ' + s['reason']) if s['sdl']
+                        else s['reason']))
+            out.append('long SDL2_Reserved%04d(void) { return 0; }\n' % i)
+            continue
+        params = (',\n    '.join('register %s __asm("%s")' %
+                                 (' '.join(a.split()), r)
+                                 for a, r in zip(s['args'], s['regs']))
+                  or 'void')
+        call = '%s(%s)' % (s['sdl'], ', '.join(s['names']))
+        body = ('    return %s;' % call) if s['ret_kw'] else ('    %s;' % call)
+        out.append('%s SDL2_%s(%s)\n{\n%s\n}\n' %
+                   (s['ret'], s['export'], params, body))
+    w('library/sdl2api.c', '\n'.join(out))
+
+    # ------------------------------------------------------- prototypes
+    pr = [HDR % ('sdl2_protos.h', 'C prototypes, consumed by fd2pragma'),
+          '#ifndef CLIB_SDL2_PROTOS_H', '#define CLIB_SDL2_PROTOS_H', '',
+          '/* NO #include DIRECTIVES HERE. fd2pragma copies them into the',
+          ' * generated inline header as  #ifndef "SDL_H"  , which is not',
+          ' * valid C. Include SDL.h (and SDL_syswm.h, for SDL_SysWMinfo)',
+          ' * BEFORE this file. */',
+          '']
+    for i, s in enumerate(slots):
+        if s['ok']:
+            pr.append('%s SDL2_%s(%s);' %
+                      (s['ret'], s['export'],
+                       ', '.join(' '.join(a.split()) for a in s['args'])
+                       or 'void'))
+        else:
+            pr.append('long SDL2_Reserved%04d(void);' % i)
+    pr += ['', '#endif /* CLIB_SDL2_PROTOS_H */', '']
+    w('library/clib/sdl2_protos.h', '\n'.join(pr))
+
+    # ------------------------------------------------------------ table
+    tb = [HDR % ('sdl2table.c', 'the export table -- ORDER IS THE ABI'),
+          '/*\n'
+          ' * ADD2LIST emits into section .list___FuncTable__, and entries\n'
+          ' * concatenate in statement order within an object file. Every\n'
+          ' * entry therefore lives in THIS file: split across two objects,\n'
+          ' * the order would depend on the link line instead.\n'
+          ' */\n',
+          '#include <exec/types.h>',
+          '#include <exec/libraries.h>',
+          '#include <proto/exec.h>',
+          '#include <libinit.h>',
+          '',
+          '/* Before the prototypes: that header deliberately carries no',
+          ' * includes of its own, because fd2pragma would copy them into',
+          ' * the generated inlines in a form that is not valid C. */',
+          '#include "SDL.h"',
+          '#include "SDL_syswm.h"',
+          '#include "clib/sdl2_protos.h"',
+          '']
+    for i, s in enumerate(slots):
+        tb.append('ADD2LIST(SDL2_%s, __FuncTable__, 22);' %
+                  (s['export'] if s['ok'] else 'Reserved%04d' % i))
+    tb += ['',
+           '/*',
+           ' * THE TERMINATOR. MakeFunctions walks this table until it reads',
+           ' * -1. Without it the walk never stops: it consumes whatever',
+           ' * follows in memory and writes jump entries over unrelated',
+           ' * memory until the machine locks up.',
+           ' */',
+           'ADDTABL_END();',
+           '']
+    w('library/sdl2table.c', '\n'.join(tb))
+
+    print('last LVO -%d (%d entries)' % (30 + 6 * (len(slots) - 1), len(slots)))
+
+
+if __name__ == '__main__':
+    emit(build_slots())

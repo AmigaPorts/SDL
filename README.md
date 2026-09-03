@@ -1,4 +1,3 @@
-
 # Simple DirectMedia Layer (SDL) Version 2.0
 
 https://www.libsdl.org/
@@ -15,3 +14,7 @@ with README.md
 Enjoy!
 
 Sam Lantinga (slouken@libsdl.org)
+
+## Looking for AmigaOS specifics?
+
+[README.AmigaOS.md](README.AmigaOS.md)

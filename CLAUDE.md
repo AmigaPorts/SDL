@@ -1,22 +1,296 @@
-AI must not be used to generate code for contributions to this project.
+# libSDL2-amigaos3 -- Claude Code Project Instructions
 
-"AI" in this case means a Large Language Model ("LLM"), such as ChatGPT,
-Claude, Copilot, Grok, etc.
+## RULE 0: NEVER GUESS -- ALWAYS LOOK IT UP
 
-AI-generated code is based upon sources of unknown origins and may not be
-compatible with the Zlib license, or may introduce conflicting license terms
-if they include code from other projects.
+**This is 30-year-old hardware and libraries. Your training data is NOT sufficient.**
 
-AI can be used to identify issues with contributions to this project, but the
-solutions to those issues should be authored by humans.
+Before writing or fixing ANY code that touches AmigaOS APIs, Exec, devices, or 68k hardware:
 
-We have found that AI will frequently hallucinate issues that are not actually
-problems in practice, report incorrect information, and describe problems that
-are actually not issues at all. If AI identifies a problem with this codebase,
-please make sure you understand what it is saying and have independently
-confirmed that the issue exists before submitting a bug report or pull request.
+1. **Read the documentation first.** Use `amiga_api_lookup`, `amiga_search`, `amiga_pitfalls_for`, or read the ADCD docs in `docs/references/`. Every function, every struct field, every flag has documented behavior that may differ from what you expect.
 
-Any pull request to this project will ask you to confirm that you are the
-author and that you are contributing your changes under the Zlib license.
+2. **Search the internet.** Use `WebSearch` for forum posts, existing implementations, and known issues. Check EAB (eab.abime.net), Aminet, and GitHub for reference code.
 
+3. **Never assume how an API works.** CheckIO, WaitIO, BeginIO, SendIO, CreateMsgPort, Signal -- these all have specific documented semantics. A wrong assumption about `ln_Type`, signal delivery, or task context wastes hours.
 
+4. **When debugging, instrument and observe before hypothesizing.** Add debug output (DLOG via `SDL_os3debug.h`), read the actual values, THEN form a theory. Don't guess at the fix -- verify the root cause first.
+
+5. **When stuck after 2 attempts, STOP coding and research.** Read ADCD docs, search forums, check reference implementations (SDL 1.2, OS4 port). The answer is almost always documented somewhere.
+
+**Why this rule exists:** Multiple debugging sessions wasted hours because the agent guessed at AmigaOS behavior instead of reading the documentation. Examples: MsgPort signal delivery (ADCD ch.22), CheckIO return semantics, audio.device CMD_WRITE completion, CreateNewProcTags tc_UserData race. Every one of these is documented in the ADCD.
+
+## What This Project Is
+
+A port of SDL2 (Simple DirectMedia Layer 2) to AmigaOS 3.x on Motorola 68k. This is a **platform library** -- it provides `libSDL2.a` that other programs link against. It is NOT a POSIX port; it implements SDL2's platform abstraction layer using native AmigaOS APIs.
+
+## Architecture
+
+SDL2 has a backend/driver architecture. Each subsystem (video, audio, threading, etc.) has a platform-specific implementation. We provide AmigaOS 3.x backends:
+
+| Subsystem | Backend | AmigaOS API | Source Dir |
+|-----------|---------|------------|-----------|
+| Video | CyberGraphX / Picasso96 | `WritePixelArray()`, screen modes | `src/video/amigaos3/` |
+| Video (AGA) | Custom chipset + c2p | Blitter, bitplanes | `src/video/amigaos3/` (Phase 6) |
+| Audio | AHI | `AHI_AllocAudio()`, callbacks | `src/audio/amigaos3/` |
+| Threading | Exec Tasks | `CreateNewProc()`, `SignalSemaphore` | `src/thread/amigaos3/` |
+| Timer | timer.device | `ReadEClock()` | `src/timer/amigaos3/` |
+| Input/Events | Intuition IDCMP | `IDCMP_RAWKEY`, `IDCMP_MOUSEMOVE` | `src/events/` (via video driver) |
+| Joystick | gameport.device | `GPD_ASKCTYPE` | `src/joystick/amigaos3/` |
+| Filesystem | dos.library | `Lock()`, `Examine()` | `src/filesystem/amigaos3/` |
+| Loadso | Stub (no dlopen) | -- | `src/loadso/dummy/` |
+| Haptic | Stub | -- | `src/haptic/dummy/` |
+| Render | Software (built-in) | -- | `src/render/software/` |
+
+## Codebase Map
+
+```
+include/SDL2/              # Standard SDL2 public headers (from upstream)
+src/
+  video/amigaos3/          # CyberGraphX/P96 + optional AGA + optional AMMX
+  audio/amigaos3/          # AHI audio
+  thread/amigaos3/         # Exec Tasks
+  timer/amigaos3/          # timer.device
+  joystick/amigaos3/       # gameport.device
+  filesystem/amigaos3/     # dos.library
+  loadso/dummy/            # Stub (no dlopen on OS3)
+  haptic/dummy/            # Stub (no haptic)
+  main/amigaos3/           # SDL_main entry point
+  render/software/         # SDL2 built-in software renderer
+  events/                  # IDCMP -> SDL event translation
+examples/                  # Test programs (testsprite2, loopwave, testkeys, etc.)
+docs/
+  references/              # Amiga hardware and API reference docs
+  adr/                     # Architecture Decision Records
+Makefile                   # Cross-compile to libSDL2.a via bebbo-gcc
+```
+
+## Build Instructions
+
+```bash
+make setup-toolchain   # Pull/verify bebbo-gcc Docker image
+make                   # Build libSDL2.a (cross-compile via Docker)
+make examples          # Build example/test programs
+make test              # Run tests via FS-UAE with RTG
+make clean             # Remove build artifacts
+```
+
+**Prerequisites:** Docker, Python + amitools, FS-UAE with RTG-capable config.
+
+## Compiler Settings
+
+- **Language:** C99 (`-std=gnu99`). SDL2 requires C99.
+- **CPU target:** `-m68020` for the library (RTG cards require 68020+).
+- **Optimization:** `-O0` initially until backends are proven stable. Upgrade to `-O2` per-file after testing. bebbo-gcc has codegen bugs at `-O1`/`-O2` (see crash pattern #16 via `amiga_crash_diagnosis`).
+- **`SDL_DYNAMIC_API`:** Disabled (`#define SDL_DYNAMIC_API 0`). AmigaOS 3.x has no `dlopen()`.
+
+## Coding Standards
+
+### C99 with AmigaOS Constraints
+
+- Use C99 features (for-init, `//` comments, mixed declarations, `inline`).
+- Do NOT assume C99 library functions exist -- libnix is a C89 runtime. Check via `amiga_search "libnix [function]"` or `amiga_pitfalls_for "libnix"`.
+- Use `<proto/*.h>` for Amiga system calls (never `<clib/*.h>`).
+- Use Amiga types (`LONG`, `ULONG`, `STRPTR`, `BPTR`, `APTR`) for OS interfaces.
+- Format specifiers: `%ld`/`%lu` for `LONG`/`ULONG` (32-bit `long`).
+
+### ASCII Only in Source
+
+ALL `.c` and `.h` files must be pure ASCII. No UTF-8, not even in comments. bebbo-gcc silently corrupts preprocessor output on multi-byte characters.
+
+### Memory Safety
+
+AmigaOS has no memory protection. Every `malloc()` must have a `free()`. Every `OpenLibrary()` must have a `CloseLibrary()`. Every `OpenDevice()` must have a `CloseDevice()`. Leaked resources persist until reboot.
+
+### Stack Safety
+
+Backend functions called from SDL2's core must not use large local arrays. Keep stack usage under 512 bytes per function. SDL2 programs set their own `__stack` cookie; the library shouldn't blow it.
+
+### Threading Safety
+
+Exec Tasks are cooperative on the same address space. No memory protection between tasks. `SignalSemaphore` is the primitive for mutual exclusion. `Forbid()`/`Permit()` for brief critical sections only. Never hold a semaphore across a `Wait()` call.
+
+## Key References
+
+### Shared Knowledge Base (amiga-kb via MCP)
+
+General Amiga reference docs are in the shared amiga-kb knowledge base. Use MCP tools
+instead of reading local files:
+
+**Knowledge Query:**
+- `amiga_search` -- semantic search across all Amiga docs (crash patterns, pitfalls, ADCD, hardware)
+- `amiga_api_lookup` -- function/struct lookup with graph traversal and pitfall warnings
+- `amiga_pitfalls_for` -- known pitfalls for an API or concept
+- `amiga_crash_diagnosis` -- crash diagnosis from Guru codes
+
+**Project Intelligence (plans, work, todos):**
+- `amiga_get_work` -- **Start every session with this.** Returns current plans, work packages, todos with related pitfalls inline. Call: `amiga_get_work({project: "libSDL2"})`
+- `amiga_add_plan` -- Create a plan with work packages and todos. Supports templates: `amiga_add_plan({title: "Audio Backend", source_project: "libSDL2", template: "sdl2-subsystem"})`
+- `amiga_add_todo` -- Add a todo linked to a work package and related APIs: `amiga_add_todo({title: "Fix blitter DMA", source_project: "libSDL2", work_package: "Video", related_apis: ["WaitBlit"]})`
+- `amiga_update_status` -- Mark work done: `amiga_update_status({type: "todo", title: "Fix blitter DMA", source_project: "libSDL2", status: "done"})`
+- `amiga_get_blockers` -- Find blocked work across all projects
+- `amiga_add_dependency` -- Link work packages across projects (e.g., SDL2 video depends on amiport mmap shim)
+
+**Learning & Gaps:**
+- `amiga_report_gap` -- report missing knowledge (feeds the learning compiler)
+- `amiga_add_pitfall` / `amiga_add_crash_pattern` -- route universal learnings to shared KB
+
+The amiga-kb MCP server must be running (`docker compose up -d` in the amiga-kb repo).
+All queries from this project are tagged with `source_project: "libSDL2"`.
+
+### Session Workflow
+
+1. **Start:** Call `amiga_get_work({project: "libSDL2"})` to see current plans and outstanding work
+2. **Work:** Implement, debug, test
+3. **Track:** Use `amiga_update_status` when completing todos, `amiga_add_todo` for new work discovered
+4. **Learn:** Use `amiga_add_pitfall` for new gotchas, `amiga_report_gap` for missing docs
+5. **End:** Ensure all completed work is marked done
+
+### Critical (project-specific, consult during every backend implementation)
+
+- Crash patterns #7 (stack overflow), #10 (large buffers), #15 (alignment), #16 (struct returns at -O2) all apply. Use `amiga_crash_diagnosis` for lookup.
+- 68k hardware reference available via `amiga_search "68k memory map"` etc.
+- libnix function availability via `amiga_search "libnix ..."` or `amiga_pitfalls_for "libnix"`.
+
+### AmigaOS API Documentation
+
+- `docs/references/adcd/` -- ADCD 2.1 reference in markdown (also indexed in amiga-kb vectors).
+- `docs/references/amiga-intern/` -- "Amiga Intern" (1992). Custom chip architecture, memory map, DMA timing.
+- `docs/references/m68000-prm/` -- Motorola M68000 Family Programmer's Reference Manual.
+
+### SDL2 References
+
+- [SDL2 source](https://github.com/libsdl-org/SDL/tree/SDL2) -- upstream SDL2 branch
+- [SDL2 OS4 backend](https://github.com/AmigaPorts/SDL) -- AmigaOS 4 (PPC) implementation
+- [SDL 1.2 68k](https://github.com/AmigaPorts/libSDL12) -- proven AmigaOS 3.x backends
+- [SDL2 Porting Guide](https://wiki.libsdl.org/SDL2/README-porting) -- official backend documentation
+- [SDL2 Porting Walkthrough](https://mohammedisam2000.medium.com/porting-sdl-2-0-to-a-new-platform-a6786baec01d)
+
+### New References Needed (not yet in docs/)
+
+These are third-party APIs not in the ADCD. Reference docs must be created before implementing their backends:
+
+| API | Backend | Priority |
+|-----|---------|----------|
+| CyberGraphX V4 | Video | Critical (Phase 1) |
+| Picasso96 | Video (alt) | Critical (Phase 1) |
+| AHI | Audio | Critical (Phase 3) |
+
+## Agents and Skills -- When to Use What
+
+### Decision Tree
+
+```
+"I need to implement a backend"
+  -> Dispatch sdl2-backend-developer (opus)
+  -> FIRST: ensure reference doc exists (/amiga-api-lookup, /rtg-api-lookup)
+  -> FIRST: check SDL2 contract (/sdl2-api-lookup)
+
+"Build failed"
+  -> Dispatch build-manager (sonnet)
+
+"Something crashes or hangs on FS-UAE but works on vamos"
+  -> Dispatch hardware-expert (opus)
+
+"I need API documentation for a new subsystem"
+  -> Dispatch librarian (sonnet)
+
+"Check for memory leaks or resource lifecycle issues"
+  -> Dispatch memory-checker (sonnet) AFTER implementation is done
+
+"Optimize for 68k performance"
+  -> Dispatch perf-optimizer (sonnet) -- Phase 6 only
+
+"Build the automated test pipeline"
+  -> Dispatch test-designer (sonnet)
+
+"Build the project"           -> /sdl2-build
+"Run tests"                   -> /sdl2-test
+"Look up AmigaOS API"         -> /amiga-api-lookup
+"Look up CyberGraphX/P96 API" -> /rtg-api-lookup
+"Look up SDL2 backend contract"-> /sdl2-api-lookup
+"FS-UAE not working"           -> /fsemu-setup
+"Bug or process failure"       -> /capture-learning
+```
+
+### Agent Summary
+
+| Agent | Model | When to dispatch |
+|-------|-------|-----------------|
+| sdl2-backend-developer | opus | Writing C backend code against SDL2 + AmigaOS APIs |
+| hardware-expert | opus | Crash diagnosis, platform differences, hardware validation |
+| build-manager | sonnet | Compiler/linker errors, build configuration |
+| librarian | sonnet | Building reference docs from headers, web, toolchain |
+| memory-checker | sonnet | Auditing OpenLibrary/CloseLibrary, malloc/free, resource lifecycle |
+| perf-optimizer | sonnet | 68k performance optimization (Phase 6) |
+| test-designer | sonnet | Automated test infrastructure, ARexx, FS-UAE automation |
+
+### Skill Summary
+
+| Skill | Purpose |
+|-------|---------|
+| /amiga-api-lookup | Load ADCD reference before writing AmigaOS API code |
+| /rtg-api-lookup | Load CyberGraphX/P96 reference |
+| /sdl2-api-lookup | Load SDL2 backend interface contracts |
+| /sdl2-build | Cross-compile via Docker |
+| /sdl2-test | Run vamos or FS-UAE tests |
+| /fsemu-setup | FS-UAE + P96 RTG troubleshooting |
+| /capture-learning | Route bugs/pitfalls to the right enforcement mechanism |
+
+### Mandatory Workflow
+
+Before implementing ANY new backend subsystem:
+1. `/amiga-api-lookup` or dispatch librarian to build reference doc
+2. `/sdl2-api-lookup` to understand the SDL2 contract
+3. Dispatch `sdl2-backend-developer` with both references
+4. After implementation: dispatch `memory-checker`
+5. After tests pass on vamos: test on FS-UAE
+6. If FS-UAE fails: dispatch `hardware-expert`
+7. After everything works: `/capture-learning` for any surprises
+
+## Phased Delivery
+
+| Phase | Focus | Key Files |
+|-------|-------|-----------|
+| **0: Bootstrap** | All stubs, `SDL_Init()` returns 0 | All `src/*/amigaos3/*.c` as stubs |
+| **1: First Pixels** | CyberGraphX video + software render | `src/video/amigaos3/`, `src/render/software/` |
+| **2: Input** | IDCMP -> SDL events | `src/video/amigaos3/SDL_os3events.c` |
+| **3: Audio** | AHI backend | `src/audio/amigaos3/` |
+| **4: Threading** | Exec Tasks | `src/thread/amigaos3/` |
+| **5: Polish** | Timer, filesystem, joystick | Remaining backends |
+| **6: Optimization** | AGA c2p, AMMX, asm hotpaths | `src/video/amigaos3/` extensions |
+
+## Phase Gate Rules
+
+Before starting Phase N, confirm Phase N-1 is stable:
+
+| Starting Phase | Prerequisite |
+|---------------|-------------|
+| **1: First Pixels** | Phase 0 tests pass: `SDL_Init(0)` returns 0, `SDL_Quit()` clean exit |
+| **2: Input** | Phase 1 tests pass: window opens on FS-UAE with RTG, `testsprite2` draws pixels |
+| **3: Audio** | Phase 2 tests pass: keyboard/mouse events received, `testkeys` reports scancodes |
+| **4: Threading** | Phase 3 tests pass: `loopwave` plays audio via AHI |
+| **5: Polish** | Phase 4 tests pass: threaded programs work (mutex, semaphore, TLS) |
+| **6: Optimization** | Phase 5 tests pass: timer, filesystem, joystick backends functional |
+
+Do not skip phases. If a phase's prerequisite test fails, fix it before moving forward.
+
+## Testing
+
+- **Phase 0-1:** vamos smoke test (`SDL_Init()` / `SDL_Quit()` without crashing).
+- **Phase 1+:** FS-UAE with RTG enabled. Visual verification via FS-UAE screenshots.
+- **All phases:** Exit code verification for all example programs.
+
+FS-UAE config must include:
+```
+graphics_card = uaegfx
+graphics_card_memory = 16384
+joystick_port_1_mode = nothing
+```
+
+## Relationship to amiport
+
+This is a **separate project** from [amiport](https://github.com/bdgscotland/amiport). It does not use amiport's porting pipeline, shim libraries, or test infrastructure. Once `libSDL2.a` is functional, amiport can reference it as a dependency for graphical port candidates.
+
+Shared resources copied from amiport:
+- `docs/references/` -- Amiga hardware and API docs (kept in sync manually)
+- `.claude/rules/` -- Amiga coding rules (adapted for library development)
+- Toolchain Docker image (same `bebbo/amiga-gcc`)

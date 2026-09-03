@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+# m68k-amigaos-gcc wrapper — invokes the cross-compiler via Docker or native
+#
+# Drop-in replacement for m68k-amigaos-gcc that auto-detects whether to
+# use Docker or native. Used by Makefiles that set CC to this script.
+
+# Check native first (faster)
+if command -v m68k-amigaos-gcc.real &> /dev/null 2>&1; then
+    exec m68k-amigaos-gcc.real "$@"
+fi
+
+# Check if there's a real native gcc (not this script)
+REAL_GCC=$(PATH=$(echo "$PATH" | tr ':' '\n' | grep -v "$(dirname "$0")" | tr '\n' ':') which m68k-amigaos-gcc 2>/dev/null)
+if [ -n "$REAL_GCC" ]; then
+    exec "$REAL_GCC" "$@"
+fi
+
+# Use Docker
+PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+
+# Try pre-built images first, then our custom image
+IMAGE=""
+if docker image inspect amigadev/crosstools:m68k-amigaos &> /dev/null 2>&1; then
+    IMAGE="amigadev/crosstools:m68k-amigaos"
+elif docker image inspect amigadev/m68k-amigaos-gcc &> /dev/null 2>&1; then
+    IMAGE="amigadev/m68k-amigaos-gcc"
+elif docker image inspect amiport/bebbo-gcc &> /dev/null 2>&1; then
+    IMAGE="amiport/bebbo-gcc"
+else
+    echo "ERROR: No cross-compiler available. Run 'make setup-toolchain' first." >&2
+    exit 1
+fi
+
+exec docker run --rm -v "$PROJECT_DIR:/work" -w "/work$(pwd | sed "s|$PROJECT_DIR||")" \
+    "$IMAGE" m68k-amigaos-gcc "$@"

@@ -1,0 +1,6 @@
+; amiport debug tools — loaded before test harness
+; SegTracker must start before Enforcer (STACKCHECK needs it)
+Run >NIL: SegTracker
+Run >NIL: MungWall
+Run >NIL: Enforcer STACKLINES=4 STACKCHECK DATESTAMP
+Wait 2

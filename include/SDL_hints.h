@@ -1,4 +1,15 @@
 /*
+ * ALTERED SOURCE -- SDL2.Library-Amiga-m68K.
+ *
+ * This file differs from the original libSDL2-amigaos3 release at
+ * https://github.com/bdgscotland/libSDL2-amigaos3
+ *
+ * Change: added SDL_HINT_VIDEO_AMIGAOS3_SCREEN.
+ *
+ * See patches/ for the change in isolation, and docs/ALTERATIONS.md
+ * for the full list of files this repository modifies.
+ */
+/*
   Simple DirectMedia Layer
   Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
@@ -239,13 +250,13 @@ extern "C" {
  * control panel that lets the user adjust the volume on specific audio
  * streams instead of using one giant master volume slider.
  *
- * This hints lets you transmit that information to the OS. The contents of
+ * This hint lets you transmit that information to the OS. The contents of
  * this hint are used while opening an audio device. You should use a string
  * that describes your program ("My Game 2: The Revenge")
  *
  * Setting this to "" or leaving it unset will have SDL use a reasonable
  * default: this will be the name set with SDL_HINT_APP_NAME, if that hint is
- * set. Otherwise, it'll probably the application's name or "SDL Application"
+ * set. Otherwise, it'll probably be the application's name or "SDL Application"
  * if SDL doesn't have any better information.
  *
  * On targets where this is not supported, this hint does nothing.
@@ -260,9 +271,9 @@ extern "C" {
  * control panel that lets the user adjust the volume on specific audio
  * streams instead of using one giant master volume slider.
  *
- * This hints lets you transmit that information to the OS. The contents of
+ * This hint lets you transmit that information to the OS. The contents of
  * this hint are used while opening an audio device. You should use a string
- * that describes your what your program is playing ("audio stream" is
+ * that describes what your program is playing ("audio stream" is
  * probably sufficient in many cases, but this could be useful for something
  * like "team chat" if you have a headset playing VoIP audio separately).
  *
@@ -281,9 +292,9 @@ extern "C" {
  * system control panel or software for displaying and manipulating media
  * playback/capture graphs.
  *
- * This hints lets you transmit that information to the OS. The contents of
+ * This hint lets you transmit that information to the OS. The contents of
  * this hint are used while opening an audio device. You should use a string
- * that describes your what your program is playing (Game, Music, Movie,
+ * that describes what your program is playing (Game, Music, Movie,
  * etc...).
  *
  * Setting this to "" or leaving it unset will have SDL use a reasonable
@@ -2249,6 +2260,27 @@ extern "C" {
  * By default SDL will disable the screensaver.
  */
 #define SDL_HINT_VIDEO_ALLOW_SCREENSAVER    "SDL_VIDEO_ALLOW_SCREENSAVER"
+
+/**
+ *  \brief  Where the AmigaOS 3 driver should put a non-fullscreen window.
+ *
+ *  This variable can be set to the following values:
+ *    "auto"       - Use the Workbench screen when the driver judges it
+ *                   usable, otherwise open a private screen (default)
+ *    "workbench"  - Always open on the Workbench public screen, giving a
+ *                   normal titled, draggable window
+ *    "screen"     - Always open a private screen with a borderless window
+ *
+ *  The "auto" probe asks whether the Workbench bitmap is CyberGraphX or
+ *  at least 15 bits deep. That test is conservative and declines some
+ *  Picasso96 Workbench screens that are perfectly capable of hosting the
+ *  window, so an application that knows its target can say so directly.
+ *
+ *  Has no effect on AGA (no RTG library): there is no blit path for an
+ *  ARGB surface into a window on a planar screen, so a private screen is
+ *  used regardless.
+ */
+#define SDL_HINT_VIDEO_AMIGAOS3_SCREEN      "SDL_VIDEO_AMIGAOS3_SCREEN"
 
 /**
  * Tell the video driver that we only want a double buffer.

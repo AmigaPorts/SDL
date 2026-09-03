@@ -1099,6 +1099,8 @@ SDL_Renderer *SDL_CreateRenderer(SDL_Window *window, int index, Uint32 flags)
         }
     }
 
+    SDL_Log("SDL_CreateRenderer: driver returned %d", rc);
+
     if (flags & SDL_RENDERER_PRESENTVSYNC) {
         renderer->wanted_vsync = SDL_TRUE;
 
@@ -1107,9 +1109,12 @@ SDL_Renderer *SDL_CreateRenderer(SDL_Window *window, int index, Uint32 flags)
             renderer->info.flags |= SDL_RENDERER_PRESENTVSYNC;
         }
     }
+    SDL_Log("SDL_CreateRenderer: calculating vsync interval");
     SDL_CalculateSimulatedVSyncInterval(renderer, window);
 
+    SDL_Log("SDL_CreateRenderer: verifying draw queue");
     VerifyDrawQueueFunctions(renderer);
+    SDL_Log("SDL_CreateRenderer: draw queue OK");
 
     /* let app/user override batching decisions. */
     if (renderer->always_batch) {
@@ -1118,14 +1123,19 @@ SDL_Renderer *SDL_CreateRenderer(SDL_Window *window, int index, Uint32 flags)
         batching = SDL_GetHintBoolean(SDL_HINT_RENDER_BATCHING, SDL_TRUE);
     }
 
+    SDL_Log("SDL_CreateRenderer: sizeof(SDL_Renderer)=%lu renderer=%p",
+            (unsigned long)sizeof(*renderer), (void*)renderer);
     renderer->batching = batching;
     renderer->magic = &renderer_magic;
     renderer->window = window;
+    SDL_Log("SDL_CreateRenderer: creating target_mutex");
     renderer->target_mutex = SDL_CreateMutex();
+    SDL_Log("SDL_CreateRenderer: setting scale (float)");
     renderer->scale.x = 1.0f;
     renderer->scale.y = 1.0f;
     renderer->dpi_scale.x = 1.0f;
     renderer->dpi_scale.y = 1.0f;
+    SDL_Log("SDL_CreateRenderer: setting rect_index_order");
 
     /* Default value, if not specified by the renderer back-end */
     if (renderer->rect_index_order[0] == 0 && renderer->rect_index_order[1] == 0) {
@@ -1140,18 +1150,29 @@ SDL_Renderer *SDL_CreateRenderer(SDL_Window *window, int index, Uint32 flags)
     /* new textures start at zero, so we start at 1 so first render doesn't flush by accident. */
     renderer->render_command_generation = 1;
 
+    SDL_Log("SDL_CreateRenderer: GetOutputSize fptr=%p driverdata=%p",
+            (void*)(size_t)renderer->GetOutputSize, (void*)renderer->driverdata);
+
     if (renderer->GetOutputSize) {
         int window_w, window_h;
         int output_w, output_h;
+        SDL_Log("SDL_CreateRenderer: calling GetOutputSize...");
         if (renderer->GetOutputSize(renderer, &output_w, &output_h) == 0) {
+            SDL_Log("SDL_CreateRenderer: output=%dx%d, getting window size",
+                    output_w, output_h);
             SDL_GetWindowSize(renderer->window, &window_w, &window_h);
+            SDL_Log("SDL_CreateRenderer: window=%dx%d output=%dx%d",
+                    window_w, window_h, output_w, output_h);
             renderer->dpi_scale.x = (float)window_w / output_w;
             renderer->dpi_scale.y = (float)window_h / output_h;
+            SDL_Log("SDL_CreateRenderer: dpi_scale done");
         }
     }
 
+    SDL_Log("SDL_CreateRenderer: setting relative_scaling");
     renderer->relative_scaling = SDL_GetHintBoolean(SDL_HINT_MOUSE_RELATIVE_SCALING, SDL_TRUE);
 
+    SDL_Log("SDL_CreateRenderer: setting line_method");
     renderer->line_method = SDL_GetRenderLineMethod();
 
     if (SDL_GetWindowFlags(window) & (SDL_WINDOW_HIDDEN | SDL_WINDOW_MINIMIZED)) {
@@ -1162,10 +1183,13 @@ SDL_Renderer *SDL_CreateRenderer(SDL_Window *window, int index, Uint32 flags)
 
     SDL_SetWindowData(window, SDL_WINDOWRENDERDATA, renderer);
 
+    SDL_Log("SDL_CreateRenderer: setting viewport");
     SDL_RenderSetViewport(renderer, NULL);
 
+    SDL_Log("SDL_CreateRenderer: adding event watch");
     SDL_AddEventWatch(SDL_RendererEventWatch, renderer);
 
+    SDL_Log("SDL_CreateRenderer: SUCCESS renderer=%p", (void*)renderer);
     SDL_LogInfo(SDL_LOG_CATEGORY_RENDER,
                 "Created renderer: %s", renderer->info.name);
 
@@ -3172,7 +3196,7 @@ int SDL_RenderDrawLinesF(SDL_Renderer *renderer,
     *ptr_indices++ = cur_index + i3; \
     num_indices += 3;
 
-                /* closed polyline, don´t draw twice the point */
+                /* closed polyline, donÂ´t draw twice the point */
                 if (i || is_looping == 0) {
                     ADD_TRIANGLE(4, 5, 6)
                     ADD_TRIANGLE(4, 6, 7)
@@ -4334,10 +4358,20 @@ static void SDL_RenderSimulateVSync(SDL_Renderer *renderer)
 void SDL_RenderPresent(SDL_Renderer *renderer)
 {
     SDL_bool presented = SDL_TRUE;
+#ifdef SDL_OS3_DEBUG
+    static int rp_frame = 0;
+    Uint32 rp_t0, rp_t1, rp_t2;
+#endif
 
     CHECK_RENDERER_MAGIC(renderer, );
 
+#ifdef SDL_OS3_DEBUG
+    rp_t0 = SDL_GetTicks();
+#endif
     FlushRenderCommands(renderer); /* time to send everything to the GPU! */
+#ifdef SDL_OS3_DEBUG
+    rp_t1 = SDL_GetTicks();
+#endif
 
 #if DONT_DRAW_WHILE_HIDDEN
     /* Don't present while we're hidden */
@@ -4348,6 +4382,16 @@ void SDL_RenderPresent(SDL_Renderer *renderer)
         if (renderer->RenderPresent(renderer) < 0) {
         presented = SDL_FALSE;
     }
+#ifdef SDL_OS3_DEBUG
+    rp_t2 = SDL_GetTicks();
+    if (rp_frame < 10) {
+        SDL_Log("RP%d: flush=%lu present=%lu total=%lu",
+            rp_frame, (unsigned long)(rp_t1 - rp_t0),
+            (unsigned long)(rp_t2 - rp_t1),
+            (unsigned long)(rp_t2 - rp_t0));
+    }
+    ++rp_frame;
+#endif
 
     if (renderer->simulate_vsync ||
         (!presented && renderer->wanted_vsync)) {

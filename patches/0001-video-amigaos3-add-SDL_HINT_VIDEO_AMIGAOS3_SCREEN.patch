@@ -1,0 +1,98 @@
+diff --git a/include/SDL_hints.h b/include/SDL_hints.h
+index 925ff22c..be435078 100644
+--- a/include/SDL_hints.h
++++ b/include/SDL_hints.h
+@@ -2250,6 +2250,27 @@ extern "C" {
+  */
+ #define SDL_HINT_VIDEO_ALLOW_SCREENSAVER    "SDL_VIDEO_ALLOW_SCREENSAVER"
+ 
++/**
++ *  \brief  Where the AmigaOS 3 driver should put a non-fullscreen window.
++ *
++ *  This variable can be set to the following values:
++ *    "auto"       - Use the Workbench screen when the driver judges it
++ *                   usable, otherwise open a private screen (default)
++ *    "workbench"  - Always open on the Workbench public screen, giving a
++ *                   normal titled, draggable window
++ *    "screen"     - Always open a private screen with a borderless window
++ *
++ *  The "auto" probe asks whether the Workbench bitmap is CyberGraphX or
++ *  at least 15 bits deep. That test is conservative and declines some
++ *  Picasso96 Workbench screens that are perfectly capable of hosting the
++ *  window, so an application that knows its target can say so directly.
++ *
++ *  Has no effect on AGA (no RTG library): there is no blit path for an
++ *  ARGB surface into a window on a planar screen, so a private screen is
++ *  used regardless.
++ */
++#define SDL_HINT_VIDEO_AMIGAOS3_SCREEN      "SDL_VIDEO_AMIGAOS3_SCREEN"
++
+ /**
+  * Tell the video driver that we only want a double buffer.
+  *
+diff --git a/src/video/amigaos3/SDL_os3window.c b/src/video/amigaos3/SDL_os3window.c
+index 047c8fbf..bf66d433 100644
+--- a/src/video/amigaos3/SDL_os3window.c
++++ b/src/video/amigaos3/SDL_os3window.c
+@@ -25,6 +25,7 @@
+ #include "SDL_os3window.h"
+ #include "SDL_os3framebuffer.h"
+ #include "../../events/SDL_windowevents_c.h"
++#include "SDL_hints.h"
+ 
+ /*
+  * Find an RTG mode >= requested size and depth by manually walking
+@@ -244,10 +245,40 @@ static int OS3_OpenWindowed(OS3_WindowData *data, SDL_Window *window)
+     struct Window *iwin;
+     int use_wb = 0;
+     int xpos, ypos;
++    const char *hint;
++    int force_wb = 0, force_screen = 0;
++
++    /*
++     * SDL_HINT_VIDEO_AMIGAOS3_SCREEN lets the APPLICATION say where its
++     * window goes, rather than this driver deciding on its behalf.
++     *
++     *   "workbench"  -- open on the Workbench public screen, skipping the
++     *                   capability sniffing below
++     *   "screen"     -- always open our own screen
++     *   "auto"/unset -- existing behaviour: Workbench when the probe says
++     *                   it is usable, our own screen otherwise
++     *
++     * The probe is a heuristic and it is demonstrably wrong in at least
++     * one real case: on a Picasso96 Workbench it declines a screen that
++     * SDL 1.2 windows onto quite happily. A heuristic nobody can override
++     * is a policy baked into the driver, so it stays as the DEFAULT and
++     * the application gets the last word.
++     */
++    hint = SDL_GetHint(SDL_HINT_VIDEO_AMIGAOS3_SCREEN);
++    if (hint) {
++        force_wb     = (SDL_strcasecmp(hint, "workbench") == 0);
++        force_screen = (SDL_strcasecmp(hint, "screen") == 0);
++    }
++
++    if (force_screen) {
++        return OS3_OpenFullscreen(data, window->w, window->h);
++    }
+ 
+     if (!CyberGfxBase) {
+         /* AGA: always open a custom fullscreen screen.
+-         * No windowed mode on AGA (no chunky WB screen to open on). */
++         * No windowed mode on AGA (no chunky WB screen to open on).
++         * "workbench" cannot be honoured here: there is no blit path for
++         * an ARGB surface into a window on a planar screen. */
+         return OS3_OpenFullscreen(data, window->w, window->h);
+     }
+ 
+@@ -266,6 +297,11 @@ static int OS3_OpenWindowed(OS3_WindowData *data, SDL_Window *window)
+                 window->h <= (int)wbscreen->Height) {
+                 use_wb = 1;
+             }
++            /* Asked for Workbench explicitly: a public screen existing is
++             * the only precondition we still insist on. */
++            if (force_wb) {
++                use_wb = 1;
++            }
+             UnlockPubScreen(NULL, wbscreen);
+         }
+     }

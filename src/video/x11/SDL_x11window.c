@@ -1916,7 +1916,7 @@ int SDL_X11_SetWindowTitle(Display *display, Window xwindow, char *title)
         X11_XSetTextProperty(display, xwindow, &titleprop, _NET_WM_NAME);
         X11_XFree(titleprop.value);
     } else {
-        return SDL_SetError("Failed to convert title to UTF8! Bad encoding, or bad Xorg encoding? Window title: «%s»", title);
+        return SDL_SetError("Failed to convert title to UTF8! Bad encoding, or bad Xorg encoding? Window title: ÃÂ«%sÃÂ»", title);
     }
 #endif
 

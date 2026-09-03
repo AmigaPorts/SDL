@@ -40,6 +40,17 @@
 #include <android/log.h>
 #endif
 
+#if defined(__AMIGAOS3__) && defined(SDL_OS3_DEBUG)
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
+#include <proto/exec.h>
+#include <proto/dos.h>
+#ifdef WARPUP
+#pragma pop
+#endif
+#endif
+
 #include "stdlib/SDL_vacopy.h"
 
 /* The size of the stack buffer to use for rendering log messages. */
@@ -581,6 +592,25 @@ static void SDLCALL SDL_LogOutput(void *userdata, int category, SDL_LogPriority 
             (void)fprintf(pFile, "%s: %s\n", SDL_priority_prefixes[priority], message);
             (void)fclose(pFile);
         }
+    }
+#endif
+#if defined(__AMIGAOS3__) && defined(SDL_OS3_DEBUG)
+    /* Write SDL_Log output to WORK:sdl_log.txt so it survives crashes.
+     * Uses Forbid/Permit for safety from any task context. */
+    {
+        BPTR fh;
+        Forbid();
+        fh = Open((CONST_STRPTR)"WORK:sdl_log.txt", MODE_OLDFILE);
+        if (fh) Seek(fh, 0, OFFSET_END);
+        else fh = Open((CONST_STRPTR)"WORK:sdl_log.txt", MODE_NEWFILE);
+        if (fh) {
+            FPuts(fh, SDL_priority_prefixes[priority]);
+            FPuts(fh, ": ");
+            FPuts(fh, message);
+            FPuts(fh, "\n");
+            Close(fh);
+        }
+        Permit();
     }
 #endif
 #if defined(HAVE_STDIO_H) && \

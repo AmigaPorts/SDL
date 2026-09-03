@@ -132,6 +132,12 @@ static const AudioBootStrap *const bootstrap[] = {
 #ifdef SDL_AUDIO_DRIVER_OS2
     &OS2AUDIO_bootstrap,
 #endif
+#ifdef SDL_AUDIO_DRIVER_PAULA
+    &OS3PAULA_bootstrap,
+#endif
+#ifdef SDL_AUDIO_DRIVER_AHI
+    &OS3AHI_bootstrap,
+#endif
 #ifdef SDL_AUDIO_DRIVER_DISK
     &DISKAUDIO_bootstrap,
 #endif

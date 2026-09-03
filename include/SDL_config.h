@@ -47,6 +47,8 @@
 #include "SDL_config_emscripten.h"
 #elif defined(__NGAGE__)
 #include "SDL_config_ngage.h"
+#elif defined(__AMIGAOS3__)
+#include "SDL_config_amigaos3.h"
 #elif defined(__AMIGAOS4__)
 #include "SDL_config_amigaos4.h"
 #else

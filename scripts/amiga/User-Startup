@@ -1,0 +1,7 @@
+; SDL2 AmigaOS3 automated test harness
+; Installed by scripts/test-fsemu.sh before each test run.
+; Runs on every boot -- WB must be fully up before we start.
+Wait 3
+SYS:System/RexxMast >NIL:
+Wait 1
+SYS:Rexxc/rx WORK:run_tests.rexx
