@@ -193,7 +193,7 @@ static int SW_QueueSetViewport(SDL_Renderer *renderer, SDL_RenderCommand *cmd)
 
 static int SW_QueueDrawPoints(SDL_Renderer *renderer, SDL_RenderCommand *cmd, const SDL_FPoint *points, int count)
 {
-    SDL_Point *verts = (SDL_Point *)SDL_AllocateRenderVertices(renderer, count * sizeof(SDL_Point), 0, &cmd->data.draw.first);
+    SDL_Point *verts = (SDL_Point *)SDL_AllocateRenderVertices(renderer, count * sizeof(SDL_Point), sizeof(SDL_Point), &cmd->data.draw.first);
     int i;
 
     if (!verts) {
@@ -212,7 +212,7 @@ static int SW_QueueDrawPoints(SDL_Renderer *renderer, SDL_RenderCommand *cmd, co
 
 static int SW_QueueFillRects(SDL_Renderer *renderer, SDL_RenderCommand *cmd, const SDL_FRect *rects, int count)
 {
-    SDL_Rect *verts = (SDL_Rect *)SDL_AllocateRenderVertices(renderer, count * sizeof(SDL_Rect), 0, &cmd->data.draw.first);
+    SDL_Rect *verts = (SDL_Rect *)SDL_AllocateRenderVertices(renderer, count * sizeof(SDL_Rect), sizeof(int), &cmd->data.draw.first);
     int i;
 
     if (!verts) {
@@ -234,7 +234,7 @@ static int SW_QueueFillRects(SDL_Renderer *renderer, SDL_RenderCommand *cmd, con
 static int SW_QueueCopy(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Texture *texture,
                         const SDL_Rect *srcrect, const SDL_FRect *dstrect)
 {
-    SDL_Rect *verts = (SDL_Rect *)SDL_AllocateRenderVertices(renderer, 2 * sizeof(SDL_Rect), 0, &cmd->data.draw.first);
+    SDL_Rect *verts = (SDL_Rect *)SDL_AllocateRenderVertices(renderer, 2 * sizeof(SDL_Rect), sizeof(int), &cmd->data.draw.first);
 
     if (!verts) {
         return -1;
@@ -268,7 +268,7 @@ static int SW_QueueCopyEx(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_Te
                           const SDL_Rect *srcrect, const SDL_FRect *dstrect,
                           const double angle, const SDL_FPoint *center, const SDL_RendererFlip flip, float scale_x, float scale_y)
 {
-    CopyExData *verts = (CopyExData *)SDL_AllocateRenderVertices(renderer, sizeof(CopyExData), 0, &cmd->data.draw.first);
+    CopyExData *verts = (CopyExData *)SDL_AllocateRenderVertices(renderer, sizeof(CopyExData), sizeof(int), &cmd->data.draw.first);
 
     if (!verts) {
         return -1;
@@ -540,7 +540,7 @@ static int SW_QueueGeometry(SDL_Renderer *renderer, SDL_RenderCommand *cmd, SDL_
     void *verts;
     size_t sz = texture ? sizeof(GeometryCopyData) : sizeof(GeometryFillData);
 
-    verts = SDL_AllocateRenderVertices(renderer, count * sz, 0, &cmd->data.draw.first);
+    verts = SDL_AllocateRenderVertices(renderer, count * sz, sizeof(int), &cmd->data.draw.first);
     if (!verts) {
         return -1;
     }
@@ -763,6 +763,7 @@ static int SW_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, vo
                 const int count = (int) cmd->data.draw.count;
                 SDL_Rect *verts = (SDL_Rect *) (((Uint8 *) vertices) + cmd->data.draw.first);
                 const SDL_BlendMode blend = cmd->data.draw.blend;
+
                 SetDrawState(surface, &drawstate);
 
                 /* Apply viewport */
@@ -1002,6 +1003,8 @@ int SW_CreateRendererForSurface(SDL_Renderer *renderer, SDL_Surface *surface)
         SW_DestroyRenderer(renderer);
         return SDL_OutOfMemory();
     }
+    SDL_Log("SW_CreateRendererForSurface: data=%p sizeof(SW_RenderData)=%lu",
+            (void*)data, (unsigned long)sizeof(*data));
     data->surface = surface;
     data->window = surface;
 
@@ -1038,6 +1041,8 @@ static int SW_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, Uint32 
     SDL_Surface *surface;
     SDL_bool no_hint_set;
 
+    SDL_Log("SW_CreateRenderer: entry renderer=%p window=%p", (void*)renderer, (void*)window);
+
     /* Set the vsync hint based on our flags, if it's not already set */
     hint = SDL_GetHint(SDL_HINT_RENDER_VSYNC);
     if (!hint || !*hint) {
@@ -1050,7 +1055,10 @@ static int SW_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, Uint32 
         SDL_SetHint(SDL_HINT_RENDER_VSYNC, (flags & SDL_RENDERER_PRESENTVSYNC) ? "1" : "0");
     }
 
+    SDL_Log("SW_CreateRenderer: getting window surface");
     surface = SDL_GetWindowSurface(window);
+    SDL_Log("SW_CreateRenderer: surface=%p sizeof(SDL_Surface)=%lu",
+            (void*)surface, (unsigned long)sizeof(SDL_Surface));
 
     /* Reset the vsync hint if we set it above */
     if (no_hint_set) {
@@ -1058,9 +1066,15 @@ static int SW_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, Uint32 
     }
 
     if (!surface) {
+        SDL_Log("SW_CreateRenderer: no surface, returning -1");
         return -1;
     }
-    return SW_CreateRendererForSurface(renderer, surface);
+    SDL_Log("SW_CreateRenderer: calling SW_CreateRendererForSurface");
+    {
+        int rc = SW_CreateRendererForSurface(renderer, surface);
+        SDL_Log("SW_CreateRenderer: ForSurface returned %d", rc);
+        return rc;
+    }
 }
 
 SDL_RenderDriver SW_RenderDriver = {

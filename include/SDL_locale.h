@@ -57,7 +57,6 @@ typedef struct SDL_Locale
     const char *country;  /**< A country, like "US" for America. Can be NULL. */
 } SDL_Locale;
 
-
 /**
  * Report the user's preferred locale.
  *

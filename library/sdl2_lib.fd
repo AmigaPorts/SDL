@@ -1,0 +1,1286 @@
+* sdl2.library function descriptions -- GENERATED, do not edit.
+*
+* Order comes from SDL's own src/dynapi/SDL_dynapi_procs.h, which
+* declares itself append-only ('THE ORDER IS ABI LAW'). Slot n is
+* dynapi entry n, so a later SDL release appends here rather than
+* renumbering. Entries with no register-ABI form still hold their
+* slot as ##private so nothing after them moves.
+*
+* Slots 1000.. are this library's own additions.
+*
+##base _SDL2Base
+##bias 30
+##private
+* slot 0: SDL_SetError -- variadic
+SDL2_Reserved0000()()
+* slot 1: SDL_Log -- variadic
+SDL2_Reserved0001()()
+* slot 2: SDL_LogVerbose -- variadic
+SDL2_Reserved0002()()
+* slot 3: SDL_LogDebug -- variadic
+SDL2_Reserved0003()()
+* slot 4: SDL_LogInfo -- variadic
+SDL2_Reserved0004()()
+* slot 5: SDL_LogWarn -- variadic
+SDL2_Reserved0005()()
+* slot 6: SDL_LogError -- variadic
+SDL2_Reserved0006()()
+* slot 7: SDL_LogCritical -- variadic
+SDL2_Reserved0007()()
+* slot 8: SDL_LogMessage -- variadic
+SDL2_Reserved0008()()
+* slot 9: SDL_sscanf -- variadic
+SDL2_Reserved0009()()
+* slot 10: SDL_snprintf -- variadic
+SDL2_Reserved0010()()
+* slot 11: SDL_CreateThread -- dynapi lists the Windows signature
+SDL2_Reserved0011()()
+* slot 12: SDL_CreateThread -- dynapi lists the Windows signature
+SDL2_Reserved0012()()
+* slot 13: SDL_CreateThread -- dynapi lists the Windows signature
+SDL2_Reserved0013()()
+* slot 14: SDL_RWFromFP -- FILE * vs void * by configuration
+SDL2_Reserved0014()()
+* slot 15: SDL_RWFromFP -- FILE * vs void * by configuration
+SDL2_Reserved0015()()
+* slot 16: SDL_RegisterApp -- not built for AmigaOS
+SDL2_Reserved0016()()
+* slot 17: SDL_UnregisterApp -- not built for AmigaOS
+SDL2_Reserved0017()()
+* slot 18: SDL_Direct3D9GetAdapterIndex -- not built for AmigaOS
+SDL2_Reserved0018()()
+* slot 19: SDL_RenderGetD3D9Device -- not built for AmigaOS
+SDL2_Reserved0019()()
+* slot 20: SDL_iPhoneSetAnimationCallback -- not built for AmigaOS
+SDL2_Reserved0020()()
+* slot 21: SDL_iPhoneSetEventPump -- not built for AmigaOS
+SDL2_Reserved0021()()
+* slot 22: SDL_AndroidGetJNIEnv -- not built for AmigaOS
+SDL2_Reserved0022()()
+* slot 23: SDL_AndroidGetActivity -- not built for AmigaOS
+SDL2_Reserved0023()()
+* slot 24: SDL_AndroidGetInternalStoragePath -- not built for AmigaOS
+SDL2_Reserved0024()()
+* slot 25: SDL_AndroidGetExternalStorageState -- not built for AmigaOS
+SDL2_Reserved0025()()
+* slot 26: SDL_AndroidGetExternalStoragePath -- not built for AmigaOS
+SDL2_Reserved0026()()
+##public
+SDL2_Init(a)(D0)
+SDL2_InitSubSystem(a)(D0)
+SDL2_QuitSubSystem(a)(D0)
+SDL2_WasInit(a)(D0)
+SDL2_Quit()()
+SDL2_ReportAssertion(a,b,c,d)(A0,A1,A2,D0)
+SDL2_SetAssertionHandler(a,b)(D0,A0)
+SDL2_GetAssertionReport()()
+SDL2_ResetAssertionReport()()
+SDL2_AtomicTryLock(a)(A0)
+SDL2_AtomicLock(a)(A0)
+SDL2_AtomicUnlock(a)(A0)
+SDL2_AtomicCAS(a,b,c)(A0,D0,D1)
+SDL2_AtomicSet(a,b)(A0,D0)
+SDL2_AtomicGet(a)(A0)
+SDL2_AtomicAdd(a,b)(A0,D0)
+SDL2_AtomicCASPtr(a,b,c)(A0,A1,A2)
+SDL2_AtomicSetPtr(a,b)(A0,A1)
+SDL2_AtomicGetPtr(a)(A0)
+SDL2_GetNumAudioDrivers()()
+SDL2_GetAudioDriver(a)(D0)
+SDL2_AudioInit(a)(A0)
+SDL2_AudioQuit()()
+SDL2_GetCurrentAudioDriver()()
+SDL2_OpenAudio(a,b)(A0,A1)
+SDL2_GetNumAudioDevices(a)(D0)
+SDL2_GetAudioDeviceName(a,b)(D0,D1)
+SDL2_OpenAudioDevice(a,b,c,d,e)(A0,D0,A1,A2,D1)
+##private
+* slot 55: SDL_GetAudioStatus -- returns a struct by value
+SDL2_Reserved0055()()
+* slot 56: SDL_GetAudioDeviceStatus -- returns a struct by value
+SDL2_Reserved0056()()
+##public
+SDL2_PauseAudio(a)(D0)
+SDL2_PauseAudioDevice(a,b)(D0,D1)
+SDL2_LoadWAV_RW(a,b,c,d,e)(A0,D0,A1,A2,A3)
+SDL2_FreeWAV(a)(A0)
+SDL2_BuildAudioCVT(a,b,c,d,e,f,g)(A0,D0,D1,D2,D3,D4,D5)
+SDL2_ConvertAudio(a)(A0)
+SDL2_MixAudio(a,b,c,d)(A0,A1,D0,D1)
+SDL2_MixAudioFormat(a,b,c,d,e)(A0,A1,D0,D1,D2)
+SDL2_LockAudio()()
+SDL2_LockAudioDevice(a)(D0)
+SDL2_UnlockAudio()()
+SDL2_UnlockAudioDevice(a)(D0)
+SDL2_CloseAudio()()
+SDL2_CloseAudioDevice(a)(D0)
+SDL2_SetClipboardText(a)(A0)
+SDL2_GetClipboardText()()
+SDL2_HasClipboardText()()
+SDL2_GetCPUCount()()
+SDL2_GetCPUCacheLineSize()()
+SDL2_HasRDTSC()()
+SDL2_HasAltiVec()()
+SDL2_HasMMX()()
+SDL2_Has3DNow()()
+SDL2_HasSSE()()
+SDL2_HasSSE2()()
+SDL2_HasSSE3()()
+SDL2_HasSSE41()()
+SDL2_HasSSE42()()
+SDL2_GetSystemRAM()()
+SDL2_GetError()()
+SDL2_ClearError()()
+SDL2_Error(a)(D0)
+SDL2_PumpEvents()()
+SDL2_PeepEvents(a,b,c,d,e)(A0,D0,D1,D2,D3)
+SDL2_HasEvent(a)(D0)
+SDL2_HasEvents(a,b)(D0,D1)
+SDL2_FlushEvent(a)(D0)
+SDL2_FlushEvents(a,b)(D0,D1)
+SDL2_PollEvent(a)(A0)
+SDL2_WaitEvent(a)(A0)
+SDL2_WaitEventTimeout(a,b)(A0,D0)
+SDL2_PushEvent(a)(A0)
+SDL2_SetEventFilter(a,b)(D0,A0)
+SDL2_GetEventFilter(a,b)(A0,A1)
+SDL2_AddEventWatch(a,b)(D0,A0)
+SDL2_DelEventWatch(a,b)(D0,A0)
+SDL2_FilterEvents(a,b)(D0,A0)
+SDL2_EventState(a,b)(D0,D1)
+SDL2_RegisterEvents(a)(D0)
+SDL2_GetBasePath()()
+SDL2_GetPrefPath(a,b)(A0,A1)
+SDL2_GameControllerAddMapping(a)(A0)
+##private
+* slot 109: SDL_GameControllerMappingForGUID -- struct passed by value
+SDL2_Reserved0109()()
+##public
+SDL2_GameControllerMapping(a)(A0)
+SDL2_IsGameController(a)(D0)
+SDL2_GameControllerNameForIndex(a)(D0)
+SDL2_GameControllerOpen(a)(D0)
+SDL2_GameControllerName(a)(A0)
+SDL2_GameControllerGetAttached(a)(A0)
+SDL2_GameControllerGetJoystick(a)(A0)
+SDL2_GameControllerEventState(a)(D0)
+SDL2_GameControllerUpdate()()
+SDL2_GameControllerGetAxisFromString(a)(A0)
+SDL2_GameControllerGetStringForAxis(a)(D0)
+##private
+* slot 121: SDL_GameControllerGetBindForAxis -- returns a struct by value
+SDL2_Reserved0121()()
+##public
+SDL2_GameControllerGetAxis(a,b)(A0,D0)
+SDL2_GameControllerGetButtonFromString(a)(A0)
+SDL2_GameControllerGetStringForButton(a)(D0)
+##private
+* slot 125: SDL_GameControllerGetBindForButton -- returns a struct by value
+SDL2_Reserved0125()()
+##public
+SDL2_GameControllerGetButton(a,b)(A0,D0)
+SDL2_GameControllerClose(a)(A0)
+SDL2_RecordGesture(a)(D0)
+SDL2_SaveAllDollarTemplates(a)(A0)
+SDL2_SaveDollarTemplate(a,b)(D0,A0)
+SDL2_LoadDollarTemplates(a,b)(D0,A0)
+SDL2_NumHaptics()()
+SDL2_HapticName(a)(D0)
+SDL2_HapticOpen(a)(D0)
+SDL2_HapticOpened(a)(D0)
+SDL2_HapticIndex(a)(A0)
+SDL2_MouseIsHaptic()()
+SDL2_HapticOpenFromMouse()()
+SDL2_JoystickIsHaptic(a)(A0)
+SDL2_HapticOpenFromJoystick(a)(A0)
+SDL2_HapticClose(a)(A0)
+SDL2_HapticNumEffects(a)(A0)
+SDL2_HapticNumEffectsPlaying(a)(A0)
+SDL2_HapticQuery(a)(A0)
+SDL2_HapticNumAxes(a)(A0)
+SDL2_HapticEffectSupported(a,b)(A0,A1)
+SDL2_HapticNewEffect(a,b)(A0,A1)
+SDL2_HapticUpdateEffect(a,b,c)(A0,D0,A1)
+SDL2_HapticRunEffect(a,b,c)(A0,D0,D1)
+SDL2_HapticStopEffect(a,b)(A0,D0)
+SDL2_HapticDestroyEffect(a,b)(A0,D0)
+SDL2_HapticGetEffectStatus(a,b)(A0,D0)
+SDL2_HapticSetGain(a,b)(A0,D0)
+SDL2_HapticSetAutocenter(a,b)(A0,D0)
+SDL2_HapticPause(a)(A0)
+SDL2_HapticUnpause(a)(A0)
+SDL2_HapticStopAll(a)(A0)
+SDL2_HapticRumbleSupported(a)(A0)
+SDL2_HapticRumbleInit(a)(A0)
+SDL2_HapticRumblePlay(a,b,c)(A0,D0,D1)
+SDL2_HapticRumbleStop(a)(A0)
+SDL2_SetHintWithPriority(a,b,c)(A0,A1,D0)
+SDL2_SetHint(a,b)(A0,A1)
+SDL2_GetHint(a)(A0)
+SDL2_AddHintCallback(a,b,c)(A0,D0,A1)
+SDL2_DelHintCallback(a,b,c)(A0,D0,A1)
+SDL2_ClearHints()()
+SDL2_NumJoysticks()()
+SDL2_JoystickNameForIndex(a)(D0)
+SDL2_JoystickOpen(a)(D0)
+SDL2_JoystickName(a)(A0)
+##private
+* slot 172: SDL_JoystickGetDeviceGUID -- returns a struct by value
+SDL2_Reserved0172()()
+* slot 173: SDL_JoystickGetGUID -- returns a struct by value
+SDL2_Reserved0173()()
+* slot 174: SDL_JoystickGetGUIDString -- struct passed by value
+SDL2_Reserved0174()()
+* slot 175: SDL_JoystickGetGUIDFromString -- returns a struct by value
+SDL2_Reserved0175()()
+##public
+SDL2_JoystickGetAttached(a)(A0)
+SDL2_JoystickInstanceID(a)(A0)
+SDL2_JoystickNumAxes(a)(A0)
+SDL2_JoystickNumBalls(a)(A0)
+SDL2_JoystickNumHats(a)(A0)
+SDL2_JoystickNumButtons(a)(A0)
+SDL2_JoystickUpdate()()
+SDL2_JoystickEventState(a)(D0)
+SDL2_JoystickGetAxis(a,b)(A0,D0)
+SDL2_JoystickGetHat(a,b)(A0,D0)
+SDL2_JoystickGetBall(a,b,c,d)(A0,D0,A1,A2)
+SDL2_JoystickGetButton(a,b)(A0,D0)
+SDL2_JoystickClose(a)(A0)
+SDL2_GetKeyboardFocus()()
+SDL2_GetKeyboardState(a)(A0)
+SDL2_GetModState()()
+SDL2_SetModState(a)(D0)
+SDL2_GetKeyFromScancode(a)(D0)
+SDL2_GetScancodeFromKey(a)(D0)
+SDL2_GetScancodeName(a)(D0)
+SDL2_GetScancodeFromName(a)(A0)
+SDL2_GetKeyName(a)(D0)
+SDL2_GetKeyFromName(a)(A0)
+SDL2_StartTextInput()()
+SDL2_IsTextInputActive()()
+SDL2_StopTextInput()()
+SDL2_SetTextInputRect(a)(A0)
+SDL2_HasScreenKeyboardSupport()()
+SDL2_IsScreenKeyboardShown(a)(A0)
+SDL2_LoadObject(a)(A0)
+SDL2_LoadFunction(a,b)(A0,A1)
+SDL2_UnloadObject(a)(A0)
+SDL2_LogSetAllPriority(a)(D0)
+SDL2_LogSetPriority(a,b)(D0,D1)
+SDL2_LogGetPriority(a)(D0)
+SDL2_LogResetPriorities()()
+SDL2_LogMessageV(a,b,c,d)(D0,D1,A0,D2)
+SDL2_LogGetOutputFunction(a,b)(A0,A1)
+SDL2_LogSetOutputFunction(a,b)(D0,A0)
+SDL2_SetMainReady()()
+SDL2_ShowMessageBox(a,b)(A0,A1)
+SDL2_ShowSimpleMessageBox(a,b,c,d)(D0,A0,A1,A2)
+SDL2_GetMouseFocus()()
+SDL2_GetMouseState(a,b)(A0,A1)
+SDL2_GetRelativeMouseState(a,b)(A0,A1)
+SDL2_WarpMouseInWindow(a,b,c)(A0,D0,D1)
+SDL2_SetRelativeMouseMode(a)(D0)
+SDL2_GetRelativeMouseMode()()
+SDL2_CreateCursor(a,b,c,d,e,f)(A0,A1,D0,D1,D2,D3)
+SDL2_CreateColorCursor(a,b,c)(A0,D0,D1)
+SDL2_CreateSystemCursor(a)(D0)
+SDL2_SetCursor(a)(A0)
+SDL2_GetCursor()()
+SDL2_GetDefaultCursor()()
+SDL2_FreeCursor(a)(A0)
+SDL2_ShowCursor(a)(D0)
+SDL2_CreateMutex()()
+SDL2_LockMutex(a)(A0)
+SDL2_TryLockMutex(a)(A0)
+SDL2_UnlockMutex(a)(A0)
+SDL2_DestroyMutex(a)(A0)
+SDL2_CreateSemaphore(a)(D0)
+SDL2_DestroySemaphore(a)(A0)
+SDL2_SemWait(a)(A0)
+SDL2_SemTryWait(a)(A0)
+SDL2_SemWaitTimeout(a,b)(A0,D0)
+SDL2_SemPost(a)(A0)
+SDL2_SemValue(a)(A0)
+SDL2_CreateCond()()
+SDL2_DestroyCond(a)(A0)
+SDL2_CondSignal(a)(A0)
+SDL2_CondBroadcast(a)(A0)
+SDL2_CondWait(a,b)(A0,A1)
+SDL2_CondWaitTimeout(a,b,c)(A0,A1,D0)
+SDL2_GetPixelFormatName(a)(D0)
+SDL2_PixelFormatEnumToMasks(a,b,c,d,e,f)(D0,A0,A1,A2,A3,D1)
+SDL2_MasksToPixelFormatEnum(a,b,c,d,e)(D0,D1,D2,D3,D4)
+SDL2_AllocFormat(a)(D0)
+SDL2_FreeFormat(a)(A0)
+SDL2_AllocPalette(a)(D0)
+SDL2_SetPixelFormatPalette(a,b)(A0,A1)
+SDL2_SetPaletteColors(a,b,c,d)(A0,A1,D0,D1)
+SDL2_FreePalette(a)(A0)
+SDL2_MapRGB(a,b,c,d)(A0,D0,D1,D2)
+SDL2_MapRGBA(a,b,c,d,e)(A0,D0,D1,D2,D3)
+SDL2_GetRGB(a,b,c,d,e)(D0,A0,A1,A2,A3)
+SDL2_GetRGBA(a,b,c,d,e,f)(D0,A0,A1,A2,A3,D1)
+SDL2_CalculateGammaRamp(a,b)(D0,A0)
+SDL2_GetPlatform()()
+##private
+* slot 265: SDL_GetPowerInfo -- returns a struct by value
+SDL2_Reserved0265()()
+##public
+SDL2_HasIntersection(a,b)(A0,A1)
+SDL2_IntersectRect(a,b,c)(A0,A1,A2)
+SDL2_UnionRect(a,b,c)(A0,A1,A2)
+SDL2_EnclosePoints(a,b,c,d)(A0,D0,A1,A2)
+SDL2_IntersectRectAndLine(a,b,c,d,e)(A0,A1,A2,A3,D0)
+SDL2_GetNumRenderDrivers()()
+SDL2_GetRenderDriverInfo(a,b)(D0,A0)
+SDL2_CreateWindowAndRenderer(a,b,c,d,e)(D0,D1,D2,A0,A1)
+SDL2_CreateRenderer(a,b,c)(A0,D0,D1)
+SDL2_CreateSoftwareRenderer(a)(A0)
+SDL2_GetRenderer(a)(A0)
+SDL2_GetRendererInfo(a,b)(A0,A1)
+SDL2_GetRendererOutputSize(a,b,c)(A0,A1,A2)
+SDL2_CreateTexture(a,b,c,d,e)(A0,D0,D1,D2,D3)
+SDL2_CreateTextureFromSurface(a,b)(A0,A1)
+SDL2_QueryTexture(a,b,c,d,e)(A0,A1,A2,A3,D0)
+SDL2_SetTextureColorMod(a,b,c,d)(A0,D0,D1,D2)
+SDL2_GetTextureColorMod(a,b,c,d)(A0,A1,A2,A3)
+SDL2_SetTextureAlphaMod(a,b)(A0,D0)
+SDL2_GetTextureAlphaMod(a,b)(A0,A1)
+SDL2_SetTextureBlendMode(a,b)(A0,D0)
+SDL2_GetTextureBlendMode(a,b)(A0,A1)
+SDL2_UpdateTexture(a,b,c,d)(A0,A1,A2,D0)
+SDL2_UpdateYUVTexture(a,b,c,d,e,f,g,h)(A0,A1,A2,D0,A3,D1,D2,D3)
+SDL2_LockTexture(a,b,c,d)(A0,A1,A2,A3)
+SDL2_UnlockTexture(a)(A0)
+SDL2_RenderTargetSupported(a)(A0)
+SDL2_SetRenderTarget(a,b)(A0,A1)
+SDL2_GetRenderTarget(a)(A0)
+SDL2_RenderSetLogicalSize(a,b,c)(A0,D0,D1)
+SDL2_RenderGetLogicalSize(a,b,c)(A0,A1,A2)
+SDL2_RenderSetViewport(a,b)(A0,A1)
+SDL2_RenderGetViewport(a,b)(A0,A1)
+SDL2_RenderSetClipRect(a,b)(A0,A1)
+SDL2_RenderGetClipRect(a,b)(A0,A1)
+SDL2_RenderSetScale(a,b,c)(A0,D0,D1)
+SDL2_RenderGetScale(a,b,c)(A0,A1,A2)
+SDL2_SetRenderDrawColor(a,b,c,d,e)(A0,D0,D1,D2,D3)
+SDL2_GetRenderDrawColor(a,b,c,d,e)(A0,A1,A2,A3,D0)
+SDL2_SetRenderDrawBlendMode(a,b)(A0,D0)
+SDL2_GetRenderDrawBlendMode(a,b)(A0,A1)
+SDL2_RenderClear(a)(A0)
+SDL2_RenderDrawPoint(a,b,c)(A0,D0,D1)
+SDL2_RenderDrawPoints(a,b,c)(A0,A1,D0)
+SDL2_RenderDrawLine(a,b,c,d,e)(A0,D0,D1,D2,D3)
+SDL2_RenderDrawLines(a,b,c)(A0,A1,D0)
+SDL2_RenderDrawRect(a,b)(A0,A1)
+SDL2_RenderDrawRects(a,b,c)(A0,A1,D0)
+SDL2_RenderFillRect(a,b)(A0,A1)
+SDL2_RenderFillRects(a,b,c)(A0,A1,D0)
+SDL2_RenderCopy(a,b,c,d)(A0,A1,A2,A3)
+SDL2_RenderCopyEx(a,b,c,d,e,f,g)(A0,A1,A2,A3,D0,D2,D3)
+SDL2_RenderReadPixels(a,b,c,d,e)(A0,A1,D0,A2,D1)
+SDL2_RenderPresent(a)(A0)
+SDL2_DestroyTexture(a)(A0)
+SDL2_DestroyRenderer(a)(A0)
+SDL2_GL_BindTexture(a,b,c)(A0,A1,A2)
+SDL2_GL_UnbindTexture(a)(A0)
+SDL2_RWFromFile(a,b)(A0,A1)
+SDL2_RWFromMem(a,b)(A0,D0)
+SDL2_RWFromConstMem(a,b)(A0,D0)
+SDL2_AllocRW()()
+SDL2_FreeRW(a)(A0)
+SDL2_ReadU8(a)(A0)
+SDL2_ReadLE16(a)(A0)
+SDL2_ReadBE16(a)(A0)
+SDL2_ReadLE32(a)(A0)
+SDL2_ReadBE32(a)(A0)
+SDL2_ReadLE64(a)(A0)
+SDL2_ReadBE64(a)(A0)
+SDL2_WriteU8(a,b)(A0,D0)
+SDL2_WriteLE16(a,b)(A0,D0)
+SDL2_WriteBE16(a,b)(A0,D0)
+SDL2_WriteLE32(a,b)(A0,D0)
+SDL2_WriteBE32(a,b)(A0,D0)
+SDL2_WriteLE64(a,b)(A0,D0)
+SDL2_WriteBE64(a,b)(A0,D0)
+SDL2_CreateShapedWindow(a,b,c,d,e,f)(A0,D0,D1,D2,D3,D4)
+SDL2_IsShapedWindow(a)(A0)
+SDL2_SetWindowShape(a,b,c)(A0,A1,A2)
+SDL2_GetShapedWindowMode(a,b)(A0,A1)
+SDL2_malloc(a)(D0)
+SDL2_calloc(a,b)(D0,D1)
+SDL2_realloc(a,b)(A0,D0)
+SDL2_free(a)(A0)
+SDL2_getenv(a)(A0)
+SDL2_setenv(a,b,c)(A0,A1,D0)
+SDL2_qsort(a,b,c,d)(A0,D0,D1,D2)
+SDL2_abs(a)(D0)
+SDL2_isdigit(a)(D0)
+SDL2_isspace(a)(D0)
+SDL2_toupper(a)(D0)
+SDL2_tolower(a)(D0)
+SDL2_memset(a,b,c)(A0,D0,D1)
+SDL2_memcpy(a,b,c)(A0,A1,D0)
+SDL2_memmove(a,b,c)(A0,A1,D0)
+SDL2_memcmp(a,b,c)(A0,A1,D0)
+SDL2_wcslen(a)(A0)
+SDL2_wcslcpy(a,b,c)(A0,A1,D0)
+SDL2_wcslcat(a,b,c)(A0,A1,D0)
+SDL2_strlen(a)(A0)
+SDL2_strlcpy(a,b,c)(A0,A1,D0)
+SDL2_utf8strlcpy(a,b,c)(A0,A1,D0)
+SDL2_strlcat(a,b,c)(A0,A1,D0)
+SDL2_strdup(a)(A0)
+SDL2_strrev(a)(A0)
+SDL2_strupr(a)(A0)
+SDL2_strlwr(a)(A0)
+SDL2_strchr(a,b)(A0,D0)
+SDL2_strrchr(a,b)(A0,D0)
+SDL2_strstr(a,b)(A0,A1)
+SDL2_itoa(a,b,c)(D0,A0,D1)
+SDL2_uitoa(a,b,c)(D0,A0,D1)
+SDL2_ltoa(a,b,c)(D0,A0,D1)
+SDL2_ultoa(a,b,c)(D0,A0,D1)
+SDL2_lltoa(a,b,c)(D0,A0,D2)
+SDL2_ulltoa(a,b,c)(D0,A0,D2)
+SDL2_atoi(a)(A0)
+SDL2_atof(a)(A0)
+SDL2_strtol(a,b,c)(A0,A1,D0)
+SDL2_strtoul(a,b,c)(A0,A1,D0)
+SDL2_strtoll(a,b,c)(A0,A1,D0)
+SDL2_strtoull(a,b,c)(A0,A1,D0)
+SDL2_strtod(a,b)(A0,A1)
+SDL2_strcmp(a,b)(A0,A1)
+SDL2_strncmp(a,b,c)(A0,A1,D0)
+SDL2_strcasecmp(a,b)(A0,A1)
+SDL2_strncasecmp(a,b,c)(A0,A1,D0)
+SDL2_vsnprintf(a,b,c,d)(A0,D0,A1,D1)
+SDL2_acos(a)(D0)
+SDL2_asin(a)(D0)
+SDL2_atan(a)(D0)
+SDL2_atan2(a,b)(D0,D2)
+SDL2_ceil(a)(D0)
+SDL2_copysign(a,b)(D0,D2)
+SDL2_cos(a)(D0)
+SDL2_cosf(a)(D0)
+SDL2_fabs(a)(D0)
+SDL2_floor(a)(D0)
+SDL2_log(a)(D0)
+SDL2_pow(a,b)(D0,D2)
+SDL2_scalbn(a,b)(D0,D2)
+SDL2_sin(a)(D0)
+SDL2_sinf(a)(D0)
+SDL2_sqrt(a)(D0)
+SDL2_iconv_open(a,b)(A0,A1)
+SDL2_iconv_close(a)(D0)
+SDL2_iconv(a,b,c,d,e)(D0,A0,A1,A2,A3)
+SDL2_iconv_string(a,b,c,d)(A0,A1,A2,D0)
+SDL2_CreateRGBSurface(a,b,c,d,e,f,g,h)(D0,D1,D2,D3,D4,D5,D6,D7)
+SDL2_CreateRGBSurfaceFrom(a,b,c,d,e,f,g,h,i)(A0,D0,D1,D2,D3,D4,D5,D6,D7)
+SDL2_FreeSurface(a)(A0)
+SDL2_SetSurfacePalette(a,b)(A0,A1)
+SDL2_LockSurface(a)(A0)
+SDL2_UnlockSurface(a)(A0)
+SDL2_LoadBMP_RW(a,b)(A0,D0)
+SDL2_SaveBMP_RW(a,b,c)(A0,A1,D0)
+SDL2_SetSurfaceRLE(a,b)(A0,D0)
+SDL2_SetColorKey(a,b,c)(A0,D0,D1)
+SDL2_GetColorKey(a,b)(A0,A1)
+SDL2_SetSurfaceColorMod(a,b,c,d)(A0,D0,D1,D2)
+SDL2_GetSurfaceColorMod(a,b,c,d)(A0,A1,A2,A3)
+SDL2_SetSurfaceAlphaMod(a,b)(A0,D0)
+SDL2_GetSurfaceAlphaMod(a,b)(A0,A1)
+SDL2_SetSurfaceBlendMode(a,b)(A0,D0)
+SDL2_GetSurfaceBlendMode(a,b)(A0,A1)
+SDL2_SetClipRect(a,b)(A0,A1)
+SDL2_GetClipRect(a,b)(A0,A1)
+SDL2_ConvertSurface(a,b,c)(A0,A1,D0)
+SDL2_ConvertSurfaceFormat(a,b,c)(A0,D0,D1)
+SDL2_ConvertPixels(a,b,c,d,e,f,g,h)(D0,D1,D2,A0,D3,D4,A1,D5)
+SDL2_FillRect(a,b,c)(A0,A1,D0)
+SDL2_FillRects(a,b,c,d)(A0,A1,D0,D1)
+SDL2_UpperBlit(a,b,c,d)(A0,A1,A2,A3)
+SDL2_LowerBlit(a,b,c,d)(A0,A1,A2,A3)
+SDL2_SoftStretch(a,b,c,d)(A0,A1,A2,A3)
+SDL2_UpperBlitScaled(a,b,c,d)(A0,A1,A2,A3)
+SDL2_LowerBlitScaled(a,b,c,d)(A0,A1,A2,A3)
+SDL2_GetWindowWMInfo(a,b)(A0,A1)
+SDL2_GetThreadName(a)(A0)
+SDL2_ThreadID()()
+SDL2_GetThreadID(a)(A0)
+SDL2_SetThreadPriority(a)(D0)
+SDL2_WaitThread(a,b)(A0,A1)
+SDL2_DetachThread(a)(A0)
+SDL2_TLSCreate()()
+SDL2_TLSGet(a)(D0)
+SDL2_TLSSet(a,b,c)(D0,A0,D1)
+SDL2_GetTicks()()
+SDL2_GetPerformanceCounter()()
+SDL2_GetPerformanceFrequency()()
+SDL2_Delay(a)(D0)
+SDL2_AddTimer(a,b,c)(D0,D1,A0)
+SDL2_RemoveTimer(a)(D0)
+SDL2_GetNumTouchDevices()()
+SDL2_GetTouchDevice(a)(D0)
+SDL2_GetNumTouchFingers(a)(D0)
+SDL2_GetTouchFinger(a,b)(D0,D2)
+SDL2_GetVersion(a)(A0)
+SDL2_GetRevision()()
+SDL2_GetRevisionNumber()()
+SDL2_GetNumVideoDrivers()()
+SDL2_GetVideoDriver(a)(D0)
+SDL2_VideoInit(a)(A0)
+SDL2_VideoQuit()()
+SDL2_GetCurrentVideoDriver()()
+SDL2_GetNumVideoDisplays()()
+SDL2_GetDisplayName(a)(D0)
+SDL2_GetDisplayBounds(a,b)(D0,A0)
+SDL2_GetNumDisplayModes(a)(D0)
+SDL2_GetDisplayMode(a,b,c)(D0,D1,A0)
+SDL2_GetDesktopDisplayMode(a,b)(D0,A0)
+SDL2_GetCurrentDisplayMode(a,b)(D0,A0)
+SDL2_GetClosestDisplayMode(a,b,c)(D0,A0,A1)
+SDL2_GetWindowDisplayIndex(a)(A0)
+SDL2_SetWindowDisplayMode(a,b)(A0,A1)
+SDL2_GetWindowDisplayMode(a,b)(A0,A1)
+SDL2_GetWindowPixelFormat(a)(A0)
+SDL2_CreateWindow(a,b,c,d,e,f)(A0,D0,D1,D2,D3,D4)
+SDL2_CreateWindowFrom(a)(A0)
+SDL2_GetWindowID(a)(A0)
+SDL2_GetWindowFromID(a)(D0)
+SDL2_GetWindowFlags(a)(A0)
+SDL2_SetWindowTitle(a,b)(A0,A1)
+SDL2_GetWindowTitle(a)(A0)
+SDL2_SetWindowIcon(a,b)(A0,A1)
+SDL2_SetWindowData(a,b,c)(A0,A1,A2)
+SDL2_GetWindowData(a,b)(A0,A1)
+SDL2_SetWindowPosition(a,b,c)(A0,D0,D1)
+SDL2_GetWindowPosition(a,b,c)(A0,A1,A2)
+SDL2_SetWindowSize(a,b,c)(A0,D0,D1)
+SDL2_GetWindowSize(a,b,c)(A0,A1,A2)
+SDL2_SetWindowMinimumSize(a,b,c)(A0,D0,D1)
+SDL2_GetWindowMinimumSize(a,b,c)(A0,A1,A2)
+SDL2_SetWindowMaximumSize(a,b,c)(A0,D0,D1)
+SDL2_GetWindowMaximumSize(a,b,c)(A0,A1,A2)
+SDL2_SetWindowBordered(a,b)(A0,D0)
+SDL2_ShowWindow(a)(A0)
+SDL2_HideWindow(a)(A0)
+SDL2_RaiseWindow(a)(A0)
+SDL2_MaximizeWindow(a)(A0)
+SDL2_MinimizeWindow(a)(A0)
+SDL2_RestoreWindow(a)(A0)
+SDL2_SetWindowFullscreen(a,b)(A0,D0)
+SDL2_GetWindowSurface(a)(A0)
+SDL2_UpdateWindowSurface(a)(A0)
+SDL2_UpdateWindowSurfaceRects(a,b,c)(A0,A1,D0)
+SDL2_SetWindowGrab(a,b)(A0,D0)
+SDL2_GetWindowGrab(a)(A0)
+SDL2_SetWindowBrightness(a,b)(A0,D0)
+SDL2_GetWindowBrightness(a)(A0)
+SDL2_SetWindowGammaRamp(a,b,c,d)(A0,A1,A2,A3)
+SDL2_GetWindowGammaRamp(a,b,c,d)(A0,A1,A2,A3)
+SDL2_DestroyWindow(a)(A0)
+SDL2_IsScreenSaverEnabled()()
+SDL2_EnableScreenSaver()()
+SDL2_DisableScreenSaver()()
+SDL2_GL_LoadLibrary(a)(A0)
+SDL2_GL_GetProcAddress(a)(A0)
+SDL2_GL_UnloadLibrary()()
+SDL2_GL_ExtensionSupported(a)(A0)
+SDL2_GL_SetAttribute(a,b)(D0,D1)
+SDL2_GL_GetAttribute(a,b)(D0,A0)
+SDL2_GL_CreateContext(a)(A0)
+SDL2_GL_MakeCurrent(a,b)(A0,D0)
+SDL2_GL_GetCurrentWindow()()
+SDL2_GL_GetCurrentContext()()
+SDL2_GL_GetDrawableSize(a,b,c)(A0,A1,A2)
+SDL2_GL_SetSwapInterval(a)(D0)
+SDL2_GL_GetSwapInterval()()
+SDL2_GL_SwapWindow(a)(A0)
+SDL2_GL_DeleteContext(a)(D0)
+SDL2_vsscanf(a,b,c)(A0,A1,D0)
+SDL2_GameControllerAddMappingsFromRW(a,b)(A0,D0)
+SDL2_GL_ResetAttributes()()
+SDL2_HasAVX()()
+SDL2_GetDefaultAssertionHandler()()
+SDL2_GetAssertionHandler(a)(A0)
+##private
+* slot 544: SDL_DXGIGetOutputInfo -- not built for AmigaOS
+SDL2_Reserved0544()()
+##public
+SDL2_RenderIsClipEnabled(a)(A0)
+##private
+* slot 546: SDL_WinRTRunApp -- not built for AmigaOS
+SDL2_Reserved0546()()
+* slot 547: SDL_WinRTGetFSPathUNICODE -- not built for AmigaOS
+SDL2_Reserved0547()()
+* slot 548: SDL_WinRTGetFSPathUTF8 -- not built for AmigaOS
+SDL2_Reserved0548()()
+##public
+SDL2_WarpMouseGlobal(a,b)(D0,D1)
+SDL2_sqrtf(a)(D0)
+SDL2_tan(a)(D0)
+SDL2_tanf(a)(D0)
+SDL2_CaptureMouse(a)(D0)
+SDL2_SetWindowHitTest(a,b,c)(A0,D0,A1)
+SDL2_GetGlobalMouseState(a,b)(A0,A1)
+SDL2_HasAVX2()()
+SDL2_QueueAudio(a,b,c)(D0,A0,D1)
+SDL2_GetQueuedAudioSize(a)(D0)
+SDL2_ClearQueuedAudio(a)(D0)
+SDL2_GetGrabbedWindow()()
+##private
+* slot 561: SDL_SetWindowsMessageHook -- not built for AmigaOS
+SDL2_Reserved0561()()
+##public
+SDL2_GetDisplayDPI(a,b,c,d)(D0,A0,A1,A2)
+SDL2_JoystickCurrentPowerLevel(a)(A0)
+SDL2_GameControllerFromInstanceID(a)(D0)
+SDL2_JoystickFromInstanceID(a)(D0)
+SDL2_GetDisplayUsableBounds(a,b)(D0,A0)
+SDL2_GetWindowBordersSize(a,b,c,d,e)(A0,A1,A2,A3,D0)
+SDL2_SetWindowOpacity(a,b)(A0,D0)
+SDL2_GetWindowOpacity(a,b)(A0,A1)
+SDL2_SetWindowInputFocus(a)(A0)
+SDL2_SetWindowModalFor(a,b)(A0,A1)
+SDL2_RenderSetIntegerScale(a,b)(A0,D0)
+SDL2_RenderGetIntegerScale(a)(A0)
+SDL2_DequeueAudio(a,b,c)(D0,A0,D1)
+SDL2_SetWindowResizable(a,b)(A0,D0)
+SDL2_CreateRGBSurfaceWithFormat(a,b,c,d,e)(D0,D1,D2,D3,D4)
+SDL2_CreateRGBSurfaceWithFormatFrom(a,b,c,d,e,f)(A0,D0,D1,D2,D3,D4)
+SDL2_GetHintBoolean(a,b)(A0,D0)
+SDL2_JoystickGetDeviceVendor(a)(D0)
+SDL2_JoystickGetDeviceProduct(a)(D0)
+SDL2_JoystickGetDeviceProductVersion(a)(D0)
+SDL2_JoystickGetVendor(a)(A0)
+SDL2_JoystickGetProduct(a)(A0)
+SDL2_JoystickGetProductVersion(a)(A0)
+SDL2_GameControllerGetVendor(a)(A0)
+SDL2_GameControllerGetProduct(a)(A0)
+SDL2_GameControllerGetProductVersion(a)(A0)
+SDL2_HasNEON()()
+SDL2_GameControllerNumMappings()()
+SDL2_GameControllerMappingForIndex(a)(D0)
+SDL2_JoystickGetAxisInitialState(a,b,c)(A0,D0,A1)
+SDL2_JoystickGetDeviceType(a)(D0)
+SDL2_JoystickGetType(a)(A0)
+SDL2_MemoryBarrierReleaseFunction()()
+SDL2_MemoryBarrierAcquireFunction()()
+SDL2_JoystickGetDeviceInstanceID(a)(D0)
+SDL2_utf8strlen(a)(A0)
+SDL2_LoadFile_RW(a,b,c)(A0,A1,D0)
+SDL2_wcscmp(a,b)(A0,A1)
+SDL2_ComposeCustomBlendMode(a,b,c,d,e,f)(D0,D1,D2,D3,D4,D5)
+SDL2_DuplicateSurface(a)(A0)
+##private
+* slot 602: SDL_Vulkan_LoadLibrary -- no Vulkan on AmigaOS 3
+SDL2_Reserved0602()()
+* slot 603: SDL_Vulkan_GetVkGetInstanceProcAddr -- no Vulkan on AmigaOS 3
+SDL2_Reserved0603()()
+* slot 604: SDL_Vulkan_UnloadLibrary -- no Vulkan on AmigaOS 3
+SDL2_Reserved0604()()
+* slot 605: SDL_Vulkan_GetInstanceExtensions -- no Vulkan on AmigaOS 3
+SDL2_Reserved0605()()
+* slot 606: SDL_Vulkan_CreateSurface -- no Vulkan on AmigaOS 3
+SDL2_Reserved0606()()
+* slot 607: SDL_Vulkan_GetDrawableSize -- no Vulkan on AmigaOS 3
+SDL2_Reserved0607()()
+##public
+SDL2_LockJoysticks()()
+SDL2_UnlockJoysticks()()
+SDL2_GetMemoryFunctions(a,b,c,d)(A0,A1,A2,A3)
+SDL2_SetMemoryFunctions(a,b,c,d)(D0,D1,D2,D3)
+SDL2_GetNumAllocations()()
+SDL2_NewAudioStream(a,b,c,d,e,f)(D0,D1,D2,D3,D4,D5)
+SDL2_AudioStreamPut(a,b,c)(A0,A1,D0)
+SDL2_AudioStreamGet(a,b,c)(A0,A1,D0)
+SDL2_AudioStreamClear(a)(A0)
+SDL2_AudioStreamAvailable(a)(A0)
+SDL2_FreeAudioStream(a)(A0)
+SDL2_AudioStreamFlush(a)(A0)
+SDL2_acosf(a)(D0)
+SDL2_asinf(a)(D0)
+SDL2_atanf(a)(D0)
+SDL2_atan2f(a,b)(D0,D1)
+SDL2_ceilf(a)(D0)
+SDL2_copysignf(a,b)(D0,D1)
+SDL2_fabsf(a)(D0)
+SDL2_floorf(a)(D0)
+SDL2_logf(a)(D0)
+SDL2_powf(a,b)(D0,D1)
+SDL2_scalbnf(a,b)(D0,D1)
+SDL2_fmod(a,b)(D0,D2)
+SDL2_fmodf(a,b)(D0,D1)
+SDL2_SetYUVConversionMode(a)(D0)
+SDL2_GetYUVConversionMode()()
+SDL2_GetYUVConversionModeForResolution(a,b)(D0,D1)
+SDL2_RenderGetMetalLayer(a)(A0)
+SDL2_RenderGetMetalCommandEncoder(a)(A0)
+##private
+* slot 638: SDL_WinRTGetDeviceFamily -- not built for AmigaOS
+SDL2_Reserved0638()()
+* slot 639: SDL_IsAndroidTV -- not built for AmigaOS
+SDL2_Reserved0639()()
+##public
+SDL2_log10(a)(D0)
+SDL2_log10f(a)(D0)
+SDL2_GameControllerMappingForDeviceIndex(a)(D0)
+##private
+* slot 643: SDL_LinuxSetThreadPriority -- not built for AmigaOS
+SDL2_Reserved0643()()
+##public
+SDL2_HasAVX512F()()
+##private
+* slot 645: SDL_IsChromebook -- not built for AmigaOS
+SDL2_Reserved0645()()
+* slot 646: SDL_IsDeXMode -- not built for AmigaOS
+SDL2_Reserved0646()()
+* slot 647: SDL_AndroidBackButton -- not built for AmigaOS
+SDL2_Reserved0647()()
+##public
+SDL2_exp(a)(D0)
+SDL2_expf(a)(D0)
+SDL2_wcsdup(a)(A0)
+SDL2_GameControllerRumble(a,b,c,d)(A0,D0,D1,D2)
+SDL2_JoystickRumble(a,b,c,d)(A0,D0,D1,D2)
+SDL2_NumSensors()()
+SDL2_SensorGetDeviceName(a)(D0)
+SDL2_SensorGetDeviceType(a)(D0)
+SDL2_SensorGetDeviceNonPortableType(a)(D0)
+SDL2_SensorGetDeviceInstanceID(a)(D0)
+SDL2_SensorOpen(a)(D0)
+SDL2_SensorFromInstanceID(a)(D0)
+SDL2_SensorGetName(a)(A0)
+SDL2_SensorGetType(a)(A0)
+SDL2_SensorGetNonPortableType(a)(A0)
+SDL2_SensorGetInstanceID(a)(A0)
+SDL2_SensorGetData(a,b,c)(A0,A1,D0)
+SDL2_SensorClose(a)(A0)
+SDL2_SensorUpdate()()
+SDL2_IsTablet()()
+SDL2_GetDisplayOrientation(a)(D0)
+SDL2_HasColorKey(a)(A0)
+##private
+* slot 670: SDL_CreateThreadWithStackSize -- dynapi lists the Windows signature
+SDL2_Reserved0670()()
+* slot 671: SDL_CreateThreadWithStackSize -- dynapi lists the Windows signature
+SDL2_Reserved0671()()
+* slot 672: SDL_CreateThreadWithStackSize -- dynapi lists the Windows signature
+SDL2_Reserved0672()()
+##public
+SDL2_JoystickGetDevicePlayerIndex(a)(D0)
+SDL2_JoystickGetPlayerIndex(a)(A0)
+SDL2_GameControllerGetPlayerIndex(a)(A0)
+SDL2_RenderFlush(a)(A0)
+SDL2_RenderDrawPointF(a,b,c)(A0,D0,D1)
+SDL2_RenderDrawPointsF(a,b,c)(A0,A1,D0)
+SDL2_RenderDrawLineF(a,b,c,d,e)(A0,D0,D1,D2,D3)
+SDL2_RenderDrawLinesF(a,b,c)(A0,A1,D0)
+SDL2_RenderDrawRectF(a,b)(A0,A1)
+SDL2_RenderDrawRectsF(a,b,c)(A0,A1,D0)
+SDL2_RenderFillRectF(a,b)(A0,A1)
+SDL2_RenderFillRectsF(a,b,c)(A0,A1,D0)
+SDL2_RenderCopyF(a,b,c,d)(A0,A1,A2,A3)
+SDL2_RenderCopyExF(a,b,c,d,e,f,g)(A0,A1,A2,A3,D0,D2,D3)
+SDL2_GetTouchDeviceType(a)(D0)
+##private
+* slot 688: SDL_UIKitRunApp -- not built for AmigaOS
+SDL2_Reserved0688()()
+##public
+SDL2_SIMDGetAlignment()()
+SDL2_SIMDAlloc(a)(D0)
+SDL2_SIMDFree(a)(A0)
+SDL2_RWsize(a)(A0)
+SDL2_RWseek(a,b,c)(A0,D0,D2)
+SDL2_RWtell(a)(A0)
+SDL2_RWread(a,b,c,d)(A0,A1,D0,D1)
+SDL2_RWwrite(a,b,c,d)(A0,A1,D0,D1)
+SDL2_RWclose(a)(A0)
+SDL2_LoadFile(a,b)(A0,A1)
+SDL2_Metal_CreateView(a)(A0)
+SDL2_Metal_DestroyView(a)(D0)
+SDL2_LockTextureToSurface(a,b,c)(A0,A1,A2)
+SDL2_HasARMSIMD()()
+SDL2_strtokr(a,b,c)(A0,A1,A2)
+SDL2_wcsstr(a,b)(A0,A1)
+SDL2_wcsncmp(a,b,c)(A0,A1,D0)
+SDL2_GameControllerTypeForIndex(a)(D0)
+SDL2_GameControllerGetType(a)(A0)
+SDL2_GameControllerFromPlayerIndex(a)(D0)
+SDL2_GameControllerSetPlayerIndex(a,b)(A0,D0)
+SDL2_JoystickFromPlayerIndex(a)(D0)
+SDL2_JoystickSetPlayerIndex(a,b)(A0,D0)
+SDL2_SetTextureScaleMode(a,b)(A0,D0)
+SDL2_GetTextureScaleMode(a,b)(A0,A1)
+SDL2_OnApplicationWillTerminate()()
+SDL2_OnApplicationDidReceiveMemoryWarning()()
+SDL2_OnApplicationWillResignActive()()
+SDL2_OnApplicationDidEnterBackground()()
+SDL2_OnApplicationWillEnterForeground()()
+SDL2_OnApplicationDidBecomeActive()()
+##private
+* slot 720: SDL_OnApplicationDidChangeStatusBarOrientation -- not built for AmigaOS
+SDL2_Reserved0720()()
+* slot 721: SDL_GetAndroidSDKVersion -- not built for AmigaOS
+SDL2_Reserved0721()()
+##public
+SDL2_isupper(a)(D0)
+SDL2_islower(a)(D0)
+SDL2_JoystickAttachVirtual(a,b,c,d)(D0,D1,D2,D3)
+SDL2_JoystickDetachVirtual(a)(D0)
+SDL2_JoystickIsVirtual(a)(D0)
+SDL2_JoystickSetVirtualAxis(a,b,c)(A0,D0,D1)
+SDL2_JoystickSetVirtualButton(a,b,c)(A0,D0,D1)
+SDL2_JoystickSetVirtualHat(a,b,c)(A0,D0,D1)
+SDL2_GetErrorMsg(a,b)(A0,D0)
+SDL2_LockSensors()()
+SDL2_UnlockSensors()()
+SDL2_Metal_GetLayer(a)(D0)
+SDL2_Metal_GetDrawableSize(a,b,c)(A0,A1,A2)
+SDL2_trunc(a)(D0)
+SDL2_truncf(a)(D0)
+SDL2_GetPreferredLocales()()
+SDL2_SIMDRealloc(a,b)(A0,D0)
+##private
+* slot 739: SDL_AndroidRequestPermission -- not built for AmigaOS
+SDL2_Reserved0739()()
+##public
+SDL2_OpenURL(a)(A0)
+SDL2_HasSurfaceRLE(a)(A0)
+SDL2_GameControllerHasLED(a)(A0)
+SDL2_GameControllerSetLED(a,b,c,d)(A0,D0,D1,D2)
+SDL2_JoystickHasLED(a)(A0)
+SDL2_JoystickSetLED(a,b,c,d)(A0,D0,D1,D2)
+SDL2_GameControllerRumbleTriggers(a,b,c,d)(A0,D0,D1,D2)
+SDL2_JoystickRumbleTriggers(a,b,c,d)(A0,D0,D1,D2)
+SDL2_GameControllerHasAxis(a,b)(A0,D0)
+SDL2_GameControllerHasButton(a,b)(A0,D0)
+SDL2_GameControllerGetNumTouchpads(a)(A0)
+SDL2_GameControllerGetNumTouchpadFingers(a,b)(A0,D0)
+SDL2_GameControllerGetTouchpadFinger(a,b,c,d,e,f,g)(A0,D0,D1,A1,A2,A3,D2)
+SDL2_crc32(a,b,c)(D0,A0,D1)
+SDL2_GameControllerGetSerial(a)(A0)
+SDL2_JoystickGetSerial(a)(A0)
+SDL2_GameControllerHasSensor(a,b)(A0,D0)
+SDL2_GameControllerSetSensorEnabled(a,b,c)(A0,D0,D1)
+SDL2_GameControllerIsSensorEnabled(a,b)(A0,D0)
+SDL2_GameControllerGetSensorData(a,b,c,d)(A0,D0,A1,D1)
+SDL2_wcscasecmp(a,b)(A0,A1)
+SDL2_wcsncasecmp(a,b,c)(A0,A1,D0)
+SDL2_round(a)(D0)
+SDL2_roundf(a)(D0)
+SDL2_lround(a)(D0)
+SDL2_lroundf(a)(D0)
+SDL2_SoftStretchLinear(a,b,c,d)(A0,A1,A2,A3)
+##private
+* slot 767: SDL_RenderGetD3D11Device -- not built for AmigaOS
+SDL2_Reserved0767()()
+##public
+SDL2_UpdateNVTexture(a,b,c,d,e,f)(A0,A1,A2,D0,A3,D1)
+SDL2_SetWindowKeyboardGrab(a,b)(A0,D0)
+SDL2_SetWindowMouseGrab(a,b)(A0,D0)
+SDL2_GetWindowKeyboardGrab(a)(A0)
+SDL2_GetWindowMouseGrab(a)(A0)
+SDL2_isalpha(a)(D0)
+SDL2_isalnum(a)(D0)
+SDL2_isblank(a)(D0)
+SDL2_iscntrl(a)(D0)
+SDL2_isxdigit(a)(D0)
+SDL2_ispunct(a)(D0)
+SDL2_isprint(a)(D0)
+SDL2_isgraph(a)(D0)
+##private
+* slot 781: SDL_AndroidShowToast -- not built for AmigaOS
+SDL2_Reserved0781()()
+##public
+SDL2_GetAudioDeviceSpec(a,b,c)(D0,D1,A0)
+SDL2_TLSCleanup()()
+SDL2_SetWindowAlwaysOnTop(a,b)(A0,D0)
+SDL2_FlashWindow(a,b)(A0,D0)
+SDL2_GameControllerSendEffect(a,b,c)(A0,A1,D0)
+SDL2_JoystickSendEffect(a,b,c)(A0,A1,D0)
+SDL2_GameControllerGetSensorDataRate(a,b)(A0,D0)
+SDL2_SetTextureUserData(a,b)(A0,A1)
+SDL2_GetTextureUserData(a)(A0)
+SDL2_RenderGeometry(a,b,c,d,e,f)(A0,A1,A2,D0,A3,D1)
+##private
+* slot 792: SDL_RenderGeometryRaw -- more than 11 arguments
+SDL2_Reserved0792()()
+##public
+SDL2_RenderSetVSync(a,b)(A0,D0)
+##private
+* slot 794: SDL_asprintf -- variadic
+SDL2_Reserved0794()()
+##public
+SDL2_vasprintf(a,b,c)(A0,A1,D0)
+SDL2_GetWindowICCProfile(a,b)(A0,A1)
+SDL2_GetTicks64()()
+##private
+* slot 798: SDL_LinuxSetThreadPriorityAndPolicy -- not built for AmigaOS
+SDL2_Reserved0798()()
+##public
+SDL2_GameControllerGetAppleSFSymbolsNameForButton(a,b)(A0,D0)
+SDL2_GameControllerGetAppleSFSymbolsNameForAxis(a,b)(A0,D0)
+SDL2_hid_init()()
+SDL2_hid_exit()()
+SDL2_hid_device_change_count()()
+SDL2_hid_enumerate(a,b)(D0,D1)
+SDL2_hid_free_enumeration(a)(A0)
+SDL2_hid_open(a,b,c)(D0,D1,A0)
+SDL2_hid_open_path(a,b)(A0,D0)
+SDL2_hid_write(a,b,c)(A0,A1,D0)
+SDL2_hid_read_timeout(a,b,c,d)(A0,A1,D0,D1)
+SDL2_hid_read(a,b,c)(A0,A1,D0)
+SDL2_hid_set_nonblocking(a,b)(A0,D0)
+SDL2_hid_send_feature_report(a,b,c)(A0,A1,D0)
+SDL2_hid_get_feature_report(a,b,c)(A0,A1,D0)
+SDL2_hid_close(a)(A0)
+SDL2_hid_get_manufacturer_string(a,b,c)(A0,A1,D0)
+SDL2_hid_get_product_string(a,b,c)(A0,A1,D0)
+SDL2_hid_get_serial_number_string(a,b,c)(A0,A1,D0)
+SDL2_hid_get_indexed_string(a,b,c,d)(A0,D0,A1,D1)
+SDL2_SetWindowMouseRect(a,b)(A0,A1)
+SDL2_GetWindowMouseRect(a)(A0)
+SDL2_RenderWindowToLogical(a,b,c,d,e)(A0,D0,D1,A1,A2)
+SDL2_RenderLogicalToWindow(a,b,c,d,e)(A0,D0,D1,A1,A2)
+SDL2_JoystickHasRumble(a)(A0)
+SDL2_JoystickHasRumbleTriggers(a)(A0)
+SDL2_GameControllerHasRumble(a)(A0)
+SDL2_GameControllerHasRumbleTriggers(a)(A0)
+SDL2_hid_ble_scan(a)(D0)
+SDL2_PremultiplyAlpha(a,b,c,d,e,f,g,h)(D0,D1,D2,A0,D3,D4,A1,D5)
+##private
+* slot 829: SDL_AndroidSendMessage -- not built for AmigaOS
+SDL2_Reserved0829()()
+##public
+SDL2_GetTouchName(a)(D0)
+SDL2_ClearComposition()()
+SDL2_IsTextInputShown()()
+SDL2_HasIntersectionF(a,b)(A0,A1)
+SDL2_IntersectFRect(a,b,c)(A0,A1,A2)
+SDL2_UnionFRect(a,b,c)(A0,A1,A2)
+SDL2_EncloseFPoints(a,b,c,d)(A0,D0,A1,A2)
+SDL2_IntersectFRectAndLine(a,b,c,d,e)(A0,A1,A2,A3,D0)
+SDL2_RenderGetWindow(a)(A0)
+SDL2_bsearch(a,b,c,d,e)(A0,A1,D0,D1,D2)
+SDL2_GameControllerPathForIndex(a)(D0)
+SDL2_GameControllerPath(a)(A0)
+SDL2_JoystickPathForIndex(a)(D0)
+SDL2_JoystickPath(a)(A0)
+SDL2_JoystickAttachVirtualEx(a)(A0)
+SDL2_GameControllerGetFirmwareVersion(a)(A0)
+SDL2_JoystickGetFirmwareVersion(a)(A0)
+##private
+* slot 847: SDL_GUIDToString -- struct passed by value
+SDL2_Reserved0847()()
+* slot 848: SDL_GUIDFromString -- returns a struct by value
+SDL2_Reserved0848()()
+##public
+SDL2_HasLSX()()
+SDL2_HasLASX()()
+##private
+* slot 851: SDL_RenderGetD3D12Device -- not built for AmigaOS
+SDL2_Reserved0851()()
+##public
+SDL2_utf8strnlen(a,b)(A0,D0)
+##private
+* slot 853: SDL_GDKGetTaskQueue -- not built for AmigaOS
+SDL2_Reserved0853()()
+* slot 854: SDL_GDKRunApp -- not built for AmigaOS
+SDL2_Reserved0854()()
+##public
+SDL2_GetOriginalMemoryFunctions(a,b,c,d)(A0,A1,A2,A3)
+SDL2_ResetKeyboard()()
+SDL2_GetDefaultAudioInfo(a,b,c)(A0,A1,D0)
+SDL2_GetPointDisplayIndex(a)(A0)
+SDL2_GetRectDisplayIndex(a)(A0)
+SDL2_ResetHint(a)(A0)
+SDL2_crc16(a,b,c)(D0,A0,D1)
+SDL2_GetWindowSizeInPixels(a,b,c)(A0,A1,A2)
+##private
+* slot 863: SDL_GetJoystickGUIDInfo -- struct passed by value
+SDL2_Reserved0863()()
+##public
+SDL2_SetPrimarySelectionText(a)(A0)
+SDL2_GetPrimarySelectionText()()
+SDL2_HasPrimarySelectionText()()
+SDL2_GameControllerGetSensorDataWithTimestamp(a,b,c,d,e)(A0,D0,A1,A2,D1)
+SDL2_SensorGetDataWithTimestamp(a,b,c,d)(A0,A1,A2,D0)
+SDL2_ResetHints()()
+SDL2_strcasestr(a,b)(A0,A1)
+##private
+* slot 871: SDL_GDKSuspendComplete -- not built for AmigaOS
+SDL2_Reserved0871()()
+##public
+SDL2_HasWindowSurface(a)(A0)
+SDL2_DestroyWindowSurface(a)(A0)
+##private
+* slot 874: SDL_GDKGetDefaultUser -- not built for AmigaOS
+SDL2_Reserved0874()()
+##public
+SDL2_GameControllerGetSteamHandle(a)(A0)
+##private
+* slot 876: SDL_WinRTGetProtocolActivationURI -- not built for AmigaOS
+SDL2_Reserved0876()()
+* slot 877: reserved for future SDL
+SDL2_Reserved0877()()
+* slot 878: reserved for future SDL
+SDL2_Reserved0878()()
+* slot 879: reserved for future SDL
+SDL2_Reserved0879()()
+* slot 880: reserved for future SDL
+SDL2_Reserved0880()()
+* slot 881: reserved for future SDL
+SDL2_Reserved0881()()
+* slot 882: reserved for future SDL
+SDL2_Reserved0882()()
+* slot 883: reserved for future SDL
+SDL2_Reserved0883()()
+* slot 884: reserved for future SDL
+SDL2_Reserved0884()()
+* slot 885: reserved for future SDL
+SDL2_Reserved0885()()
+* slot 886: reserved for future SDL
+SDL2_Reserved0886()()
+* slot 887: reserved for future SDL
+SDL2_Reserved0887()()
+* slot 888: reserved for future SDL
+SDL2_Reserved0888()()
+* slot 889: reserved for future SDL
+SDL2_Reserved0889()()
+* slot 890: reserved for future SDL
+SDL2_Reserved0890()()
+* slot 891: reserved for future SDL
+SDL2_Reserved0891()()
+* slot 892: reserved for future SDL
+SDL2_Reserved0892()()
+* slot 893: reserved for future SDL
+SDL2_Reserved0893()()
+* slot 894: reserved for future SDL
+SDL2_Reserved0894()()
+* slot 895: reserved for future SDL
+SDL2_Reserved0895()()
+* slot 896: reserved for future SDL
+SDL2_Reserved0896()()
+* slot 897: reserved for future SDL
+SDL2_Reserved0897()()
+* slot 898: reserved for future SDL
+SDL2_Reserved0898()()
+* slot 899: reserved for future SDL
+SDL2_Reserved0899()()
+* slot 900: reserved for future SDL
+SDL2_Reserved0900()()
+* slot 901: reserved for future SDL
+SDL2_Reserved0901()()
+* slot 902: reserved for future SDL
+SDL2_Reserved0902()()
+* slot 903: reserved for future SDL
+SDL2_Reserved0903()()
+* slot 904: reserved for future SDL
+SDL2_Reserved0904()()
+* slot 905: reserved for future SDL
+SDL2_Reserved0905()()
+* slot 906: reserved for future SDL
+SDL2_Reserved0906()()
+* slot 907: reserved for future SDL
+SDL2_Reserved0907()()
+* slot 908: reserved for future SDL
+SDL2_Reserved0908()()
+* slot 909: reserved for future SDL
+SDL2_Reserved0909()()
+* slot 910: reserved for future SDL
+SDL2_Reserved0910()()
+* slot 911: reserved for future SDL
+SDL2_Reserved0911()()
+* slot 912: reserved for future SDL
+SDL2_Reserved0912()()
+* slot 913: reserved for future SDL
+SDL2_Reserved0913()()
+* slot 914: reserved for future SDL
+SDL2_Reserved0914()()
+* slot 915: reserved for future SDL
+SDL2_Reserved0915()()
+* slot 916: reserved for future SDL
+SDL2_Reserved0916()()
+* slot 917: reserved for future SDL
+SDL2_Reserved0917()()
+* slot 918: reserved for future SDL
+SDL2_Reserved0918()()
+* slot 919: reserved for future SDL
+SDL2_Reserved0919()()
+* slot 920: reserved for future SDL
+SDL2_Reserved0920()()
+* slot 921: reserved for future SDL
+SDL2_Reserved0921()()
+* slot 922: reserved for future SDL
+SDL2_Reserved0922()()
+* slot 923: reserved for future SDL
+SDL2_Reserved0923()()
+* slot 924: reserved for future SDL
+SDL2_Reserved0924()()
+* slot 925: reserved for future SDL
+SDL2_Reserved0925()()
+* slot 926: reserved for future SDL
+SDL2_Reserved0926()()
+* slot 927: reserved for future SDL
+SDL2_Reserved0927()()
+* slot 928: reserved for future SDL
+SDL2_Reserved0928()()
+* slot 929: reserved for future SDL
+SDL2_Reserved0929()()
+* slot 930: reserved for future SDL
+SDL2_Reserved0930()()
+* slot 931: reserved for future SDL
+SDL2_Reserved0931()()
+* slot 932: reserved for future SDL
+SDL2_Reserved0932()()
+* slot 933: reserved for future SDL
+SDL2_Reserved0933()()
+* slot 934: reserved for future SDL
+SDL2_Reserved0934()()
+* slot 935: reserved for future SDL
+SDL2_Reserved0935()()
+* slot 936: reserved for future SDL
+SDL2_Reserved0936()()
+* slot 937: reserved for future SDL
+SDL2_Reserved0937()()
+* slot 938: reserved for future SDL
+SDL2_Reserved0938()()
+* slot 939: reserved for future SDL
+SDL2_Reserved0939()()
+* slot 940: reserved for future SDL
+SDL2_Reserved0940()()
+* slot 941: reserved for future SDL
+SDL2_Reserved0941()()
+* slot 942: reserved for future SDL
+SDL2_Reserved0942()()
+* slot 943: reserved for future SDL
+SDL2_Reserved0943()()
+* slot 944: reserved for future SDL
+SDL2_Reserved0944()()
+* slot 945: reserved for future SDL
+SDL2_Reserved0945()()
+* slot 946: reserved for future SDL
+SDL2_Reserved0946()()
+* slot 947: reserved for future SDL
+SDL2_Reserved0947()()
+* slot 948: reserved for future SDL
+SDL2_Reserved0948()()
+* slot 949: reserved for future SDL
+SDL2_Reserved0949()()
+* slot 950: reserved for future SDL
+SDL2_Reserved0950()()
+* slot 951: reserved for future SDL
+SDL2_Reserved0951()()
+* slot 952: reserved for future SDL
+SDL2_Reserved0952()()
+* slot 953: reserved for future SDL
+SDL2_Reserved0953()()
+* slot 954: reserved for future SDL
+SDL2_Reserved0954()()
+* slot 955: reserved for future SDL
+SDL2_Reserved0955()()
+* slot 956: reserved for future SDL
+SDL2_Reserved0956()()
+* slot 957: reserved for future SDL
+SDL2_Reserved0957()()
+* slot 958: reserved for future SDL
+SDL2_Reserved0958()()
+* slot 959: reserved for future SDL
+SDL2_Reserved0959()()
+* slot 960: reserved for future SDL
+SDL2_Reserved0960()()
+* slot 961: reserved for future SDL
+SDL2_Reserved0961()()
+* slot 962: reserved for future SDL
+SDL2_Reserved0962()()
+* slot 963: reserved for future SDL
+SDL2_Reserved0963()()
+* slot 964: reserved for future SDL
+SDL2_Reserved0964()()
+* slot 965: reserved for future SDL
+SDL2_Reserved0965()()
+* slot 966: reserved for future SDL
+SDL2_Reserved0966()()
+* slot 967: reserved for future SDL
+SDL2_Reserved0967()()
+* slot 968: reserved for future SDL
+SDL2_Reserved0968()()
+* slot 969: reserved for future SDL
+SDL2_Reserved0969()()
+* slot 970: reserved for future SDL
+SDL2_Reserved0970()()
+* slot 971: reserved for future SDL
+SDL2_Reserved0971()()
+* slot 972: reserved for future SDL
+SDL2_Reserved0972()()
+* slot 973: reserved for future SDL
+SDL2_Reserved0973()()
+* slot 974: reserved for future SDL
+SDL2_Reserved0974()()
+* slot 975: reserved for future SDL
+SDL2_Reserved0975()()
+* slot 976: reserved for future SDL
+SDL2_Reserved0976()()
+* slot 977: reserved for future SDL
+SDL2_Reserved0977()()
+* slot 978: reserved for future SDL
+SDL2_Reserved0978()()
+* slot 979: reserved for future SDL
+SDL2_Reserved0979()()
+* slot 980: reserved for future SDL
+SDL2_Reserved0980()()
+* slot 981: reserved for future SDL
+SDL2_Reserved0981()()
+* slot 982: reserved for future SDL
+SDL2_Reserved0982()()
+* slot 983: reserved for future SDL
+SDL2_Reserved0983()()
+* slot 984: reserved for future SDL
+SDL2_Reserved0984()()
+* slot 985: reserved for future SDL
+SDL2_Reserved0985()()
+* slot 986: reserved for future SDL
+SDL2_Reserved0986()()
+* slot 987: reserved for future SDL
+SDL2_Reserved0987()()
+* slot 988: reserved for future SDL
+SDL2_Reserved0988()()
+* slot 989: reserved for future SDL
+SDL2_Reserved0989()()
+* slot 990: reserved for future SDL
+SDL2_Reserved0990()()
+* slot 991: reserved for future SDL
+SDL2_Reserved0991()()
+* slot 992: reserved for future SDL
+SDL2_Reserved0992()()
+* slot 993: reserved for future SDL
+SDL2_Reserved0993()()
+* slot 994: reserved for future SDL
+SDL2_Reserved0994()()
+* slot 995: reserved for future SDL
+SDL2_Reserved0995()()
+* slot 996: reserved for future SDL
+SDL2_Reserved0996()()
+* slot 997: reserved for future SDL
+SDL2_Reserved0997()()
+* slot 998: reserved for future SDL
+SDL2_Reserved0998()()
+* slot 999: reserved for future SDL
+SDL2_Reserved0999()()
+##public
+SDL2_Ping(value)(D0)
+SDL2_ProbeBSS(which)(D0)
+SDL2_ProbeSpin()()
+SDL2_ProbeCAS()()
+SDL2_ProbeFindTask()()
+SDL2_ProbeSem()()
+SDL2_ProbeMalloc()()
+SDL2_ProbeTLSCreate()()
+SDL2_ProbeTLSGet()()
+SDL2_ProbeTLSSet()()
+SDL2_ProbeWB(which)(D0)
+SDL2_ProbeWBName()()
+##end

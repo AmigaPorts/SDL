@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "amiga-kb": {
+      "command": "node",
+      "args": ["/Users/duncan/Developer/amiga-kb/dist/cli.js", "serve"]
+    }
+  }
+}

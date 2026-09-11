@@ -1,0 +1,68 @@
+# FS-UAE configuration for testing SDL2 programs with RTG
+#
+# Model: A1200 with 68030 accelerator -- matches our -m68030 target.
+# No FPU -- float ops use mathieeesingbas.library (software).
+#
+# NOTE: A4000/040 config requires the correct A4000 Kickstart ROM.
+# Using the A1200 ROM on A4000/040 causes math library crashes because
+# the A1200 ROM's mathieeesingbas.library can't handle the 68040 FPU.
+#
+# Prerequisites:
+#   FS-UAE (brew install fs-uae or ~/Developer/fs-uae/)
+#   Kickstart 3.1 ROM at ~/Documents/FS-UAE/Kickstarts/kick3.1.rom
+#   Bootable WB 3.1 system at build/system/
+
+amiga_model = A4000/040
+
+# Kickstart 3.1 rev 40.70 -- A4000
+kickstart_file = $BASE/Kickstarts/kick3.1-a4000.rom
+
+# Override CPU to 68030 (no FPU) to match our compile target.
+# The A4000 bus/Zorro III is still used for RTG graphics.
+cpu = 68030
+
+# --- Storage ---
+hard_drive_0 = $CONFIG/../../build/system
+hard_drive_0_label = System
+hard_drive_0_priority = 1
+
+hard_drive_1 = $CONFIG/../../build/amiga
+hard_drive_1_label = WORK
+
+# --- RTG Graphics Card ---
+# uaegfx auto-selects Zorro III variant for A4000.
+# 32 MB VRAM -- plenty for multiple 1024x768x32 framebuffers.
+graphics_card = uaegfx
+graphics_memory = 32768
+
+# --- Memory ---
+# Max out: 8 MB Chip + 128 MB Zorro III Fast.
+chip_memory = 8192
+zorro_iii_memory = 131072
+
+# --- Audio ---
+# Paula audio emulation must be enabled for audio.device CMD_WRITE
+# to signal completion (DMA interrupt driven).
+sound_output = enabled
+audio_frequency = 44100
+
+# --- Input ---
+joystick_port_1_mode = nothing
+keyboard_input_grab = 1
+raw_input = 0
+
+# --- Display ---
+window_width = 1280
+window_height = 960
+
+# --- Debugging ---
+# To capture kprintf: install socat, uncomment serial_port, run socat first:
+#   socat TCP-LISTEN:1234,reuseaddr,fork - &
+#   serial_port = tcp://127.0.0.1:1234
+# File-based debug: DLOG() writes to WORK:sdl_debug.log
+
+# --- Isolation ---
+logs_dir = $CONFIG/../../build/fs-uae-state/Logs
+state_dir = $CONFIG/../../build/fs-uae-state
+save_states_dir = $CONFIG/../../build/fs-uae-state/Save
+

@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  bebbo-gcc:
+    build:
+      context: .
+      dockerfile: Dockerfile.bebbo-gcc
+    image: amiport/bebbo-gcc
+    volumes:
+      - ../../:/work
+    working_dir: /work
+
+  vbcc:
+    build:
+      context: .
+      dockerfile: Dockerfile.vbcc
+    image: amiport/vbcc
+    volumes:
+      - ../../:/work
+    working_dir: /work

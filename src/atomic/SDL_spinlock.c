@@ -28,6 +28,16 @@
 #include "SDL_mutex.h"
 #include "SDL_timer.h"
 
+#ifdef __AMIGAOS3__
+#ifdef WARPUP
+#pragma pack(push,2)
+#endif
+#include <proto/exec.h>
+#ifdef WARPUP
+#pragma pop
+#endif
+#endif
+
 #if !defined(HAVE_GCC_ATOMICS) && defined(__SOLARIS__)
 #include <atomic.h>
 #endif
@@ -163,6 +173,22 @@ SDL_bool SDL_AtomicTryLock(SDL_SpinLock *lock)
         EIntr();
     }
     return res;
+#elif defined(__AMIGAOS3__)
+    /* AmigaOS is single-core cooperative multitasking.
+       Forbid/Permit disables task switching for a brief critical section.
+       This is simpler and more reliable than CAS on emulated 68k --
+       FS-UAE's CAS emulation has subtle issues with the EMULATE_CAS
+       path in SDL_atomic.c that cause infinite spin on contention.
+       Forbid/Permit is the idiomatic AmigaOS approach and costs ~2us. */
+    SDL_bool result = SDL_FALSE;
+    Forbid();
+    if (*lock == 0) {
+        *lock = 1;
+        result = SDL_TRUE;
+    }
+    Permit();
+    return result;
+
 #else
 #error Please implement for your platform.
     return SDL_FALSE;

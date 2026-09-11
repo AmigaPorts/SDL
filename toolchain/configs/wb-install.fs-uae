@@ -1,0 +1,7 @@
+amiga_model = A1200
+kickstart_file = /Users/duncan/Documents/FS-UAE/Kickstarts/kick3.1.rom
+hard_drive_0 = /Users/duncan/Developer/amiport/build/system.hdf
+accuracy = -1
+cpu_speed = max
+window_width = 720
+window_height = 568

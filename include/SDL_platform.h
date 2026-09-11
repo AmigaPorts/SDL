@@ -245,6 +245,12 @@
 #define __3DS__ 1
 #endif
 
+/* AmigaOS 3.x on 68k -- bebbo-gcc defines __AMIGA__ and __amigaos3__ */
+#if defined(__amigaos3__) || (defined(__AMIGA__) && !defined(__amigaos4__))
+#undef __AMIGAOS3__
+#define __AMIGAOS3__ 1
+#endif
+
 #include "begin_code.h"
 /* Set up for C function definitions, even when using C++ */
 #ifdef __cplusplus

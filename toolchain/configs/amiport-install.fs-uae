@@ -1,0 +1,32 @@
+# FS-UAE configuration for installing Workbench 3.1 to hard drive
+#
+# Usage:
+#   fs-uae toolchain/configs/amiport-install.fs-uae
+#
+# This boots from the Workbench floppy and gives you a system drive
+# to install to. Follow the Amiga installer or manually copy files.
+#
+# After install, use amiport-test.fs-uae for normal use.
+
+amiga_model = A1200
+
+kickstart_file = $BASE/Kickstarts/kick3.1.rom
+
+# Workbench 3.1 floppy disks
+floppy_drive_0 = $HOME/Downloads/AmigaWorkbench31/Workbench31 - wbench31.adf
+
+# System hard drive — Workbench will be installed here
+hard_drive_0 = $CONFIG/../../build/system
+hard_drive_0_label = System
+
+# Ports directory
+hard_drive_1 = $CONFIG/../../build/amiga
+hard_drive_1_label = WORK
+
+# Keyboard
+keyboard_input_grab = 1
+raw_input = 0
+
+# Window settings
+window_width = 720
+window_height = 568
