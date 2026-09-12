@@ -12,6 +12,7 @@
 #if SDL_THREAD_AMIGAOS3
 
 #include "SDL_mutex.h"
+#include "SDL_timer.h"
 
 #ifdef WARPUP
 #pragma pack(push,2)
