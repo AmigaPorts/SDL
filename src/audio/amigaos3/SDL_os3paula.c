@@ -33,6 +33,7 @@
 #ifdef WARPUP
 #pragma pack(push,2)
 #endif
+#include <proto/alib.h>
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <proto/graphics.h>
