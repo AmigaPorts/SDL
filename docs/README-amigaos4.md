@@ -52,11 +52,13 @@ Or set SDL_PROP_APP_METADATA_NAME_STRING property before SDL_Init().
 About SDL_Renderers
 ================================================================================
 
-A renderer is a subsystem that can do 2D drawing. There are 3 renderers:
-software, OpenGL ES 2.0 and compositing.
+A renderer is a subsystem that can do 2D drawing. There are 4 renderers:
+software, OpenGL, OpenGL ES 2.0 and compositing.
 
 Software renderer is always available. This is the slowest option but emulator
 users may need to use this one.
+
+OpenGL renderer uses Mesa.
 
 OpenGL ES 2.0 renderer uses ogles2.library (and Warp3D Nova).
 
@@ -69,7 +71,7 @@ It's possible to select the preferred renderer before its creation, like this:
 
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, name);
 
-where name is "software", "opengles2" or "compositing".
+where name is "software", "opengl", "opengles2" or "compositing".
 
 It's possible to enable VSYNC with:
 
@@ -89,6 +91,7 @@ Driver selection:
 
 setenv SDL_RENDER_DRIVER "software"
 setenv SDL_RENDER_DRIVER "compositing"
+setenv SDL_RENDER_DRIVER "opengl"
 setenv SDL_RENDER_DRIVER "opengles2"
 
 VSYNC:
@@ -180,7 +183,7 @@ WinUAE / QEMU
 ================================================================================
 
 Because emulators doesn't support hardware-accelerated compositing or 3D, you
-need to install the following software:
+may need to use the following software:
 
 - http://os4depot.net/index.php?function=showfile&file=graphics/misc/patchcompositetags.lha
 - http://os4depot.net/index.php?function=showfile&file=library/graphics/wazp3d.lha
@@ -206,9 +209,6 @@ enable in private builds.
 
 Unsupported subsystems include Camera, GPU, Haptic, Pen, Power and Sensor. There
 is no Vulkan backend for AmigaOS either.
-
-"opengl" renderer doesn't exist anymore. This is due to missing features in
-MiniGL.
 
 Compositing renderer doesn't support triangle geometry API properly. Use
 "software" or "opengles2" driver if you need it.
