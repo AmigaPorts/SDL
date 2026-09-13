@@ -36,7 +36,7 @@
 //#define USE_GCMOUSE_SCROLL
 
 #ifdef DEBUG_COCOAMOUSE
-#define DLog(fmt, ...) printf("%s: " fmt "\n", SDL_FUNCTION, ##__VA_ARGS__)
+#define DLog(fmt, ...) SDL_Log("%s: " fmt, SDL_FUNCTION, ##__VA_ARGS__)
 #else
 #define DLog(...) \
     do {          \
@@ -451,6 +451,10 @@ static void Cocoa_OnGCMouseDisconnected(GCMouse *mouse)
 
 void Cocoa_InitGCMouse(void)
 {
+    if (!SDL_GetHintBoolean(SDL_HINT_MAC_USE_GCMOUSE, true)) {
+        return;
+    }
+
     @autoreleasepool {
         // These APIs are available starting in macOS Big Sur, but we don't enable
         // GCMouse until Sonoma due to broken motion and button events on MacBooks

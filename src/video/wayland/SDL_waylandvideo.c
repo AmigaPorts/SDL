@@ -86,7 +86,9 @@
 #define SDL_WL_COMPOSITOR_VERSION 4
 #endif
 
-#if SDL_WAYLAND_CHECK_VERSION(1, 24, 0)
+#if SDL_WAYLAND_CHECK_VERSION(1, 26, 0)
+#define SDL_WL_SEAT_VERSION 11
+#elif SDL_WAYLAND_CHECK_VERSION(1, 24, 0)
 #define SDL_WL_SEAT_VERSION 10
 #elif SDL_WAYLAND_CHECK_VERSION(1, 22, 0)
 #define SDL_WL_SEAT_VERSION 9
@@ -1068,22 +1070,27 @@ static void handle_wl_output_done(void *data, struct wl_output *output)
                 internal->scale_factor = (double)native_mode.w / (double)internal->logical.width;
             } else {
                 // ...otherwise, the 'native' pixel values are a multiple of the logical screen size.
-                internal->pixel.width = internal->logical.width * (int)internal->scale_factor;
-                internal->pixel.height = internal->logical.height * (int)internal->scale_factor;
+                internal->scale_factor = internal->integer_scale_factor;
+                internal->pixel.width = internal->logical.width * internal->integer_scale_factor;
+                internal->pixel.height = internal->logical.height * internal->integer_scale_factor;
             }
         } else {
             /* ...and the output viewport is not scaled in the global compositing
              * space, the output dimensions need to be divided by the scale factor.
+             *
+             * NOTE: This path is needed for old versions of GNOME that predate fractional scaling.
              */
-            internal->logical.width /= (int)internal->scale_factor;
-            internal->logical.height /= (int)internal->scale_factor;
+            internal->scale_factor = internal->integer_scale_factor;
+            internal->logical.width /= internal->integer_scale_factor;
+            internal->logical.height /= internal->integer_scale_factor;
         }
     } else {
         /* Calculate the points from the pixel values, if xdg-output isn't present.
          * Use the native mode pixel values since they are pre-transformed.
          */
-        internal->logical.width = native_mode.w / (int)internal->scale_factor;
-        internal->logical.height = native_mode.h / (int)internal->scale_factor;
+        internal->scale_factor = internal->integer_scale_factor;
+        internal->logical.width = native_mode.w / internal->integer_scale_factor;
+        internal->logical.height = native_mode.h / internal->integer_scale_factor;
     }
 
     // The scaled desktop mode
@@ -1187,7 +1194,7 @@ static void handle_wl_output_done(void *data, struct wl_output *output)
 static void handle_wl_output_scale(void *data, struct wl_output *output, int32_t factor)
 {
     SDL_DisplayData *internal = (SDL_DisplayData *)data;
-    internal->scale_factor = factor;
+    internal->integer_scale_factor = factor;
 }
 
 static void handle_wl_output_name(void *data, struct wl_output *wl_output, const char *name)
@@ -1243,6 +1250,7 @@ static bool Wayland_add_display(SDL_VideoData *d, uint32_t id, uint32_t version)
     data->output = output;
     data->registry_id = id;
     data->scale_factor = 1.0f;
+    data->integer_scale_factor = 1;
 
     wl_output_add_listener(output, &output_listener, data);
     SDL_WAYLAND_register_output(output);
@@ -1602,19 +1610,23 @@ static int SDLCALL LibdecorNewInThread(void *data)
 }
 #endif
 
-#ifndef HAVE_GETRESUID
+#ifdef HAVE_GETRESUID
+#define SDL_getresuid getresuid
+#else
 // Non-POSIX, but Linux and some BSDs have it.
 // To reduce the number of code paths, if getresuid() isn't available at
 // compile-time, we behave as though it existed but failed at runtime.
-static inline int getresuid(uid_t *ruid, uid_t *euid, uid_t *suid) {
+static inline int SDL_getresuid(uid_t *ruid, uid_t *euid, uid_t *suid) {
     errno = ENOSYS;
     return -1;
 }
 #endif
 
-#ifndef HAVE_GETRESGID
+#ifdef HAVE_GETRESGID
+#define SDL_getresgid getresgid
+#else
 // Same as getresuid() but for the primary group
-static inline int getresgid(uid_t *ruid, uid_t *euid, uid_t *suid) {
+static inline int SDL_getresgid(gid_t *rgid, gid_t *egid, gid_t *sgid) {
     errno = ENOSYS;
     return -1;
 }
@@ -1636,12 +1648,12 @@ bool CanUseGtk(void)
     // we don't use Linux getauxval() or prctl PR_GET_DUMPABLE,
     // BSD issetugid(), or similar OS-specific detection
 
-    if (getresuid(&ruid, &euid, &suid) != 0) {
+    if (SDL_getresuid(&ruid, &euid, &suid) != 0) {
         ruid = suid = getuid();
         euid = geteuid();
     }
 
-    if (getresgid(&rgid, &egid, &sgid) != 0) {
+    if (SDL_getresgid(&rgid, &egid, &sgid) != 0) {
         rgid = sgid = getgid();
         egid = getegid();
     }

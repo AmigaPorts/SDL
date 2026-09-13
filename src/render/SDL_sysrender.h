@@ -252,7 +252,6 @@ struct SDL_Renderer
     bool (*UpdateTexture)(SDL_Renderer *renderer, SDL_Texture *texture,
                          const SDL_Rect *rect, const void *pixels,
                          int pitch);
-#ifdef SDL_HAVE_YUV
     bool (*UpdateTextureYUV)(SDL_Renderer *renderer, SDL_Texture *texture,
                             const SDL_Rect *rect,
                             const Uint8 *Yplane, int Ypitch,
@@ -262,7 +261,6 @@ struct SDL_Renderer
                            const SDL_Rect *rect,
                            const Uint8 *Yplane, int Ypitch,
                            const Uint8 *UVplane, int UVpitch);
-#endif
     bool (*LockTexture)(SDL_Renderer *renderer, SDL_Texture *texture,
                        const SDL_Rect *rect, void **pixels, int *pitch);
     void (*UnlockTexture)(SDL_Renderer *renderer, SDL_Texture *texture);
@@ -322,6 +320,7 @@ struct SDL_Renderer
     // The list of palettes
     SDL_HashTable *palettes;
 
+    SDL_Colorspace current_colorspace;
     SDL_Colorspace output_colorspace;
     float SDR_white_point;
     float HDR_headroom;
@@ -408,9 +407,11 @@ extern bool SDL_AddSupportedTextureFormat(SDL_Renderer *renderer, SDL_PixelForma
 extern void SDL_SetupRendererColorspace(SDL_Renderer *renderer, SDL_PropertiesID props);
 
 // Colorspace conversion functions
-extern bool SDL_RenderingLinearSpace(SDL_Renderer *renderer);
-extern void SDL_ConvertToLinear(SDL_FColor *color);
-extern void SDL_ConvertFromLinear(SDL_FColor *color);
+#define SDL_RenderingLinearSpace(renderer) \
+    (renderer->current_colorspace == SDL_COLORSPACE_SRGB_LINEAR || \
+     renderer->current_colorspace == SDL_COLORSPACE_HDR10)
+
+extern void SDL_ConvertToLinear(SDL_Renderer *renderer, SDL_FColor *color);
 
 // Blend mode functions
 extern SDL_BlendFactor SDL_GetBlendModeSrcColorFactor(SDL_BlendMode blendMode);
