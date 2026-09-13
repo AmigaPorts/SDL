@@ -58,8 +58,7 @@ software, OpenGL, OpenGL ES 2.0 and compositing.
 Software renderer is always available. This is the slowest option but emulation
 users may need to use this.
 
-OpenGL renderer uses MiniGL (and Warp3D) for accelerated drawing. Drawing is
-done in immediate mode. This should be fairly fast if textures are static.
+OpenGL renderer uses Mesa (not MiniGL anymore).
 
 OpenGL ES 2.0 renderer uses ogles2.library (and Warp3D Nova).
 
@@ -181,7 +180,7 @@ WinUAE / QEMU
 ================================================================================
 
 Because emulators doesn't support hardware-accelerated compositing or 3D, you
-need to install the following software:
+may need to use the following software:
 
 - http://os4depot.net/index.php?function=showfile&file=graphics/misc/patchcompositetags.lha
 - http://os4depot.net/index.php?function=showfile&file=library/graphics/wazp3d.lha
@@ -207,9 +206,6 @@ enable in private builds.
 
 Unsupported subsystems include Haptic and Power. There is no Vulkan backend for
 AmigaOS either.
-
-OpenGL renderer doesn't support render targets and blend modes "ADD" or "MOD".
-This is due to missing features in MiniGL.
 
 Compositing renderer doesn't support color modulation for triangle geometry. Use
 "software" or "opengles2" driver if you need it.
