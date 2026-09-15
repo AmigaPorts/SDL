@@ -241,12 +241,6 @@ static int GL_LoadFunctions(GL_RenderData *data)
 #define SDL_PROC(ret, func, params) data->func = func;
 #else
     int retval = 0;
-#ifdef __AMIGAOS4__
-#define SDL_PROC(ret,func,params)                                                             \
-    do {                                                                                      \
-        data->func = SDL_GL_GetProcAddress(#func);                                            \
-    } while ( 0 );
-#else
 #define SDL_PROC(ret, func, params)                                                           \
     do {                                                                                      \
         data->func = SDL_GL_GetProcAddress(#func);                                            \
@@ -254,7 +248,6 @@ static int GL_LoadFunctions(GL_RenderData *data)
             retval = SDL_SetError("Couldn't load GL function %s: %s", #func, SDL_GetError()); \
         }                                                                                     \
     } while (0);
-#endif /* __AMIGAOS4__ */
 #endif /* __SDL_NOGETPROCADDR__ */
 
 #include "SDL_glfuncs.h"
