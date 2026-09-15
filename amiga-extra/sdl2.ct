@@ -204,11 +204,7 @@ MSG_PREFS_ABOUT_TRANSLATOR
 ;
 MSG_PREFS_DRIVER_HELP
 
-; Select driver implementation:\n\
-;  \033bcompositing \033ndoesn't support some blend modes\n\
-;  \033bopengles2 \033nsupports most features\n\
-;  \033bopengl \033n(MiniGL) doesn't support render targets and some blend modes\n\
-;  \033bsoftware \033nsupports most features but is not accelerated
+; Select driver implementation:\n \033bcompositing \033ndoesn't support some blend modes\n \033bopengles2 \033nsupports most features\n \033bopengl \033n(Mesa) supports most features\n \033bsoftware \033nsupports most features but is not accelerated
 ;
 MSG_PREFS_VERTICAL_SYNC_HELP
 
@@ -216,8 +212,7 @@ MSG_PREFS_VERTICAL_SYNC_HELP
 ;
 MSG_PREFS_BATCHING_MODE_HELP
 
-; Batching may improve drawing speed if application does many \
-; operations per frame and SDL2 is able to combine those
+; Batching may improve drawing speed if application does many operations per frame and SDL2 is able to combine those
 ;
 MSG_PREFS_SCALE_QUALITY_HELP
 
