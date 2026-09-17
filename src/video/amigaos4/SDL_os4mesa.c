@@ -58,15 +58,22 @@ OS4_Mesa_CreateWindowDrawable(SDL_VideoDevice *_this, const SDL_WindowData * dat
             _this->gl_config.stencil_size,
             _this->gl_config.double_buffer);
 
+    const uint32 samples = _this->gl_config.multisamplebuffers ? _this->gl_config.multisamplesamples : 0;
+
+    dprintf("multisamplebuffers %d, multisamplesamples %d -> samples %lu\n",
+            _this->gl_config.multisamplebuffers,
+            _this->gl_config.multisamplesamples,
+            samples);
+
     // testgles2 default color sizes were 5 bits which failed. Therefore using 0 (default)
     const struct TagItem drawableTags[] = {
-        { MESA_DRAWABLE_RED_BITS, 0 /*_this->gl_config.red_size*/ },
-        { MESA_DRAWABLE_GREEN_BITS, 0 /*_this->gl_config.green_size*/ },
-        { MESA_DRAWABLE_BLUE_BITS, 0 /*_this->gl_config.blue_size*/ },
-        { MESA_DRAWABLE_ALPHA_BITS, 0 /*_this->gl_config.alpha_size*/ },
+        { MESA_DRAWABLE_RED_BITS, 0 /* _this->gl_config.red_size */ },
+        { MESA_DRAWABLE_GREEN_BITS, 0 /* _this->gl_config.green_size */ },
+        { MESA_DRAWABLE_BLUE_BITS, 0 /* _this->gl_config.blue_size */ },
+        { MESA_DRAWABLE_ALPHA_BITS, 0 /* _this->gl_config.alpha_size */ },
         { MESA_DRAWABLE_DEPTH_BITS, _this->gl_config.depth_size },
         { MESA_DRAWABLE_STENCIL_BITS, _this->gl_config.stencil_size },
-        { MESA_DRAWABLE_SAMPLES, 0 }, // TODO: to be checked
+        { MESA_DRAWABLE_SAMPLES, samples },
         { MESA_DRAWABLE_DOUBLE_BUFFERED, _this->gl_config.double_buffer },
         { TAG_DONE, TAG_DONE }
     };
