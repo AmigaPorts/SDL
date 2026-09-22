@@ -120,6 +120,11 @@ OS4_OGLES2_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
         data->glContext = NULL;
     }
 
+    if (!data->syswin) {
+        dprintf("System window missing\n");
+        return NULL;
+    }
+
     dprintf("Depth buffer size %d, stencil buffer size %d\n",
         _this->gl_config.depth_size, _this->gl_config.stencil_size);
 
