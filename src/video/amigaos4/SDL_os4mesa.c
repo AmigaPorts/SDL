@@ -210,6 +210,11 @@ OS4_Mesa_CreateContext(_THIS, SDL_Window * window)
         OS4_Mesa_DestroyDrawable((MesaDrawable*)&data->glDrawable);
     }
 
+    if (!data->syswin) {
+        dprintf("System window missing\n");
+        return NULL;
+    }
+
     if (!OS4_Mesa_CreateWindowDrawable(_this, data)) {
         return NULL;
     }

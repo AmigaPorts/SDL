@@ -120,6 +120,11 @@ OS4_OGLES2_CreateContext(_THIS, SDL_Window * window)
         data->glContext = NULL;
     }
 
+    if (!data->syswin) {
+        dprintf("System window missing\n");
+        return NULL;
+    }
+
     dprintf("Depth buffer size %d, stencil buffer size %d\n",
         _this->gl_config.depth_size, _this->gl_config.stencil_size);
 
@@ -175,7 +180,7 @@ OS4_OGLES2_SwapWindow(_THIS, SDL_Window * window)
 
     if (!data->glContext) {
         dprintf("No OpenGL ES 2 context\n");
-        return -1;
+        return SDL_SetError("No OpenGL ES 2 context");
     }
 
     SDL_VideoData *videodata = _this->driverdata;
