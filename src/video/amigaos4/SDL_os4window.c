@@ -580,6 +580,13 @@ OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID c
         }
     } else {
         if (OS4_IsFullscreen(window)) {
+            if (window->flags & SDL_WINDOW_HIDDEN) {
+                // Allowing this causes problem with OpenGL context later (ioquake3).
+                // MiniGL, Ogles2 and Mesa all require system window during context creation.
+                dprintf("Refused to create hidden fullscreen window\n");
+                return SDL_SetError("Refused to create hidden fullscreen window");
+            }
+
             // We may not have the screen opened yet, so let's wait that SDL calls us back with
             // SDL_SetWindowFullscreen() and open the window then.
             dprintf("Open fullscreen window with delay\n");
