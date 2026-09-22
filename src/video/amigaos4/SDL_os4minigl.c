@@ -188,6 +188,11 @@ OS4_MiniGL_CreateContext(SDL_VideoDevice *_this, SDL_Window * window)
         data->glContext = NULL;
     }
 
+    if (!data->syswin) {
+        dprintf("System window missing\n");
+        return NULL;
+    }
+
     const uint32 depth = IGraphics->GetBitMapAttr(data->syswin->RPort->BitMap, BMA_BITSPERPIXEL);
 
     if (!OS4_MiniGL_AllocateBuffers(_this, window->w, window->h, depth, data)) {
