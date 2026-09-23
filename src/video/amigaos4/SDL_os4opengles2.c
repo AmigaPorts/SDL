@@ -180,7 +180,7 @@ OS4_OGLES2_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 
     if (!data->glContext) {
         dprintf("No OpenGL ES 2 context\n");
-        return false;
+        return SDL_SetError("No OpenGL ES 2 context");
     }
 
     SDL_VideoData *videodata = _this->internal;
@@ -205,8 +205,8 @@ OS4_OGLES2_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
     }
 
     if (!context) {
-        dprintf("No context to delete\n");
-        return false;
+        dprintf("No context to destroy\n");
+        return SDL_SetError("No context to destroy");
     }
 
     SDL_Window *sdlwin;
@@ -226,8 +226,8 @@ OS4_OGLES2_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
     }
 
     if (deletions == 0) {
-        dprintf("OpenGL ES 2 context doesn't seem to have window binding\n");
-        return false;
+        dprintf("No window binding\n");
+        return SDL_SetError("No window binding");
     }
 
     return true;

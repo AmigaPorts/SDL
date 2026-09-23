@@ -278,26 +278,26 @@ OS4_Mesa_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext 
     if (!window) {
         dprintf("Window NULL -> unbinding current\n");
         OS4_Mesa_UnbindCurrent();
-        return false;
+        return SDL_SetError("Window NULL");
     }
 
     if (!context) {
         dprintf("Context NULL -> unbinding current\n");
         OS4_Mesa_UnbindCurrent();
-        return false;
+        return SDL_SetError("Context NULL");
     }
 
     SDL_WindowData *data = window->internal;
 
     if (!data->glDrawable) {
         dprintf("Drawable NULL\n");
-        return false;
+        return SDL_SetError("Drawable NULL");
     }
 
     const MesaStatus status = IMesa->MesaMakeCurrent((MesaContext)context, data->glDrawable, data->glDrawable);
     if (status != MESA_STATUS_OK) {
         dprintf("MesaMakeCurrent() failed %d\n", status);
-        return false;
+        return SDL_SetError("MesaMakeCurrent failed");
     }
 
     return true;
@@ -316,7 +316,7 @@ OS4_Mesa_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 
     if (!data->glContext) {
         dprintf("No Mesa context\n");
-        return false;
+        return SDL_SetError("No Mesa context");
     }
 
     SDL_VideoData *videodata = _this->internal;
@@ -330,7 +330,7 @@ OS4_Mesa_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
     const MesaStatus status = IMesa->MesaSwapBuffers(data->glDrawable);
     if (status != MESA_STATUS_OK) {
         dprintf("MesaSwapBuffers() failed %d\n", status);
-        return false;
+        return SDL_SetError("MesaSwapBuffers failed");
     }
 
     return true;
@@ -346,8 +346,8 @@ OS4_Mesa_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
     }
 
     if (!context) {
-        dprintf("No context to delete\n");
-        return false;
+        dprintf("No context to destroy\n");
+        return SDL_SetError("No context to destroy");
     }
 
     SDL_Window *sdlwin;
@@ -369,8 +369,8 @@ OS4_Mesa_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
     }
 
     if (deletions == 0) {
-        dprintf("Mesa context doesn't seem to have window binding\n");
-        return false;
+        dprintf("No window binding\n");
+        return SDL_SetError("No window binding");
     }
 
     return true;
