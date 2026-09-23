@@ -227,7 +227,7 @@ OS4_OGLES2_DeleteContext(_THIS, SDL_GLContext context)
     }
 
     if (deletions == 0) {
-        dprintf("OpenGL ES 2 context doesn't seem to have window binding\n");
+        dprintf("No window binding\n");
     }
 }
 
