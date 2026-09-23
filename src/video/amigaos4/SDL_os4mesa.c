@@ -278,26 +278,26 @@ OS4_Mesa_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
     if (!window) {
         dprintf("Window NULL -> unbinding current\n");
         OS4_Mesa_UnbindCurrent();
-        return -1;
+        return SDL_SetError("Window NULL");
     }
 
     if (!context) {
         dprintf("Context NULL -> unbinding current\n");
         OS4_Mesa_UnbindCurrent();
-        return -1;
+        return SDL_SetError("Context NULL");
     }
 
     SDL_WindowData *data = window->driverdata;
 
     if (!data->glDrawable) {
         dprintf("Drawable NULL\n");
-        return -1;
+        return SDL_SetError("Drawable NULL");
     }
 
     const MesaStatus status = IMesa->MesaMakeCurrent((MesaContext)context, data->glDrawable, data->glDrawable);
     if (status != MESA_STATUS_OK) {
         dprintf("MesaMakeCurrent() failed %d\n", status);
-        return -1;
+        return SDL_SetError("MesaMakeCurrent failed");
     }
 
     return 0;
@@ -316,7 +316,7 @@ OS4_Mesa_SwapWindow(_THIS, SDL_Window * window)
 
     if (!data->glContext) {
         dprintf("No Mesa context\n");
-        return -1;
+        return SDL_SetError("No Mesa context");
     }
 
     SDL_VideoData *videodata = _this->driverdata;
@@ -330,7 +330,7 @@ OS4_Mesa_SwapWindow(_THIS, SDL_Window * window)
     const MesaStatus status = IMesa->MesaSwapBuffers(data->glDrawable);
     if (status != MESA_STATUS_OK) {
         dprintf("MesaSwapBuffers() failed %d\n", status);
-        return -1;
+        return SDL_SetError("MesaSwapBuffers failed");
     }
 
     return 0;
@@ -370,7 +370,7 @@ OS4_Mesa_DeleteContext(_THIS, SDL_GLContext context)
     }
 
     if (deletions == 0) {
-        dprintf("Mesa context doesn't seem to have window binding\n");
+        dprintf("No window binding\n");
     }
 }
 

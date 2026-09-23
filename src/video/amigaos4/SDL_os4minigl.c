@@ -258,7 +258,7 @@ OS4_MiniGL_SwapWindow(_THIS, SDL_Window * window)
 
     if (!data->glContext) {
         dprintf("No MiniGL context\n");
-        return -1;
+        return SDL_SetError("No MiniGL context");
     }
 
     SDL_VideoData *videodata = _this->driverdata;
