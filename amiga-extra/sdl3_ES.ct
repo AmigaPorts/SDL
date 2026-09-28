@@ -1,6 +1,6 @@
-## version $VER: sdl3.catalog 1.0 (19.02.2024)
-## codeset 4
+## version $VER: sdl3.catalog 1.1 (28.09.2026)
 ## language spanish
+## codeset 4
 ;
 MSG_APP_MAIN_MENU
 Proyecto
@@ -154,10 +154,12 @@ MSG_PREFS_DRIVER_HELP
 Controlador a usar por SDL3:\n\
  \033bcomposición \033nsoporta pocos modos de mezclado (\"blend\")\n\
  \033bopengles2 \033nsoporta la mayoría de opciones\n\
+ \033bopengl \033nMesa\n\
  \033bsoftware \033ncomo \"opengles2\" pero sin aceleración por hw
 ; Select driver implementation:\n\
 ;  \033bcompositing \033ndoesn't support some blend modes\n\
 ;  \033bopengles2 \033nsupports most features\n\
+;  \033bopengl \033nuses Mesa context\n\
 ;  \033bsoftware \033nsupports most features but is not accelerated
 ;
 MSG_PREFS_VERTICAL_SYNC_HELP
@@ -179,4 +181,8 @@ Establecer GUI o sus valores por defecto
 MSG_PREFS_CANCEL_HELP
 Salir del programa
 ; Exit program
+;
+MSG_PREFS_DRIVER_OPENGL
+opengl
+; opengl
 ;

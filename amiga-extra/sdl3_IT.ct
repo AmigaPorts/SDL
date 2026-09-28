@@ -1,16 +1,6 @@
-## version $VER: sdl3.catalog 1.0 (21.02.2024)
-## codeset 4
+## version $VER: sdl3.catalog 1.1 (28.09.2026)
 ## language italiano
-;
-; ATO Italia
-; Compiled with FlexCat 2.18 PPC (AmigaOS4)
-; flexcat sdl3.cd sdl3.ct catalog=sdl3.catalog
-;
-; Italian translation of SDL3
-;
-; Traduzione italiana di SDL3
-;
-; --- SDL3 application ---
+## codeset 4
 ;
 MSG_APP_MAIN_MENU
 Progetto
@@ -47,8 +37,6 @@ Applicazione SDL3
 MSG_APP_LIBRARY_VERSION
 Versione libreria SDL
 ; SDL library version
-;
-; --- SDL3 preferences ---
 ;
 MSG_PREFS_APPLICATION
 Preferenze di SDL3
@@ -134,8 +122,6 @@ MSG_PREFS_CANCEL_GAD
 _Annulla
 ; _Cancel
 ;
-; --- Preferences menu ---
-;
 MSG_PREFS_MAIN_MENU
 Progetto
 ; Main
@@ -152,8 +138,6 @@ MSG_PREFS_MAIN_QUIT
 Q|Esci
 ; Q|Quit
 ;
-; --- Preferences about ---
-;
 MSG_PREFS_ABOUT_WINDOW
 Informazioni sulle preferenze SDL3
 ; About SDL3 preferences
@@ -166,16 +150,16 @@ MSG_PREFS_ABOUT_TRANSLATOR
 Traduzione a cura di Samir Hawamdeh
 ; (using built-in strings)
 ;
-; --- Preferences help ---
-;
 MSG_PREFS_DRIVER_HELP
 Seleziona un driver da utilizzare con SDL3:\n\
  \033bcompositing: \033nnon supporta determinati modi blend\n\
  \033bopengles2: \033nsupporta la maggior parte delle funzionalità\n\
+ \033bopengl: \033nMesa\n\
  \033bsoftware: \033ncome \"opengles2\" ma senza accelerazione hardware
 ; Select driver implementation:\n\
 ;  \033bcompositing \033ndoesn't support some blend modes\n\
 ;  \033bopengles2 \033nsupports most features\n\
+;  \033bopengl \033nuses Mesa context\n\
 ;  \033bsoftware \033nsupports most features but is not accelerated
 ;
 MSG_PREFS_VERTICAL_SYNC_HELP
@@ -199,4 +183,8 @@ di SDL3 ai suoi valori predefiniti
 MSG_PREFS_CANCEL_HELP
 Chiude il programma delle preferenze
 ; Exit program
+;
+MSG_PREFS_DRIVER_OPENGL
+opengl
+; opengl
 ;
