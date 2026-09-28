@@ -46,7 +46,7 @@
 #include <string.h>
 
 #define NAME "SDL3 preferences"
-#define VERSION "1.2"
+#define VERSION "1.3"
 #define MAX_PATH_LEN 1024
 #define MAX_VARIABLE_NAME_LEN 32
 #define NAME_VERSION_DATE NAME " " VERSION " (" __AMIGADATE__ ")"
@@ -119,6 +119,7 @@ static const struct OptionName driverNames[] =
     { MSG_PREFS_DRIVER_DEFAULT, NULL, NULL },
     { MSG_PREFS_DRIVER_COMPOSITING, "compositing", NULL },
     { MSG_PREFS_DRIVER_OPENGLES2, "opengles2", NULL },
+    { MSG_PREFS_DRIVER_OPENGL, "opengl", NULL },
     { MSG_PREFS_DRIVER_SOFTWARE, "software", NULL },
     { -1, NULL, NULL }
 };

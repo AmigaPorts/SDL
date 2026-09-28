@@ -84,6 +84,7 @@
 #define MSG_PREFS_SAVE_HELP 1031
 #define MSG_PREFS_RESET_HELP 1032
 #define MSG_PREFS_CANCEL_HELP 1033
+#define MSG_PREFS_DRIVER_OPENGL 1034
 
 #endif /* CATCOMP_NUMBERS */
 
@@ -130,12 +131,13 @@
 #define MSG_PREFS_ABOUT_WINDOW_STR "About SDL3 preferences"
 #define MSG_PREFS_ABOUT_AUTHOR_STR "Written by Juha Niemimaki"
 #define MSG_PREFS_ABOUT_TRANSLATOR_STR "(using built-in strings)"
-#define MSG_PREFS_DRIVER_HELP_STR "Select driver implementation:\n \033bcompositing \033ndoesn't support some blend modes\n \033bopengles2 \033nsupports most features\n \033bsoftware \033nsupports most features but is not accelerated"
+#define MSG_PREFS_DRIVER_HELP_STR "Select driver implementation:\n \033bcompositing \033ndoesn't support some blend modes\n \033bopengles2 \033nsupports most features\n \033bopengl \033nuses Mesa context\n \033bsoftware \033nsupports most features but is not accelerated"
 #define MSG_PREFS_VERTICAL_SYNC_HELP_STR "Synchronize display update to monitor refresh rate"
 #define MSG_PREFS_SCREEN_SAVER_HELP_STR "Allow screen saver (disabled by default)"
 #define MSG_PREFS_SAVE_HELP_STR "Store settings to ENVARC: and exit"
 #define MSG_PREFS_RESET_HELP_STR "Reset GUI to default values"
 #define MSG_PREFS_CANCEL_HELP_STR "Exit program"
+#define MSG_PREFS_DRIVER_OPENGL_STR "opengl"
 
 #endif /* CATCOMP_STRINGS */
 
@@ -196,6 +198,7 @@ STATIC CONST struct CatCompArrayType CatCompArray[] =
     {MSG_PREFS_SAVE_HELP,(CONST_STRPTR)MSG_PREFS_SAVE_HELP_STR},
     {MSG_PREFS_RESET_HELP,(CONST_STRPTR)MSG_PREFS_RESET_HELP_STR},
     {MSG_PREFS_CANCEL_HELP,(CONST_STRPTR)MSG_PREFS_CANCEL_HELP_STR},
+    {MSG_PREFS_DRIVER_OPENGL,(CONST_STRPTR)MSG_PREFS_DRIVER_OPENGL_STR},
 };
 
 #endif /* CATCOMP_ARRAY */
@@ -282,7 +285,7 @@ STATIC CONST UBYTE CatCompBlock[] =
     MSG_PREFS_ABOUT_AUTHOR_STR "\x00"
     "\x00\x00\x04\x03\x00\x1A"
     MSG_PREFS_ABOUT_TRANSLATOR_STR "\x00\x00"
-    "\x00\x00\x04\x04\x00\xB2"
+    "\x00\x00\x04\x04\x00\xD0"
     MSG_PREFS_DRIVER_HELP_STR "\x00"
     "\x00\x00\x04\x05\x00\x34"
     MSG_PREFS_VERTICAL_SYNC_HELP_STR "\x00\x00"
@@ -294,6 +297,8 @@ STATIC CONST UBYTE CatCompBlock[] =
     MSG_PREFS_RESET_HELP_STR "\x00"
     "\x00\x00\x04\x09\x00\x0E"
     MSG_PREFS_CANCEL_HELP_STR "\x00\x00"
+    "\x00\x00\x04\x0A\x00\x08"
+    MSG_PREFS_DRIVER_OPENGL_STR "\x00\x00"
 };
 
 #endif /* CATCOMP_BLOCK */
