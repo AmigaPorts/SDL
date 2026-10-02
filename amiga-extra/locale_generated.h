@@ -14,6 +14,12 @@
 #include <exec/types.h>
 #endif
 
+#ifdef CATCOMP_CODE
+#ifndef CATCOMP_BLOCK
+#define CATCOMP_ARRAY
+#endif
+#endif
+
 #ifdef CATCOMP_ARRAY
 #ifndef CATCOMP_NUMBERS
 #define CATCOMP_NUMBERS
@@ -153,7 +159,7 @@
 #define MSG_PREFS_ABOUT_WINDOW_STR "About SDL2 preferences"
 #define MSG_PREFS_ABOUT_AUTHOR_STR "Written by Juha Niemimaki"
 #define MSG_PREFS_ABOUT_TRANSLATOR_STR "(using built-in strings)"
-#define MSG_PREFS_DRIVER_HELP_STR "Select driver implementation:\n \033bcompositing \033ndoesn't support some blend modes\n \033bopengles2 \033nsupports most features\n \033bopengl \033n(Mesa) supports most features\n \033bsoftware \033nsupports most features but is not accelerated"
+#define MSG_PREFS_DRIVER_HELP_STR "Select driver implementation:\n \033bcompositing \033ndoesn't support some blend modes\n \033bopengles2 \033nsupports most features\n \033bopengl \033nuses Mesa context\n \033bsoftware \033nsupports most features but is not accelerated"
 #define MSG_PREFS_VERTICAL_SYNC_HELP_STR "Synchronize display update to monitor refresh rate"
 #define MSG_PREFS_BATCHING_MODE_HELP_STR "Batching may improve drawing speed if application does many operations per frame and SDL2 is able to combine those"
 #define MSG_PREFS_SCALE_QUALITY_HELP_STR "Nearest pixel sampling or linear filtering"
@@ -350,7 +356,7 @@ STATIC CONST UBYTE CatCompBlock[] =
     MSG_PREFS_ABOUT_AUTHOR_STR "\x00"
     "\x00\x00\x04\x10\x00\x1A"
     MSG_PREFS_ABOUT_TRANSLATOR_STR "\x00\x00"
-    "\x00\x00\x04\x11\x00\xDC"
+    "\x00\x00\x04\x11\x00\xD0"
     MSG_PREFS_DRIVER_HELP_STR "\x00"
     "\x00\x00\x04\x12\x00\x34"
     MSG_PREFS_VERTICAL_SYNC_HELP_STR "\x00\x00"
@@ -376,12 +382,24 @@ STATIC CONST UBYTE CatCompBlock[] =
 /****************************************************************************/
 
 
-#ifdef CATCOMP_CODE
-
 #ifndef PROTO_LOCALE_H
-#define __NOLIBBASE__
-#define __NOGLOBALIFACE__
-#include <proto/locale.h>
+ #ifndef __NOLIBBASE__
+  #define _NLB_DEFINED_
+  #define __NOLIBBASE__
+ #endif
+ #ifndef __NOGLOBALIFACE__
+  #define _NGI_DEFINED_
+  #define __NOGLOBALIFACE__
+ #endif
+ #include <proto/locale.h>
+ #ifdef _NLB_DEFINED_
+  #undef __NOLIBBASE__
+  #undef _NLB_DEFINED_
+ #endif
+ #ifdef _NGI_DEFINED_
+  #undef __NOGLOBALIFACE__
+  #undef _NGI_DEFINED_
+ #endif
 #endif
 
 struct LocaleInfo
@@ -395,7 +413,18 @@ struct LocaleInfo
 };
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 CONST_STRPTR GetStringGenerated(struct LocaleInfo *li, LONG stringNum);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+
+#ifdef CATCOMP_CODE
 
 CONST_STRPTR GetStringGenerated(struct LocaleInfo *li, LONG stringNum)
 {
@@ -406,16 +435,19 @@ CONST_STRPTR GetStringGenerated(struct LocaleInfo *li, LONG stringNum)
 #endif
     LONG         *l;
     UWORD        *w;
-    CONST_STRPTR  builtIn;
+    CONST_STRPTR  builtIn = NULL;
 
     l = (LONG *)CatCompBlock;
 
-    while (*l != stringNum)
+    while (*l != stringNum && l < (LONG *)(&CatCompBlock[sizeof(CatCompBlock)]))
     {
         w = (UWORD *)((ULONG)l + 4);
         l = (LONG *)((ULONG)l + (ULONG)*w + 6);
     }
-    builtIn = (CONST_STRPTR)((ULONG)l + 6);
+    if (*l == stringNum)
+    {
+        builtIn = (CONST_STRPTR)((ULONG)l + 6);
+    }
 
 #ifndef __amigaos4__
     if (LocaleBase)

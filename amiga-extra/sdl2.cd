@@ -1,4 +1,4 @@
-## version 1.0
+## version 1.1
 ## language english
 ## function GetStringGenerated
 ;
@@ -166,7 +166,7 @@ MSG_PREFS_DRIVER_HELP (//)
 Select driver implementation:\n\
  \033bcompositing \033ndoesn't support some blend modes\n\
  \033bopengles2 \033nsupports most features\n\
- \033bopengl \033n(Mesa) supports most features\n\
+ \033bopengl \033nuses Mesa context\n\
  \033bsoftware \033nsupports most features but is not accelerated
 ;
 MSG_PREFS_VERTICAL_SYNC_HELP (//)

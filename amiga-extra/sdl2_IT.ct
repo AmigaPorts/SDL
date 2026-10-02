@@ -1,16 +1,6 @@
-## version $VER: sdl2.catalog 1.0 (21.02.2024)
-## codeset 4
+## version $VER: sdl2.catalog 1.1 (02.10.2026)
 ## language italiano
-;
-; ATO Italia
-; Compiled with FlexCat 2.18 PPC (AmigaOS4)
-; flexcat sdl2.cd sdl2.ct catalog=sdl2.catalog
-;
-; Italian translation of SDL2
-;
-; Traduzione italiana di SDL2
-;
-; --- SDL2 application ---
+## codeset 4
 ;
 MSG_APP_MAIN_MENU
 Progetto
@@ -47,8 +37,6 @@ Applicazione SDL2
 MSG_APP_LIBRARY_VERSION
 Versione libreria SDL
 ; SDL library version
-;
-; --- SDL2 preferences ---
 ;
 MSG_PREFS_APPLICATION
 Preferenze di SDL2
@@ -186,8 +174,6 @@ MSG_PREFS_CANCEL_GAD
 _Annulla
 ; _Cancel
 ;
-; --- Preferences menu ---
-;
 MSG_PREFS_MAIN_MENU
 Progetto
 ; Main
@@ -204,8 +190,6 @@ MSG_PREFS_MAIN_QUIT
 Q|Esci
 ; Q|Quit
 ;
-; --- Preferences about ---
-;
 MSG_PREFS_ABOUT_WINDOW
 Informazioni sulle preferenze SDL2
 ; About SDL2 preferences
@@ -218,18 +202,16 @@ MSG_PREFS_ABOUT_TRANSLATOR
 Traduzione a cura di Samir Hawamdeh
 ; (using built-in strings)
 ;
-; --- Preferences help ---
-;
 MSG_PREFS_DRIVER_HELP
 Seleziona un driver da utilizzare con SDL2:\n\
  \033bcompositing: \033nnon supporta determinati modi blend\n\
- \033bopengl: \033n(MiniGL) non supporta le render target e determinati modi blend\n\
  \033bopengles2: \033nsupporta la maggior parte delle funzionalità\n\
+ \033bopengl: \033nMesa\n\
  \033bsoftware: \033ncome \"opengles2\" ma senza accelerazione hardware
 ; Select driver implementation:\n\
 ;  \033bcompositing \033ndoesn't support some blend modes\n\
 ;  \033bopengles2 \033nsupports most features\n\
-;  \033bopengl \033n(MiniGL) doesn't support render targets and some blend modes\n\
+;  \033bopengl \033nuses Mesa context\n\
 ;  \033bsoftware \033nsupports most features but is not accelerated
 ;
 MSG_PREFS_VERTICAL_SYNC_HELP
