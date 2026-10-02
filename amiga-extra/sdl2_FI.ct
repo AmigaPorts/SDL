@@ -1,6 +1,6 @@
-## version $VER: sdl2.catalog 1.0 (19.02.2024)
-## codeset 4
+## version $VER: sdl2.catalog 1.1 (02.10.2026)
 ## language finnish
+## codeset 4
 ;
 MSG_APP_MAIN_MENU
 Päävalikko
@@ -206,9 +206,13 @@ MSG_PREFS_DRIVER_HELP
 Valitse ajuritoteutus:\n \
 \033bcompositing \033nei tue kaikkia sekoitustiloja\n \
 \033bopengles2 \033ntukee useimpia ominaisuuksia\n \
-\033bbopengl \033n(MiniGL) ei tue tekstuuriin piirtoa eikä kaikki sekoitustiloja\n \
+\033bbopengl \033nkäyttää Mesa-kontekstia\n \
 \033bohjelmallinen \033ntukee useimpia ominaisuuksia mutta ei ole kiihdytetty
-; Select driver implementation:\n \033bcompositing \033ndoesn't support some blend modes\n \033bopengl \033n(MiniGL) doesn't support render targets and some blend modes\n \033bopengles2 \033nsupports most features\n \033bsoftware \033nsupports most features but is not accelerated
+; Select driver implementation:\n\
+;  \033bcompositing \033ndoesn't support some blend modes\n\
+;  \033bopengles2 \033nsupports most features\n\
+;  \033bopengl \033nuses Mesa context\n\
+;  \033bsoftware \033nsupports most features but is not accelerated
 ;
 MSG_PREFS_VERTICAL_SYNC_HELP
 Synkronoi näytön päivitys monitorin virkistystaajuuteen
@@ -216,7 +220,8 @@ Synkronoi näytön päivitys monitorin virkistystaajuuteen
 ;
 MSG_PREFS_BATCHING_MODE_HELP
 Yhdistely voi nopeuttaa piirtämistä jos sovelluksen tekemät toiminnot voidaan yhdistää
-; Batching may improve drawing speed if application does many operations per frame and SDL2 is able to combine those
+; Batching may improve drawing speed if application does many \
+; operations per frame and SDL2 is able to combine those
 ;
 MSG_PREFS_SCALE_QUALITY_HELP
 Ota lähimmäinen kuvapiste tai suodata lineaarisesti
