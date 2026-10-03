@@ -58,7 +58,7 @@ with no way to ask for anything else.
 To rebuild a single driver object without a full `make`:
 
 ```sh
-m68k-amigaos-gcc -std=gnu99 -O0 -m68030 -noixemul \
+m68k-amigaos-gcc -std=gnu99 -O0 -m68030 -mcrt=nix20 \
   -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare \
   -I./include -I./src -D__AMIGAOS3__ -DSDL_OS3_DEBUG \
   -c src/video/amigaos3/SDL_os3window.c -o src/video/amigaos3/SDL_os3window.o

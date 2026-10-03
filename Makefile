@@ -9,7 +9,7 @@ CC = $(CC_PREFIX)-gcc
 AR = $(CC_PREFIX)-ar
 RANLIB = $(CC_PREFIX)-ranlib
 
-CFLAGS = -std=gnu99 -O0 -m68030 -noixemul \
+CFLAGS = -std=gnu99 -O0 -m68030 -mcrt=nix20 \
          -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare \
          -I./include -I./src \
          -D__AMIGAOS3__ -DSDL_OS3_DEBUG

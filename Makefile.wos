@@ -8,7 +8,7 @@ CC = $(CC_PREFIX)-gcc-9.2.0 -DWARPUP --specs=warpup
 AR = $(CC_PREFIX)-ar
 RANLIB = $(CC_PREFIX)-ranlib
 
-CFLAGS = -std=gnu99 -O2 -mcpu=603e -noixemul -mhard-float -ffast-math \
+CFLAGS = -std=gnu99 -O2 -mcpu=603e -mcrt=nix20 -mhard-float -ffast-math \
          -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare \
          -I./include -I./src \
          -D__AMIGAOS3__ -DSDL_OS3_DEBUG
