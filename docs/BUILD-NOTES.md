@@ -41,7 +41,7 @@ Exact commands:
   battle, and no need to define `SysBase` or `exit` by hand.
 - **No stub link library is needed.** `sfdc --mode=macros` emits inline
   macros that do the register marshalling at the call site; the C tester
-  just includes the generated header and links normally with `-noixemul`.
+  just includes the generated header and links normally with `-mcrt=nix20`.
 - **Library functions take REGISTER arguments** (`Func(a,b)(D0,A0)` in
   the FD), not stack arguments. Registers available: D0-D7, A0-A3.
   A6 implicitly holds the library base.

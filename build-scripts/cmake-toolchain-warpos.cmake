@@ -17,8 +17,8 @@ if(NOT CMAKE_C_COMPILER)
 endif()
 
 set(WARPUP TRUE CACHE BOOL "Build the AmigaOS 3 WarpOS target")
-set(CMAKE_C_FLAGS_INIT "--specs=warpup -mcpu=603e -noixemul -mhard-float -ffast-math")
-set(CMAKE_EXE_LINKER_FLAGS_INIT "--specs=warpup -mcpu=603e -noixemul -mhard-float")
+set(CMAKE_C_FLAGS_INIT "--specs=warpup -mcpu=603e -mcrt=nix20 -mhard-float -ffast-math")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "--specs=warpup -mcpu=603e -mcrt=nix20 -mhard-float")
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)

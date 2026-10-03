@@ -3897,7 +3897,7 @@ if(SDL_AMIGAOS3_LIBRARY)
     ${SDL2_SOURCE_DIR}/library/sdl2crt.c)
   add_dependencies(SDL2-amiga-library SDL2-static sdl_headers_copy sdl2)
   target_compile_definitions(SDL2-amiga-library PRIVATE USING_GENERATED_CONFIG_H __AMIGAOS3__)
-  target_compile_options(SDL2-amiga-library PRIVATE -m68030 -O2 -fomit-frame-pointer -noixemul)
+  target_compile_options(SDL2-amiga-library PRIVATE -m68030 -O2 -fomit-frame-pointer -mcrt=nix20)
   target_include_directories(SDL2-amiga-library PRIVATE
     "${SDL2_BINARY_DIR}"
     "${SDL2_BINARY_DIR}/include"
@@ -3920,7 +3920,7 @@ if(SDL_AMIGAOS3_LIBRARY)
     OUTPUT_NAME "${SDL_AMIGAOS3_LIBRARY_NAME}"
     SUFFIX ""
     PREFIX ""
-    LINK_FLAGS "-m68030 -noixemul -nostartfiles -nostdlib")
+    LINK_FLAGS "-m68030 -mcrt=nix20 -nostartfiles -nostdlib")
 endif()
 
 if(SDL_AMIGAOS4_LIBRARY)

@@ -2,7 +2,7 @@
 # Keystroke injector for automated interactive testing (ADR-023)
 
 CC = ../scripts/m68k-amigaos-gcc
-CFLAGS = -O2 -noixemul -m68000 -Wall
+CFLAGS = -O2 -mcrt=nix20 -m68000 -Wall
 KEYINJECT_BIN = KeyInject
 
 all: $(KEYINJECT_BIN)

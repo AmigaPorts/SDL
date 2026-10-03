@@ -77,7 +77,7 @@ inlines in a form that is not valid C.
 ## Compiling
 
 ```sh
-m68k-amigaos-gcc -m68030 -O2 -noixemul -I sdk/include -o mygame mygame.c
+m68k-amigaos-gcc -m68030 -O2 -mcrt=nix20 -I sdk/include -o mygame mygame.c
 ```
 
 **Link nothing.** No `-lSDL2`. Every call goes through the library's jump

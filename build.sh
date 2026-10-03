@@ -142,7 +142,7 @@ EOF
     mv sdl2.h build/sdl2.h 2>/dev/null || true
 
     for c in sdl2lib sdl2api sdl2probes sdl2table sdl2crt; do
-        m68k-amigaos-gcc -m68030 -O2 -fomit-frame-pointer -noixemul \\
+        m68k-amigaos-gcc -m68030 -O2 -fomit-frame-pointer -mcrt=nix20 \\
             -I$NIX/include -Iinclude -Ibuild -Ilibrary \\
             -c library/\$c.c -o build/\$c.o
     done
@@ -169,7 +169,7 @@ build_test() {
     # Links NOTHING of SDL2 -- every call goes through the jump table --
     # but it needs SDL2's headers so caller and library agree on struct
     # layout. They must: the .fd fixes registers, not layout.
-    run "m68k-amigaos-gcc -m68030 -O1 -noixemul -Wall \\
+    run "m68k-amigaos-gcc -m68030 -O1 -mcrt=nix20 -Wall \\
          -Ibuild -Ilibrary -Iinclude \\
          -o build/sdl2test test/sdl2test.c"
     [ -f "$HERE/build/sdl2test" ] || { echo "missing: sdl2test" >&2; exit 1; }

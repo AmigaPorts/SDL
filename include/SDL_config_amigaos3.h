@@ -30,7 +30,7 @@
  * SDL2 configuration for AmigaOS 3.x on Motorola 68k.
  *
  * Target: 68030+ with CyberGraphX RTG.
- * Compiler: bebbo-gcc (GCC 6.5.0b), -std=gnu99, -noixemul.
+ * Compiler: bebbo-gcc (GCC 6.5.0b), -std=gnu99, -mcrt=nix20.
  *
  * Reference: SDL_config_minimal.h, SDL2 OS4 port config.
  */

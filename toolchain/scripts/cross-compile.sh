@@ -78,7 +78,7 @@ if [ "$TOOLCHAIN" = "auto" ]; then
 fi
 
 # Compile flags
-CFLAGS="-O2 -noixemul $CPU_FLAGS -Wall -I$SHIM_DIR/include ${EXTRA_FLAGS[*]}"
+CFLAGS="-O2 -mcrt=nix20 $CPU_FLAGS -Wall -I$SHIM_DIR/include ${EXTRA_FLAGS[*]}"
 LDFLAGS="-L$SHIM_DIR -lamiport"
 
 case "$TOOLCHAIN" in
