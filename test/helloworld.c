@@ -317,58 +317,70 @@ static void getGlInfo()
     printf("GL_VERSION: %s\n", glGetStringFunc(GL_VERSION));
 }
 
-// TODO: should load GL functions
-// NOTE: will not work on OGLES2 (try testgles2.c instead of)
-static void drawUsingFixedFunctionPipeline(SDL_Window *w)
+static void drawUsingOpenGL(SDL_Window *w)
 {
-    if (w) {
-        SDL_GLContext c = SDL_GL_CreateContext(w);
-
-        if (c) {
-            getGlInfo();
-
-            //SDL_GL_SetSwapInterval(1);
-
-            Uint32 start = SDL_GetTicks();
-            Uint32 frames = 0;
-
-            while (eventLoopInner()) {
-                glMatrixMode(GL_PROJECTION);
-                glLoadIdentity();
-
-                glMatrixMode(GL_MODELVIEW);
-                glLoadIdentity();
-
-                glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-                glClear(GL_COLOR_BUFFER_BIT);
-
-                glBegin(GL_TRIANGLES);
-
-                glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
-                glVertex3f(-0.5f, -0.5f, 0.0f);
-
-                glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
-                glVertex3f(0.5f, -0.5f, 0.0f);
-
-                glColor4f(0.0f, 0.0f, 1.0f, 1.0f);
-                glVertex3f(0.0f, 0.5f, 0.0f);
-
-                glEnd();
-
-                SDL_GL_SwapWindow(w);
-                frames++;
-            }
-
-            Uint32 end = SDL_GetTicks();
-            printf("%u frames in %u ms - %f\n", frames, end - start, 1000.f * frames / (end - start));
-
-
-            SDL_GL_DestroyContext(c);
-        }
-
-        SDL_DestroyWindow(w);
+    if (!w) {
+        printf("Failed to create window: %s\n", SDL_GetError());
+        return;
     }
 
+    SDL_GLContext c = SDL_GL_CreateContext(w);
+
+    if (!c) {
+        printf("Failed to create context: %s\n", SDL_GetError());
+        return;
+    }
+
+    getGlInfo();
+
+    typedef const void (APIENTRY* PFNGLCLEARCOLORPROC) (GLfloat r, GLfloat g, GLfloat b, GLfloat a);
+
+    PFNGLCLEARCOLORPROC glClearColorFunc;
+    glClearColorFunc = (PFNGLCLEARCOLORPROC)SDL_GL_GetProcAddress("glClearColor");
+
+    if (!glClearColorFunc) {
+        puts("Failed to load glClearColorFunc");
+        return;
+    }
+
+    typedef const void (APIENTRY* PFNGLCLEARPROC) (GLenum);
+
+    PFNGLCLEARPROC glClearFunc;
+    glClearFunc = (PFNGLCLEARPROC)SDL_GL_GetProcAddress("glClear");
+
+    if (!glClearFunc) {
+        puts("Failed to load glClearFunc");
+        return;
+    }
+
+    //SDL_GL_SetSwapInterval(1);
+
+    Uint32 start = SDL_GetTicks();
+    Uint32 frames = 0;
+
+    while (eventLoopInner()) {
+        glClearColorFunc(1.0f, 1.0f, 1.0f, 1.0f);
+        glClearFunc(GL_COLOR_BUFFER_BIT);
+
+        SDL_GL_SwapWindow(w);
+        frames++;
+
+        //SDL_Delay(1000);
+        //break;
+
+        glClearColorFunc(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearFunc(GL_COLOR_BUFFER_BIT);
+
+        SDL_GL_SwapWindow(w);
+        frames++;
+    }
+
+    Uint32 end = SDL_GetTicks();
+    printf("%u frames in %u ms - %f\n", frames, end - start, 1000.f * frames / (end - start));
+
+    SDL_GL_DestroyContext(c);
+
+    SDL_DestroyWindow(w);
 }
 
 static SDL_Window* createWindow(const char *name)
@@ -423,7 +435,7 @@ static void testMiniGL()
 
     SDL_Window * w = createWindow("Centered & Resizable MiniGL window");
 
-    drawUsingFixedFunctionPipeline(w);
+    drawUsingOpenGL(w);
 }
 
 static void testOpenGLES2()
@@ -432,40 +444,14 @@ static void testOpenGLES2()
 
     SDL_Window * w = createWindow("Centered & Resizable OGLES2 window");
 
-    if (w) {
-        SDL_GLContext c = SDL_GL_CreateContext(w);
-
-        if (c) {
-            getGlInfo();
-            SDL_GL_DestroyContext(c);
-        } else {
-            puts("Failed to create OGLES2 context");
-        }
-
-        SDL_DestroyWindow(w);
-    } else {
-        puts("Failed to create OGLES2 window");
-    }
+    drawUsingOpenGL(w);
 }
 
 static void testMesaInner()
 {
     SDL_Window * w = createWindow("Centered & Resizable Mesa window");
 
-    if (w) {
-        SDL_GLContext c = SDL_GL_CreateContext(w);
-
-        if (c) {
-            getGlInfo();
-            SDL_GL_DestroyContext(c);
-        } else {
-            puts("Failed to create Mesa context");
-        }
-
-        SDL_DestroyWindow(w);
-    } else {
-        puts("Failed to create Mesa window");
-    }
+    drawUsingOpenGL(w);
 }
 
 static void testMesa()
@@ -490,14 +476,18 @@ static void testOpenGLSwitching()
 
 static void testFullscreenOpenGL()
 {
+    setGlVersion(1, 1, 0);
+
     SDL_Window * w = SDL_CreateWindow("Fullscreen",
         1200,
         900,
-        SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL);
+        SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL /*| SDL_WINDOW_HIDDEN*/);
 
     if (w) {
         SDL_StartTextInput(w);
-        drawUsingFixedFunctionPipeline(w);
+        drawUsingOpenGL(w);
+    } else {
+        printf("%s\n", SDL_GetError());
     }
 }
 
@@ -918,11 +908,12 @@ int main(void)
         if (0) testWindow();
         if (0) testManyWindows();
         if (0) testFullscreen();
-        if (0) testFullscreenOpenGL();
+        if (1) testFullscreenOpenGL();
         if (0) testDeleteContext();
         if (0) testMiniGL();
         if (0) testOpenGLES2();
-        if (1) testOpenGLSwitching();
+        if (0) testMesa();
+        if (0) testOpenGLSwitching();
         if (0) testOpenGLVersion();
         if (0) testRenderer();
         if (0) testDraw();
