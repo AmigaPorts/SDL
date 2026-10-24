@@ -258,6 +258,7 @@ OS4_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_Displ
         SA_ErrorCode,   &openError,
         SA_LikeWorkbench, TRUE,
         SA_Compositing, FALSE,
+        SA_Behind,      TRUE,
         TAG_DONE);
 
     dprintf("Opened screen id 0x%lX (%lu): %d*%d*%d (address %p)\n",

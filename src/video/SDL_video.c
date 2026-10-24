@@ -1968,43 +1968,6 @@ bool SDL_UpdateFullscreenMode(SDL_Window *window, SDL_FullscreenOp fullscreen, b
     if (fullscreen) {
         mode = (SDL_DisplayMode *)SDL_GetWindowFullscreenMode(window);
 
-#if defined(SDL_PLATFORM_AMIGAOS4)
-        /* HACK: in order to open an exclusive fullscreen before window,
-           copy necessary mode data into window struct */
-        if (mode == NULL) {
-            SDL_DisplayMode fullscreen_mode;
-            fullscreen_mode.displayID = 1;
-            fullscreen_mode.format = SDL_PIXELFORMAT_XRGB8888;
-            fullscreen_mode.w = window->w;
-            fullscreen_mode.h = window->h;
-            fullscreen_mode.pixel_density = 1.0f;
-            fullscreen_mode.refresh_rate = 60.0f;
-            fullscreen_mode.refresh_rate_numerator = 0;
-            fullscreen_mode.refresh_rate_denominator = 0;
-            fullscreen_mode.internal = NULL;
-
-            SDL_memcpy(&window->requested_fullscreen_mode, &fullscreen_mode, sizeof(window->requested_fullscreen_mode));
-            SDL_memcpy(&window->current_fullscreen_mode, &fullscreen_mode, sizeof(window->requested_fullscreen_mode));
-
-            mode = (SDL_DisplayMode *)SDL_GetWindowFullscreenMode(window);
-
-            if (mode == NULL) {
-                SDL_Rect bounds;
-                int result = SDL_GetDisplayBounds(SDL_GetPrimaryDisplay(), &bounds);
-                if (result == 0) {
-                    dprintf("Display bounds %d * %d\n", bounds.w, bounds.h);
-                    /* This makes testautomation video_setWindowCenteredOnDisplay case pass. Otherwise window
-                       opens on the Workbench screen */
-                    if (!SDL_GetClosestFullscreenDisplayMode(1, bounds.w, bounds.h, 0.0f, false, mode)) {
-                        dprintf("Failed to get closest fullscreen display mode: %s\n", SDL_GetError());
-                    }
-                } else {
-                    dprintf("Failed to get display bounds: %s\n", SDL_GetError());
-                }
-            }
-        }
-#endif
-
         if (mode) {
             window->fullscreen_exclusive = true;
         } else {
@@ -2274,8 +2237,8 @@ SDL_PixelFormat SDL_GetWindowPixelFormat(SDL_Window *window)
 }
 
 #if defined(SDL_PLATFORM_AMIGAOS4)
-    /* Without this hack, SDL would trigger us to open a window before screen which causes unnecessary
-    work, because then we would have to close the window first and re-open it on the custom screen */
+    // Without this hack, SDL would trigger us to open a window before screen which causes unnecessary
+    // work, because then we would have to close the window first and re-open it on the custom screen
     #define CREATE_FLAGS \
         (SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_POPUP_MENU | SDL_WINDOW_UTILITY | SDL_WINDOW_TOOLTIP | SDL_WINDOW_VULKAN | SDL_WINDOW_MINIMIZED | SDL_WINDOW_METAL | SDL_WINDOW_TRANSPARENT | SDL_WINDOW_NOT_FOCUSABLE | SDL_WINDOW_FILL_DOCUMENT | SDL_WINDOW_FULLSCREEN)
 #else
@@ -2359,7 +2322,10 @@ static void ApplyWindowFlags(SDL_Window *window, SDL_WindowFlags flags)
             SDL_MaximizeWindow(window);
         }
 
+#if !defined(SDL_PLATFORM_AMIGAOS4)
+        // Screen is created already, avoid any unnecessary recreation
         SDL_SetWindowFullscreen(window, (flags & SDL_WINDOW_FULLSCREEN) != 0);
+#endif
 
         if (flags & SDL_WINDOW_MINIMIZED) {
             SDL_MinimizeWindow(window);
@@ -2848,8 +2814,11 @@ bool SDL_RecreateWindow(SDL_Window *window, SDL_WindowFlags flags)
 
 #ifdef SDL_PLATFORM_AMIGAOS4
     if (window->flags & SDL_WINDOW_OPENGL) {
-        /* We have to unload the old library in case we have to switch
-        between MiniGL and OGLES2. Otherwise function pointers will be messed up. */
+        // We have to unload the old library in case we have to switch
+        // between MiniGL and OGLES2. Otherwise function pointers will be messed up.
+        // TODO: there is an open issue where "testsprite --fullscreen" creates
+        // different resolution for OpenGL renderers (compared to software/compositing),
+        // possibly caused by window size reset below.
         SDL_GL_UnloadLibrary();
         window->flags &= ~SDL_WINDOW_OPENGL;
     }
