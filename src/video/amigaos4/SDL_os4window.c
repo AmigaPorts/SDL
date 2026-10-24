@@ -511,15 +511,15 @@ OS4_CreateSystemWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDis
     OS4_BackFillHook.h_Data = IGraphics; // Smuggle interface ptr for the hook
     OS4_DefineWindowBox(window, screen, fullscreen, &box);
 
-    dprintf("Opening window '%s' at (%d,%d) of size (%dx%d) on screen %p\n",
-        window->title, box.x, box.y, box.w, box.h, screen);
+    dprintf("Opening window at (%d,%d) of size (%dx%d) on screen %p\n",
+        box.x, box.y, box.w, box.h, screen);
 
     // TODO: consider window.class
     syswin = IIntuition->OpenWindowTags(
         NULL,
         WA_PubScreen, screen,
-        WA_Title, (fullscreen || (window->flags & SDL_WINDOW_BORDERLESS)) ? NULL : window->title,
-        WA_ScreenTitle, window->title,
+        WA_Title, NULL, // SDL sets window title after system window creation
+        WA_ScreenTitle, NULL,
         WA_Left, box.x,
         WA_Top, box.y,
         WA_InnerWidth, box.w,
