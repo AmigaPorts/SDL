@@ -555,9 +555,11 @@ OS4_CreateSystemWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDis
 static void
 OS4_CreateControls(SDL_VideoDevice *_this, SDL_Window *window)
 {
-    OS4_CreateIconifyGadgetForWindow(_this, window);
-    OS4_CreateAppWindow(_this, window);
-    OS4_CreateMenu(window);
+    if (!OS4_IsFullscreen(window)) {
+        OS4_CreateIconifyGadgetForWindow(_this, window);
+        OS4_CreateAppWindow(_this, window);
+        OS4_CreateMenu(window);
+    }
 }
 
 bool
