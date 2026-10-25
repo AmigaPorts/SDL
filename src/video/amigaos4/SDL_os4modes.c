@@ -56,8 +56,7 @@ OS4_GetDisplayMode(ULONG id, SDL_DisplayMode * mode)
 
     data = (SDL_DisplayModeData *) SDL_malloc(sizeof(*data));
     if (!data) {
-        dprintf("Failed to allocate memory\n");
-        return false;
+        return SDL_OutOfMemory();
     }
 
     SDL_zero(*mode);
@@ -168,7 +167,7 @@ OS4_InitModes(SDL_VideoDevice *_this)
     display.id = 1;
     display.desktop_mode = current_mode;
     display.current_mode = &current_mode;
-    display.internal = displaydata; // TODO: it's uninitialized!
+    display.internal = displaydata;
     displaydata->screen = NULL;
 
     SDL_AddVideoDisplay(&display, false);
@@ -267,30 +266,22 @@ OS4_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_Displ
     if (!displaydata->screen) {
         switch (openError) {
             case OSERR_NOMONITOR:
-                SDL_SetError("Monitor for display mode not available");
-                break;
+                return SDL_SetError("Monitor for display mode not available");
             case OSERR_NOCHIPS:
-                SDL_SetError("Newer custom chips required");
-                break;
+                return SDL_SetError("Newer custom chips required");
             case OSERR_NOMEM:
             case OSERR_NOCHIPMEM:
-                SDL_OutOfMemory();
-                break;
+                return SDL_OutOfMemory();
             case OSERR_PUBNOTUNIQUE:
-                SDL_SetError("Public screen name not unique");
-                break;
+                return SDL_SetError("Public screen name not unique");
             case OSERR_UNKNOWNMODE:
             case OSERR_TOODEEP:
-                SDL_SetError("Unknown display mode");
-                break;
+                return SDL_SetError("Unknown display mode");
             case OSERR_ATTACHFAIL:
-                SDL_SetError("Attachment failed");
-                break;
+                return SDL_SetError("Attachment failed");
             default:
-                SDL_SetError("OpenScreen failed");
-                break;
+                return SDL_SetError("OpenScreen failed");
         }
-        return false;
     }
 
     // Paint it black (it helps in cases where window doesn't fill the screen)
