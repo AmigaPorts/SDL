@@ -54,7 +54,7 @@
 
 #define MIN_WINDOW_SIZE 100
 
-static void OS4_CloseSystemWindow(SDL_VideoDevice *_this, struct Window * window);
+static void OS4_CloseSystemWindow(SDL_VideoDevice *_this, SDL_VideoDisplay *display, struct Window * window);
 static void OS4_CloseWindow(SDL_VideoDevice *_this, SDL_Window * sdlwin);
 
 void
@@ -586,7 +586,7 @@ OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID c
             SDL_DisplayMode fullscreen_mode;
             fullscreen_mode.displayID = 1;
             fullscreen_mode.format = SDL_PIXELFORMAT_XRGB8888;
-            fullscreen_mode.w = window->w;
+            fullscreen_mode.w = window->w; // Desktop resolution
             fullscreen_mode.h = window->h;
             fullscreen_mode.pixel_density = 1.0f;
             fullscreen_mode.refresh_rate = 60.0f;
@@ -604,8 +604,6 @@ OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID c
                 int result = SDL_GetDisplayBounds(SDL_GetPrimaryDisplay(), &bounds);
                 if (result == 0) {
                     dprintf("Display bounds %d * %d\n", bounds.w, bounds.h);
-                    // This makes testautomation video_setWindowCenteredOnDisplay case pass. Otherwise window
-                    // opens on the Workbench screen
                     if (!SDL_GetClosestFullscreenDisplayMode(1, bounds.w, bounds.h, 0.0f, false, mode)) {
                         dprintf("Failed to get closest fullscreen display mode: %s\n", SDL_GetError());
                     }
@@ -634,7 +632,7 @@ OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID c
 
         if (!OS4_SetupWindowData(window, syswin)) {
             // There is no AppWindow in this scenario
-            OS4_CloseSystemWindow(_this, syswin);
+            OS4_CloseSystemWindow(_this, NULL, syswin);
             return false;
         }
 
@@ -778,7 +776,7 @@ OS4_HideWindow(SDL_VideoDevice *_this, SDL_Window * window)
 
         dprintf("Hiding window '%s'\n", window->title);
 
-        // TODO: how to hide a fullscreen window? Close the screen?
+        // TODO: how to hide a fullscreen window? Move screen behind?
         result = IIntuition->HideWindow(data->syswin);
 
         if (!result) {
@@ -801,7 +799,7 @@ OS4_RaiseWindow(SDL_VideoDevice *_this, SDL_Window * window)
 }
 
 static void
-OS4_CloseSystemWindow(SDL_VideoDevice *_this, struct Window * window)
+OS4_CloseSystemWindow(SDL_VideoDevice *_this, SDL_VideoDisplay *display, struct Window * window)
 {
     if (window) {
         dprintf("Closing window '%s' (address %p)\n", window->Title, window);
@@ -811,6 +809,14 @@ OS4_CloseSystemWindow(SDL_VideoDevice *_this, struct Window * window)
         IIntuition->CloseWindow(window);
 
         OS4_CloseScreen(_this, screen);
+
+        if (display) {
+            SDL_DisplayData *displaydata = (SDL_DisplayData *) display->internal;
+            if (screen == displaydata->screen) {
+                dprintf("Clearing displaydata->screen\n");
+                displaydata->screen = NULL;
+            }
+        }
     } else {
         dprintf("NULL pointer\n");
     }
@@ -831,7 +837,7 @@ OS4_CloseWindow(SDL_VideoDevice *_this, SDL_Window * sdlwin)
     OS4_RemoveMenuObject(data);
 
     if (data->syswin) {
-        OS4_CloseSystemWindow(_this, data->syswin);
+        OS4_CloseSystemWindow(_this, SDL_GetVideoDisplayForWindow(sdlwin), data->syswin);
         data->syswin = NULL;
 
         if (data->gadget) {
