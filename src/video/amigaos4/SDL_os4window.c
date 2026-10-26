@@ -511,15 +511,15 @@ OS4_CreateSystemWindow(_THIS, SDL_Window * window, SDL_VideoDisplay * display)
 
     OS4_DefineWindowBox(window, screen, fullscreen, &box);
 
-    dprintf("Opening window '%s' at (%d,%d) of size (%dx%d) on screen %p\n",
-        window->title, box.x, box.y, box.w, box.h, screen);
+    dprintf("Opening window at (%d,%d) of size (%dx%d) on screen %p\n",
+        box.x, box.y, box.w, box.h, screen);
 
     // TODO: consider window.class
     syswin = IIntuition->OpenWindowTags(
         NULL,
         WA_PubScreen, screen,
-        WA_Title, (fullscreen || (window->flags & SDL_WINDOW_BORDERLESS)) ? NULL : window->title,
-        WA_ScreenTitle, window->title,
+        WA_Title, NULL,
+        WA_ScreenTitle, NULL,
         WA_Left, box.x,
         WA_Top, box.y,
         WA_InnerWidth, box.w,
