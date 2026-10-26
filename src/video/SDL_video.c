@@ -49,6 +49,10 @@
 #include "SDL_opengles2.h"
 #endif /* SDL_VIDEO_OPENGL_ES2 && !SDL_VIDEO_OPENGL */
 
+#ifdef __AMIGAOS4__
+#include "../main/amigaos4/SDL_os4debug.h"
+#endif
+
 #ifndef SDL_VIDEO_OPENGL
 #ifndef GL_CONTEXT_RELEASE_BEHAVIOR_KHR
 #define GL_CONTEXT_RELEASE_BEHAVIOR_KHR 0x82FB
@@ -1092,7 +1096,7 @@ static int SDL_SetDisplayModeForDisplay(SDL_VideoDisplay *display, const SDL_Dis
 {
     SDL_DisplayMode display_mode;
     SDL_DisplayMode current_mode;
-    int result;
+    int result = 0;
 
     /* Mode switching disabled via driver quirk flag, nothing to do and cannot fail. */
     if (DisableDisplayModeSwitching(_this)) {
@@ -1135,7 +1139,14 @@ static int SDL_SetDisplayModeForDisplay(SDL_VideoDisplay *display, const SDL_Dis
         return SDL_SetError("SDL video driver doesn't support changing display mode");
     }
     _this->setting_display_mode = SDL_TRUE;
+#if defined(__AMIGAOS4__)
+    if (mode != NULL) {
+        /* Avoid creating new screen when going from fullscreen to window */
+        result = _this->SetDisplayMode(_this, display, &display_mode);
+    }
+#else
     result = _this->SetDisplayMode(_this, display, &display_mode);
+#endif
     _this->setting_display_mode = SDL_FALSE;
     if (result < 0) {
         return -1;
@@ -1313,7 +1324,7 @@ int SDL_SetWindowDisplayMode(SDL_Window *window, const SDL_DisplayMode *mode)
         SDL_DisplayMode fullscreen_mode;
         if (SDL_GetWindowDisplayMode(window, &fullscreen_mode) == 0) {
             if (SDL_SetDisplayModeForDisplay(SDL_GetDisplayForWindow(window), &fullscreen_mode) == 0) {
-                // Force window on new screen
+                /* Force window on new screen */
                 _this->SetWindowFullscreen(_this, window, SDL_GetDisplayForWindow(window), SDL_TRUE);
             }
         }
@@ -1658,9 +1669,12 @@ static void SDL_FinishWindowCreation(SDL_Window *window, Uint32 flags)
     if (flags & SDL_WINDOW_MINIMIZED) {
         SDL_MinimizeWindow(window);
     }
+#if !defined(__AMIGAOS4__)
+    /* Screen is created already, avoid any unnecessary recreation */
     if (flags & SDL_WINDOW_FULLSCREEN) {
         SDL_SetWindowFullscreen(window, flags);
     }
+#endif
     if (flags & SDL_WINDOW_MOUSE_GRABBED) {
         /* We must specifically call SDL_SetWindowGrab() and not
            SDL_SetWindowMouseGrab() here because older applications may use
@@ -1796,7 +1810,7 @@ SDL_Window *SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint
     window->w = w;
     window->h = h;
 
-#ifndef __AMIGAOS4__
+#if !defined(__AMIGAOS4__)
 /* On AmigaOS4 we have to open the screen first, therefore this centering
 logic fails if screen is of different size. We center the window later
 on the backend side, after we know the screen size. */
@@ -1864,6 +1878,17 @@ on the backend side, after we know the screen size. */
         _this->windows->prev = window;
     }
     _this->windows = window;
+
+#if defined(__AMIGAOS4__)
+    if (flags & SDL_WINDOW_FULLSCREEN) {
+        /* Create screen before window */
+        SDL_DisplayMode fullscreen_mode;
+        if (SDL_GetWindowDisplayMode(window, &fullscreen_mode) == 0) {
+            if (SDL_SetDisplayModeForDisplay(SDL_GetDisplayForWindow(window), &fullscreen_mode) == 0) {
+            }
+        }
+    }
+#endif
 
     if (_this->CreateSDLWindow && _this->CreateSDLWindow(_this, window) < 0) {
         SDL_DestroyWindow(window);

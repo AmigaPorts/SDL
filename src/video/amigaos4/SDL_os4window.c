@@ -56,7 +56,7 @@
 
 #define MIN_WINDOW_SIZE 100
 
-static void OS4_CloseSystemWindow(SDL_VideoDevice *_this, struct Window * window);
+static void OS4_CloseSystemWindow(SDL_VideoDevice *_this, SDL_VideoDisplay * display, struct Window * window);
 static void OS4_CloseWindow(SDL_VideoDevice *_this, SDL_Window * sdlwin);
 
 void
@@ -319,14 +319,22 @@ OS4_CenterWindow(struct Screen * screen, SDL_Window * window)
 static void
 OS4_DefineWindowBox(SDL_Window * window, struct Screen * screen, SDL_bool fullscreen, SDL_Rect * box)
 {
-    if (fullscreen) {
-        box->x = 0;
-        box->y = 0;
-        box->w = screen->Width;
-        box->h = screen->Height;
-    } else {
-        OS4_CenterWindow(screen, window);
+    if (screen) {
+        if (fullscreen) {
+            box->x = 0;
+            box->y = 0;
+            box->w = screen->Width;
+            box->h = screen->Height;
+        } else {
+            OS4_CenterWindow(screen, window);
 
+            box->x = window->windowed.x;
+            box->y = window->windowed.y;
+            box->w = window->windowed.w;
+            box->h = window->windowed.h;
+        }
+    } else {
+        dprintf("Screen is NULL\n");
         box->x = window->windowed.x;
         box->y = window->windowed.y;
         box->w = window->windowed.w;
@@ -540,15 +548,30 @@ OS4_CreateSystemWindow(_THIS, SDL_Window * window, SDL_VideoDisplay * display)
     return syswin;
 }
 
+static void
+OS4_CreateControls(_THIS, SDL_Window * window)
+{
+    if (!OS4_IsFullscreen(window)) {
+        OS4_CreateIconifyGadgetForWindow(_this, window);
+        OS4_CreateAppWindow(_this, window);
+        OS4_CreateMenu(_this, window);
+    }
+}
+
 int
 OS4_CreateWindow(_THIS, SDL_Window * window)
 {
     struct Window *syswin = NULL;
 
     if (OS4_IsFullscreen(window)) {
-        // We may not have the screen opened yet, so let's wait that SDL calls us back with
-        // SDL_SetWindowFullscreen() and open the window then.
-        dprintf("Open fullscreen window with delay\n");
+        /* Create screen before window */
+        if (OS4_SetupWindowData(_this, window, NULL) < 0) {
+            return -1;
+        }
+
+        /* Creates system window eventually */
+        OS4_SetWindowFullscreen(_this, window, SDL_GetDisplayForWindow(window), SDL_TRUE);
+        return 0;
     } else {
         if (!(syswin = OS4_CreateSystemWindow(_this, window, NULL))) {
             return SDL_SetError("Failed to create system window");
@@ -556,15 +579,12 @@ OS4_CreateWindow(_THIS, SDL_Window * window)
     }
 
     if (OS4_SetupWindowData(_this, window, syswin) < 0) {
-        // There is no AppWindow in this scenario
-        OS4_CloseSystemWindow(_this, syswin);
-
-        return SDL_SetError("Failed to setup window data");
+        /* There is no AppWindow in this scenario */
+        OS4_CloseSystemWindow(_this, NULL, syswin);
+        return -1;
     }
 
-    OS4_CreateIconifyGadgetForWindow(_this, window);
-    OS4_CreateAppWindow(_this, window);
-    OS4_CreateMenu(_this, window);
+    OS4_CreateControls(_this, window);
 
     return 0;
 }
@@ -709,7 +729,7 @@ OS4_HideWindow(_THIS, SDL_Window * window)
 
         dprintf("Hiding window '%s'\n", window->title);
 
-        // TODO: how to hide a fullscreen window? Close the screen?
+        // TODO: how to hide a fullscreen window? Move it behind?
         result = IIntuition->HideWindow(data->syswin);
 
         if (!result) {
@@ -732,7 +752,7 @@ OS4_RaiseWindow(_THIS, SDL_Window * window)
 }
 
 static void
-OS4_CloseSystemWindow(_THIS, struct Window * window)
+OS4_CloseSystemWindow(_THIS, SDL_VideoDisplay * display, struct Window * window)
 {
     if (window) {
         dprintf("Closing window '%s' (address %p)\n", window->Title, window);
@@ -742,6 +762,15 @@ OS4_CloseSystemWindow(_THIS, struct Window * window)
         IIntuition->CloseWindow(window);
 
         OS4_CloseScreen(_this, screen);
+
+        if (display) {
+            SDL_DisplayData *displaydata = (SDL_DisplayData *) display->driverdata;
+
+            if (screen == displaydata->screen) {
+                dprintf("Clearing displaydata->screen\n");
+                displaydata->screen = NULL;
+            }
+        }
     } else {
         dprintf("NULL pointer\n");
     }
@@ -762,7 +791,7 @@ OS4_CloseWindow(_THIS, SDL_Window * sdlwin)
     OS4_RemoveMenuObject(_this, data);
 
     if (data->syswin) {
-        OS4_CloseSystemWindow(_this, data->syswin);
+        OS4_CloseSystemWindow(_this, SDL_GetDisplayForWindow(sdlwin), data->syswin);
         data->syswin = NULL;
 
         if (data->gadget) {
@@ -788,72 +817,72 @@ OS4_SetWindowFullscreen(_THIS, SDL_Window * window, SDL_VideoDisplay * display, 
     if (window->is_destroying) {
         // This function gets also called during window closing
         dprintf("Window '%s' is being destroyed, mode change ignored\n", window->title);
-    } else {
-        SDL_WindowData *data = window->driverdata;
+        return;
+    }
 
-        dprintf("Trying to set '%s' into %s mode\n", window->title,
-            fullscreen ? "fullscreen" : "window");
+    SDL_WindowData *data = window->driverdata;
 
-        if (window->flags & SDL_WINDOW_FOREIGN) {
-            dprintf("Native window '%s' (%p), mode change ignored\n", window->title, data->syswin);
-        } else {
+    dprintf("Trying to set '%s' into %s mode\n", window->title,
+        fullscreen ? "fullscreen" : "window");
 
-            int oldWidth = 0;
-            int oldHeight = 0;
+    if (window->flags & SDL_WINDOW_FOREIGN) {
+        dprintf("Native window '%s' (%p), mode change ignored\n", window->title, data->syswin);
+        return;
+    }
 
-            if (fullscreen) {
-                // Detect dummy transition and keep calm
-                SDL_DisplayData *displayData = display->driverdata;
+    int oldWidth = 0;
+    int oldHeight = 0;
 
-                if (displayData->screen && data->syswin) {
-                    if (data->syswin->WScreen == displayData->screen) {
-                        dprintf("Same screen, useless mode change ignored\n");
-                        return;
-                    }
-                }
-            }
+    if (fullscreen) {
+        // Detect dummy transition and keep calm
+        SDL_DisplayData *displayData = display->driverdata;
 
-            if (data->syswin) {
-                dprintf("Reopening window '%s' (%p) due to mode change\n",
-                    window->title, data->syswin);
-
-                OS4_GetWindowSize(_this, data->syswin, &oldWidth, &oldHeight);
-                OS4_CloseWindow(_this, window);
-
-            } else {
-                dprintf("System window doesn't exist yet, let's open it\n");
-            }
-
-            data->syswin = OS4_CreateSystemWindow(_this, window, fullscreen ? display : NULL);
-
-            if (data->syswin) {
-                OS4_CreateIconifyGadgetForWindow(_this, window);
-                OS4_CreateAppWindow(_this, window);
-                OS4_CreateMenu(_this, window);
-
-                // Make sure the new window is active
-                OS4_ShowWindow(_this, window);
-
-                if ((window->flags & SDL_WINDOW_OPENGL) && data->glContext && OS4_UpdateGlWindowPointer) {
-                    OS4_UpdateGlWindowPointer(_this, window);
-                }
-
-                if (oldWidth && oldHeight) {
-                    int width, height;
-
-                    OS4_GetWindowSize(_this, data->syswin, &width, &height);
-
-                    if (oldWidth != width || oldHeight != height) {
-
-                        dprintf("Inform SDL about window resize\n");
-                        SDL_SendWindowEvent(window, SDL_WINDOWEVENT_RESIZED,
-                            width, height);
-                    }
-                }
-
-                OS4_ResetNormalKeys();
+        if (displayData->screen && data->syswin) {
+            if (data->syswin->WScreen == displayData->screen) {
+                dprintf("Same screen, useless mode change ignored\n");
+                return;
             }
         }
+    }
+
+    if (data->syswin) {
+        dprintf("Mode change detected - closing old window '%s' (%p)\n",
+            window->title, data->syswin);
+
+        OS4_GetWindowSize(_this, data->syswin, &oldWidth, &oldHeight);
+        OS4_CloseWindow(_this, window);
+    }
+
+    data->syswin = OS4_CreateSystemWindow(_this, window, fullscreen ? display : NULL);
+
+    if (data->syswin) {
+        OS4_CreateControls(_this, window);
+
+        if (window->flags & SDL_WINDOW_HIDDEN) {
+            dprintf("Window is hidden\n");
+        } else {
+            // Make sure the new window is active
+            OS4_ShowWindow(_this, window);
+        }
+
+        if ((window->flags & SDL_WINDOW_OPENGL) && data->glContext && OS4_UpdateGlWindowPointer) {
+            OS4_UpdateGlWindowPointer(_this, window);
+        }
+
+        if (oldWidth && oldHeight) {
+            int width, height;
+
+            OS4_GetWindowSize(_this, data->syswin, &width, &height);
+
+            if (oldWidth != width || oldHeight != height) {
+
+                dprintf("Inform SDL about window resize\n");
+                SDL_SendWindowEvent(window, SDL_WINDOWEVENT_RESIZED,
+                    width, height);
+            }
+        }
+
+        OS4_ResetNormalKeys();
     }
 }
 
@@ -1213,9 +1242,7 @@ OS4_RecreateWindow(_THIS, SDL_Window * window)
     data->syswin = OS4_CreateSystemWindow(_this, window, NULL);
 
     if (data->syswin) {
-        OS4_CreateIconifyGadgetForWindow(_this, window);
-        OS4_CreateAppWindow(_this, window);
-        OS4_CreateMenu(_this, window);
+        OS4_CreateControls(_this, window);
 
         // Make sure the new window is active
         OS4_ShowWindow(_this, window);
