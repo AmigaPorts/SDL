@@ -23,6 +23,7 @@
 #ifndef SDL_os4modes_h_
 #define SDL_os4modes_h_
 
+/* TODO: we have only one Display but could have multiple fullscreen windows */
 typedef struct
 {
     struct Screen *			screen;

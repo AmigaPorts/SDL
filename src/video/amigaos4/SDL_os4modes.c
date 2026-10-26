@@ -241,14 +241,6 @@ OS4_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
     ULONG openError = 0;
     int bpp = SDL_BITSPERPIXEL(mode->format);
 
-    if (SDL_memcmp(mode, &display->desktop_mode, sizeof(SDL_DisplayMode)) == 0) {
-        // Don't create another "Workbench"
-        dprintf("Desktop mode passed\n");
-
-        //TODO: should we check the current display ID and reopen the screen when needed?
-        return 0;
-    }
-
     displaydata->screen = IIntuition->OpenScreenTags(NULL,
         SA_Width,       mode->w,
         SA_Height,      mode->h,
@@ -260,6 +252,7 @@ OS4_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
         SA_ErrorCode,   &openError,
         SA_LikeWorkbench, TRUE,
         SA_Compositing, FALSE,
+        SA_Behind,      TRUE,
         TAG_DONE);
 
     dprintf("Opened screen id 0x%lX (%lu): %d*%d*%d (address %p)\n",
@@ -268,30 +261,22 @@ OS4_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
     if (!displaydata->screen) {
         switch (openError) {
             case OSERR_NOMONITOR:
-                SDL_SetError("Monitor for display mode not available");
-                break;
+                return SDL_SetError("Monitor for display mode not available");
             case OSERR_NOCHIPS:
-                SDL_SetError("Newer custom chips required");
-                break;
+                return SDL_SetError("Newer custom chips required");
             case OSERR_NOMEM:
             case OSERR_NOCHIPMEM:
-                SDL_OutOfMemory();
-                break;
+                return SDL_OutOfMemory();
             case OSERR_PUBNOTUNIQUE:
-                SDL_SetError("Public screen name not unique");
-                break;
+                return SDL_SetError("Public screen name not unique");
             case OSERR_UNKNOWNMODE:
             case OSERR_TOODEEP:
-                SDL_SetError("Unknown display mode");
-                break;
+                return SDL_SetError("Unknown display mode");
             case OSERR_ATTACHFAIL:
-                SDL_SetError("Attachment failed");
-                break;
+                return SDL_SetError("Attachment failed");
             default:
-                SDL_SetError("OpenScreen failed");
-                break;
+                return SDL_SetError("OpenScreen failed");
         }
-        return -1;
     }
 
     // Paint it black (it helps in cases where window doesn't fill the screen)
