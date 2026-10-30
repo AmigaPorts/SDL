@@ -380,7 +380,7 @@ OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
 
     //dprintf("Called\n");
 
-    if (texture->format == SDL_PIXELFORMAT_ARGB8888) {
+    if (texture->format != SDL_PIXELFORMAT_ARGB8888) {
         dprintf("Unsupported pixel format %d\n", texture->format);
         return SDL_SetError("Unsupported pixel format");
     }
