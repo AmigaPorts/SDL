@@ -103,6 +103,8 @@ void OS4_QuitThreadSubSystem(void)
         }
 
         IExec->MutexRelease(control.children.mutex);
+
+        IDOS->Delay(1);
     } while (true);
 
     OS4_TimerDestroy(&control.primary.timer);
