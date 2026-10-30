@@ -30,8 +30,6 @@
 
 #include <proto/exec.h>
 
-#define AHI_AUDIO_BUFFER_SIZE 4096
-
 static bool
 OS4_OpenAhiDevice(OS4AudioData * os4data)
 {
@@ -258,7 +256,7 @@ OS4_OpenDevice(SDL_AudioDevice *_this)
 
     SDL_UpdatedAudioDeviceFormat(_this);
 
-    os4data->audioBufferSize = AHI_AUDIO_BUFFER_SIZE;
+    os4data->audioBufferSize = _this->buffer_size;
     os4data->audioBuffer[0] = (Uint8 *) SDL_malloc(os4data->audioBufferSize);
     os4data->audioBuffer[1] = (Uint8 *) SDL_malloc(os4data->audioBufferSize);
 
