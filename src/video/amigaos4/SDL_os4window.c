@@ -600,16 +600,7 @@ OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID c
             SDL_DisplayMode *mode = (SDL_DisplayMode *)SDL_GetWindowFullscreenMode(window);
 
             if (mode == NULL) {
-                SDL_Rect bounds;
-                int result = SDL_GetDisplayBounds(SDL_GetPrimaryDisplay(), &bounds);
-                if (result == 0) {
-                    dprintf("Display bounds %d * %d\n", bounds.w, bounds.h);
-                    if (!SDL_GetClosestFullscreenDisplayMode(1, bounds.w, bounds.h, 0.0f, false, mode)) {
-                        dprintf("Failed to get closest fullscreen display mode: %s\n", SDL_GetError());
-                    }
-                } else {
-                    dprintf("Failed to get display bounds: %s\n", SDL_GetError());
-                }
+                return SDL_SetError("Failed to get window fullscreen mode");
             }
 
             if (!OS4_SetDisplayMode(_this, SDL_GetVideoDisplayForWindow(window), mode)) {
