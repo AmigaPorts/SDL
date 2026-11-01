@@ -231,7 +231,7 @@ OS4_SetSolidColor(SDL_Renderer * renderer, Uint32 color)
         if (lock) {
             *(Uint32 *)baseaddress = color;
 
-            IGraphics->UnlockBitMap(data->solidcolor);
+            IGraphics->UnlockBitMap(lock);
 
             return SDL_TRUE;
         } else {
