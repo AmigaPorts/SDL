@@ -138,7 +138,7 @@ OS4_ModulateRGB(SDL_Texture * texture, Uint8 * src, int pitch)
                 }
             }
 
-            IGraphics->UnlockBitMap(texturedata->finalbitmap);
+            IGraphics->UnlockBitMap(lock);
 
             result = SDL_TRUE;
         } else {
@@ -386,6 +386,7 @@ OS4_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
     //dprintf("Called\n");
 
     if (texture->format != SDL_PIXELFORMAT_ARGB8888) {
+        // TODO: support YUV?
         dprintf("Unsupported pixel format %d\n", texture->format);
         return SDL_SetError("Unsupported pixel format");
     }
