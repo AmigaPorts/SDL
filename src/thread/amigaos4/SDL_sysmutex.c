@@ -22,7 +22,7 @@
 
 #if SDL_THREAD_AMIGAOS4
 
-/* Mutex functions using the AmigaOS 4 API */
+// Mutex functions using the AmigaOS 4 API
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
@@ -38,27 +38,25 @@ struct SDL_Mutex
 SDL_Mutex *
 SDL_CreateMutex(void)
 {
-    SDL_Mutex* mutex;
+    SDL_Mutex* mutex = (SDL_Mutex *) SDL_malloc(sizeof(*mutex));
 
-    /* Allocate mutex memory */
-    mutex = (SDL_Mutex *) SDL_malloc(sizeof(*mutex));
-
-    if (mutex) {
-        mutex->mtx = IExec->AllocSysObjectTags(ASOT_MUTEX,
-            ASOMUTEX_Recursive, TRUE,
-            TAG_DONE);
-
-        if (!mutex->mtx) {
-            dprintf("Failed to allocate mutex\n");
-            SDL_free(mutex);
-            SDL_OutOfMemory();
-            return NULL;
-        }
-
-        dprintf("Created mutex %p\n", mutex->mtx);
-    } else {
+    if (!mutex) {
         SDL_OutOfMemory();
+        return NULL;
     }
+
+    mutex->mtx = IExec->AllocSysObjectTags(ASOT_MUTEX,
+        ASOMUTEX_Recursive, TRUE,
+        TAG_DONE);
+
+    if (!mutex->mtx) {
+        dprintf("Failed to allocate mutex\n");
+        SDL_free(mutex);
+        SDL_OutOfMemory();
+        return NULL;
+    }
+
+    dprintf("Created mutex %p\n", mutex->mtx);
 
     return mutex;
 }
@@ -89,17 +87,12 @@ SDL_LockMutex(SDL_Mutex * mutex)
 bool
 SDL_TryLockMutex(SDL_Mutex * mutex)
 {
-    int retval = true;
-    if (mutex == NULL) {
-        return SDL_SetError("Passed a NULL mutex");
-    }
-
     //dprintf("Called\n");
 
-    if (!IExec->MutexAttempt(mutex->mtx)) {
-        retval = false;
+    if (mutex && !IExec->MutexAttempt(mutex->mtx)) {
+        return false;
     }
-    return retval;
+    return true;
 }
 
 void
@@ -112,4 +105,4 @@ SDL_UnlockMutex(SDL_Mutex * mutex)
     }
 }
 
-#endif /* SDL_THREAD_AMIGAOS4 */
+#endif // SDL_THREAD_AMIGAOS4
