@@ -64,12 +64,15 @@ SDL_CreateMutex(void)
 void
 SDL_DestroyMutex(SDL_Mutex * mutex)
 {
-    if (mutex) {
-        dprintf("Destroying mutex %p\n", mutex->mtx);
-        IExec->FreeSysObject(ASOT_MUTEX, mutex->mtx);
-        mutex->mtx = NULL;
-        SDL_free(mutex);
+    if (!mutex) {
+        dprintf("Mutex is NULL\n");
+        return;
     }
+
+    dprintf("Destroying mutex %p\n", mutex->mtx);
+    IExec->FreeSysObject(ASOT_MUTEX, mutex->mtx);
+    mutex->mtx = NULL;
+    SDL_free(mutex);
 }
 
 void
@@ -77,11 +80,14 @@ SDL_LockMutex(SDL_Mutex * mutex)
 {
     //dprintf("Called\n");
 
-    if (mutex) {
-        IExec->MutexObtain(mutex->mtx);
-
-        //dprintf("Locked mutex %p\n", mutex);
+    if (!mutex) {
+        dprintf("Mutex is NULL\n");
+        return;
     }
+
+    IExec->MutexObtain(mutex->mtx);
+
+    //dprintf("Locked mutex %p\n", mutex);
 }
 
 bool
@@ -89,9 +95,16 @@ SDL_TryLockMutex(SDL_Mutex * mutex)
 {
     //dprintf("Called\n");
 
-    if (mutex && !IExec->MutexAttempt(mutex->mtx)) {
+    if (!mutex) {
+        dprintf("Mutex is NULL\n");
+        return true;
+    }
+
+
+    if (!IExec->MutexAttempt(mutex->mtx)) {
         return false;
     }
+
     return true;
 }
 
@@ -100,9 +113,12 @@ SDL_UnlockMutex(SDL_Mutex * mutex)
 {
     //dprintf("Unlocking mutex %p\n", mutex);
 
-    if (mutex) {
-        IExec->MutexRelease(mutex->mtx);
+    if (!mutex) {
+        dprintf("Mutex is NULL\n");
+        return;
     }
+
+    IExec->MutexRelease(mutex->mtx);
 }
 
 #endif // SDL_THREAD_AMIGAOS4
