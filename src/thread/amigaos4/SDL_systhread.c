@@ -82,33 +82,56 @@ void OS4_InitThreadSubSystem(void)
     control.primary.task->tc_UserData = &control.primary; // Timer lookup requires this
 }
 
-// Called from AMIGAOS4_QUIT() destructor function.
-void OS4_QuitThreadSubSystem(void)
+static void OS4_WaitForChildThreads(void)
 {
     struct MinNode* iter;
 
-    dprintf("Called from task %p\n", IExec->FindTask(NULL));
+    // Signal known SDL threads
+    IExec->MutexObtain(control.children.mutex);
 
-    do {
+    for (iter = control.children.list.mlh_Head; iter->mln_Succ; iter = iter->mln_Succ) {
+        OS4_ThreadNode* node = (OS4_ThreadNode *)iter;
+        dprintf("Sending CTRL-C to %s\n", node->thread->name);
+        IExec->Signal(node->task, SIGBREAKF_CTRL_C);
+    }
+
+    IExec->MutexRelease(control.children.mutex);
+
+    // Wait 2 seconds for threads to quit
+    int i;
+    for (i = 0; i < 100; i++) {
         IExec->MutexObtain(control.children.mutex);
 
         if (IsMinListEmpty(&control.children.list)) {
             dprintf("No child threads left - proceed with SDL3 shutdown\n");
             IExec->MutexRelease(control.children.mutex);
             break;
-        } else {
-            for (iter = control.children.list.mlh_Head; iter->mln_Succ; iter = iter->mln_Succ) {
-                IExec->Signal(((OS4_ThreadNode *)iter)->task, SIGBREAKF_CTRL_C);
-            }
         }
 
         IExec->MutexRelease(control.children.mutex);
-
         IDOS->Delay(1);
-    } while (true);
+    }
 
+    // Log hanging threads. They may crash when SDL is gone but at least user
+    // should get a crash log then
+    if (i == 100) {
+        IExec->MutexObtain(control.children.mutex);
+
+        for (iter = control.children.list.mlh_Head; iter->mln_Succ; iter = iter->mln_Succ) {
+            dprintf("%s didn't exit on time\n", ((OS4_ThreadNode *)iter)->thread->name);
+        }
+
+        IExec->MutexRelease(control.children.mutex);
+    }
+}
+
+// Called from AMIGAOS4_QUIT() destructor function.
+void OS4_QuitThreadSubSystem(void)
+{
+    dprintf("Called from task %p\n", IExec->FindTask(NULL));
+
+    OS4_WaitForChildThreads();
     OS4_TimerDestroy(&control.primary.timer);
-
     OS4_QuitTimerSubSystem();
 
     dprintf("Freeing mutexes\n");
