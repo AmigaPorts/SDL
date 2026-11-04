@@ -121,7 +121,8 @@ bool
 SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore * sem, Sint64 timeout)
 {
     if (!sem) {
-        return SDL_SetError("Semaphore is NULL");
+        dprintf("Semaphore is NULL\n");
+        return true;
     }
 
     if (!sem->mutex) {
