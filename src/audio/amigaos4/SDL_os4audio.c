@@ -35,54 +35,55 @@ OS4_OpenAhiDevice(OS4AudioData * os4data)
 {
     if (os4data->deviceOpen) {
         dprintf("Device already open\n");
+        return true;
     }
 
     os4data->deviceOpen = false;
 
     os4data->ahiReplyPort = (struct MsgPort *)IExec->AllocSysObjectTags(ASOT_PORT, TAG_DONE);
 
-    if (os4data->ahiReplyPort) {
-
-        /* create a iorequest for the device */
-        os4data->ahiRequest[0] = (struct AHIRequest *)
-            IExec->AllocSysObjectTags(
-                ASOT_IOREQUEST,
-                ASOIOR_ReplyPort, os4data->ahiReplyPort,
-                ASOIOR_Size,      sizeof(struct AHIRequest),
-                TAG_DONE);
-
-        if (os4data->ahiRequest[0]) {
-
-            if (!IExec->OpenDevice(AHINAME, 0, (struct IORequest *)os4data->ahiRequest[0], 0)) {
-
-                dprintf("%s opened\n", AHINAME);
-
-                /* Create a copy */
-                os4data->ahiRequest[1] = (struct AHIRequest *)
-                    IExec->AllocSysObjectTags(
-                        ASOT_IOREQUEST,
-                        ASOIOR_Duplicate, os4data->ahiRequest[0],
-                        TAG_DONE);
-
-                if (os4data->ahiRequest[1]) {
-
-                    dprintf("IO requests created\n");
-
-                    os4data->deviceOpen = true;
-                    os4data->currentBuffer = 0;
-                    os4data->link = NULL;
-                } else {
-                    dprintf("Failed to duplicate IO request\n");
-                }
-            } else {
-                dprintf("Failed to open %s\n", AHINAME);
-            }
-        } else {
-            dprintf("Failed to create IO request\n");
-        }
-    } else {
+    if (!os4data->ahiReplyPort) {
         dprintf("Failed to create reply port\n");
+        return false;
     }
+
+    // Create a iorequest for the device
+    os4data->ahiRequest[0] = (struct AHIRequest *)
+        IExec->AllocSysObjectTags(
+            ASOT_IOREQUEST,
+            ASOIOR_ReplyPort, os4data->ahiReplyPort,
+            ASOIOR_Size,      sizeof(struct AHIRequest),
+            TAG_DONE);
+
+    if (!os4data->ahiRequest[0]) {
+        dprintf("Failed to create IO request\n");
+        return false;
+    }
+
+    if (IExec->OpenDevice(AHINAME, 0, (struct IORequest *)os4data->ahiRequest[0], 0)) {
+        dprintf("Failed to open %s\n", AHINAME);
+        return false;
+    }
+
+    dprintf("%s opened\n", AHINAME);
+
+    // Create a copy
+    os4data->ahiRequest[1] = (struct AHIRequest *)
+        IExec->AllocSysObjectTags(
+            ASOT_IOREQUEST,
+            ASOIOR_Duplicate, os4data->ahiRequest[0],
+            TAG_DONE);
+
+    if (!os4data->ahiRequest[1]) {
+        dprintf("Failed to duplicate IO request\n");
+        return false;
+    }
+
+    dprintf("IO requests created\n");
+
+    os4data->deviceOpen = true;
+    os4data->currentBuffer = 0;
+    os4data->link = NULL;
 
     dprintf("deviceOpen = %d\n", os4data->deviceOpen);
     return os4data->deviceOpen;
@@ -126,19 +127,18 @@ OS4_CloseAhiDevice(OS4AudioData * os4data)
 static bool
 OS4_AudioAvailable(void)
 {
-    bool isAvailable = false;
-
     OS4AudioData *tempData = SDL_calloc(1, sizeof(OS4AudioData));
 
     if (!tempData) {
         dprintf("Failed to allocate temp data\n");
-    } else {
-        isAvailable = OS4_OpenAhiDevice(tempData);
-
-        OS4_CloseAhiDevice(tempData);
-
-        SDL_free(tempData);
+        return false;
     }
+
+    bool isAvailable = OS4_OpenAhiDevice(tempData);
+
+    OS4_CloseAhiDevice(tempData);
+
+    SDL_free(tempData);
 
     dprintf("AHI is %savailable\n", isAvailable ? "" : "not ");
     return isAvailable;
@@ -164,9 +164,6 @@ OS4_FillCaptureRequest(struct AHIRequest * request, void * buffer, int length, i
     request->ahir_Type           = type;
 }
 
-/* ---------------------------------------------- */
-/* Audio driver exported functions implementation */
-/* ---------------------------------------------- */
 static void
 OS4_CloseDevice(SDL_AudioDevice *_this)
 {
@@ -174,10 +171,11 @@ OS4_CloseDevice(SDL_AudioDevice *_this)
 
     dprintf("Called for device %p\n", _this);
 
-    OS4_CloseAhiDevice(os4data);
+    if (!os4data) {
+        return;
+    }
 
-    int i;
-    for (i = 0; i < 2; i++) {
+    for (int i = 0; i < 2; i++) {
         if (os4data->audioBuffer[i]) {
             SDL_free(os4data->audioBuffer[i]);
             os4data->audioBuffer[i] = NULL;
@@ -185,6 +183,7 @@ OS4_CloseDevice(SDL_AudioDevice *_this)
     }
 
     SDL_free(os4data);
+    _this->hidden = NULL;
 }
 
 static void
@@ -244,7 +243,7 @@ OS4_OpenDevice(SDL_AudioDevice *_this)
             break;
     }
 
-    /* AHI supports 1, 2 or 8 channels sound: 3-7 channels may be converted to 7.1 format */
+    // AHI supports 1, 2 or 8 channels sound: 3-7 channels may be converted to 7.1 format
     if (_this->spec.channels < 1 || _this->spec.channels > 8) {
         dprintf("%u channels requested, fallback to stereo", _this->spec.channels);
         _this->spec.channels = 2;
@@ -267,14 +266,13 @@ OS4_OpenDevice(SDL_AudioDevice *_this)
     if (os4data->audioBuffer[0] == NULL || os4data->audioBuffer[1] == NULL) {
         OS4_CloseDevice(_this);
         dprintf("No memory for audio buffer\n");
-        SDL_SetError("No memory for audio buffer");
-        return false;
+        return SDL_OutOfMemory();
     }
 
     SDL_memset(os4data->audioBuffer[0], SDL_GetSilenceValueForFormat(_this->spec.format), os4data->audioBufferSize);
     SDL_memset(os4data->audioBuffer[1], SDL_GetSilenceValueForFormat(_this->spec.format), os4data->audioBufferSize);
 
-    /* Decide AHI format */
+    // Decide AHI format
     switch(_this->spec.format) {
         case SDL_AUDIO_S8:
             os4data->ahiType = (_this->spec.channels < 2) ? AHIST_M8S : AHIST_S8S;
@@ -320,29 +318,27 @@ OS4_ThreadInit(SDL_AudioDevice *_this)
 
     dprintf("Called for device %p\n", _this);
 
-    /* Signal must be opened in the task which is using it (player) */
+    // Signal must be opened in the task which is using it (player)
     if (!OS4_OpenAhiDevice(os4data)) {
         // FIXME: this is bad. We have failed and SDL core doesn't know about that.
         dprintf("Failed to open AHI\n");
     }
-
-    /* This will cause a lot of problems.. and should be removed.
-
-    One possibility: create a configuration GUI or ENV variable that allows
-    user to select priority, if there is no silver bullet value */
-    IExec->SetTaskPri(IExec->FindTask(NULL), 5);
 }
 
 static void
 OS4_ThreadDeinit(SDL_AudioDevice *_this)
 {
+    OS4AudioData *os4data = _this->hidden;
+
     dprintf("Called for device %p\n", _this);
+
+    OS4_CloseAhiDevice(os4data);
 }
 
 static bool
 OS4_WaitDevice(SDL_AudioDevice *_this)
 {
-    /* Dummy - OS4_PlayDevice handles the waiting */
+    // Dummy - OS4_PlayDevice handles the waiting
     //dprintf("Called\n");
     return true;
 }
@@ -364,8 +360,7 @@ OS4_WaitDevice(SDL_AudioDevice *_this)
 static void
 OS4_RemapSurround(Sint32* buffer, int samples)
 {
-    int i;
-    for (i = 0; i < samples; i++) {
+    for (int i = 0; i < samples; i++) {
         Sint32 bl, br, sl, sr, fc, lfe;
 
         bl = buffer[SDL_BL];
@@ -398,7 +393,7 @@ OS4_PlayDevice(SDL_AudioDevice *_this, const Uint8 *buffer, int buflen)
 
     if (!os4data->deviceOpen) {
         dprintf("Device is not open\n");
-        return false;
+        return SDL_SetError("Device is not open");
     }
 
     ahiRequest = os4data->ahiRequest[current];
@@ -414,8 +409,8 @@ OS4_PlayDevice(SDL_AudioDevice *_this, const Uint8 *buffer, int buflen)
     ahiRequest->ahir_Frequency      = spec->freq;
     ahiRequest->ahir_Type           = os4data->ahiType;
 
-    /* Let SDL handle possible conversions between formats, channels etc., but
-       because order of 7.1 channels is different (AHI <-> SDL), remap it here */
+    // Let SDL handle possible conversions between formats, channels etc., but
+    // because order of 7.1 channels is different (AHI <-> SDL), remap it here
 
     if (spec->channels == 8) {
         OS4_RemapSurround((Sint32 *)os4data->audioBuffer[current], os4data->audioBufferSize/sizeof(Sint32)/8 /* TODO: FIXME */);
@@ -487,7 +482,7 @@ OS4_RecordDevice(SDL_AudioDevice *_this, void * buffer, int buflen)
             IExec->WaitIO((struct IORequest *)os4data->link);
         }
 
-        /* Assume that we have to (re)start recording */
+        // Assume that we have to (re)start recording
         OS4_FillCaptureRequest(
             request,
             os4data->audioBuffer[current],
@@ -504,7 +499,7 @@ OS4_RecordDevice(SDL_AudioDevice *_this, void * buffer, int buflen)
 
         current = OS4_SwapBuffer(current);
     } else {
-        /* Wait for the previous request completion */
+        // Wait for the previous request completion
         if (os4data->link) {
             IExec->WaitIO((struct IORequest *)os4data->link);
         }
@@ -560,15 +555,11 @@ OS4_Deinitialize(void)
     dprintf("Called\n");
 }
 
-/* ------------------------------------------ */
-/* Audio driver init functions implementation */
-/* ------------------------------------------ */
 static bool
 OS4_Init(SDL_AudioDriverImpl * impl)
 {
     if (!OS4_AudioAvailable()) {
-        SDL_SetError("Failed to open AHI device");
-        return false;
+        return SDL_SetError("Failed to open AHI device");
     }
 
     impl->DetectDevices = OS4_DetectDevices;
