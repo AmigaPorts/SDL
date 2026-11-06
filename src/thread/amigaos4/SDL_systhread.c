@@ -22,8 +22,6 @@
 
 #if SDL_THREAD_AMIGAOS4
 
-/* AmigaOS 4 thread management routines for SDL */
-
 #include <SDL3/SDL_thread.h>
 #include "../SDL_thread_c.h"
 #include "../SDL_systhread.h"
@@ -82,7 +80,7 @@ void OS4_InitThreadSubSystem(void)
     control.primary.task->tc_UserData = &control.primary; // Timer lookup requires this
 }
 
-static void OS4_WaitForChildThreads(void)
+static bool OS4_WaitForChildThreads(void)
 {
     struct MinNode* iter;
 
@@ -115,14 +113,20 @@ static void OS4_WaitForChildThreads(void)
     // Log hanging threads. They may crash when SDL is gone but at least user
     // should get a crash log then
     if (i == 100) {
+#ifdef DEBUG
         IExec->MutexObtain(control.children.mutex);
 
         for (iter = control.children.list.mlh_Head; iter->mln_Succ; iter = iter->mln_Succ) {
-            dprintf("%s didn't exit on time\n", ((OS4_ThreadNode *)iter)->thread->name);
+            OS4_ThreadNode* node = (OS4_ThreadNode *)iter;
+            dprintf("%s didn't exit on time\n", ((struct Node *)node->task)->ln_Name);
         }
 
         IExec->MutexRelease(control.children.mutex);
+#endif
+        return false;
     }
+
+    return true;
 }
 
 // Called from AMIGAOS4_QUIT() destructor function.
@@ -130,9 +134,14 @@ void OS4_QuitThreadSubSystem(void)
 {
     dprintf("Called from task %p\n", IExec->FindTask(NULL));
 
-    OS4_WaitForChildThreads();
+    const bool success = OS4_WaitForChildThreads();
     OS4_TimerDestroy(&control.primary.timer);
     OS4_QuitTimerSubSystem();
+
+    if (!success) {
+        dprintf("Thread control mutexes will not be freed\n");
+        return;
+    }
 
     dprintf("Freeing mutexes\n");
 
@@ -224,8 +233,8 @@ SDL_SYS_CreateThread(SDL_Thread * thread,
         TAG_DONE);
 
     if (!node) {
-        dprintf("Failed to allocated thread node\n");
-        return SDL_SetError("Not enough resources to create thread");
+        dprintf("Failed to allocate thread node\n");
+        return SDL_SetError("Failed to allocate thread node");
     }
 
     dprintf("Node %p\n", node);
@@ -234,7 +243,11 @@ SDL_SYS_CreateThread(SDL_Thread * thread,
     BPTR outputStream = IDOS->DupFileHandle(IDOS->Output());
     BPTR errorStream = IDOS->DupFileHandle(IDOS->ErrorOutput());
 
-    snprintf(nameBuffer, sizeof(nameBuffer), "SDL thread %s (%p)", thread->name, thread);
+    SDL_snprintf(nameBuffer, sizeof(nameBuffer), "SDL thread %s (%p)", thread->name, thread);
+
+    node->thread = thread;
+
+    IExec->MutexObtain(control.children.mutex);
 
     struct Process* child = IDOS->CreateNewProcTags(
         NP_Child,       TRUE,
@@ -257,21 +270,23 @@ SDL_SYS_CreateThread(SDL_Thread * thread,
         TAG_DONE);
 
     if (!child) {
+        IExec->MutexRelease(control.children.mutex);
         IExec->FreeVec(node);
         dprintf("Failed to create a new thread '%s'\n", thread->name);
-        return SDL_SetError("Not enough resources to create thread");
+        IDOS->Close(inputStream);
+        IDOS->Close(outputStream);
+        IDOS->Close(errorStream);
+        return SDL_SetError("Failed to create a new thread");
     }
 
-    node->thread = thread;
     node->task = (struct Task *)child;
 
     dprintf("Node %p, SDL_Thread %p, task %p\n", node, node->thread, node->task);
 
-    IExec->MutexObtain(control.children.mutex);
     IExec->AddTail((struct List *)&control.children.list, (struct Node *)node);
     IExec->MutexRelease(control.children.mutex);
 
-    dprintf("Created new thread '%s' (task %p)\n", thread->name, child);
+    dprintf("Created new thread '%s' (task %p, stack size %zu)\n", thread->name, child, thread->stacksize);
 
     return true;
 }
@@ -370,7 +385,7 @@ SDL_SYS_WaitThread(SDL_Thread * thread)
     node.task = IExec->FindTask(NULL);
     node.thread = ((OS4_ThreadNode *)node.task->tc_UserData)->thread;
 
-    do {
+    while (true) {
         const bool found = OS4_StartJoining(&node, thread);
 
         if (found) {
@@ -388,7 +403,7 @@ SDL_SYS_WaitThread(SDL_Thread * thread)
             dprintf("Thread '%s' doesn't exist\n", thread->name);
             return;
         }
-    } while (true);
+    }
 
     dprintf("Waiting over\n");
 }
@@ -433,4 +448,4 @@ OS4_ThreadGetTimer(void)
     return &node->timer;
 }
 
-#endif /* SDL_THREAD_AMIGAOS4 */
+#endif // SDL_THREAD_AMIGAOS4
