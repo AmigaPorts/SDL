@@ -170,7 +170,8 @@ OS4_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
     Uint32* buffer = OS4_CopyImageData(surface);
 
     if (!buffer) {
-        SDL_DestroyCursor(cursor);
+        SDL_free(cursor->internal);
+        SDL_free(cursor);
         return NULL;
     }
 
@@ -192,7 +193,9 @@ OS4_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
 
     if (!object) {
         dprintf("Failed to create pointer object\n");
-        SDL_DestroyCursor(cursor);
+        SDL_free(buffer);
+        SDL_free(cursor->internal);
+        SDL_free(cursor);
         return NULL;
     }
 
@@ -434,6 +437,8 @@ OS4_FreeCursor(SDL_Cursor * cursor)
 
     SDL_free(data);
     cursor->internal = NULL;
+
+    SDL_free(cursor);
 }
 
 void
