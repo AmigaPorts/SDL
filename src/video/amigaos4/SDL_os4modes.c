@@ -106,7 +106,7 @@ OS4_GetDisplayMode(ULONG id, SDL_DisplayMode * mode)
 static bool
 OS4_LockPubScreen(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
+    SDL_VideoData *data = _this->internal;
 
     dprintf("Locking public screen\n");
 
@@ -124,7 +124,7 @@ OS4_LockPubScreen(SDL_VideoDevice *_this)
 static void
 OS4_UnlockPubScreen(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
+    SDL_VideoData *data = _this->internal;
 
     if (data->publicScreen) {
         dprintf("Unlocking public screen %p\n", data->publicScreen);
@@ -137,7 +137,7 @@ OS4_UnlockPubScreen(SDL_VideoDevice *_this)
 bool
 OS4_InitModes(SDL_VideoDevice *_this)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
+    SDL_VideoData *data = _this->internal;
     SDL_VideoDisplay display;
     static SDL_DisplayMode current_mode;
     SDL_DisplayData *displaydata;
@@ -178,7 +178,7 @@ OS4_InitModes(SDL_VideoDevice *_this)
 bool
 OS4_GetDisplayBounds(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_Rect * rect)
 {
-    SDL_DisplayModeData *data = (SDL_DisplayModeData *) display->current_mode->internal;
+    SDL_DisplayModeData *data = display->current_mode->internal;
 
     rect->x = data->x;
     rect->y = data->y;
@@ -249,8 +249,8 @@ OS4_CloseScreen(SDL_VideoDevice *_this, struct Screen * screen, SDL_VideoDisplay
 bool
 OS4_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
 {
-    SDL_DisplayData *displaydata = (SDL_DisplayData *) display->internal;
-    SDL_DisplayModeData *data = (SDL_DisplayModeData *) mode->internal;
+    SDL_DisplayData *displaydata = display->internal;
+    SDL_DisplayModeData *data = mode->internal;
     ULONG openError = 0;
     const int bpp = SDL_BITSPERPIXEL(mode->format);
 
