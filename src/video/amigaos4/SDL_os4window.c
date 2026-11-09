@@ -148,18 +148,17 @@ OS4_RemoveAppIcon(SDL_WindowData *data)
 static void
 OS4_RemoveMenuObject(SDL_WindowData *data)
 {
-    if (!data->syswin) {
-        dprintf("NULL syswin\n");
-        return;
-    }
-
-    if (data->menuObject) {
+    if (data->syswin) {
         if (IIntuition->SetWindowAttrs(data->syswin,
                                        WA_MenuStrip, NULL,
                                        TAG_DONE) != 0) {
             dprintf("Failed to remove menu strip (window %p)\n", data->syswin);
         }
+    } else {
+        dprintf("NULL syswin\n");
+    }
 
+    if (data->menuObject) {
         dprintf("Dispose window menu %p\n", data->menuObject);
         IIntuition->DisposeObject(data->menuObject);
         data->menuObject = NULL;
@@ -169,7 +168,7 @@ OS4_RemoveMenuObject(SDL_WindowData *data)
 static void
 OS4_CreateAppWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *) _this->internal;
+    SDL_VideoData *videodata = _this->internal;
     SDL_WindowData *data = window->internal;
 
     if (data->appWin) {
@@ -282,12 +281,12 @@ static struct Screen *
 OS4_GetScreenForWindow(SDL_VideoDevice *_this, SDL_VideoDisplay * display)
 {
     if (display) {
-        SDL_DisplayData *displaydata = (SDL_DisplayData *) display->internal;
+        SDL_DisplayData *displaydata = display->internal;
 
         dprintf("Fullscreen (displaydata %p, screen %p)\n", displaydata, displaydata->screen);
         return displaydata->screen;
     } else {
-        SDL_VideoData *videodata = (SDL_VideoData *) _this->internal;
+        SDL_VideoData *videodata = _this->internal;
 
         dprintf("Window mode (public screen)\n");
         return videodata->publicScreen;
@@ -367,7 +366,7 @@ OS4_DefineWindowBox(SDL_Window * window, struct Screen * screen, bool fullscreen
 static void
 OS4_CreateIconifyGadget(SDL_VideoDevice *_this, SDL_Window * window)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *) _this->internal;
+    SDL_VideoData *videodata = _this->internal;
     SDL_WindowData *data = window->internal;
 
     dprintf("Called\n");
@@ -532,7 +531,7 @@ OS4_SetWindowLimits(SDL_Window * window, struct Window * syswin)
 static struct Window *
 OS4_CreateSystemWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_VideoDisplay * display)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *) _this->internal;
+    SDL_VideoData *videodata = _this->internal;
 
     struct Window *syswin;
 
@@ -1131,7 +1130,7 @@ OS4_SetWindowOpacityPrivate(struct Window * window, const UBYTE value)
 bool
 OS4_SetWindowOpacity(SDL_VideoDevice *_this, SDL_Window * window, float opacity)
 {
-    struct Window *syswin = ((SDL_WindowData *) window->internal)->syswin;
+    struct Window *syswin = window->internal->syswin;
 
     if (!syswin) {
         return SDL_SetError("NULL syswin");
@@ -1147,7 +1146,7 @@ OS4_SetWindowOpacity(SDL_VideoDevice *_this, SDL_Window * window, float opacity)
 bool
 OS4_GetWindowBordersSize(SDL_VideoDevice *_this, SDL_Window * window, int * top, int * left, int * bottom, int * right)
 {
-    struct Window *syswin = ((SDL_WindowData *) window->internal)->syswin;
+    struct Window *syswin = window->internal->syswin;
 
     if (!syswin) {
         return SDL_SetError("NULL syswin");
@@ -1189,13 +1188,13 @@ OS4_MaximizeWindow(SDL_VideoDevice *_this, SDL_Window * window)
 {
     SDL_WindowData *data = window->internal;
 
-    struct Window* syswin = data->syswin;
-    struct Screen* screen = syswin->WScreen;
-
-    if (!syswin) {
+    if (!data->syswin) {
         dprintf("NULL syswin\n");
         return;
     }
+
+    struct Window* syswin = data->syswin;
+    struct Screen* screen = syswin->WScreen;
 
     const int borderWidth = syswin->BorderLeft + syswin->BorderRight;
     const int borderHeight = syswin->BorderTop + syswin->BorderBottom;
@@ -1276,7 +1275,7 @@ OS4_IconifyWindow(SDL_VideoDevice *_this, SDL_Window * window)
         return;
     }
 
-    SDL_VideoData *videodata = (SDL_VideoData *) _this->internal;
+    SDL_VideoData *videodata = _this->internal;
     SDL_WindowData *data = window->internal;
 
     struct DiskObject *diskObject = OS4_GetDiskObject();
