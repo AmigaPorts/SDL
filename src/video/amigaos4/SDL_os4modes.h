@@ -42,6 +42,6 @@ extern bool OS4_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay * displ
 extern bool OS4_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay * display, SDL_DisplayMode * mode);
 extern void OS4_QuitModes(SDL_VideoDevice *_this);
 
-extern void OS4_CloseScreen(SDL_VideoDevice *_this, struct Screen *screen);
+extern void OS4_CloseScreen(SDL_VideoDevice *_this, struct Screen *screen, SDL_VideoDisplay *display);
 
 #endif /* SDL_os4modes_h */

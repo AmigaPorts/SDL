@@ -216,25 +216,33 @@ OS4_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay * display)
 }
 
 void
-OS4_CloseScreen(SDL_VideoDevice *_this, struct Screen * screen)
+OS4_CloseScreen(SDL_VideoDevice *_this, struct Screen * screen, SDL_VideoDisplay *display)
 {
-    if (screen) {
-        SDL_VideoData *data = (SDL_VideoData *) _this->internal;
+    if (!screen) {
+        dprintf("Screen NULL\n");
+        return;
+    }
 
-        if (screen != data->publicScreen) {
-            dprintf("Closing screen %p\n", screen);
+    SDL_VideoData *data = _this->internal;
 
-            if (IIntuition->CloseScreen(screen) == FALSE) {
-                dprintf("Screen has open window(s), cannot close\n");
-            } else {
-                dprintf("Screen closed successfully\n");
-            }
-        } else {
-            dprintf("Public screen, not closing\n");
-        }
-
+    if (screen == data->publicScreen) {
+        dprintf("Public screen, not closing\n");
     } else {
-        dprintf("NULL pointer\n");
+        dprintf("Closing screen %p\n", screen);
+
+        if (IIntuition->CloseScreen(screen) == FALSE) {
+            dprintf("Screen has open window(s), cannot close\n");
+        } else {
+            dprintf("Screen closed successfully\n");
+        }
+    }
+
+    if (display) {
+        SDL_DisplayData *displaydata = display->internal;
+        if (screen == displaydata->screen) {
+            dprintf("Clearing displaydata->screen\n");
+            displaydata->screen = NULL;
+        }
     }
 }
 
