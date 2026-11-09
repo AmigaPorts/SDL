@@ -428,51 +428,46 @@ OS4_WarpMouseInternal(struct Screen *screen, float x, float y)
 {
     SDL_VideoDevice *device = SDL_GetVideoDevice();
     SDL_VideoData *videoData = device->internal;
-    bool result = false;
 
-    if (videoData->inputReq != NULL) {
-        struct InputEvent     *fakeEvent;
-
-        /* We move the Workbench pointer by stuffing mouse
-         * movement events in input.device's queue.
-         *
-         * This in turn will cause mouse movement events to be
-         * sent back to us
-         */
-
-        fakeEvent = (struct InputEvent *)OS4_SaveAllocPooled(
-            device, sizeof(struct InputEvent) + sizeof(struct IEPointerPixel));
-
-        if (fakeEvent) {
-            struct IEPointerPixel *neoPix = (struct IEPointerPixel *) (fakeEvent + 1);
-
-            neoPix->iepp_Screen = screen ? screen : videoData->publicScreen;
-            neoPix->iepp_Position.Y = y;
-            neoPix->iepp_Position.X = x;
-
-            fakeEvent->ie_EventAddress = (APTR)neoPix;
-            fakeEvent->ie_NextEvent    = NULL;
-            fakeEvent->ie_Class        = IECLASS_NEWPOINTERPOS;
-            fakeEvent->ie_SubClass     = IESUBCLASS_PIXEL;
-            fakeEvent->ie_Code         = IECODE_NOBUTTON;
-            fakeEvent->ie_Qualifier    = 0;
-
-            videoData->inputReq->io_Data    = (APTR)fakeEvent;
-            videoData->inputReq->io_Length  = sizeof(struct InputEvent);
-            videoData->inputReq->io_Command = IND_WRITEEVENT;
-
-            dprintf("Sending input event\n");
-
-            IExec->DoIO((struct IORequest *)videoData->inputReq);
-
-            OS4_SaveFreePooled(device, (void *)fakeEvent,
-                sizeof(struct InputEvent) + sizeof(struct IEPointerPixel));
-
-            result = true;
-        }
+    if (!videoData->inputReq) {
+        return SDL_SetError("No input request");
     }
 
-    return result;
+    struct InputEvent *fakeEvent;
+
+    // Send event to input.device
+    fakeEvent = (struct InputEvent *)IExec->AllocVecTags(
+        sizeof(struct InputEvent) + sizeof(struct IEPointerPixel),
+        AVT_Type, MEMF_SHARED,
+        TAG_DONE);
+
+    if (!fakeEvent) {
+        return SDL_SetError("Failed to allocate input event");
+    }
+
+    struct IEPointerPixel *neoPix = (struct IEPointerPixel *) (fakeEvent + 1);
+
+    neoPix->iepp_Screen = screen ? screen : videoData->publicScreen;
+    neoPix->iepp_Position.Y = y;
+    neoPix->iepp_Position.X = x;
+
+    fakeEvent->ie_EventAddress = (APTR)neoPix;
+    fakeEvent->ie_NextEvent    = NULL;
+    fakeEvent->ie_Class        = IECLASS_NEWPOINTERPOS;
+    fakeEvent->ie_SubClass     = IESUBCLASS_PIXEL;
+    fakeEvent->ie_Code         = IECODE_NOBUTTON;
+    fakeEvent->ie_Qualifier    = 0;
+
+    videoData->inputReq->io_Data    = (APTR)fakeEvent;
+    videoData->inputReq->io_Length  = sizeof(struct InputEvent);
+    videoData->inputReq->io_Command = IND_WRITEEVENT;
+
+    dprintf("Sending input event\n");
+
+    IExec->DoIO((struct IORequest *)videoData->inputReq);
+    IExec->FreeVec(fakeEvent);
+
+    return true;
 }
 
 static bool

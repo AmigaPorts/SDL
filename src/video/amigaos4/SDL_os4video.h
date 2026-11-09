@@ -29,7 +29,7 @@
 
 #include "../SDL_sysvideo.h"
 
-/* Private display data */
+// Private display data
 
 struct SDL_VideoData
 {
@@ -42,8 +42,6 @@ struct SDL_VideoData
 
     struct MsgPort         *inputPort;
     struct IOStdReq        *inputReq;
-
-    APTR                    pool;
 
     struct InputIFace       *iInput;
 
@@ -62,4 +60,4 @@ extern SDL_DECLSPEC struct MsgPort * OS4_GetSharedMessagePort();
 extern bool (*OS4_ResizeGlContext)(SDL_VideoDevice *_this, SDL_Window * window);
 extern void (*OS4_UpdateGlWindowPointer)(SDL_VideoDevice *_this, SDL_Window * window);
 
-#endif /* SDL_os4video_h_ */
+#endif // SDL_os4video_h_
