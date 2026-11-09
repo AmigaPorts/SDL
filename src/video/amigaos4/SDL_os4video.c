@@ -179,18 +179,6 @@ OS4_AllocSystemResources(SDL_VideoDevice *_this)
         return false;
     }
 
-    /* Create the pool we'll be using (Shared, might be used from threads) */
-    if (!(data->pool = IExec->AllocSysObjectTags(ASOT_MEMPOOL,
-        ASOPOOL_MFlags,    MEMF_SHARED,
-        ASOPOOL_Threshold, 16384,
-        ASOPOOL_Puddle,    16384,
-        ASOPOOL_Protected, TRUE,
-        TAG_DONE))) {
-
-        SDL_SetError("Couldn't allocate pool");
-        return false;
-    }
-
     /* inputPort, inputReq and and input.device are created for WarpMouse functionality. (In SDL1
     they were created in library constructor for an unknown reason) */
     if (!(data->inputPort = IExec->AllocSysObjectTags(ASOT_PORT, TAG_DONE))) {
@@ -245,11 +233,6 @@ OS4_FreeSystemResources(SDL_VideoDevice *_this)
     if (data->inputPort) {
         dprintf("Freeing MsgPort\n");
         IExec->FreeSysObject(ASOT_PORT, (void *)data->inputPort);
-    }
-
-    if (data->pool) {
-        dprintf("Freeing memory pool\n");
-        IExec->FreeSysObject(ASOT_MEMPOOL, data->pool);
     }
 
     if (data->appMsgPort) {
@@ -598,39 +581,7 @@ OS4_VideoQuit(SDL_VideoDevice *_this)
     OS4_QuitModes(_this);
 }
 
-void *
-OS4_SaveAllocPooled(SDL_VideoDevice *_this, uint32 size)
-{
-    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
-
-    return IExec->AllocPooled(data->pool, size);
-}
-
-void *
-OS4_SaveAllocVecPooled(SDL_VideoDevice *_this, uint32 size)
-{
-    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
-
-    return IExec->AllocVecPooled(data->pool, size);
-}
-
-void
-OS4_SaveFreePooled(SDL_VideoDevice *_this, void * mem, uint32 size)
-{
-    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
-
-    IExec->FreePooled(data->pool, mem, size);
-}
-
-void
-OS4_SaveFreeVecPooled(SDL_VideoDevice *_this, void * mem)
-{
-    SDL_VideoData *data = (SDL_VideoData *) _this->internal;
-
-    IExec->FreeVecPooled(data->pool, mem);
-}
-
-/* Native window apps may be interested in calling this */
+// Native window apps may be interested in calling this
 struct MsgPort *
 OS4_GetSharedMessagePort()
 {
@@ -646,4 +597,4 @@ OS4_GetSharedMessagePort()
     return NULL;
 }
 
-#endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */
+#endif // SDL_VIDEO_DRIVER_AMIGAOS4
