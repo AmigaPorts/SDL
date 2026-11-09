@@ -31,14 +31,13 @@
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
-#define MAX_JOYSTICKS 32
 #define MAX_AXES 8
 #define MAX_BUTTONS 16
 #define MAX_HATS 8
 
 #define BUFFER_OFFSET(buffer, offset) (((int32 *)buffer)[offset])
 
-/* Per-joystick data private to driver */
+// Per-joystick data private to driver
 struct joystick_hwdata
 {
     AIN_DeviceHandle   *handle;
@@ -54,17 +53,15 @@ struct joystick_hwdata
     int32               hatData[MAX_HATS];
 };
 
-struct JoystickInfo
+struct SDL_JoystickDeviceData
 {
     AIN_DeviceID id;
-    const char *name;
 };
 
 struct JoystickData
 {
     APTR context;
     uint32 count;
-    struct JoystickInfo ids[MAX_JOYSTICKS];
 };
 
 // TODO: get rid of static data
@@ -73,9 +70,7 @@ static struct JoystickData joystickData;
 static struct Library   *SDL_AIN_Base;
 static struct AIN_IFace *SDL_IAIN;
 
-/*
- * Convert AmigaInput hat data to SDL hat data.
- */
+// Convert AmigaInput hat data to SDL hat data.
 static Uint8
 AMIGAINPUT_MapHatData(const int hat_data)
 {
@@ -92,52 +87,83 @@ AMIGAINPUT_MapHatData(const int hat_data)
     }
 }
 
-/*
- * Callback to enumerate joysticks
- */
+static SDL_GUID
+AMIGAINPUT_MakeGuid(const char* const name)
+{
+    Uint16 vendor = 0;
+    Uint16 product = 0;
+    Uint16 version = 0;
+    Uint8 signature = 0;
+    Uint8 data = 0;
+    const char *vendorName = NULL;
+
+    return SDL_CreateJoystickGUID(SDL_HARDWARE_BUS_USB,
+                                  vendor,
+                                  product,
+                                  version,
+                                  vendorName,
+                                  name,
+                                  signature,
+                                  data);
+}
+
 static BOOL
 AMIGAINPUT_EnumerateJoysticks(AIN_Device *device, void *UserData)
 {
-    if (joystickData.count < MAX_JOYSTICKS) {
-        dprintf("id=%lu, type=%ld, axes=%ld, buttons=%ld\n",
-            joystickData.count,
-            (int32)device->Type,
-            (int32)device->NumAxes,
-            (int32)device->NumButtons);
+    dprintf("Name '%s', type %lu, subtype %lu, buttons %lu, axes %lu, hats %lu, device id %lu\n",
+            device->DeviceName,
+            device->Type,
+            device->SubType,
+            device->NumButtons,
+            device->NumAxes,
+            device->NumHats,
+            device->DeviceID);
 
-        if (device->Type == AINDT_JOYSTICK) {
-            /* AmigaInput can report devices even when there's no
-             * physical stick present. We take some steps to try and
-             * ignore such bogus devices.
-             *
-             * First, check whether we have a useful number of axes and buttons
-             */
-            if ((device->NumAxes > 0) && (device->NumButtons > 0)) {
-                /* Then, check whether we can actually obtain the device */
-                AIN_DeviceHandle *handle = SDL_IAIN->AIN_ObtainDevice(joystickData.context, device->DeviceID);
-
-                if (handle) {
-                    /* Okay. This appears to be a valid device. We'll report it to SDL. */
-                    struct JoystickInfo* joy = &joystickData.ids[joystickData.count];
-                    joy->id   = device->DeviceID;
-                    joy->name = SDL_strdup(device->DeviceName);
-
-                    dprintf("Found joystick #%lu (AI ID=%lu) '%s'\n", joystickData.count, joy->id, joy->name);
-
-                    joystickData.count++;
-
-                    SDL_IAIN->AIN_ReleaseDevice(joystickData.context, handle);
-
-                    return TRUE;
-                } else {
-                    dprintf("Failed to obtain joystick '%s' (AI ID=%lu) - ignoring\n", device->DeviceName, device->DeviceID);
-                }
-            } else {
-                dprintf("Joystick '%s' (AI ID=%lu) has no axes/buttons - ignoring\n", device->DeviceName, device->DeviceID);
-            }
-        }
+    if (device->Type != AINDT_JOYSTICK) {
+        dprintf("Not a joystick\n");
+        return FALSE;
     }
-    return FALSE;
+
+    if (device->NumAxes == 0) {
+        dprintf("Not enough axes\n");
+        return FALSE;
+    }
+
+    if (device->NumButtons == 0) {
+        dprintf("Not enough buttons\n");
+        return FALSE;
+    }
+
+    AIN_DeviceHandle *handle = SDL_IAIN->AIN_ObtainDevice(joystickData.context, device->DeviceID);
+
+    if (!handle) {
+        dprintf("Failed to obtain joystick '%s' (device id %lu) - ignoring\n", device->DeviceName, device->DeviceID);
+        return FALSE;
+    }
+
+    SDL_JoystickDevice *joystickDevice = SDL_CreateJoystickDevice(&SDL_AMIGAINPUT_JoystickDriver, sizeof(AIN_DeviceID));
+
+    if (joystickDevice) {
+        SDL_JoystickDeviceData *data = (SDL_JoystickDeviceData *)(joystickDevice + 1);
+        data->id = device->DeviceID;
+        joystickDevice->internal = data;
+        joystickDevice->name = SDL_strdup(device->DeviceName);
+        joystickDevice->guid = AMIGAINPUT_MakeGuid(joystickDevice->name);
+
+#ifdef DEBUG
+        const SDL_JoystickID id =
+#endif
+              SDL_AddJoystickDevice(joystickDevice);
+        dprintf("Added joystick %u (device id %lu) '%s'\n", id, data->id, joystickDevice->name);
+
+        joystickData.count++;
+    } else {
+        dprintf("Failed to create joystick device\n");
+    }
+
+    SDL_IAIN->AIN_ReleaseDevice(joystickData.context, handle);
+
+    return TRUE;
 }
 
 static BOOL
@@ -145,7 +171,7 @@ AMIGAINPUT_OpenLibrary(void)
 {
     dprintf("Called\n");
 
-    SDL_AIN_Base = OS4_OpenLibrary("AmigaInput.library", 51);
+    SDL_AIN_Base = OS4_OpenLibrary("AmigaInput.library", 53);
 
     if (SDL_AIN_Base) {
         SDL_IAIN = (struct AIN_IFace *)OS4_GetInterface(SDL_AIN_Base);
@@ -172,94 +198,28 @@ AMIGAINPUT_CloseLibrary(void)
 static bool
 AMIGAINPUT_Init(void)
 {
-    if (AMIGAINPUT_OpenLibrary()) {
-        joystickData.context = SDL_IAIN->AIN_CreateContext(1, NULL);
-
-        if (joystickData.context) {
-            const BOOL result = SDL_IAIN->AIN_EnumDevices(joystickData.context, AMIGAINPUT_EnumerateJoysticks, NULL);
-
-            dprintf("EnumDevices returned %d\n", result);
-            dprintf("Found %lu joysticks\n", joystickData.count);
-
-            if (result) {
-                /*
-
-                NOTE: AI doesn't seem to handle hotplugged/removed joysticks very well.
-                Report only devices detected at startup to SDL.
-
-                */
-                for (uint32 i = 0; i < joystickData.count; i++) {
-                    // Joystick IDs start from 0 in SDL2. In SDL3, they start from 1
-                    const SDL_JoystickID id = i + 1;
-                    dprintf("Add joystick %u\n", id);
-                    SDL_PrivateJoystickAdded(id);
-                }
-            }
-
-            return true;
-        } else {
-            dprintf("Failed to create AmigaInput context\n");
-        }
+    if (!AMIGAINPUT_OpenLibrary()) {
+        return SDL_SetError("Failed to open AmigaInput library");
     }
 
-    return false;
-}
+    joystickData.context = SDL_IAIN->AIN_CreateContext(1, NULL);
 
-static int
-AMIGAINPUT_GetCount(void)
-{
-    return joystickData.count;
-}
+    if (!joystickData.context) {
+        return SDL_SetError("Failed to create AmigaInput context");
+    }
 
-static void
-AMIGAINPUT_Detect(void)
-{
-    //dprintf("Called\n");
-}
+    // NOTE: AmigaInput doesn't seem to handle hotplugged/removed joysticks very well.
+    // Report only devices detected at startup to SDL.
 
-static bool
-AMIGAINPUT_IsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
-{
-    dprintf("Called\n");
-    return true; // TODO
-}
+#ifdef DEBUG
+    const BOOL result =
+#endif
+        SDL_IAIN->AIN_EnumDevices(joystickData.context, AMIGAINPUT_EnumerateJoysticks, NULL);
 
-/* Function to get the device-dependent name of a joystick */
-static const char *
-AMIGAINPUT_GetDeviceName(int device_index)
-{
-    return joystickData.ids[device_index].name;
-}
+    dprintf("EnumDevices returned %d\n", result);
+    dprintf("Found %lu joysticks\n", joystickData.count);
 
-static const char*
-AMIGAINPUT_GetDevicePath(int device_index)
-{
-    return NULL;
-}
-
-static int
-AMIGAINPUT_GetDeviceSteamVirtualGamepadSlot(int device_index)
-{
-    return -1;
-}
-
-static int
-AMIGAINPUT_GetDevicePlayerIndex(int device_index)
-{
-    return -1;
-}
-
-static void
-AMIGAINPUT_SetDevicePlayerIndex(int device_index, int player_index)
-{
-    dprintf("Not implemented\n");
-}
-
-static SDL_JoystickID
-AMIGAINPUT_GetDeviceInstanceID(int device_index)
-{
-    //dprintf("device_index %d\n", device_index);
-    return device_index + 1;
+    return true;
 }
 
 static void
@@ -280,165 +240,160 @@ AMIGAINPUT_SwapAxis(struct joystick_hwdata * hwdata, int a, int b)
 }
 
 static bool
-AMIGAINPUT_Open(SDL_Joystick * joystick, int device_index)
+AMIGAINPUT_Open(SDL_Joystick *joystick, SDL_JoystickDevice *device)
 {
-    const AIN_DeviceID id = joystickData.ids[joystick->instance_id - 1].id;
+    const SDL_JoystickDeviceData *data = (SDL_JoystickDeviceData *)(device + 1);
+    const AIN_DeviceID id = data->id;
     AIN_DeviceHandle *handle = SDL_IAIN->AIN_ObtainDevice(joystickData.context, id);
 
-    dprintf("Opening joystick #%d (AI ID=%lu)\n", joystick->instance_id, id);
+    dprintf("Opening joystick %d (device id %lu) '%s'\n", joystick->instance_id, id, device->name);
 
-    if (handle) {
-        joystick->hwdata = SDL_calloc(1, sizeof(struct joystick_hwdata));
-
-        if (joystick->hwdata) {
-            struct joystick_hwdata *hwdata = joystick->hwdata;
-            uint32 num_axes = 0;
-            uint32 num_buttons = 0;
-            uint32 num_hats = 0;
-
-            BOOL result = TRUE;
-
-            hwdata->handle  = handle;
-            joystick->name  = (char *)joystickData.ids[joystick->instance_id - 1].name;
-
-            /* Query number of axes, buttons and hats the device has */
-            result = result && SDL_IAIN->AIN_Query(joystickData.context, id, AINQ_NUMAXES,    0, &num_axes, 4);
-            result = result && SDL_IAIN->AIN_Query(joystickData.context, id, AINQ_NUMBUTTONS, 0, &num_buttons, 4);
-            result = result && SDL_IAIN->AIN_Query(joystickData.context, id, AINQ_NUMHATS,    0, &num_hats, 4);
-
-            // dprintf ("Found %d axes, %d buttons, %d hats\n", num_axes, num_buttons, num_hats);
-
-            joystick->naxes    = num_axes < MAX_AXES       ? num_axes    : MAX_AXES;
-            joystick->nbuttons = num_buttons < MAX_BUTTONS ? num_buttons : MAX_BUTTONS;
-            joystick->nhats    = num_hats < MAX_HATS       ? num_hats    : MAX_HATS;
-
-            // Ensure all axis names are null terminated
-            for (int i = 0; i < MAX_AXES; i++) {
-                hwdata->axisName[i][0] = 0;
-            }
-
-            /* Query offsets in ReadDevice buffer for axes' data */
-            for (int i = 0; i < joystick->naxes; i++) {
-                result = result && SDL_IAIN->AIN_Query(joystickData.context, id, AINQ_AXIS_OFFSET, i, &(hwdata->axisBufferOffset[i]), 4);
-                result = result && SDL_IAIN->AIN_Query(joystickData.context, id, AINQ_AXISNAME,    i, &(hwdata->axisName[i][0]), 32 );
-            }
-
-            // Sort the axes so that X and Y come first
-            for (int i = 0; i < joystick->naxes; i++) {
-                if ((strcasecmp(&hwdata->axisName[i][0], "X-Axis") == 0) && (i != 0)) {
-                    dprintf("Swap X-axis\n");
-                    AMIGAINPUT_SwapAxis(hwdata, 0, i);
-                    continue;
-                }
-
-                if ((strcasecmp(&hwdata->axisName[i][0], "Y-Axis") == 0) && (i != 1)) {
-                    dprintf("Swap Y-axis\n");
-                    AMIGAINPUT_SwapAxis(hwdata, 1, i);
-                    continue;
-                }
-            }
-
-            /* Query offsets in ReadDevice buffer for buttons' data */
-            for (int i = 0; i < joystick->nbuttons; i++) {
-                result = result && SDL_IAIN->AIN_Query(joystickData.context, id, AINQ_BUTTON_OFFSET, i, &(hwdata->buttonBufferOffset[i]), 4);
-            }
-
-            /* Query offsets in ReadDevice buffer for hats' data */
-            for (int i = 0; i < joystick->nhats; i++) {
-                result = result && SDL_IAIN->AIN_Query(joystickData.context, id, AINQ_HAT_OFFSET, i, &(hwdata->hatBufferOffset[i]), 4);
-            }
-
-            if (result) {
-                dprintf("Successful\n");
-                return true;
-            }
-        }
-
-        SDL_IAIN->AIN_ReleaseDevice(joystickData.context, handle);
+    if (!handle) {
+        return SDL_SetError("Failed to open device");
     }
 
-    SDL_SetError("Failed to open device\n");
-    dprintf("Failed\n");
+    joystick->hwdata = SDL_calloc(1, sizeof(struct joystick_hwdata));
 
-    return false;
+    if (!joystick->hwdata) {
+        SDL_IAIN->AIN_ReleaseDevice(joystickData.context, handle);
+        return SDL_OutOfMemory();
+    }
+
+    struct joystick_hwdata *hwdata = joystick->hwdata;
+    uint32 num_axes = 0;
+    uint32 num_buttons = 0;
+    uint32 num_hats = 0;
+
+    BOOL result = TRUE;
+
+    hwdata->handle = handle;
+
+    result = result && SDL_IAIN->AIN_Query(joystickData.context, id, AINQ_NUMAXES,    0, &num_axes, 4);
+    result = result && SDL_IAIN->AIN_Query(joystickData.context, id, AINQ_NUMBUTTONS, 0, &num_buttons, 4);
+    result = result && SDL_IAIN->AIN_Query(joystickData.context, id, AINQ_NUMHATS,    0, &num_hats, 4);
+
+    // dprintf ("Found %d axes, %d buttons, %d hats\n", num_axes, num_buttons, num_hats);
+
+    joystick->naxes    = num_axes < MAX_AXES       ? num_axes    : MAX_AXES;
+    joystick->nbuttons = num_buttons < MAX_BUTTONS ? num_buttons : MAX_BUTTONS;
+    joystick->nhats    = num_hats < MAX_HATS       ? num_hats    : MAX_HATS;
+
+    // Ensure all axis names are null terminated
+    for (int i = 0; i < MAX_AXES; i++) {
+        hwdata->axisName[i][0] = 0;
+    }
+
+    // Query offsets in ReadDevice buffer for axes' data
+    for (int i = 0; i < joystick->naxes; i++) {
+        result = result && SDL_IAIN->AIN_Query(joystickData.context, id, AINQ_AXIS_OFFSET, i, &(hwdata->axisBufferOffset[i]), 4);
+        result = result && SDL_IAIN->AIN_Query(joystickData.context, id, AINQ_AXISNAME,    i, &(hwdata->axisName[i][0]), 32 );
+    }
+
+    // Sort the axes so that X and Y come first
+    for (int i = 0; i < joystick->naxes; i++) {
+        if ((strcasecmp(&hwdata->axisName[i][0], "X-Axis") == 0) && (i != 0)) {
+            dprintf("Swap X-axis\n");
+            AMIGAINPUT_SwapAxis(hwdata, 0, i);
+            continue;
+        }
+
+        if ((strcasecmp(&hwdata->axisName[i][0], "Y-Axis") == 0) && (i != 1)) {
+            dprintf("Swap Y-axis\n");
+            AMIGAINPUT_SwapAxis(hwdata, 1, i);
+            continue;
+        }
+    }
+
+    // Query offsets in ReadDevice buffer for buttons' data
+    for (int i = 0; i < joystick->nbuttons; i++) {
+        result = result && SDL_IAIN->AIN_Query(joystickData.context, id, AINQ_BUTTON_OFFSET, i, &(hwdata->buttonBufferOffset[i]), 4);
+    }
+
+    // Query offsets in ReadDevice buffer for hats' data
+    for (int i = 0; i < joystick->nhats; i++) {
+        result = result && SDL_IAIN->AIN_Query(joystickData.context, id, AINQ_HAT_OFFSET, i, &(hwdata->hatBufferOffset[i]), 4);
+    }
+
+    if (!result) {
+        SDL_IAIN->AIN_ReleaseDevice(joystickData.context, handle);
+        return SDL_SetError("Failed to query joystick data");
+    }
+
+    dprintf("Successful\n");
+    return true;
 }
 
-/* Function to update the state of a joystick - called as a device poll.
- * This function shouldn't update the joystick structure directly,
- * but instead should call SDL_PrivateJoystick*() to deliver events
- * and update joystick device state.
- */
 static void
-AMIGAINPUT_Update(SDL_Joystick * joystick)
+AMIGAINPUT_Update(SDL_Joystick *joystick)
 {
     struct joystick_hwdata *hwdata = joystick->hwdata;
     void                   *buffer;
 
     //dprintf("Called joystick %p, hwdata %p\n", joystick, hwdata);
 
-    /*
-     * Poll device for data
-     */
-    if (hwdata && SDL_IAIN->AIN_ReadDevice(joystickData.context, hwdata->handle, &buffer)) {
-        const Uint64 timestamp = SDL_GetTicksNS();
+    if (!hwdata) {
+        dprintf("No hwdata\n");
+        return;
+    }
 
-        /* Extract axis data from buffer and notify SDL of any changes
-         * in axis state
-         */
-        for (int i = 0; i < joystick->naxes; i++) {
-            int axisdata = BUFFER_OFFSET(buffer, hwdata->axisBufferOffset[i]);
+    // Poll device for data
 
-            /* Clamp axis data to 16-bits to work around possible AI driver bugs */
-            if (axisdata > 32767) {
-                axisdata = 32767;
-            }
+    if (!SDL_IAIN->AIN_ReadDevice(joystickData.context, hwdata->handle, &buffer)) {
+        dprintf("Read device failed\n");
+        return;
+    }
 
-            if (axisdata < -32768) {
-                axisdata = -32768;
-            }
+    const Uint64 timestamp = SDL_GetTicksNS();
 
-            if (axisdata != hwdata->axisData[i]) {
-                SDL_SendJoystickAxis(timestamp, joystick, i, (Sint16)axisdata);
-                hwdata->axisData[i] = axisdata;
-                //dprintf("Send axis %d\n", i);
-            }
+    // Extract axis data from buffer and notify SDL of any changes in axis state
+    for (int i = 0; i < joystick->naxes; i++) {
+        int axisdata = BUFFER_OFFSET(buffer, hwdata->axisBufferOffset[i]);
+
+        // Clamp axis data to 16-bits to work around possible AI driver bugs
+        if (axisdata > 32767) {
+            axisdata = 32767;
         }
 
-        /* Extract button data from buffer and notify SDL of any changes
-         * in button state
-         *
-         * Note: SDL doesn't support analog buttons.
-         */
-        for (int i = 0; i < joystick->nbuttons; i++) {
-            const int buttondata = BUFFER_OFFSET(buffer, hwdata->buttonBufferOffset[i]);
-
-            if (buttondata != hwdata->buttonData[i]) {
-                SDL_SendJoystickButton(timestamp, joystick, i, buttondata ? true : false);
-                hwdata->buttonData[i] = buttondata;
-                //dprintf("Send button %d\n", i);
-            }
+        if (axisdata < -32768) {
+            axisdata = -32768;
         }
 
-        /* Extract hat data from buffer and notify SDL of any changes
-         * in hat state
-         */
-        for (int i = 0; i < joystick->nhats; i++) {
-            const int hatdata = BUFFER_OFFSET(buffer, hwdata->hatBufferOffset[i]);
+        if (axisdata != hwdata->axisData[i]) {
+            SDL_SendJoystickAxis(timestamp, joystick, i, (Sint16)axisdata);
+            hwdata->axisData[i] = axisdata;
+            //dprintf("Send axis %d\n", i);
+        }
+    }
 
-            if (hatdata != hwdata->hatData[i]) {
-                SDL_SendJoystickHat(timestamp, joystick, i, AMIGAINPUT_MapHatData(hatdata));
-                hwdata->hatData[i] = hatdata;
-                //dprintf("Send hat %d\n", i);
-            }
+    // Extract button data from buffer and notify SDL of any changes in button state
+    //
+    // Note: SDL doesn't support analog buttons.
+    for (int i = 0; i < joystick->nbuttons; i++) {
+        const int buttondata = BUFFER_OFFSET(buffer, hwdata->buttonBufferOffset[i]);
+
+        if (buttondata != hwdata->buttonData[i]) {
+            SDL_SendJoystickButton(timestamp, joystick, i, buttondata ? true : false);
+            hwdata->buttonData[i] = buttondata;
+            //dprintf("Send button %d\n", i);
+        }
+    }
+
+    // Extract hat data from buffer and notify SDL of any changes in hat state
+    for (int i = 0; i < joystick->nhats; i++) {
+        const int hatdata = BUFFER_OFFSET(buffer, hwdata->hatBufferOffset[i]);
+
+        if (hatdata != hwdata->hatData[i]) {
+            SDL_SendJoystickHat(timestamp, joystick, i, AMIGAINPUT_MapHatData(hatdata));
+            hwdata->hatData[i] = hatdata;
+            //dprintf("Send hat %d\n", i);
         }
     }
 }
 
-/* Function to close a joystick after use */
 static void
 AMIGAINPUT_Close(SDL_Joystick * joystick)
 {
-    dprintf("Closing joystick #%d (AI ID=%lu)\n", joystick->instance_id, joystickData.ids[joystick->instance_id - 1].id);
+    dprintf("Closing joystick %d '%s'\n", joystick->instance_id, joystick->name);
 
     SDL_IAIN->AIN_ReleaseDevice(joystickData.context, joystick->hwdata->handle);
 
@@ -446,14 +401,9 @@ AMIGAINPUT_Close(SDL_Joystick * joystick)
     joystick->hwdata = NULL;
 }
 
-/* Function to perform any system-specific joystick related cleanup */
 static void
 AMIGAINPUT_Quit(void)
 {
-    for (uint32 i = 0; i < joystickData.count; i++) {
-        SDL_free((char *)joystickData.ids[i].name);
-    }
-
     joystickData.count = 0;
 
     if (joystickData.context) {
@@ -464,91 +414,24 @@ AMIGAINPUT_Quit(void)
     AMIGAINPUT_CloseLibrary();
 }
 
-static SDL_GUID
-AMIGAINPUT_GetDeviceGUID(int device_index)
-{
-    Uint16 vendor = 0;
-    Uint16 product = 0;
-    Uint16 version = 0;
-    Uint8 signature = 0;
-    Uint8 data = 0;
-    const char *vendorName = NULL;
-
-    return SDL_CreateJoystickGUID(SDL_HARDWARE_BUS_USB,
-                                  vendor,
-                                  product,
-                                  version,
-                                  vendorName,
-                                  joystickData.ids[device_index].name,
-                                  signature,
-                                  data);
-}
-
-static bool
-AMIGAINPUT_Rumble(SDL_Joystick * joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble)
-{
-    dprintf("Called\n");
-    return SDL_Unsupported();
-}
-
-static bool
-AMIGAINPUT_RumbleTriggers(SDL_Joystick * joystick, Uint16 left_rumble, Uint16 right_rumble)
-{
-    dprintf("Called\n");
-    return SDL_Unsupported();
-}
-
-static bool
-AMIGAINPUT_SetLED(SDL_Joystick * joystick, Uint8 red, Uint8 green, Uint8 blue)
-{
-    dprintf("Called\n");
-    return SDL_Unsupported();
-}
-
-static bool
-AMIGAINPUT_SendEffect(SDL_Joystick *joystick, const void *data, int size)
-{
-    dprintf("Called\n");
-    return SDL_Unsupported();
-}
-
-static bool
-AMIGAINPUT_SetSensorsEnabled(SDL_Joystick * joystick, bool enabled)
-{
-    dprintf("Called\n");
-    return SDL_Unsupported();
-}
-
-static bool
-AMIGAINPUT_GetGamepadMapping(int device_index, SDL_GamepadMapping * out)
-{
-    dprintf("Called\n");
-    return SDL_Unsupported();
-}
-
 SDL_JoystickDriver SDL_AMIGAINPUT_JoystickDriver =
 {
     AMIGAINPUT_Init,
-    AMIGAINPUT_GetCount,
-    AMIGAINPUT_Detect,
-    AMIGAINPUT_IsDevicePresent,
-    AMIGAINPUT_GetDeviceName,
-    AMIGAINPUT_GetDevicePath,
-    AMIGAINPUT_GetDeviceSteamVirtualGamepadSlot,
-    AMIGAINPUT_GetDevicePlayerIndex,
-    AMIGAINPUT_SetDevicePlayerIndex,
-    AMIGAINPUT_GetDeviceGUID,
-    AMIGAINPUT_GetDeviceInstanceID,
+    NULL /* AMIGAINPUT_QueryDevices */,
+    NULL /* AMIGAINPUT_DetectDevices */, // TODO: implement?
+    NULL /* AMIGAINPUT_PrepareDevice */,
+    NULL /* AMIGAINPUT_UpdateSteamVirtualGamepadSlot */,
+    NULL /* AMIGAINPUT_GetGamepadMapping */,
     AMIGAINPUT_Open,
-    AMIGAINPUT_Rumble,
-    AMIGAINPUT_RumbleTriggers,
-    AMIGAINPUT_SetLED,
-    AMIGAINPUT_SendEffect,
-    AMIGAINPUT_SetSensorsEnabled,
+    NULL /* AMIGAINPUT_Rumble */,
+    NULL /* AMIGAINPUT_RumbleTriggers */,
+    NULL /* AMIGAINPUT_SetLED */,
+    NULL /* AMIGAINPUT_SendEffect */,
+    NULL /* AMIGAINPUT_SetSensorsEnabled */,
+    NULL /* AMIGAINPUT_SetPlayerIndex */,
     AMIGAINPUT_Update,
     AMIGAINPUT_Close,
-    AMIGAINPUT_Quit,
-    AMIGAINPUT_GetGamepadMapping
+    AMIGAINPUT_Quit
 };
 
-#endif /* SDL_JOYSTICK_AMIGAINPUT */
+#endif // SDL_JOYSTICK_AMIGAINPUT

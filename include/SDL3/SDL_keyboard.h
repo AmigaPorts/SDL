@@ -146,6 +146,13 @@ extern SDL_DECLSPEC SDL_Window * SDLCALL SDL_GetKeyboardFocus(void);
  * Note: This function doesn't take into account whether shift has been
  * pressed or not.
  *
+ * Note that this function is "thread safe," in that calling it from two
+ * threads at once will return the same array and that it won't be reallocated
+ * or free'd without warning, as more events arrive, the contents of this
+ * array may change without warning or any sort of thread synchronization. For
+ * apps that need precision, it is better to use the key events in the SDL
+ * event queue.
+ *
  * \param numkeys if non-NULL, receives the length of the returned array.
  * \returns a pointer to an array of key states.
  *
@@ -464,6 +471,12 @@ typedef enum SDL_Capitalization
  *   use, overriding other properties. This is documented at
  *   https://developer.android.com/reference/android/text/InputType
  *
+ * On HarmonyOS/OpenHarmony you can directly specify the input type:
+ *
+ * - `SDL_PROP_TEXTINPUT_OPENHARMONY_INPUTTYPE_NUMBER` - the text input type
+ *   to use, overriding other properties. This is documented at
+ *   https://developer.android.com/reference/android/text/InputType
+ *
  * \param window the window to enable text input.
  * \param props the properties to use.
  * \returns true on success or false on failure; call SDL_GetError() for more
@@ -489,6 +502,7 @@ extern SDL_DECLSPEC bool SDLCALL SDL_StartTextInputWithProperties(SDL_Window *wi
 #define SDL_PROP_TEXTINPUT_DEFAULT_TEXT_STRING          "SDL.textinput.default_text"
 #define SDL_PROP_TEXTINPUT_MAX_LENGTH_NUMBER            "SDL.textinput.max_length"
 #define SDL_PROP_TEXTINPUT_ANDROID_INPUTTYPE_NUMBER     "SDL.textinput.android.inputtype"
+#define SDL_PROP_TEXTINPUT_OPENHARMONY_INPUTTYPE_NUMBER "SDL.textinput.openharmony.inputtype"
 
 /**
  * Check whether or not Unicode text input events are enabled for a window.

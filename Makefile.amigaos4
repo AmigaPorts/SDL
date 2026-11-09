@@ -34,6 +34,7 @@ SOURCES = \
 	./src/gpu/SDL_gpu.c \
 	./src/haptic/*.c \
 	./src/haptic/dummy/*.c \
+	./src/hidapi/SDL_hidapi.c \
 	./src/io/*.c \
 	./src/io/generic/SDL_asyncio_generic.c \
 	./src/joystick/*.c \

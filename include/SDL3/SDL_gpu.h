@@ -1113,7 +1113,10 @@ typedef enum SDL_GPUVertexElementFormat
 
     /* 16-bit Floats */
     SDL_GPU_VERTEXELEMENTFORMAT_HALF2,
-    SDL_GPU_VERTEXELEMENTFORMAT_HALF4
+    SDL_GPU_VERTEXELEMENTFORMAT_HALF4,
+
+    /* 10-bit Unsigned Normalized */
+    SDL_GPU_VERTEXELEMENTFORMAT_R10G10B10A2_UNORM
 } SDL_GPUVertexElementFormat;
 
 /**
@@ -3736,6 +3739,9 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUIndexBuffer(
  *
  * The textures must have been created with SDL_GPU_TEXTUREUSAGE_SAMPLER.
  *
+ * The textures being bound must have a matching type declared in the shader
+ * (2D, 3D, etc.). Multisample textures are not allowed.
+ *
  * Be sure your shader is set up according to the requirements documented in
  * SDL_CreateGPUShader().
  *
@@ -3761,6 +3767,9 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUVertexSamplers(
  *
  * These textures must have been created with
  * SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ.
+ *
+ * The textures being bound must have a matching type declared in the shader
+ * (2D, 3D, 2DMS, etc.)
  *
  * Be sure your shader is set up according to the requirements documented in
  * SDL_CreateGPUShader().
@@ -3809,6 +3818,9 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUVertexStorageBuffers(
  *
  * The textures must have been created with SDL_GPU_TEXTUREUSAGE_SAMPLER.
  *
+ * The textures being bound must have a matching type declared in the shader
+ * (2D, 3D, etc.). Multisample textures are not allowed.
+ *
  * Be sure your shader is set up according to the requirements documented in
  * SDL_CreateGPUShader().
  *
@@ -3834,6 +3846,9 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUFragmentSamplers(
  *
  * These textures must have been created with
  * SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ.
+ *
+ * The textures being bound must have a matching type declared in the shader
+ * (2D, 3D, 2DMS, etc.)
  *
  * Be sure your shader is set up according to the requirements documented in
  * SDL_CreateGPUShader().
@@ -4057,6 +4072,9 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUComputePipeline(
  *
  * The textures must have been created with SDL_GPU_TEXTUREUSAGE_SAMPLER.
  *
+ * The textures being bound must have a matching type declared in the shader
+ * (2D, 3D, etc.). Multisample textures are not allowed.
+ *
  * Be sure your shader is set up according to the requirements documented in
  * SDL_CreateGPUComputePipeline().
  *
@@ -4082,6 +4100,9 @@ extern SDL_DECLSPEC void SDLCALL SDL_BindGPUComputeSamplers(
  *
  * These textures must have been created with
  * SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ.
+ *
+ * The textures being bound must have a matching type declared in the shader
+ * (2D, 3D, 2DMS, etc.)
  *
  * Be sure your shader is set up according to the requirements documented in
  * SDL_CreateGPUComputePipeline().

@@ -201,8 +201,8 @@ OS4_DetectDevices(SDL_AudioDevice **default_output, SDL_AudioDevice **default_ca
     capture.format = output.format;
     capture.channels = 1;
 
-    *default_output = SDL_AddAudioDevice(/*iscapture=*/false, "AHI default output device", &output, SDL_strdup("default"));
-    *default_capture = SDL_AddAudioDevice(/*iscapture=*/true, "AHI default capture device", &capture, SDL_strdup("default"));
+    *default_output = SDL_AddAudioDevice(/*iscapture=*/false, "AHI default output device", NULL, NULL, &output, SDL_strdup("default"));
+    *default_capture = SDL_AddAudioDevice(/*iscapture=*/true, "AHI default capture device", NULL, NULL, &capture, SDL_strdup("default"));
 
     dprintf("Default_output device %p, default_capture device %p\n", *default_output, *default_capture);
 }

@@ -54,7 +54,7 @@
 // IOStreams have various Properties. The first time SDL_GetIOProperties() is
 //  called, it creates the SDL_PropertiesID and then uses this function
 //  interface to fill in the appropriate props for the stream on-demand.
-typedef void (*SetIOPropertiesFn)(SDL_PropertiesID props, void *userdata);
+typedef bool (*SetIOPropertiesFn)(SDL_PropertiesID props, void *userdata);
 
 struct SDL_IOStream
 {
@@ -72,6 +72,11 @@ struct SDL_IOStream
 #ifdef SDL_PLATFORM_ANDROID
 #include <unistd.h>
 #include "../core/android/SDL_android.h"
+#endif
+
+#ifdef SDL_PLATFORM_OPENHARMONY
+#include <unistd.h>
+#include "../core/openharmony/SDL_openharmony.h"
 #endif
 
 #if defined(SDL_PLATFORM_WINDOWS) && !defined(SDL_PLATFORM_CYGWIN)
@@ -437,10 +442,10 @@ static bool SDLCALL windows_file_close(void *userdata)
     return result;
 }
 
-static void windows_setioprops(SDL_PropertiesID props, void *userdata)
+static bool windows_setioprops(SDL_PropertiesID props, void *userdata)
 {
     const IOStreamWindowsData *iodata = (const IOStreamWindowsData *) userdata;
-    SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_WINDOWS_HANDLE_POINTER, iodata->h);
+    return SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_WINDOWS_HANDLE_POINTER, iodata->h);
 }
 
 SDL_IOStream *SDL_IOFromHandle(HANDLE handle, const char *mode, bool autoclose)
@@ -1029,10 +1034,10 @@ static bool SDLCALL fd_close(void *userdata)
     return status;
 }
 
-static void fd_setioprops(SDL_PropertiesID props, void *userdata)
+static bool fd_setioprops(SDL_PropertiesID props, void *userdata)
 {
     const IOStreamFDData *iodata = (const IOStreamFDData *) userdata;
-    SDL_SetNumberProperty(props, SDL_PROP_IOSTREAM_FILE_DESCRIPTOR_NUMBER, iodata->fd);
+    return SDL_SetNumberProperty(props, SDL_PROP_IOSTREAM_FILE_DESCRIPTOR_NUMBER, iodata->fd);
 }
 
 SDL_IOStream *SDL_IOFromFD(int fd, bool autoclose)
@@ -1230,12 +1235,12 @@ static bool SDLCALL stdio_close(void *userdata)
     return status;
 }
 
-static void stdio_setioprops(SDL_PropertiesID props, void *userdata)
+static bool stdio_setioprops(SDL_PropertiesID props, void *userdata)
 {
     const IOStreamStdioData *iodata = (const IOStreamStdioData *) userdata;
     FILE *fp = iodata->fp;
-    SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_STDIO_FILE_POINTER, fp);
-    SDL_SetNumberProperty(props, SDL_PROP_IOSTREAM_FILE_DESCRIPTOR_NUMBER, fileno(fp));
+    return SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_STDIO_FILE_POINTER, fp) &&
+           SDL_SetNumberProperty(props, SDL_PROP_IOSTREAM_FILE_DESCRIPTOR_NUMBER, fileno(fp));
 }
 
 SDL_IOStream *SDL_IOFromFP(FILE *fp, bool autoclose)
@@ -1361,13 +1366,16 @@ static bool SDLCALL mem_close(void *userdata)
     return true;
 }
 
-static void mem_setioprops(SDL_PropertiesID props, void *userdata)
+static bool mem_setioprops(SDL_PropertiesID props, void *userdata)
 {
     IOStreamMemData *iodata = (IOStreamMemData *) userdata;
-    SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_MEMORY_POINTER, iodata->base);
-    SDL_SetNumberProperty(props, SDL_PROP_IOSTREAM_MEMORY_SIZE_NUMBER, iodata->size);
+    if (!SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_MEMORY_POINTER, iodata->base) ||
+        !SDL_SetNumberProperty(props, SDL_PROP_IOSTREAM_MEMORY_SIZE_NUMBER, iodata->size)) {
+        return false;
+    }
     SDL_assert(iodata->props == 0);
     iodata->props = props;
+    return true;
 }
 
 // Functions to create SDL_IOStream structures from various data sources
@@ -1388,9 +1396,9 @@ static bool IsStdioFileADirectory(FILE *f)
 #endif
 
 #ifdef SDL_PLATFORM_ANDROID
-static void android_setioprops(SDL_PropertiesID props, void *userdata)
+static bool android_setioprops(SDL_PropertiesID props, void *userdata)
 {
-    SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_ANDROID_AASSET_POINTER, userdata);
+    return SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_ANDROID_AASSET_POINTER, userdata);
 }
 #endif
 
@@ -1407,7 +1415,7 @@ SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
         return NULL;
     }
 
-#ifdef SDL_PLATFORM_ANDROID
+#if defined(SDL_PLATFORM_ANDROID) || defined(SDL_PLATFORM_OPENHARMONY)
 #ifdef HAVE_STDIO_H
     // Try to open the file on the filesystem first
     if (*file == '/') {
@@ -1420,6 +1428,7 @@ SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
             }
             return SDL_IOFromFP(fp, true);
         }
+    #ifdef SDL_PLATFORM_ANDROID
     } else if (SDL_strncmp(file, "content://", 10) == 0) {
         // Try opening content:// URI
         int fd = Android_JNI_OpenFileDescriptor(file, mode);
@@ -1436,10 +1445,11 @@ SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
         }
 
         return SDL_IOFromFP(fp, true);
+    #endif
     } else if (SDL_strncmp(file, "assets://", 9) != 0) {
         // Try opening it from internal storage if it's a relative path
         char *path = NULL;
-        SDL_asprintf(&path, "%s/%s", SDL_GetAndroidInternalStoragePath(), file);
+        SDL_asprintf(&path, "%s/%s", SDL_GetPlatformInternalStoragePath(), file);
         if (path) {
             FILE *fp = fopen(path, mode);
             SDL_free(path);
@@ -1455,6 +1465,7 @@ SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
     }
 #endif // HAVE_STDIO_H
 
+    #ifdef SDL_PLATFORM_ANDROID
     // Try to open the file from the asset system?
     void *iodata = NULL;
     if (!Android_JNI_FileOpen(&iodata, file, mode)) {
@@ -1475,6 +1486,32 @@ SDL_IOStream *SDL_IOFromFile(const char *file, const char *mode)
     } else {
         iostr->setioprops = android_setioprops;
     }
+
+    #elif defined(SDL_PLATFORM_OPENHARMONY)
+    // Try to open the file from the asset system?
+    void *iodata = NULL;
+    if (!SDL_OpenHarmonyRawFileOpen(&iodata, file, mode)) {
+        return NULL;
+    }
+
+    SDL_IOStreamInterface iface;
+    SDL_INIT_INTERFACE(&iface);
+    iface.size = SDL_OpenHarmonyRawFileSize;
+    iface.seek = SDL_OpenHarmonyRawFileSeek;
+    iface.read = SDL_OpenHarmonyRawFileRead;
+    iface.write = NULL;  // no write access via RawFile.
+    iface.close = SDL_OpenHarmonyRawFileClose;
+
+    iostr = SDL_OpenIO(&iface, iodata);
+    if (!iostr) {
+        iface.close(iodata);
+    } else {
+        const SDL_PropertiesID props = SDL_GetIOProperties(iostr);
+        if (props) {
+            SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_OPENHARMONY_RAWFILE64_POINTER, iodata);
+        }
+    }
+    #endif
 
 #elif defined(SDL_PLATFORM_IOS)
 
@@ -1608,6 +1645,7 @@ SDL_IOStream *SDL_IOFromConstMem(const void *mem, size_t size)
     iodata->base = (Uint8 *)mem;
     iodata->here = iodata->base;
     iodata->stop = iodata->base + size;
+    iodata->size = size;
 
     SDL_IOStream *iostr = SDL_OpenIO(&iface, iodata);
     if (!iostr) {
@@ -1698,12 +1736,15 @@ static bool SDLCALL dynamic_mem_close(void *userdata)
     return true;
 }
 
-static void dynamic_mem_setioprops(SDL_PropertiesID props, void *userdata)
+static bool dynamic_mem_setioprops(SDL_PropertiesID props, void *userdata)
 {
     IOStreamDynamicMemData *iodata = (IOStreamDynamicMemData *) userdata;
-    SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_DYNAMIC_MEMORY_POINTER, iodata->data.base);
+    if (!SDL_SetPointerProperty(props, SDL_PROP_IOSTREAM_DYNAMIC_MEMORY_POINTER, iodata->data.base)) {
+        return false;
+    }
     SDL_assert(iodata->props == 0);
     iodata->props = props;
+    return true;
 }
 
 SDL_IOStream *SDL_IOFromDynamicMem(void)
@@ -1917,11 +1958,16 @@ SDL_PropertiesID SDL_GetIOProperties(SDL_IOStream *context)
     }
 
     if (context->props == 0) {
-        context->props = SDL_CreateProperties();
-        if (context->props && context->setioprops) {
-            context->setioprops(context->props, context->userdata);
-            context->setioprops = NULL;  // NULL so we don't try to set props again, just in case.
+        SDL_PropertiesID props = SDL_CreateProperties();
+        if (!props) {
+            return 0;
         }
+        if (context->setioprops && !context->setioprops(props, context->userdata)) {
+            SDL_DestroyProperties(props);
+            return 0;
+        }
+        context->props = props;
+        context->setioprops = NULL;  // NULL so we don't try to set props again, just in case.
     }
     return context->props;
 }
