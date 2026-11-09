@@ -636,11 +636,11 @@ OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID c
             SDL_DisplayMode *mode = (SDL_DisplayMode *)SDL_GetWindowFullscreenMode(window);
             SDL_VideoDisplay *display = SDL_GetVideoDisplayForWindow(window);
 
-            if (mode == NULL) {
-                if (!display) {
-                    return SDL_SetError("Failed get window fullscreen mode");
-                }
+            if (!display) {
+                return SDL_SetError("Failed get video display");
+            }
 
+            if (mode == NULL) {
                 dprintf("Falling back to display's desktop mode\n");
                 mode = &display->desktop_mode;
             }
@@ -650,11 +650,15 @@ OS4_CreateWindow(SDL_VideoDevice *_this, SDL_Window * window, SDL_PropertiesID c
             }
 
             if (!OS4_SetupWindowData(window, NULL)) {
+                // Something wrong, cleanup
+                OS4_CloseScreen(_this, display->internal->screen, display);
                 return false;
             }
 
             // Creates system window eventually
             if (OS4_SetWindowFullscreen(_this, window, display, true) == SDL_FULLSCREEN_FAILED) {
+                // Something wrong, cleanup
+                OS4_CloseScreen(_this, display->internal->screen, display);
                 return false;
             }
             return true;
@@ -861,15 +865,7 @@ OS4_CloseSystemWindow(SDL_VideoDevice *_this, SDL_VideoDisplay *display, struct 
 
     IIntuition->CloseWindow(window);
 
-    OS4_CloseScreen(_this, screen);
-
-    if (display) {
-        SDL_DisplayData *displaydata = (SDL_DisplayData *) display->internal;
-        if (screen == displaydata->screen) {
-            dprintf("Clearing displaydata->screen\n");
-            displaydata->screen = NULL;
-        }
-    }
+    OS4_CloseScreen(_this, screen, display);
 }
 
 static void
