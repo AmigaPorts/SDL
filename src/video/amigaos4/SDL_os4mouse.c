@@ -78,20 +78,22 @@ OS4_CreateCursorInternal()
 
     //dprintf("Called\n");
 
-    if (cursor) {
-        SDL_CursorData *data = SDL_calloc(1, sizeof(SDL_CursorData));
-
-        if (data) {
-            cursor->internal = data;
-        } else {
-            dprintf("Failed to create cursor data\n");
-        }
-    } else {
+    if (!cursor) {
         dprintf("Failed to create cursor\n");
+        return NULL;
     }
 
-    return cursor;
+    SDL_CursorData *data = SDL_calloc(1, sizeof(SDL_CursorData));
 
+    if (!data) {
+        dprintf("Failed to create cursor data\n");
+        SDL_free(cursor);
+        return NULL;
+    }
+
+    cursor->internal = data;
+
+    return cursor;
 }
 
 static SDL_Cursor*
@@ -119,26 +121,26 @@ OS4_CopyImageData(SDL_Surface * surface)
     dprintf("Copying cursor data %d*%d from surface %p to buffer %p\n",
         surface->w, surface->h, surface, buffer);
 
-    if (buffer) {
-        if (SDL_MUSTLOCK(surface)) {
-            SDL_LockSurface(surface);
-        }
-
-        Uint8* source = surface->pixels;
-        Uint32* destination = buffer;
-        int y;
-
-        for (y = 0; y < surface->h; y++) {
-            SDL_memcpy(destination, source, bytesPerRow);
-            destination += surface->w;
-            source += surface->pitch;
-        }
-
-        if (SDL_MUSTLOCK(surface)) {
-            SDL_UnlockSurface(surface);
-        }
-    } else {
+    if (!buffer) {
         dprintf("Failed to allocate memory\n");
+        return NULL;
+    }
+
+    if (SDL_MUSTLOCK(surface)) {
+        SDL_LockSurface(surface);
+    }
+
+    Uint8* source = surface->pixels;
+    Uint32* destination = buffer;
+
+    for (int y = 0; y < surface->h; y++) {
+        SDL_memcpy(destination, source, bytesPerRow);
+        destination += surface->w;
+        source += surface->pitch;
+    }
+
+    if (SDL_MUSTLOCK(surface)) {
+        SDL_UnlockSurface(surface);
     }
 
     return buffer;
@@ -147,45 +149,57 @@ OS4_CopyImageData(SDL_Surface * surface)
 static SDL_Cursor*
 OS4_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
 {
+    if (surface->w > 64) {
+        dprintf("Invalid width %d\n", surface->w);
+        return NULL;
+    }
+
+    if (surface->h > 64) {
+        dprintf("Invalid height %d\n", surface->h);
+        return NULL;
+    }
+
     SDL_Cursor *cursor = OS4_CreateCursorInternal();
 
     dprintf("Surface %p, cursor %p, hot_x %d, hot_y %d\n", surface, cursor, hot_x, hot_y);
 
-    if (cursor && cursor->internal) {
-        if (surface->w > 64) {
-            dprintf("Invalid width %d\n", surface->w);
-        } else if (surface->h > 64) {
-            dprintf("Invalid height %d\n", surface->h);
-        } else {
-            Uint32* buffer = OS4_CopyImageData(surface);
-
-            /* We need to pass some compatibility parameters
-            even though we are going to use just ARGB pointer */
-
-            Object *object = IIntuition->NewObject(
-                NULL,
-                POINTERCLASS,
-                POINTERA_BitMap, &fallbackPointerBitMap,
-                POINTERA_XOffset, hot_x,
-                POINTERA_YOffset, hot_y,
-                POINTERA_WordWidth, 1,
-                POINTERA_XResolution, POINTERXRESN_SCREENRES,
-                POINTERA_YResolution, POINTERYRESN_SCREENRES,
-                POINTERA_ImageData, buffer,
-                POINTERA_Width, surface->w,
-                POINTERA_Height, surface->h,
-                TAG_DONE);
-
-            if (object) {
-                dprintf("Object %p\n", object);
-                SDL_CursorData *data = cursor->internal;
-                data->object = object;
-                data->imageData = buffer;
-            } else {
-                dprintf("Failed to create pointer object\n");
-            }
-        }
+    if (!cursor) {
+        return NULL;
     }
+
+    Uint32* buffer = OS4_CopyImageData(surface);
+
+    if (!buffer) {
+        SDL_DestroyCursor(cursor);
+        return NULL;
+    }
+
+    // We need to pass some compatibility parameters
+    // even though we are going to use just ARGB pointer
+    Object *object = IIntuition->NewObject(
+        NULL,
+        POINTERCLASS,
+        POINTERA_BitMap, &fallbackPointerBitMap,
+        POINTERA_XOffset, hot_x,
+        POINTERA_YOffset, hot_y,
+        POINTERA_WordWidth, 1,
+        POINTERA_XResolution, POINTERXRESN_SCREENRES,
+        POINTERA_YResolution, POINTERYRESN_SCREENRES,
+        POINTERA_ImageData, buffer,
+        POINTERA_Width, surface->w,
+        POINTERA_Height, surface->h,
+        TAG_DONE);
+
+    if (!object) {
+        dprintf("Failed to create pointer object\n");
+        SDL_DestroyCursor(cursor);
+        return NULL;
+    }
+
+    dprintf("Object %p\n", object);
+    SDL_CursorData *data = cursor->internal;
+    data->object = object;
+    data->imageData = buffer;
 
     return cursor;
 }
@@ -195,35 +209,38 @@ OS4_CreateHiddenCursor()
 {
     dprintf("Called\n");
 
-    /* Create invisible 1*1 cursor because system version (POINTERTYPE_NONE) has a shadow */
+    // Create invisible 1*1 cursor because system version (POINTERTYPE_NONE) has a shadow
 
     SDL_Surface *surface = SDL_CreateSurface(1, 1, SDL_PIXELFORMAT_ARGB8888);
-    if (surface) {
-        SDL_FillSurfaceRect(surface, NULL, 0x0);
 
-        hiddenCursor = OS4_CreateCursor(surface, 0, 0);
-
-        SDL_DestroySurface(surface);
-    } else {
+    if (!surface) {
         dprintf("Failed to create surface for hidden cursor\n");
+        return;
     }
+
+    SDL_FillSurfaceRect(surface, NULL, 0x0);
+
+    hiddenCursor = OS4_CreateCursor(surface, 0, 0);
+
+    SDL_DestroySurface(surface);
 }
 
 static Object*
 OS4_GetHiddenCursorObject()
 {
-    Object* object = NULL;
-
-    if (hiddenCursor) {
-        SDL_CursorData *data = hiddenCursor->internal;
-        if (data) {
-            object = data->object;
-        } else {
-            dprintf("NULL data\n");
-        }
-    } else {
+    if (!hiddenCursor) {
         dprintf("Hidden cursor is NULL\n");
+        return NULL;
     }
+
+    SDL_CursorData *data = hiddenCursor->internal;
+
+    if (!data) {
+        dprintf("NULL data\n");
+        return NULL;
+    }
+
+    Object* object = data->object;
 
     return object;
 }
@@ -270,22 +287,25 @@ OS4_CreateSystemCursor(SDL_SystemCursor id)
 static void
 OS4_SetPointerObjectOrTypeForWindow(struct Window * window, ULONG type, Object * object)
 {
+    if (!window) {
+        dprintf("syswin NULL\n");
+        return;
+    }
+
     if (object || type) {
         dprintf("Setting pointer object %p (type %lu) for window %p\n", object, type, window);
     }
 
-    if (window) {
-        if (object) {
-            IIntuition->SetWindowPointer(
-                window,
-                WA_Pointer, object,
-                TAG_DONE);
-        } else {
-            IIntuition->SetWindowPointer(
-                window,
-                WA_PointerType, type,
-                TAG_DONE);
-        }
+    if (object) {
+        IIntuition->SetWindowPointer(
+            window,
+            WA_Pointer, object,
+            TAG_DONE);
+    } else {
+        IIntuition->SetWindowPointer(
+            window,
+            WA_PointerType, type,
+            TAG_DONE);
     }
 }
 
@@ -306,15 +326,18 @@ OS4_SetPointerForEachWindow(ULONG type, Object * object)
 void
 OS4_ResetCursorForWindow(struct Window * window)
 {
+    if (!window) {
+        dprintf("syswin NULL\n");
+        return;
+    }
+
     dprintf("Called\n");
 
-    if (window) {
-        // Restore normal system pointer
-        IIntuition->SetWindowPointer(
-            window,
-            WA_Pointer, NULL,
-            TAG_DONE);
-    }
+    // Restore normal system pointer
+    IIntuition->SetWindowPointer(
+        window,
+        WA_Pointer, NULL,
+        TAG_DONE);
 }
 
 void
@@ -367,8 +390,7 @@ OS4_ShowCursor(SDL_Cursor * cursor)
             type = data->type;
             object = data->object;
         } else {
-            dprintf("No cursor data\n");
-            return false;
+            return SDL_SetError("No cursor data");
         }
     } else {
         dprintf("Hiding cursor\n");
@@ -389,27 +411,29 @@ OS4_FreeCursor(SDL_Cursor * cursor)
 
     dprintf("Called %p\n", cursor);
 
-    if (data) {
-        if (data->object) {
-            SDL_Mouse *mouse = SDL_GetMouse();
-
-            if (mouse->cur_cursor == cursor) {
-                dprintf("Reset to POINTERTYPE_NONE before object disposal\n");
-                OS4_SetPointerForEachWindow(POINTERTYPE_NONE, NULL);
-            }
-
-            IIntuition->DisposeObject(data->object);
-            data->object = NULL;
-        }
-
-        if (data->imageData) {
-            SDL_free(data->imageData);
-            data->imageData = NULL;
-        }
-
-        SDL_free(data);
-        cursor->internal = NULL;
+    if (!data) {
+        return;
     }
+
+    if (data->object) {
+        SDL_Mouse *mouse = SDL_GetMouse();
+
+        if (mouse->cur_cursor == cursor) {
+            dprintf("Reset to POINTERTYPE_NONE before object disposal\n");
+            OS4_SetPointerForEachWindow(POINTERTYPE_NONE, NULL);
+        }
+
+        IIntuition->DisposeObject(data->object);
+        data->object = NULL;
+    }
+
+    if (data->imageData) {
+        SDL_free(data->imageData);
+        data->imageData = NULL;
+    }
+
+    SDL_free(data);
+    cursor->internal = NULL;
 }
 
 void
@@ -484,16 +508,19 @@ OS4_WarpMouse(SDL_Window * window, float x, float y)
     SDL_WindowData *winData = window->internal;
     struct Window *syswin = winData->syswin;
 
+    if (!syswin) {
+        return SDL_SetError("syswin NULL");
+    }
+
     const bool relativeMouseMode = SDL_GetRelativeMouseMode();
 
-    /* If the host mouse pointer is outside of the SDL window or the SDL
-     * window is inactive then we just need to warp SDL's notion of where
-     * the pointer position is - we don't need to move the Workbench
-     * pointer. In the former case, we don't pass mass movements on to
-     * to the app anyway and in the latter case we don't receive mouse
-     * movements events anyway.
-     */
-    BOOL warpHostPointer = !relativeMouseMode && (window == SDL_GetMouseFocus());
+    // If the host mouse pointer is outside of the SDL window or the SDL
+    // window is inactive then we just need to warp SDL's notion of where
+    // the pointer position is - we don't need to move the Workbench
+    // pointer. In the former case, we don't pass mass movements on to
+    // to the app anyway and in the latter case we don't receive mouse
+    // movements events anyway.
+    const BOOL warpHostPointer = !relativeMouseMode && (window == SDL_GetMouseFocus());
 
     dprintf("Warping mouse to %f, %f\n", x, y);
 
@@ -505,7 +532,7 @@ OS4_WarpMouse(SDL_Window * window, float x, float y)
             x + syswin->BorderLeft + syswin->LeftEdge,
             y + syswin->BorderTop + syswin->TopEdge);
     } else {
-        /* Just warp SDL's notion of the pointer position */
+        // Just warp SDL's notion of the pointer position
         SDL_SendMouseMotion(0, window, 0, relativeMouseMode, x, y);
     }
 
@@ -598,4 +625,4 @@ OS4_QuitMouse(SDL_VideoDevice *_this)
     mouse->cur_cursor = NULL;
 }
 
-#endif /* SDL_VIDEO_DRIVER_AMIGAOS4 */
+#endif // SDL_VIDEO_DRIVER_AMIGAOS4
