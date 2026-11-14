@@ -440,7 +440,15 @@ char **SDL_InternalGlobDirectory(const char *path, const char *pattern, SDL_Glob
         if (SDL_strcmp(path, "/") == 0 || SDL_strcmp(path, "\\") == 0) {
             data.basedirlen = 1;
         } else {
+#ifdef SDL_PLATFORM_AMIGAOS4
+            if (pathlen > 1 && path[pathlen - 1] == ':') {
+                data.basedirlen = pathlen;
+            } else {
+                data.basedirlen = pathlen + 1; // +1 for the '/' we'll be adding.
+            }
+#else
             data.basedirlen = pathlen + 1; // +1 for the '/' we'll be adding.
+#endif
         }
     }
 
