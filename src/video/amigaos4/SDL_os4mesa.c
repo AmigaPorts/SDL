@@ -321,8 +321,6 @@ OS4_Mesa_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 
     SDL_VideoData *videodata = _this->internal;
 
-    IMesa->glFinish();
-
     if (videodata->vsyncEnabled) {
         IGraphics->WaitTOF();
     }

@@ -185,8 +185,6 @@ OS4_OGLES2_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 
     SDL_VideoData *videodata = _this->internal;
 
-    glFinish();
-
     if (videodata->vsyncEnabled) {
         IGraphics->WaitTOF();
     }
