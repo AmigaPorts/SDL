@@ -82,32 +82,68 @@ void OS4_InitThreadSubSystem(void)
     control.primary.task->tc_UserData = &control.primary; // Timer lookup requires this
 }
 
-// Called from OS4_QUIT() destructor function.
-void OS4_QuitThreadSubSystem(void)
+static BOOL OS4_WaitForChildThreads(void)
 {
     struct MinNode* iter;
 
-    dprintf("Called from task %p\n", IExec->FindTask(NULL));
+    // Signal known SDL threads
+    IExec->MutexObtain(control.children.mutex);
 
-    do {
+    for (iter = control.children.list.mlh_Head; iter->mln_Succ; iter = iter->mln_Succ) {
+        OS4_ThreadNode* node = (OS4_ThreadNode *)iter;
+        dprintf("Sending CTRL-C to %s\n", node->thread->name);
+        IExec->Signal(node->task, SIGBREAKF_CTRL_C);
+    }
+
+    IExec->MutexRelease(control.children.mutex);
+
+    // Wait 2 seconds for threads to quit
+    int i;
+    for (i = 0; i < 100; i++) {
         IExec->MutexObtain(control.children.mutex);
 
         if (IsMinListEmpty(&control.children.list)) {
-            dprintf("No child threads left - proceed with SDL2 shutdown\n");
+            dprintf("No child threads left - proceed with SDL3 shutdown\n");
             IExec->MutexRelease(control.children.mutex);
             break;
-        } else {
-            for (iter = control.children.list.mlh_Head; iter->mln_Succ; iter = iter->mln_Succ) {
-                IExec->Signal(((OS4_ThreadNode *)iter)->task, SIGBREAKF_CTRL_C);
-            }
         }
 
         IExec->MutexRelease(control.children.mutex);
-    } while (TRUE);
+        IDOS->Delay(1);
+    }
 
+    // Log hanging threads. They may crash when SDL is gone but at least user
+    // should get a crash log then
+    if (i == 100) {
+#ifdef DEBUG
+        IExec->MutexObtain(control.children.mutex);
+
+        for (iter = control.children.list.mlh_Head; iter->mln_Succ; iter = iter->mln_Succ) {
+            OS4_ThreadNode* node = (OS4_ThreadNode *)iter;
+            dprintf("%s didn't exit on time\n", ((struct Node *)node->task)->ln_Name);
+        }
+
+        IExec->MutexRelease(control.children.mutex);
+#endif
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+// Called from OS4_QUIT() destructor function.
+void OS4_QuitThreadSubSystem(void)
+{
+    dprintf("Called from task %p\n", IExec->FindTask(NULL));
+
+    const BOOL success = OS4_WaitForChildThreads();
     OS4_TimerDestroy(&control.primary.timer);
-
     OS4_QuitTimerSubSystem();
+
+    if (!success) {
+        dprintf("Thread control mutexes will not be freed\n");
+        return;
+    }
 
     dprintf("Freeing mutexes\n");
 
@@ -191,8 +227,8 @@ SDL_SYS_CreateThread(SDL_Thread * thread)
         TAG_DONE);
 
     if (!node) {
-        dprintf("Failed to allocated thread node\n");
-        return SDL_SetError("Not enough resources to create thread");
+        dprintf("Failed to allocate thread node\n");
+        return SDL_SetError("Failed to allocate thread node");
     }
 
     dprintf("Node %p\n", node);
@@ -201,7 +237,11 @@ SDL_SYS_CreateThread(SDL_Thread * thread)
     BPTR outputStream = IDOS->DupFileHandle(IDOS->Output());
     BPTR errorStream = IDOS->DupFileHandle(IDOS->ErrorOutput());
 
-    snprintf(nameBuffer, sizeof(nameBuffer), "SDL thread %s (%p)", thread->name, thread);
+    SDL_snprintf(nameBuffer, sizeof(nameBuffer), "SDL thread %s (%p)", thread->name, thread);
+
+    node->thread = thread;
+
+    IExec->MutexObtain(control.children.mutex);
 
     struct Process* child = IDOS->CreateNewProcTags(
         NP_Child,       TRUE,
@@ -224,21 +264,23 @@ SDL_SYS_CreateThread(SDL_Thread * thread)
         TAG_DONE);
 
     if (!child) {
+        IExec->MutexRelease(control.children.mutex);
         IExec->FreeVec(node);
         dprintf("Failed to create a new thread '%s'\n", thread->name);
-        return SDL_SetError("Not enough resources to create thread");
+        IDOS->Close(inputStream);
+        IDOS->Close(outputStream);
+        IDOS->Close(errorStream);
+        return SDL_SetError("Failed to create a new thread");
     }
 
-    node->thread = thread;
     node->task = (struct Task*)child;
 
-    dprintf("Node %p, SDL_Thread %p\n", node, node->thread);
+    dprintf("Node %p, SDL_Thread %p, task %p\n", node, node->thread, node->task);
 
-    IExec->MutexObtain(control.children.mutex);
     IExec->AddTail((struct List *)&control.children.list, (struct Node *)node);
     IExec->MutexRelease(control.children.mutex);
 
-    dprintf("Created new thread '%s' (task %p)\n", thread->name, child);
+    dprintf("Created new thread '%s' (task %p, stack size %zu))\n", thread->name, child, thread->stacksize);
 
     return 0;
 }
