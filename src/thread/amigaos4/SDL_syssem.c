@@ -45,6 +45,7 @@ typedef struct OS4_WaiterNode
 {
     struct MinNode node;
     struct Task* task;
+    BOOL queued;
 } OS4_WaiterNode;
 
 SDL_sem *
@@ -67,7 +68,7 @@ SDL_CreateSemaphore(Uint32 initial_value)
 
         sem->count = initial_value;
 
-        dprintf("Created semaphore %p with count %d\n", sem, sem->count);
+        dprintf("Created semaphore %p with count %u\n", sem, sem->count);
     } else {
         SDL_OutOfMemory();
     }
@@ -91,6 +92,7 @@ SDL_DestroySemaphore(SDL_sem * sem)
                 while ((node = (OS4_WaiterNode *)IExec->RemHead((struct List *)&sem->waiters))) {
                     dprintf("Interrupting waiting task %p\n", node->task);
 
+                    node->queued = FALSE;
                     IExec->Signal(node->task, BREAK_SIGNAL);
 
                     /* Reschedule tasks */
@@ -115,14 +117,20 @@ SDL_SemWaitTimeout(SDL_sem * sem, Uint32 timeout)
         return SDL_SetError("Passed a NULL sem");
     }
 
+    if (!sem->mutex) {
+        return SDL_SetError("Mutex is NULL");
+    }
+
     BOOL wait = TRUE;
 
     struct Task* task = IExec->FindTask(NULL);
 
     ULONG alarmSignal = 0;
+    OS4_TimerInstance* timer = NULL;
 
     if (timeout > 0) {
-        alarmSignal = OS4_TimerSetAlarm(OS4_ThreadGetTimer(), timeout);
+        timer = OS4_ThreadGetTimer();
+        alarmSignal = OS4_TimerSetAlarm(timer, timeout);
     }
 
     while (wait) {
@@ -141,6 +149,7 @@ SDL_SemWaitTimeout(SDL_sem * sem, Uint32 timeout)
             }
 
             node.task = task;
+            node.queued = TRUE;
             IExec->AddTail((struct List *)&sem->waiters, (struct Node *)&node);
         }
 
@@ -152,16 +161,36 @@ SDL_SemWaitTimeout(SDL_sem * sem, Uint32 timeout)
             const ULONG signals = IExec->Wait(MUTEX_SIGNAL | BREAK_SIGNAL | alarmSignal);
 
             IExec->MutexObtain(sem->mutex);
-            IExec->Remove((struct Node *)&node);
+
+            if (node.queued) {
+                IExec->Remove((struct Node *)&node);
+                node.queued = FALSE;
+            }
+
+            if (sem->count > 0) {
+                sem->count--;
+                IExec->MutexRelease(sem->mutex);
+                if (timer) {
+                    OS4_TimerClearAlarm(timer);
+                }
+                return 0;
+            }
+
             IExec->MutexRelease(sem->mutex);
 
             if (signals & BREAK_SIGNAL) {
                 dprintf("Semaphore %p interrupted\n", sem);
+                if (timer) {
+                    OS4_TimerClearAlarm(timer);
+                }
                 return SDL_MUTEX_TIMEDOUT;
             }
 
             if (signals & alarmSignal) {
                 //dprintf("Semaphore %p timer triggered\n");
+                if (timer) {
+                    OS4_TimerClearAlarm(timer);
+                }
                 return SDL_MUTEX_TIMEDOUT;
             }
 
@@ -172,7 +201,7 @@ SDL_SemWaitTimeout(SDL_sem * sem, Uint32 timeout)
     }
 
     if (timeout) {
-        OS4_TimerClearAlarm(OS4_ThreadGetTimer());
+        OS4_TimerClearAlarm(timer);
     }
 
     //dprintf("Semaphore %p obtained\n", sem);
@@ -198,11 +227,23 @@ SDL_SemWait(SDL_sem * sem)
 Uint32
 SDL_SemValue(SDL_sem * sem)
 {
+    Uint32 value;
+
     if (!sem) {
         SDL_SetError("Passed a NULL sem");
         return 0;
     }
-    return (Uint32)sem->count;
+
+    if (!sem->mutex) {
+        dprintf("Mutex is NULL\n");
+        return 0;
+    }
+
+    IExec->MutexObtain(sem->mutex);
+    value = sem->count;
+    IExec->MutexRelease(sem->mutex);
+
+    return value;
 }
 
 int
@@ -212,17 +253,22 @@ SDL_SemPost(SDL_sem * sem)
         return SDL_SetError("Passed a NULL sem");
     }
 
+    if (!sem->mutex) {
+        return SDL_SetError("Mutex is NULL");
+    }
+
     //dprintf("Called\n");
 
     IExec->MutexObtain(sem->mutex);
 
-    if (++sem->count == 1) {
-        OS4_WaiterNode* node = (OS4_WaiterNode *)IExec->RemHead((struct List *)&sem->waiters);
+    sem->count++;
 
-        if (node) {
-            dprintf("Signalling task %p for semaphore %p\n", node->task, sem);
-            IExec->Signal(node->task, MUTEX_SIGNAL);
-        }
+    OS4_WaiterNode* node = (OS4_WaiterNode *)IExec->RemHead((struct List *)&sem->waiters);
+
+    if (node) {
+        node->queued = FALSE;
+        dprintf("Signalling task %p for semaphore %p\n", node->task, sem);
+        IExec->Signal(node->task, MUTEX_SIGNAL);
     }
 
     IExec->MutexRelease(sem->mutex);
