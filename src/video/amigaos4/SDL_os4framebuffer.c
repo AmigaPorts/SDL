@@ -45,6 +45,7 @@ OS4_CreateWindowFramebuffer(_THIS, SDL_Window * window, Uint32 * format, void **
     if (data->bitmap) {
         dprintf("Freeing old bitmap %p\n", data->bitmap);
         IGraphics->FreeBitMap(data->bitmap);
+        data->bitmap = NULL;
     }
 
     if (!data->syswin) {
