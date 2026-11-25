@@ -91,7 +91,7 @@ static BOOL OS4_WaitForChildThreads(void)
 
     for (iter = control.children.list.mlh_Head; iter->mln_Succ; iter = iter->mln_Succ) {
         OS4_ThreadNode* node = (OS4_ThreadNode *)iter;
-        dprintf("Sending CTRL-C to %s\n", node->thread->name);
+        dprintf("Sending CTRL-C to %s\n", ((struct Node *)node->task)->ln_Name);
         IExec->Signal(node->task, SIGBREAKF_CTRL_C);
     }
 
@@ -103,7 +103,7 @@ static BOOL OS4_WaitForChildThreads(void)
         IExec->MutexObtain(control.children.mutex);
 
         if (IsMinListEmpty(&control.children.list)) {
-            dprintf("No child threads left - proceed with SDL3 shutdown\n");
+            dprintf("No child threads left - proceed with SDL2 shutdown\n");
             IExec->MutexRelease(control.children.mutex);
             break;
         }
