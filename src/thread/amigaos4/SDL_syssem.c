@@ -271,9 +271,9 @@ SDL_SemPost(SDL_sem * sem)
         IExec->Signal(node->task, MUTEX_SIGNAL);
     }
 
-    IExec->MutexRelease(sem->mutex);
+    //dprintf("Semaphore %p value %u\n", sem, sem->count);
 
-    dprintf("Semaphore %p value %u\n", sem, sem->count);
+    IExec->MutexRelease(sem->mutex);
 
     return 0;
 }
