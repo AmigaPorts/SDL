@@ -466,7 +466,7 @@ OS4_WarpMouseInternal(struct Screen *screen, int x, int y)
         AVT_Type, MEMF_SHARED,
         TAG_DONE);
 
-    if (fakeEvent) {
+    if (!fakeEvent) {
         return SDL_SetError("Failed to allocate input event");
     }
 
