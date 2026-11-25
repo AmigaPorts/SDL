@@ -78,17 +78,20 @@ OS4_CreateCursorInternal()
 
     //dprintf("Called\n");
 
-    if (cursor) {
-        SDL_CursorData *data = SDL_calloc(1, sizeof(SDL_CursorData));
-
-        if (data) {
-            cursor->driverdata = data;
-        } else {
-            dprintf("Failed to create cursor data\n");
-        }
-    } else {
+    if (!cursor) {
         dprintf("Failed to create cursor\n");
+        return NULL;
     }
+
+    SDL_CursorData *data = SDL_calloc(1, sizeof(SDL_CursorData));
+
+    if (!data) {
+        dprintf("Failed to create cursor data\n");
+        SDL_free(cursor);
+        return NULL;
+    }
+
+    cursor->driverdata = data;
 
     return cursor;
 
@@ -119,26 +122,27 @@ OS4_CopyImageData(SDL_Surface * surface)
     dprintf("Copying cursor data %d*%d from surface %p to buffer %p\n",
         surface->w, surface->h, surface, buffer);
 
-    if (buffer) {
-        if (SDL_MUSTLOCK(surface)) {
-            SDL_LockSurface(surface);
-        }
-
-        Uint8* source = surface->pixels;
-        Uint32* destination = buffer;
-        int y;
-
-        for (y = 0; y < surface->h; y++) {
-            SDL_memcpy(destination, source, bytesPerRow);
-            destination += surface->w;
-            source += surface->pitch;
-        }
-
-        if (SDL_MUSTLOCK(surface)) {
-            SDL_UnlockSurface(surface);
-        }
-    } else {
+    if (!buffer) {
         dprintf("Failed to allocate memory\n");
+        return NULL;
+    }
+
+    if (SDL_MUSTLOCK(surface)) {
+        SDL_LockSurface(surface);
+    }
+
+    Uint8* source = surface->pixels;
+    Uint32* destination = buffer;
+    int y;
+
+    for (y = 0; y < surface->h; y++) {
+        SDL_memcpy(destination, source, bytesPerRow);
+        destination += surface->w;
+        source += surface->pitch;
+    }
+
+    if (SDL_MUSTLOCK(surface)) {
+        SDL_UnlockSurface(surface);
     }
 
     return buffer;
@@ -147,45 +151,60 @@ OS4_CopyImageData(SDL_Surface * surface)
 static SDL_Cursor*
 OS4_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
 {
+    if (surface->w > 64) {
+        dprintf("Invalid width %d\n", surface->w);
+        return NULL;
+    }
+
+    if (surface->h > 64) {
+        dprintf("Invalid height %d\n", surface->h);
+        return NULL;
+    }
+
     SDL_Cursor *cursor = OS4_CreateCursorInternal();
 
     dprintf("Surface %p, cursor %p, hot_x %d, hot_y %d\n", surface, cursor, hot_x, hot_y);
 
-    if (cursor && cursor->driverdata) {
-        if (surface->w > 64) {
-            dprintf("Invalid width %d\n", surface->w);
-        } else if (surface->h > 64) {
-            dprintf("Invalid height %d\n", surface->h);
-        } else {
-            Uint32* buffer = OS4_CopyImageData(surface);
-
-            /* We need to pass some compatibility parameters
-            even though we are going to use just ARGB pointer */
-
-            Object *object = IIntuition->NewObject(
-                NULL,
-                POINTERCLASS,
-                POINTERA_BitMap, &fallbackPointerBitMap,
-                POINTERA_XOffset, hot_x,
-                POINTERA_YOffset, hot_y,
-                POINTERA_WordWidth, 1,
-                POINTERA_XResolution, POINTERXRESN_SCREENRES,
-                POINTERA_YResolution, POINTERYRESN_SCREENRES,
-                POINTERA_ImageData, buffer,
-                POINTERA_Width, surface->w,
-                POINTERA_Height, surface->h,
-                TAG_DONE);
-
-            if (object) {
-                dprintf("Object %p\n", object);
-                SDL_CursorData *data = cursor->driverdata;
-                data->object = object;
-                data->imageData = buffer;
-            } else {
-                dprintf("Failed to create pointer object\n");
-            }
-        }
+    if (!cursor) {
+        return NULL;
     }
+
+    Uint32* buffer = OS4_CopyImageData(surface);
+
+    if (!buffer) {
+        SDL_free(cursor->driverdata);
+        SDL_free(cursor);
+        return NULL;
+    }
+
+    /* We need to pass some compatibility parameters
+    even though we are going to use just ARGB pointer */
+    Object *object = IIntuition->NewObject(
+        NULL,
+        POINTERCLASS,
+        POINTERA_BitMap, &fallbackPointerBitMap,
+        POINTERA_XOffset, hot_x,
+        POINTERA_YOffset, hot_y,
+        POINTERA_WordWidth, 1,
+        POINTERA_XResolution, POINTERXRESN_SCREENRES,
+        POINTERA_YResolution, POINTERYRESN_SCREENRES,
+        POINTERA_ImageData, buffer,
+        POINTERA_Width, surface->w,
+        POINTERA_Height, surface->h,
+        TAG_DONE);
+
+    if (!object) {
+        dprintf("Failed to create pointer object\n");
+        SDL_free(buffer);
+        SDL_free(cursor->driverdata);
+        SDL_free(cursor);
+        return NULL;
+    }
+
+    dprintf("Object %p\n", object);
+    SDL_CursorData *data = cursor->driverdata;
+    data->object = object;
+    data->imageData = buffer;
 
     return cursor;
 }
@@ -391,27 +410,31 @@ OS4_FreeCursor(SDL_Cursor * cursor)
 
     dprintf("Called %p\n", cursor);
 
-    if (data) {
-        if (data->object) {
-            SDL_Mouse *mouse = SDL_GetMouse();
-
-            if (mouse->cur_cursor == cursor) {
-                dprintf("Reset to POINTERTYPE_NONE before object disposal\n");
-                OS4_SetPointerForEachWindow(POINTERTYPE_NONE, NULL);
-            }
-
-            IIntuition->DisposeObject(data->object);
-            data->object = NULL;
-        }
-
-        if (data->imageData) {
-            SDL_free(data->imageData);
-            data->imageData = NULL;
-        }
-
-        SDL_free(data);
-        cursor->driverdata = NULL;
+    if (!data) {
+        return;
     }
+
+    if (data->object) {
+        SDL_Mouse *mouse = SDL_GetMouse();
+
+        if (mouse->cur_cursor == cursor) {
+            dprintf("Reset to POINTERTYPE_NONE before object disposal\n");
+            OS4_SetPointerForEachWindow(POINTERTYPE_NONE, NULL);
+        }
+
+        IIntuition->DisposeObject(data->object);
+        data->object = NULL;
+    }
+
+    if (data->imageData) {
+        SDL_free(data->imageData);
+        data->imageData = NULL;
+    }
+
+    SDL_free(data);
+    cursor->driverdata = NULL;
+
+    SDL_free(cursor);
 }
 
 void
@@ -430,51 +453,46 @@ OS4_WarpMouseInternal(struct Screen *screen, int x, int y)
 {
     SDL_VideoDevice *device = SDL_GetVideoDevice();
     SDL_VideoData *videoData = device->driverdata;
-    int result = -1;
 
-    if (videoData->inputReq != NULL) {
-        struct InputEvent     *fakeEvent;
-
-        /* We move the Workbench pointer by stuffing mouse
-         * movement events in input.device's queue.
-         *
-         * This in turn will cause mouse movement events to be
-         * sent back to us
-         */
-
-        fakeEvent = (struct InputEvent *)OS4_SaveAllocPooled(
-            device, sizeof(struct InputEvent) + sizeof(struct IEPointerPixel));
-
-        if (fakeEvent) {
-            struct IEPointerPixel *neoPix = (struct IEPointerPixel *) (fakeEvent + 1);
-
-            neoPix->iepp_Screen = screen ? screen : videoData->publicScreen;
-            neoPix->iepp_Position.Y = y;
-            neoPix->iepp_Position.X = x;
-
-            fakeEvent->ie_EventAddress = (APTR)neoPix;
-            fakeEvent->ie_NextEvent    = NULL;
-            fakeEvent->ie_Class        = IECLASS_NEWPOINTERPOS;
-            fakeEvent->ie_SubClass     = IESUBCLASS_PIXEL;
-            fakeEvent->ie_Code         = IECODE_NOBUTTON;
-            fakeEvent->ie_Qualifier    = 0;
-
-            videoData->inputReq->io_Data    = (APTR)fakeEvent;
-            videoData->inputReq->io_Length  = sizeof(struct InputEvent);
-            videoData->inputReq->io_Command = IND_WRITEEVENT;
-
-            dprintf("Sending input event\n");
-
-            IExec->DoIO((struct IORequest *)videoData->inputReq);
-
-            OS4_SaveFreePooled(device, (void *)fakeEvent,
-                sizeof(struct InputEvent) + sizeof(struct IEPointerPixel));
-
-            result = 0;
-        }
+    if (!videoData->inputReq) {
+        return SDL_SetError("No input request");
     }
 
-    return result;
+    struct InputEvent *fakeEvent;
+
+    // Send event to input.device
+    fakeEvent = (struct InputEvent *)IExec->AllocVecTags(
+        sizeof(struct InputEvent) + sizeof(struct IEPointerPixel),
+        AVT_Type, MEMF_SHARED,
+        TAG_DONE);
+
+    if (fakeEvent) {
+        return SDL_SetError("Failed to allocate input event");
+    }
+
+    struct IEPointerPixel *neoPix = (struct IEPointerPixel *) (fakeEvent + 1);
+
+    neoPix->iepp_Screen = screen ? screen : videoData->publicScreen;
+    neoPix->iepp_Position.Y = y;
+    neoPix->iepp_Position.X = x;
+
+    fakeEvent->ie_EventAddress = (APTR)neoPix;
+    fakeEvent->ie_NextEvent    = NULL;
+    fakeEvent->ie_Class        = IECLASS_NEWPOINTERPOS;
+    fakeEvent->ie_SubClass     = IESUBCLASS_PIXEL;
+    fakeEvent->ie_Code         = IECODE_NOBUTTON;
+    fakeEvent->ie_Qualifier    = 0;
+
+    videoData->inputReq->io_Data    = (APTR)fakeEvent;
+    videoData->inputReq->io_Length  = sizeof(struct InputEvent);
+    videoData->inputReq->io_Command = IND_WRITEEVENT;
+
+    dprintf("Sending input event\n");
+
+    IExec->DoIO((struct IORequest *)videoData->inputReq);
+    IExec->FreeVec(fakeEvent);
+
+    return 0;
 }
 
 static int

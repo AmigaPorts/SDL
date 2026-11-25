@@ -53,11 +53,6 @@ typedef struct
 
 #define IInput ((SDL_VideoData *) _this->driverdata)->iInput
 
-extern void * OS4_SaveAllocPooled(_THIS, uint32 size);
-extern void * OS4_SaveAllocVecPooled(_THIS, uint32 size);
-extern void OS4_SaveFreePooled(_THIS, void *mem, uint32 size);
-extern void OS4_SaveFreeVecPooled(_THIS, void *mem);
-
 extern DECLSPEC struct MsgPort * OS4_GetSharedMessagePort();
 
 extern SDL_bool (*OS4_ResizeGlContext)(_THIS, SDL_Window * window);

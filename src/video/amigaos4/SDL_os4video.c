@@ -230,18 +230,6 @@ OS4_AllocSystemResources(_THIS)
         return SDL_FALSE;
     }
 
-    /* Create the pool we'll be using (Shared, might be used from threads) */
-    if (!(data->pool = IExec->AllocSysObjectTags(ASOT_MEMPOOL,
-        ASOPOOL_MFlags,    MEMF_SHARED,
-        ASOPOOL_Threshold, 16384,
-        ASOPOOL_Puddle,    16384,
-        ASOPOOL_Protected, TRUE,
-        TAG_DONE))) {
-
-        SDL_SetError("Couldn't allocate pool");
-        return SDL_FALSE;
-    }
-
     /* inputPort, inputReq and and input.device are created for WarpMouse functionality. (In SDL1
     they were created in library constructor for an unknown reason) */
     if (!(data->inputPort = IExec->AllocSysObjectTags(ASOT_PORT, TAG_DONE))) {
@@ -296,11 +284,6 @@ OS4_FreeSystemResources(_THIS)
     if (data->inputPort) {
         dprintf("Freeing MsgPort\n");
         IExec->FreeSysObject(ASOT_PORT, (void *)data->inputPort);
-    }
-
-    if (data->pool) {
-        dprintf("Freeing memory pool\n");
-        IExec->FreeSysObject(ASOT_MEMPOOL, data->pool);
     }
 
     if (data->appMsgPort) {
@@ -666,38 +649,6 @@ OS4_VideoQuit(_THIS)
     OS4_QuitMouse(_this);
     OS4_QuitKeyboard(_this);
     OS4_QuitModes(_this);
-}
-
-void *
-OS4_SaveAllocPooled(_THIS, uint32 size)
-{
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
-
-    return IExec->AllocPooled(data->pool, size);
-}
-
-void *
-OS4_SaveAllocVecPooled(_THIS, uint32 size)
-{
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
-
-    return IExec->AllocVecPooled(data->pool, size);
-}
-
-void
-OS4_SaveFreePooled(_THIS, void * mem, uint32 size)
-{
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
-
-    IExec->FreePooled(data->pool, mem, size);
-}
-
-void
-OS4_SaveFreeVecPooled(_THIS, void * mem)
-{
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
-
-    IExec->FreeVecPooled(data->pool, mem);
 }
 
 /* Native window apps may be interested in calling this */
