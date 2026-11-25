@@ -45,6 +45,7 @@ struct SDL_PrivateAudioData
     Uint8                *audioBuffer[2];
 
     Uint32                lastCaptureTicks;
+    BYTE                  device;
 };
 
 typedef struct SDL_PrivateAudioData OS4AudioData;

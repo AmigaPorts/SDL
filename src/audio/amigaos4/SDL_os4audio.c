@@ -40,14 +40,15 @@ OS4_OpenAhiDevice(OS4AudioData * os4data)
 {
     if (os4data->deviceOpen) {
         dprintf("Device already open\n");
+        return SDL_TRUE;
     }
 
+    os4data->device = -1;
     os4data->deviceOpen = SDL_FALSE;
 
     os4data->ahiReplyPort = (struct MsgPort *)IExec->AllocSysObjectTags(ASOT_PORT, TAG_DONE);
 
     if (os4data->ahiReplyPort) {
-
         /* create a iorequest for the device */
         os4data->ahiRequest[0] = (struct AHIRequest *)
             IExec->AllocSysObjectTags(
@@ -57,9 +58,8 @@ OS4_OpenAhiDevice(OS4AudioData * os4data)
                 TAG_DONE);
 
         if (os4data->ahiRequest[0]) {
-
-            if (!IExec->OpenDevice(AHINAME, 0, (struct IORequest *)os4data->ahiRequest[0], 0)) {
-
+            os4data->device = IExec->OpenDevice(AHINAME, 0, (struct IORequest *)os4data->ahiRequest[0], 0);
+            if (os4data->device == 0) {
                 dprintf("%s opened\n", AHINAME);
 
                 /* Create a copy */
@@ -70,7 +70,6 @@ OS4_OpenAhiDevice(OS4AudioData * os4data)
                         TAG_DONE);
 
                 if (os4data->ahiRequest[1]) {
-
                     dprintf("IO requests created\n");
 
                     os4data->deviceOpen = SDL_TRUE;
@@ -104,17 +103,19 @@ OS4_CloseAhiDevice(OS4AudioData * os4data)
             IExec->WaitIO((struct IORequest *)os4data->link);
         }
 
-        dprintf("Closing device\n");
-        IExec->CloseDevice((struct IORequest *)os4data->ahiRequest[0]);
+        if (os4data->device == 0) {
+            dprintf("Closing device\n");
+            IExec->CloseDevice((struct IORequest *)os4data->ahiRequest[0]);
+        }
 
         dprintf("Freeing I/O requests\n");
         IExec->FreeSysObject(ASOT_IOREQUEST, os4data->ahiRequest[0]);
         os4data->ahiRequest[0] = NULL;
+    }
 
-        if (os4data->ahiRequest[1]) {
-            IExec->FreeSysObject(ASOT_IOREQUEST, os4data->ahiRequest[1]);
-            os4data->ahiRequest[1] = NULL;
-        }
+    if (os4data->ahiRequest[1]) {
+        IExec->FreeSysObject(ASOT_IOREQUEST, os4data->ahiRequest[1]);
+        os4data->ahiRequest[1] = NULL;
     }
 
     if (os4data->ahiReplyPort) {
@@ -124,6 +125,7 @@ OS4_CloseAhiDevice(OS4AudioData * os4data)
     }
 
     os4data->deviceOpen = SDL_FALSE;
+    os4data->device = -1;
 
     dprintf("Device closed\n");
 }
@@ -179,7 +181,9 @@ OS4_CloseDevice(_THIS)
 
     dprintf("Called\n");
 
-    OS4_CloseAhiDevice(os4data);
+    if (!os4data) {
+        return;
+    }
 
     int i;
     for (i = 0; i < 2; i++) {
@@ -190,6 +194,7 @@ OS4_CloseDevice(_THIS)
     }
 
     SDL_free(os4data);
+    _this->hidden = NULL;
 }
 
 static int
@@ -200,14 +205,13 @@ OS4_OpenDevice(_THIS, const char * devname)
 
     dprintf("devname %s\n", devname);
 
-    _this->hidden = (OS4AudioData *) SDL_malloc(sizeof(OS4AudioData));
+    _this->hidden = (OS4AudioData *) SDL_calloc(1, sizeof(OS4AudioData));
 
     if (!_this->hidden) {
         dprintf("Failed to allocate private data\n");
         return SDL_OutOfMemory();
     }
 
-    SDL_memset(_this->hidden, 0, sizeof(OS4AudioData));
     os4data = _this->hidden;
 
     switch (_this->spec.format & 0xFF) {
@@ -308,15 +312,19 @@ OS4_ThreadInit(_THIS)
 
     /* Signal must be opened in the task which is using it (player) */
     if (!OS4_OpenAhiDevice(os4data)) {
-        // FIXME: this is bad. We have failed and SDL core doesn't know about that.
         dprintf("Failed to open AHI\n");
+        SDL_OpenedAudioDeviceDisconnected(_this);
     }
+}
 
-    /* This will cause a lot of problems.. and should be removed.
+static void
+OS4_ThreadDeinit(_THIS)
+{
+    OS4AudioData *os4data = _this->hidden;
 
-    One possibility: create a configuration GUI or ENV variable that allows
-    user to select priority, if there is no silver bullet value */
-    IExec->SetTaskPri(IExec->FindTask(NULL), 5);
+    dprintf("Called\n");
+
+    OS4_CloseAhiDevice(os4data);
 }
 
 static void
@@ -514,17 +522,18 @@ OS4_Init(SDL_AudioDriverImpl * impl)
     // impl->DetectDevices?
     impl->OpenDevice = OS4_OpenDevice;
     impl->ThreadInit = OS4_ThreadInit;
+    impl->ThreadDeinit = OS4_ThreadDeinit;
     impl->WaitDevice = OS4_WaitDevice;
     impl->PlayDevice = OS4_PlayDevice;
-    // impl->GetPendingBytes?
     impl->GetDeviceBuf = OS4_GetDeviceBuf;
     impl->CaptureFromDevice = OS4_CaptureFromDevice;
     // impl->FlushCapture
-    // impl->PrepareToClose()
+    // impl->PrepareToClose
     impl->CloseDevice = OS4_CloseDevice;
     // impl->Lock+UnlockDevice
     // impl->FreeDeviceHandle
     // impl->Deinitialize
+    // impl->GetDefaultAudioInfo
 
     impl->HasCaptureSupport = SDL_TRUE;
     impl->OnlyHasDefaultOutputDevice = SDL_TRUE;
