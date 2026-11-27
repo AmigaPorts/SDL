@@ -132,7 +132,7 @@ OS4_TimerCreate(OS4_TimerInstance * timer)
         return false;
     }
 
-    timer->device = IExec->OpenDevice("timer.device", UNIT_WAITECLOCK, (struct IORequest *)timer->request, 50);
+    timer->device = IExec->OpenDevice("timer.device", UNIT_WAITECLOCK, (struct IORequest *)timer->request, 0);
 
     if (timer->device) {
         dprintf("Failed to open timer.device\n");
@@ -169,11 +169,14 @@ OS4_TimerSetAlarmNS(OS4_TimerInstance * timer, Uint64 alarmTicks)
     //dprintf("timer %p, request %p, port %p, ticks %u\n", timer, timer->request, timer->port, alarmTicks);
 
     if (timer && timer->request && timer->port) {
+        const Uint64 seconds = SDL_NS_TO_SECONDS(alarmTicks);
+        const Uint64 remainder = alarmTicks % SDL_NS_PER_SECOND;
+
         OS4_ClockVal clock, now;
 
         SDL3_ITimer->ReadEClock(&now.u.cv);
 
-        clock.u.ticks = alarmTicks * OS4_TimerFrequency / 1000000000;
+        clock.u.ticks = seconds * OS4_TimerFrequency + remainder * OS4_TimerFrequency / SDL_NS_PER_SECOND;
         clock.u.ticks += now.u.ticks;
 
         timer->request->Request.io_Command = TR_ADDREQUEST;
