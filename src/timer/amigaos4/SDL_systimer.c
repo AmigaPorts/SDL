@@ -39,7 +39,7 @@ SDL_GetPerformanceFrequency(void)
 void
 SDL_SYS_DelayNS(Uint64 ns)
 {
-    OS4_TimerDelayMicro(ns / 1000);
+    OS4_TimerDelayNS(ns);
 }
 
-#endif /* SDL_TIMER_AMIGAOS4 || SDL_TIMERS_DISABLED */
+#endif // SDL_TIMER_AMIGAOS4 || SDL_TIMERS_DISABLED

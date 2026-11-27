@@ -33,6 +33,7 @@ typedef struct OS4_TimerInstance
     struct MsgPort* port;
     struct TimeRequest* request;
     bool requestSent;
+    BYTE device;
 } OS4_TimerInstance;
 
 void OS4_InitTimerSubSystem(void);
@@ -40,11 +41,10 @@ void OS4_QuitTimerSubSystem(void);
 
 bool OS4_TimerCreate(OS4_TimerInstance * timer);
 void OS4_TimerDestroy(OS4_TimerInstance * timer);
-ULONG OS4_TimerSetAlarmMicro(OS4_TimerInstance * timer, Uint64 alarmTicks);
+ULONG OS4_TimerSetAlarmNS(OS4_TimerInstance * timer, Uint64 alarmTicks);
 void OS4_TimerClearAlarm(OS4_TimerInstance * timer);
-bool OS4_TimerDelayMicro(Uint64 ticks);
-void OS4_TimerGetTime(struct TimeVal * timeval);
+bool OS4_TimerDelayNS(Uint64 ticks);
 Uint64 OS4_TimerGetCounter(void);
 Uint64 OS4_TimerGetFrequency(void);
 
-#endif /* SDL_os4timer_c_h_ */
+#endif // SDL_os4timer_c_h_

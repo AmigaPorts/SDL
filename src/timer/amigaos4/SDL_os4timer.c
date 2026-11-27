@@ -35,8 +35,6 @@
 
 #include "../../main/amigaos4/SDL_os4debug.h"
 
-static struct TimeVal OS4_StartTime;
-
 static struct TimerIFace* SDL3_ITimer;
 
 static ULONG OS4_TimerFrequency;
@@ -65,8 +63,6 @@ void OS4_InitTimerSubSystem(void)
         return;
     }
 
-    SDL3_ITimer->GetSysTime(&OS4_StartTime);
-
     struct EClockVal cv;
     OS4_TimerFrequency = SDL3_ITimer->ReadEClock(&cv);
 
@@ -84,60 +80,67 @@ void OS4_QuitTimerSubSystem(void)
 static void
 OS4_TimerCleanup(OS4_TimerInstance * timer)
 {
-    if (timer) {
-        if (timer->request) {
-            dprintf("Freeing timer request %p\n", timer->request);
-            IExec->FreeSysObject(ASOT_IOREQUEST, timer->request);
-            timer->request = NULL;
+    if (!timer) {
+        return;
+    }
+
+    if (timer->request) {
+        if (timer->device == 0) {
+            dprintf("Closing timer device\n");
+            IExec->CloseDevice((struct IORequest *)timer->request);
+            timer->device = -1;
         }
 
-        if (timer->port) {
-            dprintf("Freeing timer port %p\n", timer->port);
-            IExec->FreeSysObject(ASOT_PORT, timer->port);
-            timer->port = NULL;
-        }
+        dprintf("Freeing timer request %p\n", timer->request);
+        IExec->FreeSysObject(ASOT_IOREQUEST, timer->request);
+        timer->request = NULL;
+    }
+
+    if (timer->port) {
+        dprintf("Freeing timer port %p\n", timer->port);
+        IExec->FreeSysObject(ASOT_PORT, timer->port);
+        timer->port = NULL;
     }
 }
 
 bool
 OS4_TimerCreate(OS4_TimerInstance * timer)
 {
-    bool success = false;
-
     dprintf("Creating timer %p for task %p\n", timer, IExec->FindTask(NULL));
 
     if (!timer) {
         return false;
     }
 
+    timer->requestSent = false;
+    timer->device = -1;
     timer->port = IExec->AllocSysObject(ASOT_PORT, NULL);
 
-    if (timer->port) {
-        timer->request = IExec->AllocSysObjectTags(ASOT_IOREQUEST,
-                                                   ASOIOR_ReplyPort, timer->port,
-                                                   ASOIOR_Size, sizeof(struct TimeRequest),
-                                                   TAG_DONE);
-
-        if (timer->request) {
-            if (!(IExec->OpenDevice("timer.device", UNIT_WAITUNTIL, (struct IORequest *)timer->request, 0))) {
-                success = true;
-            } else {
-                dprintf("Failed to open timer.device\n");
-            }
-        } else {
-            dprintf("Failed to allocate timer request\n");
-        }
-    } else {
+    if (!timer->port) {
         dprintf("Failed to allocate timer port\n");
+        return false;
     }
 
-    timer->requestSent = false;
+    timer->request = IExec->AllocSysObjectTags(ASOT_IOREQUEST,
+                                               ASOIOR_ReplyPort, timer->port,
+                                               ASOIOR_Size, sizeof(struct TimeRequest),
+                                               TAG_DONE);
 
-    if (!success) {
+    if (!timer->request) {
+        dprintf("Failed to allocate timer request\n");
         OS4_TimerCleanup(timer);
+        return false;
     }
 
-    return success;
+    timer->device = IExec->OpenDevice("timer.device", UNIT_WAITECLOCK, (struct IORequest *)timer->request, 50);
+
+    if (timer->device) {
+        dprintf("Failed to open timer.device\n");
+        OS4_TimerCleanup(timer);
+        return false;
+    }
+
+    return true;
 }
 
 void
@@ -148,19 +151,16 @@ OS4_TimerDestroy(OS4_TimerInstance * timer)
     if (timer && timer->request && timer->requestSent) {
         if (!IExec->CheckIO((struct IORequest *)timer->request)) {
             IExec->AbortIO((struct IORequest *)timer->request);
-            IExec->WaitIO((struct IORequest *)timer->request);
         }
+        IExec->WaitIO((struct IORequest *)timer->request);
     }
 
     OS4_TimerCleanup(timer);
 }
 
 ULONG
-OS4_TimerSetAlarmMicro(OS4_TimerInstance * timer, Uint64 alarmTicks)
+OS4_TimerSetAlarmNS(OS4_TimerInstance * timer, Uint64 alarmTicks)
 {
-    const ULONG seconds = alarmTicks / 1000000;
-    struct TimeVal now;
-
     if (!SDL3_ITimer) {
         dprintf("Timer subsystem not initialized\n");
         return 0;
@@ -169,12 +169,16 @@ OS4_TimerSetAlarmMicro(OS4_TimerInstance * timer, Uint64 alarmTicks)
     //dprintf("timer %p, request %p, port %p, ticks %u\n", timer, timer->request, timer->port, alarmTicks);
 
     if (timer && timer->request && timer->port) {
-        timer->request->Request.io_Command = TR_ADDREQUEST;
-        timer->request->Time.Seconds = seconds;
-        timer->request->Time.Microseconds  = alarmTicks - (seconds * 1000000);
+        OS4_ClockVal clock, now;
 
-        SDL3_ITimer->GetSysTime(&now);
-        SDL3_ITimer->AddTime(&timer->request->Time, &now);
+        SDL3_ITimer->ReadEClock(&now.u.cv);
+
+        clock.u.ticks = alarmTicks * OS4_TimerFrequency / 1000000000;
+        clock.u.ticks += now.u.ticks;
+
+        timer->request->Request.io_Command = TR_ADDREQUEST;
+        timer->request->Time.Seconds = clock.u.cv.ev_hi;
+        timer->request->Time.Microseconds = clock.u.cv.ev_lo;
 
         IExec->SetSignal(0, 1L << timer->port->mp_SigBit);
         IExec->SendIO((struct IORequest *)timer->request);
@@ -196,48 +200,31 @@ OS4_TimerClearAlarm(OS4_TimerInstance * timer)
         if (!IExec->CheckIO((struct IORequest *)timer->request)) {
             IExec->AbortIO((struct IORequest *)timer->request);
         }
-
         IExec->WaitIO((struct IORequest *)timer->request);
         timer->requestSent = false;
     }
 }
 
 bool
-OS4_TimerDelayMicro(Uint64 ticks)
+OS4_TimerDelayNS(Uint64 ticks)
 {
-	OS4_TimerInstance* timer = OS4_ThreadGetTimer();
+    OS4_TimerInstance* timer = OS4_ThreadGetTimer();
 
-    if (timer) {
-        const ULONG alarmSig = OS4_TimerSetAlarmMicro(timer, ticks);
-        if (alarmSig) {
-            const ULONG sigsReceived = IExec->Wait(alarmSig | SIGBREAKF_CTRL_C);
-
-            OS4_TimerClearAlarm(timer);
-
-        	return (sigsReceived & alarmSig) == alarmSig;
-        }
+    if (!timer) {
+        return false;
     }
 
-    return false;
-}
+    const ULONG alarmSig = OS4_TimerSetAlarmNS(timer, ticks);
 
-void
-OS4_TimerGetTime(struct TimeVal * timeval)
-{
-    if (!timeval) {
-        dprintf("timeval NULL\n");
-        return;
+    if (!alarmSig) {
+        return false;
     }
 
-    if (!SDL3_ITimer) {
-        dprintf("Timer subsystem not initialized\n");
-        timeval->Seconds = 0;
-        timeval->Microseconds = 0;
-        return;
-    }
+    const ULONG sigsReceived = IExec->Wait(alarmSig | SIGBREAKF_CTRL_C);
 
-    SDL3_ITimer->GetSysTime(timeval);
-    SDL3_ITimer->SubTime(timeval, &OS4_StartTime);
+    OS4_TimerClearAlarm(timer);
+
+    return (sigsReceived & alarmSig) == alarmSig;
 }
 
 Uint64
@@ -261,4 +248,4 @@ OS4_TimerGetFrequency(void)
     return OS4_TimerFrequency;
 }
 
-#endif /* (SDL_TIMER_AMIGAOS4) || defined(SDL_TIMERS_DISABLED) */
+#endif // (SDL_TIMER_AMIGAOS4) || defined(SDL_TIMERS_DISABLED)

@@ -73,7 +73,7 @@ SDL_CreateSemaphore(Uint32 initial_value)
 
     sem->count = initial_value;
 
-    dprintf("Created semaphore %p with count %d\n", sem, sem->count);
+    dprintf("Created semaphore %p with count %u\n", sem, sem->count);
 
     return (sem);
 }
@@ -138,7 +138,7 @@ SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore * sem, Sint64 timeout)
 
     if (timeout > 0) {
         timer = OS4_ThreadGetTimer();
-        alarmSignal = OS4_TimerSetAlarmMicro(timer, timeout / 1000);
+        alarmSignal = OS4_TimerSetAlarmNS(timer, timeout);
     }
 
     while (wait) {
@@ -266,9 +266,9 @@ SDL_SignalSemaphore(SDL_Semaphore * sem)
         IExec->Signal(node->task, MUTEX_SIGNAL);
     }
 
-    IExec->MutexRelease(sem->mutex);
-
     //dprintf("Semaphore %p value %u\n", sem, sem->count);
+
+    IExec->MutexRelease(sem->mutex);
 }
 
 #endif // SDL_THREAD_AMIGAOS4
