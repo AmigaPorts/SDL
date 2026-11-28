@@ -35,11 +35,12 @@ struct SDL_PrivateAudioData
     int                   currentBuffer; // buffer number to fill
     struct AHIRequest    *link;          // point to previous I/O request sent (both recording and playing)
 
-    bool                  deviceOpen;
+    Uint32                lastCaptureTicks;
     Uint32                audioBufferSize;
     Uint8                *audioBuffer[2];
 
-    Uint32                lastCaptureTicks;
+    bool                  deviceOpen;
+    BYTE                  device;
 };
 
 typedef struct SDL_PrivateAudioData OS4AudioData;

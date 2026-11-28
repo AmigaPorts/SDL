@@ -38,8 +38,8 @@ OS4_OpenAhiDevice(OS4AudioData * os4data)
         return true;
     }
 
+    os4data->device = -1;
     os4data->deviceOpen = false;
-
     os4data->ahiReplyPort = (struct MsgPort *)IExec->AllocSysObjectTags(ASOT_PORT, TAG_DONE);
 
     if (!os4data->ahiReplyPort) {
@@ -60,7 +60,9 @@ OS4_OpenAhiDevice(OS4AudioData * os4data)
         return false;
     }
 
-    if (IExec->OpenDevice(AHINAME, 0, (struct IORequest *)os4data->ahiRequest[0], 0)) {
+    os4data->device = IExec->OpenDevice(AHINAME, 0, (struct IORequest *)os4data->ahiRequest[0], 0);
+
+    if (os4data->device) {
         dprintf("Failed to open %s\n", AHINAME);
         return false;
     }
@@ -100,17 +102,19 @@ OS4_CloseAhiDevice(OS4AudioData * os4data)
             IExec->WaitIO((struct IORequest *)os4data->link);
         }
 
-        dprintf("Closing device\n");
-        IExec->CloseDevice((struct IORequest *)os4data->ahiRequest[0]);
+        if (os4data->device == 0) {
+            dprintf("Closing device\n");
+            IExec->CloseDevice((struct IORequest *)os4data->ahiRequest[0]);
+        }
 
         dprintf("Freeing I/O requests\n");
         IExec->FreeSysObject(ASOT_IOREQUEST, os4data->ahiRequest[0]);
         os4data->ahiRequest[0] = NULL;
+    }
 
-        if (os4data->ahiRequest[1]) {
-            IExec->FreeSysObject(ASOT_IOREQUEST, os4data->ahiRequest[1]);
-            os4data->ahiRequest[1] = NULL;
-        }
+    if (os4data->ahiRequest[1]) {
+        IExec->FreeSysObject(ASOT_IOREQUEST, os4data->ahiRequest[1]);
+        os4data->ahiRequest[1] = NULL;
     }
 
     if (os4data->ahiReplyPort) {
@@ -120,6 +124,7 @@ OS4_CloseAhiDevice(OS4AudioData * os4data)
     }
 
     os4data->deviceOpen = false;
+    os4data->device = -1;
 
     dprintf("Device closed\n");
 }
@@ -214,14 +219,13 @@ OS4_OpenDevice(SDL_AudioDevice *_this)
 
     dprintf("Called for device %p\n", _this);
 
-    _this->hidden = (OS4AudioData *) SDL_malloc(sizeof(OS4AudioData));
+    _this->hidden = (OS4AudioData *) SDL_calloc(1, sizeof(OS4AudioData));
 
     if (!_this->hidden) {
         dprintf("Failed to allocate private data\n");
         return SDL_OutOfMemory();
     }
 
-    SDL_memset(_this->hidden, 0, sizeof(OS4AudioData));
     os4data = _this->hidden;
 
     switch (_this->spec.format & 0xFF) {
@@ -335,14 +339,6 @@ OS4_ThreadDeinit(SDL_AudioDevice *_this)
     OS4_CloseAhiDevice(os4data);
 }
 
-static bool
-OS4_WaitDevice(SDL_AudioDevice *_this)
-{
-    // Dummy - OS4_PlayDevice handles the waiting
-    //dprintf("Called\n");
-    return true;
-}
-
 #define SDL_FC  2
 #define SDL_LFE 3
 #define SDL_BL  4
@@ -442,13 +438,6 @@ OS4_GetDeviceBuf(SDL_AudioDevice *_this, int *buffer_size)
     return _this->hidden->audioBuffer[_this->hidden->currentBuffer];
 }
 
-static bool
-OS4_WaitRecordingDevice(SDL_AudioDevice *device)
-{
-    dprintf("Called for device %p\n", device);
-    return true;
-}
-
 #ifndef MIN
 #define MIN(a, b) (a) < (b) ? (a) : (b)
 #endif
@@ -531,30 +520,6 @@ OS4_RecordDevice(SDL_AudioDevice *_this, void * buffer, int buflen)
     return copyLen;
 }
 
-static void
-OS4_FlushRecording(SDL_AudioDevice *this)
-{
-    dprintf("Called\n");
-}
-
-static void
-OS4_FreeDeviceHandle(SDL_AudioDevice *device)
-{
-    dprintf("Called\n");
-}
-
-static void
-OS4_DeinitializeStart(void)
-{
-    dprintf("Called\n");
-}
-
-static void
-OS4_Deinitialize(void)
-{
-    dprintf("Called\n");
-}
-
 static bool
 OS4_Init(SDL_AudioDriverImpl * impl)
 {
@@ -566,16 +531,16 @@ OS4_Init(SDL_AudioDriverImpl * impl)
     impl->OpenDevice = OS4_OpenDevice;
     impl->ThreadInit = OS4_ThreadInit;
     impl->ThreadDeinit = OS4_ThreadDeinit;
-    impl->WaitDevice = OS4_WaitDevice;
+    //impl->WaitDevice = OS4_WaitDevice;
     impl->PlayDevice = OS4_PlayDevice;
     impl->GetDeviceBuf = OS4_GetDeviceBuf;
-    impl->WaitRecordingDevice = OS4_WaitRecordingDevice;
+    //impl->WaitRecordingDevice = OS4_WaitRecordingDevice;
     impl->RecordDevice = OS4_RecordDevice;
-    impl->FlushRecording = OS4_FlushRecording;
+    //impl->FlushRecording = OS4_FlushRecording;
     impl->CloseDevice = OS4_CloseDevice;
-    impl->FreeDeviceHandle = OS4_FreeDeviceHandle;
-    impl->DeinitializeStart = OS4_DeinitializeStart;
-    impl->Deinitialize = OS4_Deinitialize;
+    //impl->FreeDeviceHandle = OS4_FreeDeviceHandle;
+    //impl->DeinitializeStart = OS4_DeinitializeStart;
+    //impl->Deinitialize = OS4_Deinitialize;
 
     impl->ProvidesOwnCallbackThread = false;
     impl->HasRecordingSupport = true;
@@ -588,4 +553,5 @@ OS4_Init(SDL_AudioDriverImpl * impl)
 AudioBootStrap AMIGAOS4AUDIO_bootstrap = {
     "amigaos4", "AmigaOS 4 AHI audio", OS4_Init, false
 };
-#endif
+
+#endif // SDL_AUDIO_DRIVER_AMIGAOS4
